@@ -27,19 +27,19 @@
 
 #define	DEBUG	1
 
-void gpio16_output()
+void ICACHE_FLASH_ATTR gpio16_output()
 {
 	GPF16 = GP16FFS(GPFFS_GPIO(16));	//Set mode to GPIO
 	GPC16 = 0;
 	GP16E |= 1;
 }
 
-void gpio16_high()
+void ICACHE_FLASH_ATTR gpio16_high()
 {
 	GP16O |= 1;
 }
 
-void gpio16_low()
+void ICACHE_FLASH_ATTR gpio16_low()
 {
 	GP16O &= ~1;
 }
