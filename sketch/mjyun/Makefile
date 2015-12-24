@@ -27,9 +27,9 @@ ESPSDK_LIBDIR	= lib
 ESPSDK_LDDIR	= ld
 
 # libraries used in this project, mainly provided by the ESPSDK
-LIBS		:= gcc
-LIBS		+= noduino crypto espnow json lwip_536 lwip mesh net80211 phy pp pwm smartconfig ssl upgrade wpa wps main
-LIBS		+= driver airkiss mqtt mjyun 
+LIBS		:= gcc c
+LIBS		+= crypto espnow json lwip_536 lwip mesh net80211 phy pp pwm smartconfig ssl upgrade wpa wps main
+LIBS		+= driver airkiss mjyun 
 
 # esptool path and port
 ifeq ($(OS),Windows_NT)
