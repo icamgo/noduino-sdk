@@ -1,4 +1,3 @@
-
 #############################################################
 # Required variables for each makefile
 # Discard this section from all parent makefiles
@@ -12,9 +11,7 @@
 #     a generated lib/image xxx.a ()
 #
 ifndef PDIR
-
 GEN_LIBS = liblwipnetif.a
-
 endif
 
 
@@ -43,4 +40,3 @@ INCLUDES := $(INCLUDES) -I $(PDIR)include
 INCLUDES += -I ./
 PDIR := ../$(PDIR)
 sinclude $(PDIR)Makefile
-

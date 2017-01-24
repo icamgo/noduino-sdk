@@ -1,4 +1,3 @@
-
 #############################################################
 # Required variables for each makefile
 # Discard this section from all parent makefiles
@@ -13,16 +12,16 @@
 #
 ifndef PDIR
 UP_EXTRACT_DIR = ..
-GEN_LIBS = liblwip.a
-COMPONENTS_liblwip = api/liblwipapi.a	\
-						app/liblwipapp.a	\
-						core/liblwipcore.a	\
-						core/ipv4/liblwipipv4.a	\
-						netif/liblwipnetif.a
+GEN_LIBS = liblwip_osc.a
+COMPONENTS_liblwip_osc =	api/liblwipapi.a		\
+							app/liblwipapp.a		\
+							core/liblwipcore.a		\
+							netif/liblwipnetif.a
 endif
 
 # noduino sdk base dir
-SDK_BASE := ../..
+SDK_BASE := $(PDIR)../..
+ESPSDK_BASE := $(SDK_BASE)/sdk
 
 #############################################################
 # Configuration i.e. compile options etc.
@@ -31,7 +30,7 @@ SDK_BASE := ../..
 #   makefile at its root level - these are then overridden
 #   for a subtree within the makefile rooted therein
 #
-DEFINES += -DICACHE_FLASH
+DEFINES += -DICACHE_FLASH -U__STRICT_ANSI__ -DLWIP_OPEN_SRC
 
 #############################################################
 # Recursion Magic - Don't touch this!!
@@ -44,16 +43,15 @@ DEFINES += -DICACHE_FLASH
 #
 # Required for each makefile to inherit from the parent
 #
-
 INCLUDES := $(INCLUDES) -I $(PDIR)include
-INCLUDES += -I $(SDK_BASE)/include -I ./
-PDIR := $(SDK_BASE)/sdk/$(PDIR)
-sinclude $(PDIR)/Makefile
+INCLUDES += -I$(ESPSDK_BASE)/include -I$(SDK_BASE)/include/lwip -I./ 
+PDIR := ../$(PDIR)
+sinclude $(ESPSDK_BASE)/Makefile
 
-LIB_INCDIR	:= ../../include/mqtt
+LIB_INCDIR	:= ../../include/lwip
 
 install: all
 	mv .output/lib/*.a ../ 
 	rm -rf $(LIB_INCDIR)
-	mkdir -p $(LIB_INCDIR)
-	cp -a include/* $(LIB_INCDIR)/
+	cp -a include $(LIB_INCDIR)
+	rm $(LIB_INCDIR)/user_config.h

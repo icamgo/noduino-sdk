@@ -1,4 +1,3 @@
-
 #############################################################
 # Required variables for each makefile
 # Discard this section from all parent makefiles
@@ -12,9 +11,9 @@
 #     a generated lib/image xxx.a ()
 #
 ifndef PDIR
-
+UP_EXTRACT_DIR = ..
 GEN_LIBS = liblwipcore.a
-
+COMPONENTS_liblwipcore = ipv4/liblwipipv4.a
 endif
 
 
@@ -38,9 +37,7 @@ endif
 #
 # Required for each makefile to inherit from the parent
 #
-
 INCLUDES := $(INCLUDES) -I $(PDIR)include
 INCLUDES += -I ./
 PDIR := ../$(PDIR)
 sinclude $(PDIR)Makefile
-
