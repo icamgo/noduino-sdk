@@ -24,7 +24,7 @@ irom void relay_all_on()
 	digitalWrite(D5, HIGH);
 	digitalWrite(D6, HIGH);
 	digitalWrite(D7, HIGH);
-	digitalWrite(D8, HIGH);
+	digitalWrite(15, HIGH);
 }
 
 irom void relay_all_off()
@@ -34,7 +34,7 @@ irom void relay_all_off()
 	digitalWrite(D5, LOW);
 	digitalWrite(D6, LOW);
 	digitalWrite(D7, LOW);
-	digitalWrite(D8, LOW);
+	digitalWrite(15, LOW);
 }
 
 irom void relay_init()
@@ -43,7 +43,7 @@ irom void relay_init()
 	pinMode(D5, OUTPUT);
 	pinMode(D6, OUTPUT);
 	pinMode(D7, OUTPUT);
-	pinMode(D8, OUTPUT);
+	pinMode(15, OUTPUT);
 
 	relay_set_status(NULL);
 }
@@ -59,7 +59,7 @@ irom void relay_set_status(relay_status_t *st)
 	digitalWrite(D5, (st->r2) & 0x1);
 	digitalWrite(D6, (st->r3) & 0x1);
 	digitalWrite(D7, (st->r4) & 0x1);
-	digitalWrite(D8, (st->r5) & 0x1);
+	digitalWrite(15, (st->r5) & 0x1);
 }
 
 irom void relay_get_status(relay_status_t *st)
@@ -68,5 +68,5 @@ irom void relay_get_status(relay_status_t *st)
 	st->r1 = digitalRead(D5);
 	st->r3 = digitalRead(D6);
 	st->r4 = digitalRead(D7);
-	st->r5 = digitalRead(D8);
+	st->r5 = digitalRead(15);
 }
