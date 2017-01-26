@@ -11,6 +11,9 @@
 #include "driver/key.h"
 #include "driver/uart.h"
 #include "noduino.h"
+#include "udp_srv.h"
+
+#include "upnp.h"
 
 #include "mjyun.h"
 

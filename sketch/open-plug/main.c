@@ -67,6 +67,7 @@ static void mjyun_stated_cb(mjyun_state_t state)
             break;
         case WIFI_STATION_OK:
             INFO("Platform: WIFI_STATION_OK\r\n");
+			upnp_ssdp_start();
 			led_set_effect(1);
             break;
         case WIFI_STATION_ERROR:
@@ -110,7 +111,7 @@ void mjyun_receive(const char *event_name, const char *event_data)
 	if(os_strncmp(event_data, "ota", 3) == 0)
 	{
 		INFO("OTA: upgrade the firmware!\r\n");
-		mjyun_mini_ota_start("ota/dev/minik/files");
+		mjyun_mini_ota_start("ota/dev/openplug/files");
 	}
 }
 
