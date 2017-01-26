@@ -18,7 +18,7 @@ ESPSDK_LDDIR	= ld
 
 # libraries used in this project, mainly provided by the ESPSDK
 LIBS		+= gcc
-LIBS		+= crypto espnow json lwip_536 lwip mesh net80211 phy pp pwm smartconfig mbedtls upgrade wpa wps main
+LIBS		+= crypto espnow json lwip_536 lwip mesh net80211 phy pp pwm smartconfig upgrade wpa wps main ssl
 LIBS		+= driver mjyun airkiss
 
 # toolchain
