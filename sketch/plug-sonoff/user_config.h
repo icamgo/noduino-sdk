@@ -12,6 +12,8 @@
 #include "driver/uart.h"
 #include "noduino.h"
 
+#include "upnp.h"
+
 #include "mjyun.h"
 
 #define	DEBUG			1
