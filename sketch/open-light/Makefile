@@ -25,13 +25,13 @@ sinclude .config
 #XLD		:= $(TOOLCHAIN_DIR)/xtensa-lx106-elf/bin/xtensa-lx106-elf-gcc
 
 # include path used in this project
-SDK_INCDIR	+= include/noduino
+SDK_INCDIR	+= include/noduino include/lwip
 
 # libraries used in this project
-LIBS		+= mjpwm cirom
+LIBS		+= mjpwm cirom ssl espudpd
 
 # compiler flags using during compilation of source files
-CFLAGS		+=
+CFLAGS		+= -DLWIP_OPEN_SRC
 
 # linker flags used to generate the main object file
 LDFLAGS		+=

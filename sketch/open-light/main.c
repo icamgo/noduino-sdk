@@ -18,6 +18,42 @@
 #include "user_config.h"
 #include "compile.h"
 
+void light_on_saved_and_pub()
+{
+	mcu_status_t mst;
+	mst.r = 255;
+	mst.g = 255;
+	mst.b = 255;
+	mst.w = 255;
+
+	app_apply_settings(&mst);
+	app_check_mcu_save(&mst);
+	app_push_status(&mst);
+}
+
+void light_off_saved_and_pub()
+{
+	mcu_status_t mst;
+	mst.r = 0;
+	mst.g = 0;
+	mst.b = 0;
+	mst.w = 0;
+
+	app_apply_settings(&mst);
+	app_check_mcu_save(&mst);
+	app_push_status(&mst);
+}
+
+upnp_dev_t upnp_devs[] = {
+	{
+		.esp_conn = NULL,
+		.port = 80,
+		.dev_voice_name = "room light",
+		.way_on = light_on_saved_and_pub,
+		.way_off = light_off_saved_and_pub
+	}
+};
+
 LOCAL void ICACHE_FLASH_ATTR
 mjyun_stated_cb(mjyun_state_t state)
 {
@@ -64,6 +100,7 @@ mjyun_stated_cb(mjyun_state_t state)
 		INFO("Platform: WIFI_AP_STATION_ERROR\r\n");
 		break;
 	case WIFI_STATION_OK:
+		upnp_start(upnp_devs, 1);
 		INFO("Platform: WIFI_STATION_OK\r\n");
 		break;
 	case WIFI_STATION_ERROR:
@@ -171,7 +208,7 @@ irom void user_init()
 		.resv = 0,
 	};
 
-	mjpwm_init(PIN_DI, PIN_DCKI, command);
+	mjpwm_init(PIN_DI, PIN_DCKI, 1, command);
 
 	/* Light the led ASAP */
 	app_apply_settings(NULL);

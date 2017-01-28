@@ -116,7 +116,7 @@ mjyun_receive(const char * event_name, const char * event_data)
 
 	if(os_strncmp(event_data, "ota", 3) == 0) {
 		INFO("OTA: upgrade the firmware!\r\n");
-		mjyun_mini_ota_start("ota/dev/bulb/files");
+		mjyun_mini_ota_start("ota/dev/openlight/files");
 	}
 }
 
