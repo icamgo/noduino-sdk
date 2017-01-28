@@ -12,6 +12,11 @@
 #include "driver/uart.h"
 #include "noduino.h"
 
+#include "udp_srv.h"
+
+#include "upnp.h"
+#include "httpd.h"
+
 #include "mjyun.h"
 
 #define	DEBUG			1

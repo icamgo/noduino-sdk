@@ -20,6 +20,30 @@
 
 #define	DEBUG	1
 
+void relay_on_saved_and_pub()
+{
+	relay_set_status_and_publish(1);
+	param_set_status(1);
+	param_save();
+}
+
+void relay_off_saved_and_pub()
+{
+	relay_set_status_and_publish(0);
+	param_set_status(0);
+	param_save();
+}
+
+upnp_dev_t upnp_devs[] = {
+	{
+		.esp_conn = NULL,
+		.port = 80,
+		.dev_voice_name = "kitchen light",
+		.way_on = relay_on_saved_and_pub,
+		.way_off = relay_off_saved_and_pub
+	}
+};
+
 static void mjyun_stated_cb(mjyun_state_t state)
 {
     if (mjyun_state() != state)
@@ -68,6 +92,7 @@ static void mjyun_stated_cb(mjyun_state_t state)
         case WIFI_STATION_OK:
 			led_set_effect(1);
             INFO("Platform: WIFI_STATION_OK\r\n");
+			upnp_start(upnp_devs, 1);
             break;
         case WIFI_STATION_ERROR:
             INFO("Platform: WIFI_STATION_ERROR\r\n");
