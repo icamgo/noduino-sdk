@@ -15,6 +15,11 @@
 #include "espnow_app.h"
 #include "app.h"
 
+#include "udp_srv.h"
+
+#include "upnp.h"
+#include "httpd.h"
+
 #define DEBUG				1
 
 #ifdef DEBUG
