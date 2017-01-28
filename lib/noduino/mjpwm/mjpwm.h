@@ -66,7 +66,7 @@ typedef struct mjpwm_cmd_t {
 	.resv = 0, \
 }
 
-void mjpwm_init(uint8_t pin_di, uint8_t pin_dcki, mjpwm_cmd_t command);
+void mjpwm_init(uint8_t pin_di, uint8_t pin_dcki, uint8_t n_chips, mjpwm_cmd_t command);
 void mjpwm_di_pulse(uint8_t pin_di, uint16_t times);
 void mjpwm_dcki_pulse(uint8_t pin_dcki, uint16_t times);
 void mjpwm_send_command(uint8_t pin_di, uint8_t pin_dcki, mjpwm_cmd_t command);

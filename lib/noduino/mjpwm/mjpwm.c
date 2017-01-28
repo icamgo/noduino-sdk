@@ -34,6 +34,8 @@
 #define MJPWM_DIRECT_WRITE_LOW(pin) 	(GPIO_OUTPUT_SET(GPIO_ID_PIN(pin), LOW))
 #define MJPWM_DIRECT_WRITE_HIGH(pin) 	(GPIO_OUTPUT_SET(GPIO_ID_PIN(pin), HIGH))
 
+static int nc = 2;
+
 LOCAL mjpwm_cmd_t mjpwm_commands[GPIO_MAX_INDEX + 1];
 
 void ICACHE_FLASH_ATTR mjpwm_di_pulse(uint8_t pin_di, uint16_t times)
@@ -41,7 +43,10 @@ void ICACHE_FLASH_ATTR mjpwm_di_pulse(uint8_t pin_di, uint16_t times)
 	uint16_t i;
 	for (i = 0; i < times; i++) {
 		MJPWM_DIRECT_WRITE_HIGH(pin_di);
+		asm("nop;");	// delay 50ns
 		MJPWM_DIRECT_WRITE_LOW(pin_di);
+		asm("nop;nop;nop;nop;nop;");
+		// delay 230ns
 	}
 }
 
@@ -50,7 +55,9 @@ void ICACHE_FLASH_ATTR mjpwm_dcki_pulse(uint8_t pin_dcki, uint16_t times)
 	uint16_t i;
 	for (i = 0; i < times; i++) {
 		MJPWM_DIRECT_WRITE_HIGH(pin_dcki);
+		asm("nop;");		// delay 50ns
 		MJPWM_DIRECT_WRITE_LOW(pin_dcki);
+		asm("nop;");		// delay 50ns
 	}
 }
 
@@ -60,8 +67,8 @@ void ICACHE_FLASH_ATTR mjpwm_dcki_pulse(uint8_t pin_dcki, uint16_t times)
 void ICACHE_FLASH_ATTR
 mjpwm_send_command(uint8_t pin_di, uint8_t pin_dcki, mjpwm_cmd_t command)
 {
-	uint8_t i;
-	uint8_t command_data = *(uint8_t *) (&command);
+	uint8_t i, n;
+	uint8_t command_data;
 	mjpwm_commands[pin_dcki] = command;
 
 	// ets_intr_lock();
@@ -72,33 +79,41 @@ mjpwm_send_command(uint8_t pin_di, uint8_t pin_dcki, mjpwm_cmd_t command)
 	mjpwm_di_pulse(pin_di, 12);
 	// Delay >12us, begin send CMD data
 	os_delay_us(12);
+	asm("nop;nop;");
 	// Send CMD data
 
-	for (i = 0; i < 4; i++) {
-		// DCK = 0;
-		MJPWM_DIRECT_WRITE_LOW(pin_dcki);
-		if (command_data & 0x80) {
-			// DI = 1;
-			MJPWM_DIRECT_WRITE_HIGH(pin_di);
-		} else {
+	for (n = 0; n < nc; n++) {
+
+		command_data = *(uint8_t *) (&command);
+
+		for (i = 0; i < 4; i++) {
+			// DCK = 0;
+			MJPWM_DIRECT_WRITE_LOW(pin_dcki);
+			if (command_data & 0x80) {
+				// DI = 1;
+				MJPWM_DIRECT_WRITE_HIGH(pin_di);
+			} else {
+				// DI = 0;
+				MJPWM_DIRECT_WRITE_LOW(pin_di);
+			}
+			// DCK = 1;
+			MJPWM_DIRECT_WRITE_HIGH(pin_dcki);
+			command_data = command_data << 1;
+			if (command_data & 0x80) {
+				// DI = 1;
+				MJPWM_DIRECT_WRITE_HIGH(pin_di);
+			} else {
+				// DI = 0;
+				MJPWM_DIRECT_WRITE_LOW(pin_di);
+			}
+			// DCK = 0;
+			MJPWM_DIRECT_WRITE_LOW(pin_dcki);
 			// DI = 0;
 			MJPWM_DIRECT_WRITE_LOW(pin_di);
+			command_data = command_data << 1;
 		}
-		// DCK = 1;
-		MJPWM_DIRECT_WRITE_HIGH(pin_dcki);
-		command_data = command_data << 1;
-		if (command_data & 0x80) {
-			// DI = 1;
-			MJPWM_DIRECT_WRITE_HIGH(pin_di);
-		} else {
-			// DI = 0;
-			MJPWM_DIRECT_WRITE_LOW(pin_di);
-		}
-		// DCK = 0;
-		MJPWM_DIRECT_WRITE_LOW(pin_dcki);
-		// DI = 0;
-		MJPWM_DIRECT_WRITE_LOW(pin_di);
-		command_data = command_data << 1;
+
+		asm("nop;nop;nop;");
 	}
 
 	// TStart > 12us. Delay 12 us.
@@ -108,6 +123,7 @@ mjpwm_send_command(uint8_t pin_di, uint8_t pin_dcki, mjpwm_cmd_t command)
 	mjpwm_di_pulse(pin_di, 16);
 	// TStop > 12us.
 	os_delay_us(12);
+	asm("nop;nop;");
 	// ets_intr_unlock();
 }
 
@@ -118,7 +134,7 @@ void ICACHE_FLASH_ATTR
 mjpwm_send_duty(uint8_t pin_di, uint8_t pin_dcki, uint16_t duty_r,
 		uint16_t duty_g, uint16_t duty_b, uint16_t duty_w)
 {
-	uint8_t i = 0;
+	uint8_t i = 0, n;
 	uint8_t channel = 0;
 	uint8_t bit_length = 8;
 	uint16_t duty_current = 0;
@@ -147,37 +163,45 @@ mjpwm_send_duty(uint8_t pin_di, uint8_t pin_dcki, uint16_t duty_r,
 	// ets_intr_lock();
 	// TStop > 12us.
 	os_delay_us(12);
+	asm("nop;nop;");
 
-	for (channel = 0; channel < 4; channel++)	//RGBW 4CH
+	for (n = 0; n < nc; n++)
 	{
-		// RGBW Channel
-		duty_current = duty[channel];
-		// Send 8bit/12bit/14bit/16bit Data
-		for (i = 0; i < bit_length / 2; i++) {
-			// DCK = 0;
-			MJPWM_DIRECT_WRITE_LOW(pin_dcki);
-			if (duty_current & (0x01 << (bit_length - 1))) {
-				// DI = 1;
-				MJPWM_DIRECT_WRITE_HIGH(pin_di);
-			} else {
-				// DI = 0;
+		for (channel = 0; channel < 4; channel++)	//RGBW 4CH
+		{
+			// RGBW Channel
+			duty_current = duty[channel];
+			// Send 8bit/12bit/14bit/16bit Data
+			for (i = 0; i < bit_length / 2; i++) {
+
+				// DCK = 0;
+				MJPWM_DIRECT_WRITE_LOW(pin_dcki);
+				if (duty_current & (0x01 << (bit_length - 1))) {
+					// DI = 1;
+					MJPWM_DIRECT_WRITE_HIGH(pin_di);
+				} else {
+					// DI = 0;
+					MJPWM_DIRECT_WRITE_LOW(pin_di);
+				}
+
+				// DCK = 1;
+				MJPWM_DIRECT_WRITE_HIGH(pin_dcki);
+				duty_current = duty_current << 1;
+				if (duty_current & (0x01 << (bit_length - 1))) {
+					// DI = 1;
+					MJPWM_DIRECT_WRITE_HIGH(pin_di);
+				} else {
+					// DI = 0;
+					MJPWM_DIRECT_WRITE_LOW(pin_di);
+				}
+
+				//DCK = 0;
+				MJPWM_DIRECT_WRITE_LOW(pin_dcki);
+				//DI = 0;
 				MJPWM_DIRECT_WRITE_LOW(pin_di);
+
+				duty_current = duty_current << 1;
 			}
-			// DCK = 1;
-			MJPWM_DIRECT_WRITE_HIGH(pin_dcki);
-			duty_current = duty_current << 1;
-			if (duty_current & (0x01 << (bit_length - 1))) {
-				// DI = 1;
-				MJPWM_DIRECT_WRITE_HIGH(pin_di);
-			} else {
-				// DI = 0;
-				MJPWM_DIRECT_WRITE_LOW(pin_di);
-			}
-			//DCK = 0;
-			MJPWM_DIRECT_WRITE_LOW(pin_dcki);
-			//DI = 0;
-			MJPWM_DIRECT_WRITE_LOW(pin_di);
-			duty_current = duty_current << 1;
 		}
 	}
 
@@ -187,19 +211,24 @@ mjpwm_send_duty(uint8_t pin_di, uint8_t pin_dcki, uint16_t duty_r,
 	mjpwm_di_pulse(pin_di, 8);
 	// TStop > 12us.
 	os_delay_us(12);
+	asm("nop;nop;");
 	// ets_intr_unlock();
 }
 
 void ICACHE_FLASH_ATTR
-mjpwm_init(uint8_t pin_di, uint8_t pin_dcki, mjpwm_cmd_t command)
+mjpwm_init(uint8_t pin_di, uint8_t pin_dcki, uint8_t n_chips, mjpwm_cmd_t command)
 {
 	MJPWM_DIRECT_GPIO(pin_di);
 	MJPWM_DIRECT_GPIO(pin_dcki);
-	MJPWM_DIRECT_WRITE_LOW(pin_di);
-	MJPWM_DIRECT_WRITE_LOW(pin_dcki);
 	MJPWM_DIRECT_MODE_OUTPUT(pin_di);
 	MJPWM_DIRECT_MODE_OUTPUT(pin_dcki);
+	MJPWM_DIRECT_WRITE_LOW(pin_di);
+	MJPWM_DIRECT_WRITE_LOW(pin_dcki);
+
+	nc = n_chips;
+
 	// Clear all duty register
-	mjpwm_dcki_pulse(pin_dcki, 64 / 2);
+	mjpwm_dcki_pulse(pin_dcki, 32 * nc);
+
 	mjpwm_send_command(pin_di, pin_dcki, command);
 }
