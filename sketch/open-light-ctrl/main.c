@@ -26,8 +26,7 @@ void light_on_saved_and_pub()
 	mst.b = 255;
 	mst.w = 255;
 
-	mjpwm_send_duty(PIN_DI, PIN_DCKI, 255, 255, 255, 255);
-
+	app_apply_settings(&mst);
 	app_check_mcu_save(&mst);
 	app_push_status(&mst);
 }
@@ -40,8 +39,7 @@ void light_off_saved_and_pub()
 	mst.b = 0;
 	mst.w = 0;
 
-	mjpwm_send_duty(PIN_DI, PIN_DCKI, 0, 0, 0, 0);
-
+	app_apply_settings(&mst);
 	app_check_mcu_save(&mst);
 	app_push_status(&mst);
 }
