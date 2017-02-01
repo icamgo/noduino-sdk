@@ -12,10 +12,12 @@
 #include "mjpwm.h"
 #include "cJSON.h"
 #include "espnow.h"
-#include "espnow_app.h"
-#include "app.h"
 
+#include "app.h"
 #include "upnp.h"
+
+#include "group.h"
+
 
 #define DEBUG				1
 
