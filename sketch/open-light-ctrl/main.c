@@ -25,6 +25,7 @@ void light_on_saved_and_pub()
 	mst.g = 255;
 	mst.b = 255;
 	mst.w = 255;
+	mst.s = 1;
 
 	app_apply_settings(&mst);
 	app_check_mcu_save(&mst);
@@ -38,6 +39,7 @@ void light_off_saved_and_pub()
 	mst.g = 0;
 	mst.b = 0;
 	mst.w = 0;
+	mst.s = 1;
 
 	app_apply_settings(&mst);
 	app_check_mcu_save(&mst);
@@ -66,23 +68,23 @@ mjyun_stated_cb(mjyun_state_t state)
 		break;
 	case WIFI_SMARTLINK_START:
 		INFO("Platform: WIFI_SMARTLINK_START\r\n");
-		app_set_smart_effect(0);
+		set_light_effect(RED_GRADIENT);
 		break;
 
 	case WIFI_SMARTLINK_LINKING:
 		INFO("Platform: WIFI_SMARTLINK_LINKING\r\n");
-		app_set_smart_effect(2);
+		set_light_effect(BLUE_GRADIENT);
 		break;
 	case WIFI_SMARTLINK_FINDING:
 		INFO("Platform: WIFI_SMARTLINK_FINDING\r\n");
-		app_set_smart_effect(0);
+		set_light_effect(RED_GRADIENT);
 		break;
 	case WIFI_SMARTLINK_TIMEOUT:
 		INFO("Platform: WIFI_SMARTLINK_TIMEOUT\r\n");
 		break;
 	case WIFI_SMARTLINK_GETTING:
 		INFO("Platform: WIFI_SMARTLINK_GETTING\r\n");
-		app_set_smart_effect(1);
+		set_light_effect(GREEN_GRADIENT);
 		break;
 	case WIFI_SMARTLINK_OK:
 		INFO("Platform: WIFI_SMARTLINK_OK\r\n");
@@ -155,7 +157,7 @@ platform_init(void)
 	espnow_create();
 
 	// execute app_start_check() every one second
-	network_system_timer_callback_register(app_start_check);
+	network_sys_timer_cb_reg(app_start_check);
 
 	//app_start_check(0);
 
@@ -185,7 +187,7 @@ irom void system_init_done()
 
 irom void user_init()
 {
-	app_load();
+	app_param_load();
 
 #define DEV_MODE 1
 #if defined(DEV_MODE)
