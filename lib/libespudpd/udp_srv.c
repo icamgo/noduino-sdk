@@ -27,7 +27,7 @@ irom udp_srv_t *udp_srv_create()
 {
 	udp_srv_t *srv = (udp_srv_t *) os_zalloc(sizeof(udp_srv_t));
 	if (srv == NULL) {
-		INFO("alloc struct udp_srv failed\r\n");
+		UDPD_INFO("alloc struct udp_srv failed\r\n");
 		return NULL;
 	}
 
@@ -79,10 +79,10 @@ irom void udp_srv_recv(void *arg, struct udp_pcb *upcb, struct pbuf *pb,
 	if (srv->_rx_buf) {
 		// there is some unread data
 		// chain the new pbuf to the existing one
-		INFO(":urch %d, %d\r\n", srv->_rx_buf->tot_len, pb->tot_len);
+		UDPD_INFO(":urch %d, %d\r\n", srv->_rx_buf->tot_len, pb->tot_len);
 		pbuf_cat(srv->_rx_buf, pb);
 	} else {
-		INFO(":urn %d\r\n", pb->tot_len);
+		UDPD_INFO(":urn %d\r\n", pb->tot_len);
 		srv->_first_buf_taken = false;
 		srv->_rx_buf = pb;
 		srv->_rx_buf_offset = 0;
@@ -214,7 +214,7 @@ irom size_t udp_srv_read(udp_srv_t * srv, char *dst, size_t size)
 
 	size_t max_size = srv->_rx_buf->len - srv->_rx_buf_offset;
 	size = (size < max_size) ? size : max_size;
-	INFO(":urd %d, %d, %d\r\n", size, srv->_rx_buf->len,
+	UDPD_INFO(":urd %d, %d, %d\r\n", size, srv->_rx_buf->len,
 	     srv->_rx_buf_offset);
 
 	memcpy(dst, (char *)(srv->_rx_buf->payload) + srv->_rx_buf_offset,
@@ -281,7 +281,7 @@ irom bool udp_srv_send(udp_srv_t * srv, ip_addr_t * addr, uint16_t port)
 	struct pbuf *tx_copy = pbuf_alloc(PBUF_TRANSPORT, data_size, PBUF_RAM);
 
 	if (tx_copy == NULL) {
-		INFO("pbuf alloc failed\r\n");
+		UDPD_INFO("pbuf alloc failed\r\n");
 		return false;
 	}
 
@@ -312,7 +312,7 @@ irom bool udp_srv_send(udp_srv_t * srv, ip_addr_t * addr, uint16_t port)
 #endif
 	err_t err = udp_sendto(srv->_pcb, tx_copy, addr, port);
 	if (err != ERR_OK) {
-		INFO(":ust rc=%d\r\n", err);
+		UDPD_INFO(":ust rc=%d\r\n", err);
 	}
 #ifdef LWIP_MAYBE_XCC
 	srv->_pcb->ttl = old_ttl;

@@ -35,13 +35,7 @@
 #include "ets_sys.h"
 #include "os_type.h"
 
-#define	DEBUG			1
-
-#ifdef DEBUG
-#define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
-#else
-#define INFO( format, ... )
-#endif
+#include "user_config.h"
 
 typedef void (*rxhandler_fun)(void);
 
