@@ -17,7 +17,7 @@
 */
 #include "user_config.h"
 
-static system_status_t sys_status = {
+system_status_t sys_status = {
 	.init_flag = 0,
 	.start_count = 0,
 	.start_continue = 0,

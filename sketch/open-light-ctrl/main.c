@@ -18,13 +18,12 @@
 #include "user_config.h"
 #include "compile.h"
 
+extern system_status_t sys_status;
+
 void light_on_saved_and_pub()
 {
 	mcu_status_t mst;
-	mst.r = 255;
-	mst.g = 255;
-	mst.b = 255;
-	mst.w = 255;
+	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
 	mst.s = 1;
 
 	app_apply_settings(&mst);
@@ -35,11 +34,8 @@ void light_on_saved_and_pub()
 void light_off_saved_and_pub()
 {
 	mcu_status_t mst;
-	mst.r = 0;
-	mst.g = 0;
-	mst.b = 0;
-	mst.w = 0;
-	mst.s = 1;
+	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
+	mst.s = 0;
 
 	app_apply_settings(&mst);
 	app_check_mcu_save(&mst);
