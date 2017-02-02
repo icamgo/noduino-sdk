@@ -21,6 +21,8 @@
 
 #define DEBUG				1
 
+#define DEFAULT_VOICE_NAME	"open light"
+
 #ifdef DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
 #else

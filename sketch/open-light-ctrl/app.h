@@ -38,6 +38,7 @@ typedef struct system_status_t {
 	uint8 start_continue;
 	mcu_status_t mcu_status;
 	uint8 sc_effect;
+	char voice_name[32];
 	uint8 packed[2];
 } __attribute__((aligned(4), packed)) system_status_t;
 
@@ -66,6 +67,8 @@ void app_param_load(void);
 void app_param_save(void);
 
 void app_push_status(mcu_status_t *pst);
+void app_push_voice_name(char *vname);
+
 void app_check_mcu_save(mcu_status_t *st);
 void app_start_check(uint32_t system_start_seconds);
 

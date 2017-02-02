@@ -50,7 +50,7 @@ upnp_dev_t upnp_devs[] = {
 	{
 		.esp_conn = NULL,
 		.port = 80,
-		.dev_voice_name = "room light",
+		.dev_voice_name = DEFAULT_VOICE_NAME,
 		.way_on = light_on_saved_and_pub,
 		.way_off = light_off_saved_and_pub
 	}
@@ -138,6 +138,8 @@ void mjyun_connected()
 {
 	// need to update the status in cloud
 	app_push_status(NULL);
+
+	app_push_voice_name(upnp_devs[0].dev_voice_name);
 
 	// stop to show the wifi status
 }

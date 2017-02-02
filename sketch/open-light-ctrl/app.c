@@ -28,8 +28,11 @@ static system_status_t sys_status = {
 		.b = 255,
 		.w = 255,
 	},
-	.sc_effect = NONE_EFFECT
+	.sc_effect = NONE_EFFECT,
+	.voice_name = ""
 };
+
+extern upnp_dev_t upnp_devs[];
 
 static os_timer_t effect_timer;
 static os_timer_t delay_timer;
@@ -56,6 +59,14 @@ void ICACHE_FLASH_ATTR app_push_status(mcu_status_t *st)
 
 	mjyun_publishstatus(msg);
 	INFO("Pushed status = %s\r\n", msg);
+}
+
+void ICACHE_FLASH_ATTR app_push_voice_name(char *vname)
+{
+	/* {"m":"voice_name", "d":"room light"} */
+
+	mjyun_publish("voice_name", vname);
+	INFO("Pushed voice name = %s\r\n", vname);
 }
 
 void ICACHE_FLASH_ATTR
@@ -117,6 +128,32 @@ mjyun_receive(const char * event_name, const char * event_data)
 		cJSON_Delete(pD);
 	}
 
+	/* {"m":"set_voice_name", "d":"room light"} */
+	if (0 == os_strcmp(event_name, "set_voice_name")) {
+		INFO("RX set_voice_name = %s\r\n", event_data);
+		int len = os_strlen(event_data);
+		if ( len > 0 && len <= 31) {
+
+			os_strcpy(upnp_devs[0].dev_voice_name, event_data);
+			
+			upnp_stop(upnp_devs, 1);
+			upnp_start(upnp_devs, 1);
+
+			// save to flash
+			os_strcpy(sys_status.voice_name, event_data);
+			app_param_save();
+		} else {
+			INFO("RX Invalid voice name\r\n");
+		}
+	}
+
+	/* {"m":"get_voice_name"} */
+	if (0 == os_strcmp(event_name, "get_voice_name")) {
+		INFO("RX get_voice_name cmd\r\n");
+		app_push_voice_name(upnp_devs[0].dev_voice_name);
+	}
+
+	/* {"m":"get"} */
 	if (0 == os_strcmp(event_name, "get")) {
 		INFO("RX Get status Request!\r\n");
 		app_push_status(NULL);
@@ -181,10 +218,22 @@ app_param_load(void)
 		}
 	} else {
 		sys_status.init_flag = 1;
+		os_strcpy(sys_status.voice_name, DEFAULT_VOICE_NAME);
 	}
+
+	int len = os_strlen(sys_status.voice_name);
+	if (len == 0 || len >= 32) {
+		// invalid voice name in flash
+		os_strcpy(sys_status.voice_name, DEFAULT_VOICE_NAME);
+		INFO("Invalid voice name in flash, reset to default name\r\n");
+	}
+
 	sys_status.start_count += 1;
 	sys_status.start_continue += 1;
 	app_param_save();
+
+	//copy the voice name to upnp_devs[]
+	os_strcpy(upnp_devs[0].dev_voice_name, sys_status.voice_name);
 }
 
 void ICACHE_FLASH_ATTR app_start_status()
