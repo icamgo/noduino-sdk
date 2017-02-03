@@ -149,6 +149,7 @@ upnp_dev_t upnp_devs[] = {
 		.way_off = relay5_off_saved_and_pub
 	}
 };
+#endif
 
 /* {"m":"voice_name", "d":{"ch1":"channel 1", "ch2":"channel 2"}} */
 void ICACHE_FLASH_ATTR push_voice_name()
@@ -160,11 +161,11 @@ void ICACHE_FLASH_ATTR push_voice_name()
 	}
 
 	os_sprintf(msg, "{\"ch1\":%s,\"ch2\":%s,\"ch3\":%s,\"ch4\":%s,\"ch5\":%s}",
-				upnp_devs[0].dev_voice_name,
-				upnp_devs[1].dev_voice_name,
-				upnp_devs[2].dev_voice_name,
-				upnp_devs[3].dev_voice_name,
-				upnp_devs[4].dev_voice_name
+				ctrl_st.ch1_voice_name,
+				ctrl_st.ch2_voice_name,
+				ctrl_st.ch3_voice_name,
+				ctrl_st.ch4_voice_name,
+				ctrl_st.ch5_voice_name
 			);
 
 	mjyun_publish("voice_name", msg);
@@ -173,7 +174,6 @@ void ICACHE_FLASH_ATTR push_voice_name()
 	os_free(msg);
 	msg = NULL;
 }
-#endif
 
 static void mjyun_stated_cb(mjyun_state_t state)
 {
@@ -424,6 +424,7 @@ void mjyun_connected()
 {
 	// need to update the status into cloud
 	app_push_status(NULL);
+	push_voice_name();
 
 	// stop to show the wifi status
 	wifi_led_disable();
