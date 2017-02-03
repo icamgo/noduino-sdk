@@ -18,13 +18,14 @@
 #include "user_config.h"
 #include "compile.h"
 
+#ifdef CONFIG_ALEXA
+extern system_status_t sys_status;
+
 void light_on_saved_and_pub()
 {
 	mcu_status_t mst;
-	mst.r = 255;
-	mst.g = 255;
-	mst.b = 255;
-	mst.w = 255;
+	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
+	mst.s = 1;
 
 	app_apply_settings(&mst);
 	app_check_mcu_save(&mst);
@@ -34,10 +35,8 @@ void light_on_saved_and_pub()
 void light_off_saved_and_pub()
 {
 	mcu_status_t mst;
-	mst.r = 0;
-	mst.g = 0;
-	mst.b = 0;
-	mst.w = 0;
+	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
+	mst.s = 0;
 
 	app_apply_settings(&mst);
 	app_check_mcu_save(&mst);
@@ -48,11 +47,12 @@ upnp_dev_t upnp_devs[] = {
 	{
 		.esp_conn = NULL,
 		.port = 80,
-		.dev_voice_name = "room light",
+		.dev_voice_name = DEFAULT_VOICE_NAME,
 		.way_on = light_on_saved_and_pub,
 		.way_off = light_off_saved_and_pub
 	}
 };
+#endif
 
 LOCAL void ICACHE_FLASH_ATTR
 mjyun_stated_cb(mjyun_state_t state)
@@ -66,23 +66,23 @@ mjyun_stated_cb(mjyun_state_t state)
 		break;
 	case WIFI_SMARTLINK_START:
 		INFO("Platform: WIFI_SMARTLINK_START\r\n");
-		app_set_smart_effect(0);
+		set_light_effect(RED_GRADIENT);
 		break;
 
 	case WIFI_SMARTLINK_LINKING:
 		INFO("Platform: WIFI_SMARTLINK_LINKING\r\n");
-		app_set_smart_effect(2);
+		set_light_effect(BLUE_GRADIENT);
 		break;
 	case WIFI_SMARTLINK_FINDING:
 		INFO("Platform: WIFI_SMARTLINK_FINDING\r\n");
-		app_set_smart_effect(0);
+		set_light_effect(RED_GRADIENT);
 		break;
 	case WIFI_SMARTLINK_TIMEOUT:
 		INFO("Platform: WIFI_SMARTLINK_TIMEOUT\r\n");
 		break;
 	case WIFI_SMARTLINK_GETTING:
 		INFO("Platform: WIFI_SMARTLINK_GETTING\r\n");
-		app_set_smart_effect(1);
+		set_light_effect(GREEN_GRADIENT);
 		break;
 	case WIFI_SMARTLINK_OK:
 		INFO("Platform: WIFI_SMARTLINK_OK\r\n");
@@ -100,7 +100,9 @@ mjyun_stated_cb(mjyun_state_t state)
 		INFO("Platform: WIFI_AP_STATION_ERROR\r\n");
 		break;
 	case WIFI_STATION_OK:
+#ifdef CONFIG_ALEXA
 		upnp_start(upnp_devs, 1);
+#endif
 		INFO("Platform: WIFI_STATION_OK\r\n");
 		break;
 	case WIFI_STATION_ERROR:
@@ -137,6 +139,10 @@ void mjyun_connected()
 	// need to update the status in cloud
 	app_push_status(NULL);
 
+#ifdef CONFIG_ALEXA
+	app_push_voice_name(upnp_devs[0].dev_voice_name);
+#endif
+
 	// stop to show the wifi status
 }
 
@@ -155,7 +161,7 @@ platform_init(void)
 	espnow_create();
 
 	// execute app_start_check() every one second
-	network_system_timer_callback_register(app_start_check);
+	network_sys_timer_cb_reg(app_start_check);
 
 	//app_start_check(0);
 
@@ -185,7 +191,7 @@ irom void system_init_done()
 
 irom void user_init()
 {
-	app_load();
+	app_param_load();
 
 #define DEV_MODE 1
 #if defined(DEV_MODE)
@@ -208,7 +214,7 @@ irom void user_init()
 		.resv = 0,
 	};
 
-	mjpwm_init(PIN_DI, PIN_DCKI, 1, command);
+	mjpwm_init(PIN_DI, PIN_DCKI, 2, command);
 
 	/* Light the led ASAP */
 	app_apply_settings(NULL);

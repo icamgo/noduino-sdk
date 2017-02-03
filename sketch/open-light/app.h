@@ -1,3 +1,20 @@
+/*
+ *  Copyright (c) 2015 - 2025 MaiKe Labs
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU General Public License for more details.
+ *
+ *	You should have received a copy of the GNU General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+*/
 #ifndef __APP_H__
 #define __APP_H__
 
@@ -20,7 +37,9 @@ typedef struct system_status_t {
 	uint16 start_count;
 	uint8 start_continue;
 	mcu_status_t mcu_status;
-	uint8 packed[3];
+	uint8 sc_effect;
+	char voice_name[32];
+	uint8 packed[2];
 } __attribute__((aligned(4), packed)) system_status_t;
 
 typedef enum app_state_t {
@@ -30,17 +49,27 @@ typedef enum app_state_t {
 	APP_STATE_RESTORE,
 } app_state_t;
 
+typedef enum light_effect {
+	NONE_EFFECT = 0,
+	RED_GRADIENT,
+	GREEN_GRADIENT,
+	BLUE_GRADIENT,
+	WHITE_GRADIENT,
+} light_effect_t;
+
 void mjyun_receive(const char * event_name, const char * event_data);
+
+void set_light_effect(light_effect_t e);
+
 void app_apply_settings(mcu_status_t *pst);
-void app_load(void);
-void app_save(void);
+
+void app_param_load(void);
+void app_param_save(void);
+
 void app_push_status(mcu_status_t *pst);
+void app_push_voice_name(char *vname);
+
 void app_check_mcu_save(mcu_status_t *st);
 void app_start_check(uint32_t system_start_seconds);
-void app_set_smart_effect(uint8_t effect);
-void ICACHE_FLASH_ATTR
-uart_send(const uint8_t * buffer, uint16_t length);
-void ICACHE_FLASH_ATTR
-uart_receive(const uint8_t * pdata, uint16_t length);
 
-#endif /* __USER_VIRTUAL_MCU_H__ */
+#endif
