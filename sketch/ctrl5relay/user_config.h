@@ -13,9 +13,12 @@
 #include "noduino.h"
 
 #include "app.h"
+#include "upnp.h"
 
 #include "mjyun.h"
 #include "cJSON.h"
+
+#define CONFIG_ALEXA		1
 
 #define	DEBUG			1
 
