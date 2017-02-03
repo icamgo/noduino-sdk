@@ -17,6 +17,8 @@
 */
 #include "user_config.h"
 
+extern upnp_dev_t upnp_devs[];
+
 ctrl_status_t ctrl_st;
 
 irom void param_save(void)
@@ -40,9 +42,69 @@ irom void param_load()
 		os_memset(&ctrl_st, 0, sizeof(ctrl_status_t));
 
 		ctrl_st.init_flag = 1; 
-		ctrl_st.start_count++;
-		param_save();
+
+		os_strcpy(ctrl_st.ch1_voice_name, CH1_DEFAULT_VOICE_NAME);
+		os_strcpy(ctrl_st.ch2_voice_name, CH2_DEFAULT_VOICE_NAME);
+		os_strcpy(ctrl_st.ch3_voice_name, CH3_DEFAULT_VOICE_NAME);
+		os_strcpy(ctrl_st.ch4_voice_name, CH4_DEFAULT_VOICE_NAME);
+		os_strcpy(ctrl_st.ch5_voice_name, CH5_DEFAULT_VOICE_NAME);
+		os_strcpy(ctrl_st.ch6_voice_name, CH6_DEFAULT_VOICE_NAME);
 	}
+
+	int len = os_strlen(ctrl_st.ch1_voice_name);
+	if (len == 0 || len >= 32) {
+		// invalid voice name in flash
+		os_strcpy(ctrl_st.ch1_voice_name, CH1_DEFAULT_VOICE_NAME);
+		INFO("Invalid voice name in flash, reset to default name\r\n");
+	}
+
+	len = os_strlen(ctrl_st.ch2_voice_name);
+	if (len == 0 || len >= 32) {
+		// invalid voice name in flash
+		os_strcpy(ctrl_st.ch2_voice_name, CH2_DEFAULT_VOICE_NAME);
+		INFO("Invalid voice name in flash, reset to default name\r\n");
+	}
+
+	len = os_strlen(ctrl_st.ch3_voice_name);
+	if (len == 0 || len >= 32) {
+		// invalid voice name in flash
+		os_strcpy(ctrl_st.ch3_voice_name, CH3_DEFAULT_VOICE_NAME);
+		INFO("Invalid voice name in flash, reset to default name\r\n");
+	}
+
+	len = os_strlen(ctrl_st.ch4_voice_name);
+	if (len == 0 || len >= 32) {
+		// invalid voice name in flash
+		os_strcpy(ctrl_st.ch4_voice_name, CH4_DEFAULT_VOICE_NAME);
+		INFO("Invalid voice name in flash, reset to default name\r\n");
+	}
+
+	len = os_strlen(ctrl_st.ch5_voice_name);
+	if (len == 0 || len >= 32) {
+		// invalid voice name in flash
+		os_strcpy(ctrl_st.ch5_voice_name, CH5_DEFAULT_VOICE_NAME);
+		INFO("Invalid voice name in flash, reset to default name\r\n");
+	}
+
+	len = os_strlen(ctrl_st.ch6_voice_name);
+	if (len == 0 || len >= 32) {
+		// invalid voice name in flash
+		os_strcpy(ctrl_st.ch6_voice_name, CH6_DEFAULT_VOICE_NAME);
+		INFO("Invalid voice name in flash, reset to default name\r\n");
+	}
+
+#ifdef CONFIG_ALEXA
+	//copy the voice name to upnp_devs[]
+	os_strcpy(upnp_devs[0].dev_voice_name, ctrl_st.ch1_voice_name);
+	os_strcpy(upnp_devs[1].dev_voice_name, ctrl_st.ch2_voice_name);
+	os_strcpy(upnp_devs[2].dev_voice_name, ctrl_st.ch3_voice_name);
+	os_strcpy(upnp_devs[3].dev_voice_name, ctrl_st.ch4_voice_name);
+	os_strcpy(upnp_devs[4].dev_voice_name, ctrl_st.ch5_voice_name);
+	os_strcpy(upnp_devs[5].dev_voice_name, ctrl_st.ch6_voice_name);
+#endif
+
+	ctrl_st.start_count++;
+	param_save();
 }
 
 irom void app_push_status(relay_status_t *st)
