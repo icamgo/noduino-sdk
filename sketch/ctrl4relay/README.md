@@ -17,10 +17,11 @@
 
 
 1. GPIO13 control the 1st relay
-2. GPIO12 control the 2nd relay (pull up, pressed is low)
+2. GPIO12 control the 2nd relay
 3. GPIO14 control the 3rd relay
 4. GPIO16 control the 4th relay
 
+GPIO0 is related to the key, pull up, pressed is low
 
 ### Build
 
