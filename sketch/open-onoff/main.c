@@ -183,6 +183,8 @@ void mjyun_connected()
 	// need to update the status in cloud
 	relay_publish_status();
 
+	push_voice_name(minik_param.voice_name);
+
 	// stop to show the wifi status
 	wifi_led_disable();
 }
