@@ -61,6 +61,7 @@ void ICACHE_FLASH_ATTR app_push_status(mcu_status_t *st)
 	INFO("Pushed status = %s\r\n", msg);
 }
 
+#ifdef CONFIG_ALEXA
 void ICACHE_FLASH_ATTR app_push_voice_name(char *vname)
 {
 	/* {"m":"voice_name", "d":"room light"} */
@@ -68,6 +69,7 @@ void ICACHE_FLASH_ATTR app_push_voice_name(char *vname)
 	mjyun_publish("voice_name", vname);
 	INFO("Pushed voice name = %s\r\n", vname);
 }
+#endif
 
 void ICACHE_FLASH_ATTR
 mjyun_receive(const char * event_name, const char * event_data)
@@ -134,11 +136,12 @@ mjyun_receive(const char * event_name, const char * event_data)
 		int len = os_strlen(event_data);
 		if ( len > 0 && len <= 31) {
 
+#ifdef CONFIG_ALEXA
 			os_strcpy(upnp_devs[0].dev_voice_name, event_data);
 			
 			upnp_stop(upnp_devs, 1);
 			upnp_start(upnp_devs, 1);
-
+#endif
 			// save to flash
 			os_strcpy(sys_status.voice_name, event_data);
 			app_param_save();
@@ -149,8 +152,10 @@ mjyun_receive(const char * event_name, const char * event_data)
 
 	/* {"m":"get_voice_name"} */
 	if (0 == os_strcmp(event_name, "get_voice_name")) {
+#ifdef CONFIG_ALEXA
 		INFO("RX get_voice_name cmd\r\n");
 		app_push_voice_name(upnp_devs[0].dev_voice_name);
+#endif
 	}
 
 	/* {"m":"get"} */
@@ -232,8 +237,10 @@ app_param_load(void)
 	sys_status.start_continue += 1;
 	app_param_save();
 
+#ifdef CONFIG_ALEXA
 	//copy the voice name to upnp_devs[]
 	os_strcpy(upnp_devs[0].dev_voice_name, sys_status.voice_name);
+#endif
 }
 
 void ICACHE_FLASH_ATTR app_start_status()

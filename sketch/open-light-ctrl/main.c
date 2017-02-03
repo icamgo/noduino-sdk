@@ -18,6 +18,7 @@
 #include "user_config.h"
 #include "compile.h"
 
+#ifdef CONFIG_ALEXA
 extern system_status_t sys_status;
 
 void light_on_saved_and_pub()
@@ -51,6 +52,7 @@ upnp_dev_t upnp_devs[] = {
 		.way_off = light_off_saved_and_pub
 	}
 };
+#endif
 
 LOCAL void ICACHE_FLASH_ATTR
 mjyun_stated_cb(mjyun_state_t state)
@@ -98,7 +100,9 @@ mjyun_stated_cb(mjyun_state_t state)
 		INFO("Platform: WIFI_AP_STATION_ERROR\r\n");
 		break;
 	case WIFI_STATION_OK:
+#ifdef CONFIG_ALEXA
 		upnp_start(upnp_devs, 1);
+#endif
 		INFO("Platform: WIFI_STATION_OK\r\n");
 		break;
 	case WIFI_STATION_ERROR:
@@ -135,7 +139,9 @@ void mjyun_connected()
 	// need to update the status in cloud
 	app_push_status(NULL);
 
+#ifdef CONFIG_ALEXA
 	app_push_voice_name(upnp_devs[0].dev_voice_name);
+#endif
 
 	// stop to show the wifi status
 }

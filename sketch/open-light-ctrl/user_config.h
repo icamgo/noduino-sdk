@@ -18,6 +18,7 @@
 
 #include "group.h"
 
+#define CONFIG_ALEXA		1
 
 #define DEBUG				1
 
