@@ -12,12 +12,12 @@
 #include "driver/uart.h"
 #include "noduino.h"
 
-#include "udp_srv.h"
-
 #include "upnp.h"
-#include "httpd.h"
 
 #include "mjyun.h"
+
+#define CONFIG_ALEXA		1
+#define DEFAULT_VOICE_NAME	"open onoff"
 
 #define	DEBUG			1
 
