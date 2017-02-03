@@ -81,7 +81,7 @@ void upnp_ssdp_resp(char *dev_upnp_uuid, uint32_t port)
 	// bool
 	rt = udp_srv_send(udps, &rip, rport);
 	if(!rt) {
-		UPNP_INFO("UDP send filaed\r\n");
+		UPNP_INFO("UDP send failed\r\n");
 	}
 }
 

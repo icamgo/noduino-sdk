@@ -45,12 +45,15 @@ irom void httpd_handle_setupxml(void *arg)
 	}
 
 	struct espconn *pcon = (struct espconn *)arg;
-	upnp_dev_t *d = (upnp_dev_t *)(pcon->reverse); os_sprintf(body, SETUPXML_BODY, d->dev_voice_name, d->dev_upnp_uuid);
+	upnp_dev_t *d = (upnp_dev_t *)(pcon->reverse);
+	os_sprintf(body, SETUPXML_BODY, d->dev_voice_name, d->dev_upnp_uuid);
 
 	os_sprintf(resp, HTTP_OK_RESP, "text/xml",
 			os_strlen(body), body);
 
 	espconn_sent(pcon, resp, os_strlen(resp));
+
+	UPNP_DEBUG("/setup.xml resp: \r\n%s\r\n", body);
 
 	os_free(body);
 	os_free(resp);
@@ -158,19 +161,19 @@ irom void tcp_srv_recv_cb(void *arg, char *data, uint16_t len)
 irom void tcp_srv_sent_cb(void *arg)
 {
 	//data sent successfully
-	UPNP_DEBUG("TCP sent success\r\n");
+	UPNP_INFO("TCP sent success\r\n");
 }
 
 irom void tcp_srv_discon_cb(void *arg)
 {
 	//tcp disconnect successfully
-	UPNP_DEBUG("TCP disconnect succeed\r\n");
+	UPNP_INFO("TCP disconnect succeed\r\n");
 }
 
 irom void tcp_srv_recon_cb(void *arg, sint8 err)
 {
 	//error occured , tcp connection broke.
-	UPNP_DEBUG("TCP reconnect callback, error code %d\r\n", err);
+	UPNP_INFO("TCP reconnect callback, error code %d\r\n", err);
 }
 
 irom void tcp_srv_listen(void *arg)
