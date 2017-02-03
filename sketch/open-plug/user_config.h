@@ -16,7 +16,10 @@
 
 #include "mjyun.h"
 
-#define	DEBUG			1
+#define CONFIG_ALEXA		1
+#define DEFAULT_VOICE_NAME	"open plug"
+
+#define DEBUG				1
 
 #ifdef DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
@@ -33,6 +36,13 @@
 // NOTICE: --- For 1024KB spi flash
 // 0xFA000
 #define PARAM_START_SEC		0xFA
+
+struct minik_saved_param {
+	uint8_t status;
+	uint8_t pad[3];
+	char voice_name[32];
+} __attribute__((aligned(4), packed));
+
 
 void xkey_init();
 

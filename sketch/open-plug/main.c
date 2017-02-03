@@ -18,8 +18,9 @@
 #include "user_config.h"
 #include "compile.h"
 
-#define	DEBUG	1
+extern struct minik_saved_param minik_param;
 
+#ifdef CONFIG_ALEXA
 void relay_on_saved_and_pub()
 {
 	relay_set_status_and_publish(1);
@@ -43,6 +44,15 @@ upnp_dev_t upnp_devs[] = {
 		.way_off = relay_off_saved_and_pub
 	}
 };
+#endif
+
+void ICACHE_FLASH_ATTR push_voice_name(char *vname)
+{
+	/* {"m":"voice_name", "d":"fan plug"} */
+
+	mjyun_publish("voice_name", vname);
+	INFO("Pushed voice name = %s\r\n", vname);
+}
 
 static void mjyun_stated_cb(mjyun_state_t state)
 {
@@ -91,7 +101,9 @@ static void mjyun_stated_cb(mjyun_state_t state)
             break;
         case WIFI_STATION_OK:
             INFO("Platform: WIFI_STATION_OK\r\n");
+#ifdef CONFIG_ALEXA
 			upnp_start(upnp_devs, 1);
+#endif
 			led_set_effect(1);
             break;
         case WIFI_STATION_ERROR:
@@ -132,6 +144,33 @@ void mjyun_receive(const char *event_name, const char *event_data)
 		param_save();
 		relay_set_status_and_publish(0);
 	}
+
+	/* {"m":"set_voice_name", "d":"fan plug"} */
+	if (0 == os_strcmp(event_name, "set_voice_name")) {
+		INFO("RX set_voice_name = %s\r\n", event_data);
+		int len = os_strlen(event_data);
+		if ( len > 0 && len <= 31) {
+
+#ifdef CONFIG_ALEXA
+			os_strcpy(upnp_devs[0].dev_voice_name, event_data);
+
+			upnp_stop(upnp_devs, 1);
+			upnp_start(upnp_devs, 1);
+#endif
+			// save to flash
+			os_strcpy(minik_param.voice_name, event_data);
+			param_save();
+		} else {
+			INFO("RX Invalid voice name\r\n");
+		}
+	}
+
+	/* {"m":"get_voice_name"} */
+	if (0 == os_strcmp(event_name, "get_voice_name")) {
+		INFO("RX get_voice_name cmd\r\n");
+		push_voice_name(minik_param.voice_name);
+	}
+
 	if(os_strncmp(event_data, "ota", 3) == 0)
 	{
 		INFO("OTA: upgrade the firmware!\r\n");
