@@ -18,7 +18,162 @@
 #include "user_config.h"
 #include "compile.h"
 
-#define	DEBUG	1
+extern ctrl_status_t ctrl_st;
+
+#ifdef CONFIG_ALEXA
+void relay1_on_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r1 = 1;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay1_off_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r1 = 0;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay2_on_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r2 = 1;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay2_off_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r2 = 0;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay3_on_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r3 = 1;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay3_off_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r3 = 0;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay4_on_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r4 = 1;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay4_off_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r4 = 0;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay5_on_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r5 = 1;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay5_off_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r5 = 0;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay6_on_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r6 = 1;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay6_off_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r6 = 0;
+
+	app_check_set_push_save(&mst);
+}
+
+upnp_dev_t upnp_devs[] = {
+	{
+		.esp_conn = NULL,
+		.port = 80,
+		.dev_voice_name = "relay 1",
+		.way_on = relay1_on_saved_and_pub,
+		.way_off = relay1_off_saved_and_pub
+	},
+	{
+		.esp_conn = NULL,
+		.port = 81,
+		.dev_voice_name = "relay 2",
+		.way_on = relay2_on_saved_and_pub,
+		.way_off = relay2_off_saved_and_pub
+	},
+	{
+		.esp_conn = NULL,
+		.port = 82,
+		.dev_voice_name = "relay 3",
+		.way_on = relay3_on_saved_and_pub,
+		.way_off = relay3_off_saved_and_pub
+	},
+	{
+		.esp_conn = NULL,
+		.port = 83,
+		.dev_voice_name = "relay 4",
+		.way_on = relay4_on_saved_and_pub,
+		.way_off = relay4_off_saved_and_pub
+	},
+	{
+		.esp_conn = NULL,
+		.port = 84,
+		.dev_voice_name = "relay 5",
+		.way_on = relay5_on_saved_and_pub,
+		.way_off = relay5_off_saved_and_pub
+	},
+	{
+		.esp_conn = NULL,
+		.port = 85,
+		.dev_voice_name = "relay 6",
+		.way_on = relay6_on_saved_and_pub,
+		.way_off = relay6_off_saved_and_pub
+	}
+};
+#endif
 
 static void mjyun_stated_cb(mjyun_state_t state)
 {
@@ -67,6 +222,9 @@ static void mjyun_stated_cb(mjyun_state_t state)
             break;
         case WIFI_STATION_OK:
             INFO("Platform: WIFI_STATION_OK\r\n");
+#ifdef CONFIG_ALEXA
+			upnp_start(upnp_devs, 6);
+#endif
 			led_set_effect(1);
             break;
         case WIFI_STATION_ERROR:
