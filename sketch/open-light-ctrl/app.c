@@ -1,6 +1,23 @@
+/*
+ *  Copyright (c) 2015 - 2025 MaiKe Labs
+ *
+ *	This program is free software: you can redistribute it and/or modify
+ *	it under the terms of the GNU General Public License as published by
+ *	the Free Software Foundation, either version 3 of the License, or
+ *	(at your option) any later version.
+ *
+ *	This program is distributed in the hope that it will be useful,
+ *	but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *	GNU General Public License for more details.
+ *
+ *	You should have received a copy of the GNU General Public License
+ *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+*/
 #include "user_config.h"
 
-static system_status_t sys_status = {
+system_status_t sys_status = {
 	.init_flag = 0,
 	.start_count = 0,
 	.start_continue = 0,
@@ -11,24 +28,18 @@ static system_status_t sys_status = {
 		.b = 255,
 		.w = 255,
 	},
+	.sc_effect = NONE_EFFECT,
+	.voice_name = ""
 };
 
-static os_timer_t app_smart_timer;
-static os_timer_t delay_timer;
-static app_state_t app_state = APP_STATE_NORMAL;
-static uint8_t smart_effect = 0;
+extern upnp_dev_t upnp_devs[];
 
-float ICACHE_FLASH_ATTR
-fast_log2(float val)
-{
-	int * const  exp_ptr = (int *)(&val);
-	int x = *exp_ptr;
-	const int log_2 = ((x >> 23) & 255) - 128;
-	x &= ~(255 << 23);
-	x += 127 << 23;
-	*exp_ptr = x;
-	return (val + log_2);
-}
+static os_timer_t effect_timer;
+static os_timer_t delay_timer;
+
+static light_effect_t smart_effect = 0;
+
+static app_state_t app_state = APP_STATE_NORMAL;
 
 void ICACHE_FLASH_ATTR app_push_status(mcu_status_t *st)
 {
@@ -49,6 +60,16 @@ void ICACHE_FLASH_ATTR app_push_status(mcu_status_t *st)
 	mjyun_publishstatus(msg);
 	INFO("Pushed status = %s\r\n", msg);
 }
+
+#ifdef CONFIG_ALEXA
+void ICACHE_FLASH_ATTR app_push_voice_name(char *vname)
+{
+	/* {"m":"voice_name", "d":"room light"} */
+
+	mjyun_publish("voice_name", vname);
+	INFO("Pushed voice name = %s\r\n", vname);
+}
+#endif
 
 void ICACHE_FLASH_ATTR
 mjyun_receive(const char * event_name, const char * event_data)
@@ -109,6 +130,35 @@ mjyun_receive(const char * event_name, const char * event_data)
 		cJSON_Delete(pD);
 	}
 
+	/* {"m":"set_voice_name", "d":"room light"} */
+	if (0 == os_strcmp(event_name, "set_voice_name")) {
+		INFO("RX set_voice_name = %s\r\n", event_data);
+		int len = os_strlen(event_data);
+		if ( len > 0 && len <= 31) {
+
+#ifdef CONFIG_ALEXA
+			os_strcpy(upnp_devs[0].dev_voice_name, event_data);
+			
+			upnp_stop(upnp_devs, 1);
+			upnp_start(upnp_devs, 1);
+#endif
+			// save to flash
+			os_strcpy(sys_status.voice_name, event_data);
+			app_param_save();
+		} else {
+			INFO("RX Invalid voice name\r\n");
+		}
+	}
+
+	/* {"m":"get_voice_name"} */
+	if (0 == os_strcmp(event_name, "get_voice_name")) {
+#ifdef CONFIG_ALEXA
+		INFO("RX get_voice_name cmd\r\n");
+		app_push_voice_name(upnp_devs[0].dev_voice_name);
+#endif
+	}
+
+	/* {"m":"get"} */
 	if (0 == os_strcmp(event_name, "get")) {
 		INFO("RX Get status Request!\r\n");
 		app_push_status(NULL);
@@ -149,7 +199,7 @@ app_apply_settings(mcu_status_t *st)
 }
 
 void ICACHE_FLASH_ATTR
-app_load(void)
+app_param_load(void)
 {
 	system_param_load(
 	    (APP_START_SEC),
@@ -173,20 +223,34 @@ app_load(void)
 		}
 	} else {
 		sys_status.init_flag = 1;
+		os_strcpy(sys_status.voice_name, DEFAULT_VOICE_NAME);
 	}
+
+	int len = os_strlen(sys_status.voice_name);
+	if (len == 0 || len >= 32) {
+		// invalid voice name in flash
+		os_strcpy(sys_status.voice_name, DEFAULT_VOICE_NAME);
+		INFO("Invalid voice name in flash, reset to default name\r\n");
+	}
+
 	sys_status.start_count += 1;
 	sys_status.start_continue += 1;
-	app_save();
+	app_param_save();
+
+#ifdef CONFIG_ALEXA
+	//copy the voice name to upnp_devs[]
+	os_strcpy(upnp_devs[0].dev_voice_name, sys_status.voice_name);
+#endif
 }
 
 void ICACHE_FLASH_ATTR app_start_status()
 {
-	INFO("Mjyun APP: start count:%d, start continue:%d\r\n",
+	INFO("OpenLight APP: start count:%d, start continue:%d\r\n",
 			sys_status.start_count, sys_status.start_continue);
 }
 
 void ICACHE_FLASH_ATTR
-app_save(void)
+app_param_save(void)
 {
 	INFO("Flash Saved !\r\n");
 	// sys_status.mcu_status = local_mcu_status;
@@ -218,26 +282,25 @@ app_check_mcu_save(mcu_status_t *st)
 
 		sys_status.mcu_status.s = st->s;
 
-		app_save();
+		app_param_save();
 	}
 }
 
 void ICACHE_FLASH_ATTR
-app_set_smart_effect(uint8_t effect)
+set_light_effect(light_effect_t effect)
 {
 	smart_effect = effect;
 }
 
 void ICACHE_FLASH_ATTR
-app_smart_timer_tick()
+light_effect_start()
 {
 	static uint16_t value = 0;
 
 	static bool flag = true;
 
-	// uint16_t rlog = 4095 - (uint16_t)(340 * fast_log2(4095 - value + 1));
 	switch (smart_effect) {
-	case 0:
+	case RED_GRADIENT:
 		mjpwm_send_duty(
 		    PIN_DI,
 		    PIN_DCKI,
@@ -247,7 +310,7 @@ app_smart_timer_tick()
 		    0
 		);
 		break;
-	case 1:
+	case GREEN_GRADIENT:
 		mjpwm_send_duty(
 		    PIN_DI,
 		    PIN_DCKI,
@@ -257,7 +320,7 @@ app_smart_timer_tick()
 		    0
 		);
 		break;
-	case 2:
+	case BLUE_GRADIENT:
 		mjpwm_send_duty(
 		    PIN_DI,
 		    PIN_DCKI,
@@ -267,7 +330,7 @@ app_smart_timer_tick()
 		    0
 		);
 		break;
-	case 3:
+	case WHITE_GRADIENT:
 		mjpwm_send_duty(
 		    PIN_DI,
 		    PIN_DCKI,
@@ -299,9 +362,15 @@ app_smart_timer_tick()
 	if (value / 64 == 0) {
 		flag = true;
 	}
-	os_timer_disarm(&app_smart_timer);
-	os_timer_setfn(&app_smart_timer, (os_timer_func_t *)app_smart_timer_tick, NULL);
-	os_timer_arm(&app_smart_timer, 20, 1);
+	os_timer_disarm(&effect_timer);
+	os_timer_setfn(&effect_timer, (os_timer_func_t *)light_effect_start, NULL);
+	os_timer_arm(&effect_timer, 20, 1);
+}
+
+void ICACHE_FLASH_ATTR
+light_effect_stop()
+{
+	os_timer_disarm(&effect_timer);
 }
 
 void ICACHE_FLASH_ATTR
@@ -318,16 +387,16 @@ app_start_check(uint32_t system_start_seconds)
 {
 	if ((sys_status.start_continue != 0) && (system_start_seconds > 5)) {
 		sys_status.start_continue = 0;
-		app_save();
+		app_param_save();
 	}
 
 #if defined(APP_AGEING)
 	if (sys_status.start_count >= 65535) {
-		INFO("Mjyun APP: clean ageing\r\n");
+		INFO("OpenLight APP: clean ageing\r\n");
 		sys_status.start_count = 65534;
-		app_save();
+		app_param_save();
 	} else if (sys_status.start_count <= 1) {
-		INFO("Mjyun APP: begin ageing\r\n");
+		INFO("OpenLight APP: begin ageing\r\n");
 		mjpwm_send_duty(
 		    PIN_DI,
 		    PIN_DCKI,
@@ -341,13 +410,13 @@ app_start_check(uint32_t system_start_seconds)
 
 	if (sys_status.start_continue >= 6) {
 		if (APP_STATE_RESTORE != app_state) {
-			INFO("Mjyun APP: system restore\r\n");
+			INFO("OpenLight APP: system restore\r\n");
 			app_state = APP_STATE_RESTORE;
 			// Init flag and counter
 			sys_status.init_flag = 0;
 			sys_status.start_continue = 0;
 			// Save param
-			app_save();
+			app_param_save();
 
 			// waitting the mjyun_storage init is ok
 			os_timer_disarm(&delay_timer);
@@ -355,7 +424,9 @@ app_start_check(uint32_t system_start_seconds)
 			os_timer_arm(&delay_timer, 2000, 0);
 		}
 	} else if (sys_status.start_continue >= 5) {
-		os_timer_disarm(&app_smart_timer);
+
+		light_effect_stop();
+
 		mjpwm_send_duty(
 		    PIN_DI,
 		    PIN_DCKI,
@@ -365,7 +436,9 @@ app_start_check(uint32_t system_start_seconds)
 		    0
 		);
 	} else if (sys_status.start_continue >= 4) {
-		os_timer_disarm(&app_smart_timer);
+
+		light_effect_stop();
+
 		mjpwm_send_duty(
 		    PIN_DI,
 		    PIN_DCKI,
@@ -376,7 +449,7 @@ app_start_check(uint32_t system_start_seconds)
 		);
 	} else if (sys_status.start_continue >= 3) {
 		if (APP_STATE_SMART != app_state) {
-			INFO("Mjyun APP: force into smart config mode\r\n");
+			INFO("OpenLight APP: User request to enter into smart config mode\r\n");
 			app_state = APP_STATE_SMART;
 
 			/* wait the network_init is ok */
@@ -384,9 +457,7 @@ app_start_check(uint32_t system_start_seconds)
 			os_timer_setfn(&delay_timer, (os_timer_func_t *)mjyun_forceentersmartlinkmode, NULL);
 			os_timer_arm(&delay_timer, 200, 0);
 
-			os_timer_disarm(&app_smart_timer);
-			os_timer_setfn(&app_smart_timer, (os_timer_func_t *)app_smart_timer_tick, NULL);
-			os_timer_arm(&app_smart_timer, 20, 1);
+			light_effect_start();
 		}
 	}
 	if ((WIFI_SMARTLINK_START == mjyun_state()) ||
@@ -394,20 +465,22 @@ app_start_check(uint32_t system_start_seconds)
 	    (WIFI_SMARTLINK_FINDING == mjyun_state()) ||
 	    (WIFI_SMARTLINK_GETTING == mjyun_state())) {
 		if (APP_STATE_SMART != app_state) {
-			INFO("Mjyun APP: begin smart config effect\r\n");
+			INFO("OpenLight APP: User request to begin smart config effect\r\n");
 			app_state = APP_STATE_SMART;
-			os_timer_disarm(&app_smart_timer);
-			os_timer_setfn(&app_smart_timer, (os_timer_func_t *)app_smart_timer_tick, NULL);
-			os_timer_arm(&app_smart_timer, 20, 1);
+
+			light_effect_start();
 		}
 	} else if (APP_STATE_SMART == app_state &&
 			(mjyun_state() == WIFI_SMARTLINK_OK ||
 			 mjyun_state() == WIFI_AP_STATION_OK ||
 			 mjyun_state() == WIFI_STATION_OK ||
 			 mjyun_state() == MJYUN_CONNECTED)) {
+
 		app_state = APP_STATE_NORMAL;
+
 		app_apply_settings(NULL);
 		app_push_status(NULL);
-		os_timer_disarm(&app_smart_timer);
+
+		light_effect_stop();
 	}
 }

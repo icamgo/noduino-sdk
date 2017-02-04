@@ -22,8 +22,6 @@ static udp_srv_t *udps = NULL;
 static upnp_dev_t *devs_array = NULL;
 static uint8_t devs_len = 0;
 
-char pkt_buf[512];
-
 void upnp_dev_uuid_init(upnp_dev_t devs[], uint32_t ways)
 {
 	int i;
@@ -40,13 +38,13 @@ void upnp_dev_uuid_init(upnp_dev_t devs[], uint32_t ways)
 
 void upnp_ssdp_resp(char *dev_upnp_uuid, uint32_t port)
 {
-	INFO("Respose the request of ssdp discover\r\n");
+	UPNP_DEBUG("Respose the request of ssdp discover\r\n");
 
 	struct ip_info ipconfig;
 	wifi_get_ip_info(STATION_IF, &ipconfig);
 
 	if (ipconfig.ip.addr == 0) {
-		INFO("ipaddr of dev is 0\r\n");
+		UPNP_INFO("ipaddr of dev is 0\r\n");
 		return ;
 	}
 
@@ -56,58 +54,66 @@ void upnp_ssdp_resp(char *dev_upnp_uuid, uint32_t port)
 
 	bool rt = udp_srv_connect(udps, rip, rport);
 	if (!rt) {
-		INFO("UDP connect failed\r\n");
+		UPNP_INFO("UDP connect failed\r\n");
 		return;
 	}
 
 	char myip[16];
 	os_sprintf(myip, IPSTR, IP2STR(&(ipconfig.ip)));
-	INFO("my ip is %s\r\n", myip);
+	UPNP_DEBUG("my ip is %s\r\n", myip);
 
-	os_memset(pkt_buf, 0, 512);
+	char *pkt_buf = (char *)os_zalloc(512);
+	if (pkt_buf == NULL) {
+		UPNP_INFO("pkt_buf mem alloc failed\r\n");
+		return;
+	}
+
 	os_sprintf(pkt_buf, SSDP_DISCOVER_RESP, myip, port, dev_upnp_uuid);
 
-	INFO("pkt_buf (%d): %s\r\n", os_strlen(pkt_buf), pkt_buf);
+	UPNP_DEBUG("pkt_buf (%d): %s\r\n", os_strlen(pkt_buf), pkt_buf);
 
 	// size_t 
 	udp_srv_append(udps, pkt_buf, os_strlen(pkt_buf));
 
+	os_free(pkt_buf);
+	pkt_buf = NULL;
+
 	// bool
 	rt = udp_srv_send(udps, &rip, rport);
 	if(!rt) {
-		INFO("UDP send filaed\r\n");
+		UPNP_INFO("UDP send failed\r\n");
 	}
 }
 
 void upnp_process_ssdp_req()
 {
 	if (!udp_srv_next(udps)) {
-		INFO("There is no udp data received\r\n");
+		UPNP_INFO("There is no udp data received\r\n");
 		return;
 	}
 		
 	size_t sz = udp_srv_get_size(udps);
 	if (sz > 0) {
 
-#if 1
+#ifdef DEBUG
 		ip_addr_t rip;
 		rip.addr = udp_srv_get_remote_ip(udps);
 		uint16_t rport = udp_srv_get_remote_port(udps);
 
-		INFO("Received packet of size %d from "IPSTR":%d\r\n", sz,
+		UPNP_DEBUG("Received packet of size %d from "IPSTR":%d\r\n", sz,
 				IP2STR(&rip),
 				rport);
 #endif
 		char *rx_buf = (char *)os_zalloc(255);
 		if (rx_buf == NULL) {
-			INFO("rx_buf mem alloc failed\r\n");
+			UPNP_INFO("rx_buf mem alloc failed\r\n");
 			return;
 		}
 		size_t rs = 0;
 
 		rs = udp_srv_read(udps, rx_buf, 255);
 		if (rs > 0) {
-			INFO("read %d bytes udp data\r\n", rs);
+			UPNP_DEBUG("read %d bytes udp data\r\n", rs);
 			rx_buf[rs] = '\0';
 		}
 
@@ -115,13 +121,13 @@ void upnp_process_ssdp_req()
 		char *p = (char *)os_strstr(rx_buf, "ssdp:discover");
 
 		if (p != NULL) {
-			INFO("Received the ssdp:discover\r\n");
-			INFO("-------------------\r\n");
-			INFO("%s\r\n", rx_buf);
-			INFO("-------------------\r\n");
+			UPNP_DEBUG("Received the ssdp:discover\r\n");
+			UPNP_DEBUG("-------------------\r\n");
+			UPNP_DEBUG("%s\r\n", rx_buf);
+			UPNP_DEBUG("-------------------\r\n");
 			char *x = (char *)os_strstr(p, "urn:Belkin:device:");
 			if (NULL != x) {
-				INFO("Received request of discovery Belkin device\r\n");
+				UPNP_INFO("Received request of discovering Belkin device\r\n");
 				int i;
 				for (i = 0; i < devs_len; i++) {
 					upnp_ssdp_resp(devs_array[i].dev_upnp_uuid,
@@ -129,6 +135,9 @@ void upnp_process_ssdp_req()
 				}
 			}
 		}
+
+		os_free(rx_buf);
+		rx_buf = NULL;
 	}
 }
 
@@ -137,7 +146,7 @@ int upnp_start(upnp_dev_t *devs, int ways)
 	if (udps == NULL) {
 		udps = udp_srv_create();
 		if (udps == NULL) {
-			INFO("create udp server failed\r\n");
+			UPNP_INFO("create udp server failed\r\n");
 			return -4;
 		}
 	}
@@ -146,7 +155,7 @@ int upnp_start(upnp_dev_t *devs, int ways)
 	wifi_get_ip_info(STATION_IF, &ipconfig);
 
 	if (ipconfig.ip.addr == 0) {
-		INFO("ipaddr of dev is 0\r\n");
+		UPNP_INFO("ipaddr of dev is 0\r\n");
 		return -1;
 	}
 
@@ -156,7 +165,7 @@ int upnp_start(upnp_dev_t *devs, int ways)
 	multicast_addr.addr = UDP_SRV_IP;
 
     if (igmp_joingroup(&(ipconfig.ip), &multicast_addr)!= ERR_OK) {
-		INFO("IGMP join group failed\r\n");
+		UPNP_INFO("IGMP join group failed\r\n");
         return -2;
     }
 
@@ -165,7 +174,7 @@ int upnp_start(upnp_dev_t *devs, int ways)
 	udp_srv_set_rx_handler(udps, upnp_process_ssdp_req);
 
     if (!udp_srv_listen(udps, *IP_ADDR_ANY, UDP_SRV_PORT)) {
-		INFO("UDP listen failed\r\n");
+		UPNP_INFO("UDP listen failed\r\n");
         return -3;
     }
 

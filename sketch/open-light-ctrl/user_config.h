@@ -12,15 +12,17 @@
 #include "mjpwm.h"
 #include "cJSON.h"
 #include "espnow.h"
-#include "espnow_app.h"
+
 #include "app.h"
-
-#include "udp_srv.h"
-
 #include "upnp.h"
-#include "httpd.h"
+
+#include "group.h"
+
+#define CONFIG_ALEXA		1
 
 #define DEBUG				1
+
+#define DEFAULT_VOICE_NAME	"open light"
 
 #ifdef DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )

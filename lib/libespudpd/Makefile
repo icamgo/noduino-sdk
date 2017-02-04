@@ -39,7 +39,7 @@ DEFINES += -DICACHE_FLASH -DLWIP_OPEN_SRC
 # Required for each makefile to inherit from the parent
 #
 
-INCLUDES := $(INCLUDES) -I $(PDIR)include -I ./
+INCLUDES := $(INCLUDES) -I $(PDIR)include -I. 
 INCLUDES += -I $(SDK_BASE)/include -I $(SDK_BASE)/include/lwip
 PDIR := $(SDK_BASE)/sdk/$(PDIR)
 sinclude $(PDIR)/Makefile

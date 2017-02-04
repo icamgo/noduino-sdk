@@ -13,9 +13,12 @@
 #include "noduino.h"
 
 #include "app.h"
+#include "upnp.h"
 
 #include "mjyun.h"
 #include "cJSON.h"
+
+#define CONFIG_ALEXA		1
 
 #define	DEBUG			1
 
@@ -27,9 +30,9 @@
 
 #define	XKEY_NUM		1
 
-#define XKEY_IO_MUX		PERIPHS_IO_MUX_GPIO5_U
+#define XKEY_IO_MUX		PERIPHS_IO_MUX_GPIO0_U
 #define XKEY_IO_NUM		5
-#define XKEY_IO_FUNC	FUNC_GPIO5
+#define XKEY_IO_FUNC	FUNC_GPIO0
 
 // NOTICE: --- For 1024KB spi flash
 // 0xFA000

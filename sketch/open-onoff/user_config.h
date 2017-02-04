@@ -12,12 +12,12 @@
 #include "driver/uart.h"
 #include "noduino.h"
 
-#include "udp_srv.h"
-
 #include "upnp.h"
-#include "httpd.h"
 
 #include "mjyun.h"
+
+#define CONFIG_ALEXA		1
+#define DEFAULT_VOICE_NAME	"open switch"
 
 #define	DEBUG			1
 
@@ -36,6 +36,13 @@
 // NOTICE: --- For 1024KB spi flash
 // 0xFA000
 #define PARAM_START_SEC		0xFA
+
+struct minik_saved_param {
+	uint8_t status;
+	uint8_t pad[3];
+	char voice_name[32];
+} __attribute__((aligned(4), packed));
+
 
 void xkey_init();
 

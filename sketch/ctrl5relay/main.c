@@ -18,7 +18,162 @@
 #include "user_config.h"
 #include "compile.h"
 
-#define	DEBUG	1
+
+extern ctrl_status_t ctrl_st;
+
+#ifdef CONFIG_ALEXA
+void relay1_on_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r1 = 1;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay1_off_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r1 = 0;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay2_on_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r2 = 1;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay2_off_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r2 = 0;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay3_on_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r3 = 1;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay3_off_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r3 = 0;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay4_on_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r4 = 1;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay4_off_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r4 = 0;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay5_on_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r5 = 1;
+
+	app_check_set_push_save(&mst);
+}
+
+void relay5_off_saved_and_pub()
+{
+	relay_status_t mst;
+	os_memcpy(&mst, &(ctrl_st.relay_status), sizeof(relay_status_t));
+	mst.r5 = 0;
+
+	app_check_set_push_save(&mst);
+}
+
+upnp_dev_t upnp_devs[] = {
+	{
+		.esp_conn = NULL,
+		.port = 80,
+		.dev_voice_name = "relay 1",
+		.way_on = relay1_on_saved_and_pub,
+		.way_off = relay1_off_saved_and_pub
+	},
+	{
+		.esp_conn = NULL,
+		.port = 81,
+		.dev_voice_name = "relay 2",
+		.way_on = relay2_on_saved_and_pub,
+		.way_off = relay2_off_saved_and_pub
+	},
+	{
+		.esp_conn = NULL,
+		.port = 82,
+		.dev_voice_name = "relay 3",
+		.way_on = relay3_on_saved_and_pub,
+		.way_off = relay3_off_saved_and_pub
+	},
+	{
+		.esp_conn = NULL,
+		.port = 83,
+		.dev_voice_name = "relay 4",
+		.way_on = relay4_on_saved_and_pub,
+		.way_off = relay4_off_saved_and_pub
+	},
+	{
+		.esp_conn = NULL,
+		.port = 84,
+		.dev_voice_name = "relay 5",
+		.way_on = relay5_on_saved_and_pub,
+		.way_off = relay5_off_saved_and_pub
+	}
+};
+#endif
+
+/* {"m":"voice_name", "d":{"ch1":"channel 1", "ch2":"channel 2"}} */
+void ICACHE_FLASH_ATTR push_voice_name()
+{
+	char *msg = (char *)os_zalloc(200);
+	if (msg == NULL) {
+		INFO("alloc voice name memory failed\r\n");
+		return;
+	}
+
+	os_sprintf(msg, "{\"ch1\":%s,\"ch2\":%s,\"ch3\":%s,\"ch4\":%s,\"ch5\":%s}",
+				ctrl_st.ch1_voice_name,
+				ctrl_st.ch2_voice_name,
+				ctrl_st.ch3_voice_name,
+				ctrl_st.ch4_voice_name,
+				ctrl_st.ch5_voice_name
+			);
+
+	mjyun_publish("voice_name", msg);
+	INFO("Pushed voice name = %s\r\n", msg);
+
+	os_free(msg);
+	msg = NULL;
+}
 
 static void mjyun_stated_cb(mjyun_state_t state)
 {
@@ -67,6 +222,9 @@ static void mjyun_stated_cb(mjyun_state_t state)
             break;
         case WIFI_STATION_OK:
             INFO("Platform: WIFI_STATION_OK\r\n");
+#ifdef CONFIG_ALEXA
+			upnp_start(upnp_devs, 5);
+#endif
 			led_set_effect(1);
             break;
         case WIFI_STATION_ERROR:
@@ -144,6 +302,112 @@ void mjyun_receive(const char *event_name, const char *event_data)
 		cJSON_Delete(pD);
 	}
 
+	/* {"m":"set_voice_name", "d":{"ch1":"channel 1", "ch2":"channel 2"}} */
+	if (0 == os_strcmp(event_name, "set_voice_name")) {
+		INFO("RX set_voice_name = %s\r\n", event_data);
+
+		cJSON * pD = cJSON_Parse(event_data);
+		if ((NULL != pD) && (cJSON_Object == pD->type)) {
+			cJSON * pR1 = cJSON_GetObjectItem(pD, "ch1");
+			cJSON * pR2 = cJSON_GetObjectItem(pD, "ch2");
+			cJSON * pR3 = cJSON_GetObjectItem(pD, "ch3");
+			cJSON * pR4 = cJSON_GetObjectItem(pD, "ch4");
+			cJSON * pR5 = cJSON_GetObjectItem(pD, "ch5");
+
+			int len;
+			bool need_update = false;
+			char *pvn;
+			if ((NULL != pR1) && (cJSON_String == pR1->type)) {
+
+				pvn = pR1->valuestring;
+				len = os_strlen(pvn);
+				if ( len > 0 && len <= 31) {
+			#ifdef CONFIG_ALEXA
+					os_strcpy(upnp_devs[0].dev_voice_name, pvn);
+			#endif
+					need_update = true;
+					os_strcpy(ctrl_st.ch1_voice_name, pvn);
+				} else {
+					INFO("RX Invalid ch1 voice name\r\n");
+				}
+			}
+			if ((NULL != pR2) && (cJSON_String == pR2->type)) {
+
+				pvn = pR2->valuestring;
+				len = os_strlen(pvn);
+				if ( len > 0 && len <= 31) {
+			#ifdef CONFIG_ALEXA
+					os_strcpy(upnp_devs[1].dev_voice_name, pvn);
+			#endif
+					need_update = true;
+					os_strcpy(ctrl_st.ch2_voice_name, pvn);
+				} else {
+					INFO("RX Invalid ch2 voice name\r\n");
+				}
+			}
+
+			if ((NULL != pR3) && (cJSON_String == pR3->type)) {
+
+				pvn = pR3->valuestring;
+				len = os_strlen(pvn);
+				if ( len > 0 && len <= 31) {
+			#ifdef CONFIG_ALEXA
+					os_strcpy(upnp_devs[2].dev_voice_name, pvn);
+			#endif
+					need_update = true;
+					os_strcpy(ctrl_st.ch3_voice_name, pvn);
+				} else {
+					INFO("RX Invalid ch3 voice name\r\n");
+				}
+			}
+
+			if ((NULL != pR4) && (cJSON_String == pR4->type)) {
+
+				pvn = pR4->valuestring;
+				len = os_strlen(pvn);
+				if ( len > 0 && len <= 31) {
+			#ifdef CONFIG_ALEXA
+					os_strcpy(upnp_devs[3].dev_voice_name, pvn);
+			#endif
+					need_update = true;
+					os_strcpy(ctrl_st.ch4_voice_name, pvn);
+				} else {
+					INFO("RX Invalid ch4 voice name\r\n");
+				}
+			}
+
+			if ((NULL != pR5) && (cJSON_String == pR5->type)) {
+
+				pvn = pR5->valuestring;
+				len = os_strlen(pvn);
+				if ( len > 0 && len <= 31) {
+			#ifdef CONFIG_ALEXA
+					os_strcpy(upnp_devs[4].dev_voice_name, pvn);
+			#endif
+					need_update = true;
+					os_strcpy(ctrl_st.ch5_voice_name, pvn);
+				} else {
+					INFO("RX Invalid ch5 voice name\r\n");
+				}
+			}
+
+			if (need_update) {
+			#ifdef CONFIG_ALEXA
+				upnp_stop(upnp_devs, 5);
+				upnp_start(upnp_devs, 5);
+			#endif
+				param_save();
+			}
+		}
+	}
+
+	/* {"m":"get_voice_name"} */
+	/* {"m":"voice_name", "d":{"ch1":"channel 1", "ch2":"channel 2"}} */
+	if (0 == os_strcmp(event_name, "get_voice_name")) {
+		INFO("RX get_voice_name cmd\r\n");
+		push_voice_name();
+	}
+
 	if(os_strncmp(event_data, "ota", 3) == 0)
 	{
 		INFO("OTA: upgrade the firmware!\r\n");
@@ -160,6 +424,7 @@ void mjyun_connected()
 {
 	// need to update the status into cloud
 	app_push_status(NULL);
+	push_voice_name();
 
 	// stop to show the wifi status
 	wifi_led_disable();
@@ -175,8 +440,8 @@ const mjyun_config_t mjyun_conf = {
 	"MJP7938261749",		/* MK Ctrl5relay */
 	HW_VERSION,
 	FW_VERSION,
-	FW_VERSION,				/* 设备上线时，给app发送 online 消息中的附加数据，[选填] */
-	"Device Offline",		/* 设备掉线时，给app发送 offline 消息中的附加数据，[选填] */
+	FW_VERSION,
+	"Device Offline",
 #ifdef LOW_POWER
 	0,
 #else

@@ -18,13 +18,13 @@
 ### Pin Resource
 
 1. GPIO13(D4) control the 1st relay
-2. GPIO12(D5) control the 2nd relay (pull up, pressed is low)
+2. GPIO12(D5) control the 2nd relay 
 3. GPIO14(D6) control the 3rd relay
 4. GPIO16(D7) control the 4th relay
 5. GPIO4 (D8) control the 5th relay
 6. GPIO5 (D9) control the 6th relay
 
-GPIO0 is related to the key
+GPIO0 is related to the key, pull up, pressed is low
 
 
 ### Build

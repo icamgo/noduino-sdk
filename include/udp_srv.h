@@ -35,12 +35,12 @@
 #include "ets_sys.h"
 #include "os_type.h"
 
-#define	DEBUG			1
+//#define	DEBUG			1
 
 #ifdef DEBUG
-#define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
+#define UDPD_INFO( format, ... ) os_printf( "UDPD: "format, ## __VA_ARGS__ )
 #else
-#define INFO( format, ... )
+#define UDPD_INFO( format, ... )
 #endif
 
 typedef void (*rxhandler_fun)(void);

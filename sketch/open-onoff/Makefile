@@ -28,7 +28,7 @@ sinclude .config
 SDK_INCDIR	+= include/noduino include/lwip
 
 # libraries used in this project
-LIBS		+= cirom noduino espudpd
+LIBS		+= cirom noduino espudpd echo
 
 # compiler flags using during compilation of source files
 CFLAGS		+= -DLWIP_OPEN_SRC

@@ -17,6 +17,14 @@
 */
 #include "user_config.h"
 
+/*
+ * GPIO13(D4) control the 1st relay
+ * GPIO12(D5) control the 2nd relay
+ * GPIO14(D6) control the 3rd relay
+ * GPIO16(D7) control the 4th relay
+ * GPIO4 (D8) control the 5th relay
+ * GPIO5 (D9) control the 6th relay
+ */
 irom void relay_all_on()
 {
 	INFO("set all relay on\r\n");

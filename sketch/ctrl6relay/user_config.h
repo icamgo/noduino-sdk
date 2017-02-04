@@ -13,9 +13,19 @@
 #include "noduino.h"
 
 #include "app.h"
+#include "upnp.h"
 
 #include "mjyun.h"
 #include "cJSON.h"
+
+#define CONFIG_ALEXA		1
+
+#define	CH1_DEFAULT_VOICE_NAME	"channel 1"
+#define	CH2_DEFAULT_VOICE_NAME	"channel 2"
+#define	CH3_DEFAULT_VOICE_NAME	"channel 3"
+#define	CH4_DEFAULT_VOICE_NAME	"channel 4"
+#define	CH5_DEFAULT_VOICE_NAME	"channel 5"
+#define	CH6_DEFAULT_VOICE_NAME	"channel 6"
 
 #define	DEBUG			1
 

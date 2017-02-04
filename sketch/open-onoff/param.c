@@ -17,12 +17,9 @@
 */
 #include "user_config.h"
 
-struct minik_saved_param {
-	uint8_t status;
-	uint8_t pad[3];
-};
+extern upnp_dev_t upnp_devs[];
 
-LOCAL struct minik_saved_param minik_param;
+struct minik_saved_param minik_param;
 
 void ICACHE_FLASH_ATTR param_set_status(uint8_t status)
 {
@@ -63,7 +60,21 @@ void ICACHE_FLASH_ATTR param_init()
 		os_printf("Invalid status value, reset to 0!\n");
 #endif
 		minik_param.status = 0;
+
+		os_strcpy(minik_param.voice_name, DEFAULT_VOICE_NAME);
 	}
+
+	int len = os_strlen(minik_param.voice_name);
+	if (len == 0 || len >= 32) {
+		// invalid voice name in flash
+		os_strcpy(minik_param.voice_name, DEFAULT_VOICE_NAME);
+		INFO("Invalid voice name in flash, reset to default name\r\n");
+	}
+
+#ifdef CONFIG_ALEXA
+	//copy the voice name to upnp_devs[]
+	os_strcpy(upnp_devs[0].dev_voice_name, minik_param.voice_name);
+#endif
 
 	os_printf("Saved Status is: %d\n", param_get_status());
 }

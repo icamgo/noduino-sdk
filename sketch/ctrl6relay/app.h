@@ -33,6 +33,12 @@ typedef struct ctrl_status_t {
 	uint32_t start_count;
 	relay_status_t relay_status;
 	uint8 packed[3];
+	char ch1_voice_name[32];
+	char ch2_voice_name[32];
+	char ch3_voice_name[32];
+	char ch4_voice_name[32];
+	char ch5_voice_name[32];
+	char ch6_voice_name[32];
 } __attribute__((aligned(4), packed)) ctrl_status_t;
 
 void param_load();

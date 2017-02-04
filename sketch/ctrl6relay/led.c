@@ -54,6 +54,8 @@ irom void led_init()
 
 irom void wifi_led_enable()
 {
+	pinMode(3, OUTPUT);
+
 	// GPIO3: the wifi status led
 	wifi_status_led_install (3, PERIPHS_IO_MUX_U0RXD_U, FUNC_GPIO3);
 }
