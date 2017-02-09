@@ -118,10 +118,10 @@ void upnp_process_ssdp_req()
 		}
 
 		// parse the rx_buf, if "urn:Belkin:device:**", response
-		char *p = (char *)os_strstr(rx_buf, "ssdp:discover");
+		char *p = (char *)os_strstr(rx_buf, "M-SEARCH ");
 
 		if (p != NULL) {
-			UPNP_DEBUG("Received the ssdp:discover\r\n");
+			UPNP_DEBUG("Received the SSDP discover packet\r\n");
 			UPNP_DEBUG("-------------------\r\n");
 			UPNP_DEBUG("%s\r\n", rx_buf);
 			UPNP_DEBUG("-------------------\r\n");
