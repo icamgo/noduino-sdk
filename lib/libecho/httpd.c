@@ -149,6 +149,7 @@ irom void tcp_srv_recv_cb(void *arg, char *data, uint16_t len)
 	} else if (strncmp(d, "GET /setup.xml ", 15) == 0) {
 		httpd_handle_setupxml(arg);
 	} else if (strncmp(d, "POST /upnp/control/basicevent1 ", 31) == 0) {
+		//os_printf("------------ Recv: POST /upnp/control/basicevent1\r\n%s\r\n", d);
 		httpd_handle_upnp_ctrl(arg, data);
 	} else if (strncmp(d, "GET /eventservice.xml ", 22) == 0) {
 		httpd_handle_evnt_service(arg);

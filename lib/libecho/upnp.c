@@ -30,7 +30,7 @@ void upnp_dev_uuid_init(upnp_dev_t devs[], uint32_t ways)
 
 	for (i = 0; i < ways; i++) {
 		os_memset(devs[i].dev_upnp_uuid, 0, 64);
-		os_sprintf(devs[i].dev_upnp_uuid, "Socket-1_0-38323636-4558-4dda-9188-cda0%02x%02x%02x%02x",
+		os_sprintf(devs[i].dev_upnp_uuid, "38323636-4558-4dda-9188-cda0%02x%02x%02x%02x",
 					mac[3], mac[4], mac[5], devs[i].port);
 
 	}
@@ -68,7 +68,7 @@ void upnp_ssdp_resp(char *dev_upnp_uuid, uint32_t port)
 		return;
 	}
 
-	os_sprintf(pkt_buf, SSDP_DISCOVER_RESP, myip, port, dev_upnp_uuid);
+	os_sprintf(pkt_buf, SSDP_WEMO_RESP, myip, port, dev_upnp_uuid);
 
 	UPNP_DEBUG("pkt_buf (%d): %s\r\n", os_strlen(pkt_buf), pkt_buf);
 

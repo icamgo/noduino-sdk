@@ -81,6 +81,34 @@ Connection: close\r\n\r\n%s\r\n"
 </action>\
 </scpd>\r\n\r\n"
 
+static const char *HUE_XML =
+"HTTP/1.1 200 OK\r\n"
+"Content-Type: text/xml\r\n"
+"Connection: close\r\n"
+"Access-Control-Allow-Origin: *\r\n"
+"\r\n"
+"<?xml version=\"1.0\"?>"
+"<root xmlns=\"urn:schemas-upnp-org:device-1-0\">"
+"<specVersion>"
+"<major>1</major>"
+"<minor>0</minor>"
+"</specVersion>"
+"<URLBase>http://%u.%u.%u.%u:%u/</URLBase>"
+"<device>"
+"<deviceType>%s</deviceType>"
+"<friendlyName>%s</friendlyName>"
+"<presentationURL>%s</presentationURL>"
+"<serialNumber>%s</serialNumber>"
+"<modelName>%s</modelName>"
+"<modelNumber>%s</modelNumber>"
+"<modelURL>%s</modelURL>"
+"<manufacturer>%s</manufacturer>"
+"<manufacturerURL>%s</manufacturerURL>"
+"<UDN>uuid:%s</UDN>"
+"</device>"
+"</root>\r\n"
+"\r\n";
+
 
 int httpd_start(upnp_dev_t *d);
 void httpd_stop(upnp_dev_t *d);
