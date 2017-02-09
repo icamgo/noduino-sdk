@@ -77,6 +77,7 @@ static int ICACHE_FLASH_ATTR esp_isdigit(char c)
  */
 long ICACHE_FLASH_ATTR esp_strtol(nptr, endptr, base)
 const char *nptr;
+
 char **endptr;
 int base;
 {
@@ -189,8 +190,11 @@ static int ICACHE_FLASH_ATTR http_chunked_decode(const char *chunked,
 	while (true);
 
 	/*
+	 *
 	 * footer CRLF
+	 *
 	 */
+
 	return (j);
 }
 
@@ -264,7 +268,7 @@ static void ICACHE_FLASH_ATTR http_connect_callback(void *arg)
 			   strlen(req->post_data));
 	}
 
-	if(req->headers == NULL) { /* Avoid NULL pointer, it may cause exception */
+	if (req->headers == NULL) {	/* Avoid NULL pointer, it may cause exception */
 		req->headers = (char *)os_malloc(sizeof(char));
 		req->headers[0] = '\0';
 	}
@@ -284,8 +288,8 @@ static void ICACHE_FLASH_ATTR http_connect_callback(void *arg)
 		espconn_secure_send(conn, (uint8_t *) buf, len);
 	else
 		espconn_send(conn, (uint8_t *) buf, len);
-	if(req->headers != NULL)
-		os_free( req->headers );
+	if (req->headers != NULL)
+		os_free(req->headers);
 	req->headers = NULL;
 	HTTPCLIENT_DEBUG("Sending request header\n");
 }
@@ -293,14 +297,19 @@ static void ICACHE_FLASH_ATTR http_connect_callback(void *arg)
 static void ICACHE_FLASH_ATTR http_disconnect_callback(void *arg)
 {
 	HTTPCLIENT_DEBUG("Disconnected\n");
+	HTTPCLIENT_DEBUG("%s: memory left=%d\r\n", __func__,
+			 system_get_free_heap_size());
 	struct espconn *conn = (struct espconn *)arg;
 
 	if (conn == NULL) {
 		return;
 	}
 
+	HTTPCLIENT_DEBUG("%s @ %d: memory left=%d\r\n", __func__, __LINE__,
+			 system_get_free_heap_size());
 	if (conn->proto.tcp != NULL) {
 		os_free(conn->proto.tcp);
+		conn->proto.tcp = NULL;
 	}
 	if (conn->reverse != NULL) {
 		request_args_t *req = (request_args_t *) conn->reverse;
@@ -314,14 +323,20 @@ static void ICACHE_FLASH_ATTR http_disconnect_callback(void *arg)
 			HTTPCLIENT_DEBUG("Buffer shouldn't be NULL\n");
 		} else if (req->buffer[0] != '\0') {
 			/* FIXME: make sure this is not a partial response, using the Content-Length header. */
-			const char *version = "HTTP/1.1 ";
-			if (os_strncmp(req->buffer, version, strlen(version)) !=
-			    0) {
+			const char *version_1_0 = "HTTP/1.0 ";
+			const char *version_1_1 = "HTTP/1.1 ";
+			if ((os_strncmp
+			     (req->buffer, version_1_0,
+			      strlen(version_1_0)) != 0)
+			    &&
+			    (os_strncmp
+			     (req->buffer, version_1_1,
+			      strlen(version_1_1)) != 0)) {
 				HTTPCLIENT_DEBUG("Invalid version in %s\n",
 						 req->buffer);
 			} else {
 				http_status =
-				    atoi(req->buffer + strlen(version));
+				    atoi(req->buffer + strlen(version_1_0));
 				body =
 				    (char *)os_strstr(req->buffer,
 						      "\r\n\r\n") + 4;
@@ -342,19 +357,35 @@ static void ICACHE_FLASH_ATTR http_disconnect_callback(void *arg)
 				}
 			}
 		}
-		if (req->callback_handle != NULL) {
-			/* Callback is optional. */
+		if (req->callback_handle != NULL) {	/* Callback is optional. */
 			req->callback_handle(body, http_status, req->buffer);
 		}
+
+		HTTPCLIENT_DEBUG("%s @ %d: memory left=%d\r\n", __func__,
+				 __LINE__, system_get_free_heap_size());
 		os_free(req->buffer);
 		os_free(req->hostname);
 		os_free(req->method);
 		os_free(req->path);
+		os_free(req->headers);
+		os_free(req->post_data);
 		os_free(req);
+		req->buffer = NULL;
+		req->hostname = NULL;
+		req->method = NULL;
+		req->path = NULL;
+		req->headers = NULL;
+		req->post_data = NULL;
+		req = NULL;
 	}
+	HTTPCLIENT_DEBUG("%s @ %d: memory left=%d\r\n", __func__, __LINE__,
+			 system_get_free_heap_size());
 	/* Fix memory leak. */
 	espconn_delete(conn);
 	os_free(conn);
+	conn = NULL;
+	HTTPCLIENT_DEBUG("%s @ %d: memory left=%d\r\n", __func__, __LINE__,
+			 system_get_free_heap_size());
 }
 
 static void ICACHE_FLASH_ATTR http_error_callback(void *arg, sint8 errType)
@@ -391,7 +422,17 @@ static void ICACHE_FLASH_ATTR http_dns_callback(const char *hostname,
 		if (req->callback_handle != NULL) {
 			req->callback_handle("", -1, "");
 		}
+		HTTPCLIENT_DEBUG("%s: memory left=%d\r\n", __func__,
+				 system_get_free_heap_size());
+		os_free(req->hostname);
+		os_free(req->method);
+		os_free(req->path);
+		os_free(req->headers);
+		os_free(req->post_data);
+		os_free(req->buffer);
 		os_free(req);
+		HTTPCLIENT_DEBUG("%s: memory left=%d\r\n", __func__,
+				 system_get_free_heap_size());
 	} else {
 		HTTPCLIENT_DEBUG("DNS found %s " IPSTR "\n", hostname,
 				 IP2STR(addr));
@@ -433,6 +474,8 @@ void ICACHE_FLASH_ATTR http_raw_request(const char *hostname, int port,
 					http_callback_t callback_handle)
 {
 	HTTPCLIENT_DEBUG("DNS request\n");
+	HTTPCLIENT_DEBUG("%s: memory left=%d\r\n", __func__,
+			 system_get_free_heap_size());
 
 	request_args_t *req =
 	    (request_args_t *) os_malloc(sizeof(request_args_t));
@@ -449,10 +492,14 @@ void ICACHE_FLASH_ATTR http_raw_request(const char *hostname, int port,
 	req->callback_handle = callback_handle;
 	req->timeout = HTTP_REQUEST_TIMEOUT_MS;
 
+	HTTPCLIENT_DEBUG("%s: memory left=%d\r\n", __func__,
+			 system_get_free_heap_size());
 	ip_addr_t addr;
 	err_t error = espconn_gethostbyname((struct espconn *)req,	/* It seems we don't need a real espconn pointer here. */
 					    hostname, &addr, http_dns_callback);
 
+	HTTPCLIENT_DEBUG("%s: memory left=%d\r\n", __func__,
+			 system_get_free_heap_size());
 	if (error == ESPCONN_INPROGRESS) {
 		HTTPCLIENT_DEBUG("DNS pending\n");
 	} else if (error == ESPCONN_OK) {
@@ -481,6 +528,7 @@ void ICACHE_FLASH_ATTR http_request(const char *url, const char *method,
 	 * FIXME: handle HTTP auth with http://user:pass@host/
 	 * FIXME: get rid of the #anchor part if present.
 	 */
+
 	char hostname[128] = "";
 	int port = 80;
 	bool secure = false;
