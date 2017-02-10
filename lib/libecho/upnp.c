@@ -80,7 +80,7 @@ void ssdp_gen_resp_pkt(char *pb, upnp_dev_t *pd, char *myip)
 	else
 		num = "1.0";
 
-	char *p = "hue-bridgeid: 929000226503";
+	char *p = "hue-bridgeid: 8989898989";
 
 	char *st = pd->dev_type != HUE ?
 			"urn:Belkin:device:**":get_dev_target(pd->dev_type);
