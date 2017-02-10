@@ -18,7 +18,17 @@
 #ifndef __UPNP_H__
 #define __UPNP_H__
 
-#include "ssdp.h"
+#include "udp_srv.h"
+
+typedef enum {
+	WEMO_SWITCH,
+	WEMO_INSIGHT,
+	WEMO_LIGHTSWITCH,
+	WEMO_BULB,
+	WEMO_MOTION,
+	WEMO_MAKER,
+	HUE
+} dev_type_t;
 
 typedef void (*on_fn_t)(void);
 typedef void (*off_fn_t)(void);
@@ -28,9 +38,14 @@ typedef struct upnp_dev {
 	uint32_t port;
 	char dev_upnp_uuid[64];
 	char dev_voice_name[32];
+	char model_name[32];
+	char model_num[12];
+	dev_type_t dev_type;
 	on_fn_t way_on;
 	off_fn_t way_off;
 } upnp_dev_t;
+
+char *get_dev_target(dev_type_t tp);
 
 int upnp_start(upnp_dev_t *devs, int ways);
 void upnp_stop(upnp_dev_t *devs, int ways);

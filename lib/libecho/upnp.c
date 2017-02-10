@@ -15,6 +15,7 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
 */
+#include "ssdp.h"
 #include "upnp.h"
 
 static udp_srv_t *udps = NULL;
@@ -22,7 +23,7 @@ static udp_srv_t *udps = NULL;
 static upnp_dev_t *devs_array = NULL;
 static uint8_t devs_len = 0;
 
-void upnp_dev_uuid_init(upnp_dev_t devs[], uint32_t ways)
+static void dev_uuid_init(upnp_dev_t devs[], uint32_t ways)
 {
 	int i;
 	char mac[6];
@@ -36,7 +37,66 @@ void upnp_dev_uuid_init(upnp_dev_t devs[], uint32_t ways)
 	}
 }
 
-void upnp_ssdp_resp(char *dev_upnp_uuid, uint32_t port)
+char *get_dev_target(dev_type_t tp)
+{
+	switch(tp) {
+		case WEMO_SWITCH:
+			return "urn:Belkin:device:controllee:1";
+			break;
+		case WEMO_LIGHTSWITCH:
+			return "urn:Belkin:device:lightswitch:1";
+			break;
+		case WEMO_INSIGHT:
+			return "urn:Belkin:device:insight:1";
+		case WEMO_BULB:
+			return "urn:Belkin:device:bridge:1";
+			break;
+		case WEMO_MOTION:
+			return "urn:Belkin:device:sensor:1";
+			break;
+		case WEMO_MAKER:
+			return "urn:Belkin:device:Maker:1";
+			break;
+		case HUE:
+			return "urn:schemas-upnp-org:device:basic:1";
+			//return "upnp:rootdevice";
+			break;
+		default:
+			return NULL;
+	}
+}
+
+void ssdp_gen_resp_pkt(char *pb, upnp_dev_t *pd, char *myip)
+{
+	char *name, *num;
+
+	if (pd->model_name != NULL)
+		name = pd->model_name;
+	else
+		name = "Unspecified";
+
+	if (pd->model_num != NULL)
+		num = pd->model_num;
+	else
+		num = "1.0";
+
+	char *p = "hue-bridgeid: 929000226503";
+
+	char *st = pd->dev_type != HUE ?
+			"urn:Belkin:device:**":get_dev_target(pd->dev_type);
+
+	os_sprintf(pb, SSDP_PKT,
+			SSDP_RESP,
+			name,
+			num,
+			pd->dev_upnp_uuid,
+			"ST",
+			st,
+			myip, pd->port,
+			pd->dev_type == HUE ? p : "");
+}
+
+void ssdp_resp(upnp_dev_t *dev)
 {
 	UPNP_DEBUG("Respose the request of ssdp discover\r\n");
 
@@ -58,17 +118,17 @@ void upnp_ssdp_resp(char *dev_upnp_uuid, uint32_t port)
 		return;
 	}
 
-	char myip[16];
-	os_sprintf(myip, IPSTR, IP2STR(&(ipconfig.ip)));
-	UPNP_DEBUG("my ip is %s\r\n", myip);
-
 	char *pkt_buf = (char *)os_zalloc(512);
 	if (pkt_buf == NULL) {
 		UPNP_INFO("pkt_buf mem alloc failed\r\n");
 		return;
 	}
 
-	os_sprintf(pkt_buf, SSDP_WEMO_RESP, myip, port, dev_upnp_uuid);
+	char myip[16];
+	os_sprintf(myip, IPSTR, IP2STR(&(ipconfig.ip)));
+	UPNP_DEBUG("my ip is %s\r\n", myip);
+
+	ssdp_gen_resp_pkt(pkt_buf, dev, myip);
 
 	UPNP_DEBUG("pkt_buf (%d): %s\r\n", os_strlen(pkt_buf), pkt_buf);
 
@@ -85,7 +145,7 @@ void upnp_ssdp_resp(char *dev_upnp_uuid, uint32_t port)
 	}
 }
 
-void upnp_process_ssdp_req()
+void ssdp_process_req()
 {
 	if (!udp_srv_next(udps)) {
 		UPNP_INFO("There is no udp data received\r\n");
@@ -125,13 +185,28 @@ void upnp_process_ssdp_req()
 			UPNP_DEBUG("-------------------\r\n");
 			UPNP_DEBUG("%s\r\n", rx_buf);
 			UPNP_DEBUG("-------------------\r\n");
-			char *x = (char *)os_strstr(p, "urn:Belkin:device:");
+
+			char *x = NULL;
+			switch (devs_array[0].dev_type) {
+				case WEMO_SWITCH:
+				case WEMO_INSIGHT:
+				case WEMO_LIGHTSWITCH:
+				case WEMO_BULB:
+				case WEMO_MOTION:
+				case WEMO_MAKER:
+					x = (char *)os_strstr(p, "urn:Belkin:device:");
+					break;
+				case HUE:
+					x = (char *)os_strstr(p, "urn:schemas-upnp-org:device:");
+					break;
+			}
 			if (NULL != x) {
-				UPNP_INFO("Received request of discovering Belkin device\r\n");
+				UPNP_INFO("Received request of discovering %s\r\n",
+						get_dev_target(devs_array[0].dev_type));
 				int i;
 				for (i = 0; i < devs_len; i++) {
-					upnp_ssdp_resp(devs_array[i].dev_upnp_uuid,
-							devs_array[i].port);
+					ssdp_resp(&devs_array[i]);
+					os_delay_us(10000);
 				}
 			}
 		}
@@ -159,7 +234,7 @@ int upnp_start(upnp_dev_t *devs, int ways)
 		return -1;
 	}
 
-	upnp_dev_uuid_init(devs, ways);
+	dev_uuid_init(devs, ways);
 
 	ip_addr_t multicast_addr;
 	multicast_addr.addr = UDP_SRV_IP;
@@ -171,7 +246,7 @@ int upnp_start(upnp_dev_t *devs, int ways)
 
 	devs_array = devs;
 	devs_len = ways;
-	udp_srv_set_rx_handler(udps, upnp_process_ssdp_req);
+	udp_srv_set_rx_handler(udps, ssdp_process_req);
 
     if (!udp_srv_listen(udps, *IP_ADDR_ANY, UDP_SRV_PORT)) {
 		UPNP_INFO("UDP listen failed\r\n");

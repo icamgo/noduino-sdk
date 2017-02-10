@@ -21,7 +21,7 @@ irom void httpd_handle_root(void *arg)
 {
 	char resp[256];
 	char body[] = "You should tell Alexa to discover devices";
-	os_sprintf(resp, HTTP_OK_RESP, "text/plain",
+	os_sprintf(resp, HTTP_OK_HDR, "text/plain",
 			os_strlen(body), body);
 
 	struct espconn *pespconn = (struct espconn *)arg;
@@ -46,9 +46,15 @@ irom void httpd_handle_setupxml(void *arg)
 
 	struct espconn *pcon = (struct espconn *)arg;
 	upnp_dev_t *d = (upnp_dev_t *)(pcon->reverse);
-	os_sprintf(body, SETUPXML_BODY, d->dev_voice_name, d->dev_upnp_uuid);
 
-	os_sprintf(resp, HTTP_OK_RESP, "text/xml",
+	os_sprintf(body, WEMO_SETUP_XML,
+				get_dev_target(d->dev_type),
+				d->dev_voice_name,
+				d->model_name,
+				d->model_num,
+				d->dev_upnp_uuid);
+
+	os_sprintf(resp, HTTP_OK_HDR, "text/xml",
 			os_strlen(body), body);
 
 	espconn_sent(pcon, resp, os_strlen(resp));
@@ -84,7 +90,7 @@ irom void httpd_handle_upnp_ctrl(void *arg, char *data)
 		UPNP_INFO("resp mem alloc failed when response upnp ctrl\r\n");
 		return;
 	}
-	os_sprintf(resp, HTTP_OK_RESP, "text/plain", 0, "");
+	os_sprintf(resp, HTTP_OK_HDR, "text/plain", 0, "");
 
 	espconn_sent(pespconn, resp, os_strlen(resp));
 
@@ -101,8 +107,8 @@ irom void httpd_handle_evnt_service(void *arg)
 		return;
 	}
 
-	os_sprintf(resp, HTTP_OK_RESP, "text/plain",
-			os_strlen(EVENT_SERVICE_XML), EVENT_SERVICE_XML);
+	os_sprintf(resp, HTTP_OK_HDR, "text/plain",
+			os_strlen(WEMO_SERVICE_XML), WEMO_SERVICE_XML);
 
 	struct espconn *pespconn = (struct espconn *)arg;
 	espconn_sent(pespconn, resp, os_strlen(resp));

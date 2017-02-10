@@ -25,20 +25,22 @@
 
 #include "espconn.h"
 
-#define HTTP_OK_RESP "HTTP/1.0 200 OK\r\n\
+#define HTTP_OK_HDR	"HTTP/1.0 200 OK\r\n\
 Server: lwIP/1.4.0\r\n\
 Content-type: %s\r\n\
 Content-Length: %d\r\n\
 Connection: close\r\n\r\n%s\r\n"
 
-#define SETUPXML_BODY	"<?xml version=\"1.0\"?>\
+
+#define WEMO_SETUP_XML	"<?xml version=\"1.0\"?>\
 <root>\
 <device>\
-<deviceType>urn:Belkin:device:controllee:1</deviceType>\
+<deviceType>%s</deviceType>\
 <friendlyName>%s</friendlyName>\
 <manufacturer>Belkin International Inc.</manufacturer>\
-<modelName>Emulated Socket</modelName>\
-<modelNumber>3.1415</modelNumber>\
+<manufacturerURL>http://www.noduino.org</manufacturerURL>\
+<modelName>Noduino %s</modelName>\
+<modelNumber>%s</modelNumber>\
 <UDN>uuid:%s</UDN>\
 <serialNumber>221517K0101769</serialNumber>\
 <binaryState>0</binaryState>\
@@ -54,7 +56,7 @@ Connection: close\r\n\r\n%s\r\n"
 </device>\
 </root>"
 
-#define EVENT_SERVICE_XML "<?scpd xmlns=\"urn:Belkin:service-1-0\"?>\
+#define WEMO_SERVICE_XML "<?scpd xmlns=\"urn:Belkin:service-1-0\"?>\
 <actionList>\
 <action>\
 <name>SetBinaryState</name>\
@@ -81,34 +83,18 @@ Connection: close\r\n\r\n%s\r\n"
 </action>\
 </scpd>\r\n\r\n"
 
-static const char *HUE_XML =
-"HTTP/1.1 200 OK\r\n"
-"Content-Type: text/xml\r\n"
-"Connection: close\r\n"
-"Access-Control-Allow-Origin: *\r\n"
-"\r\n"
-"<?xml version=\"1.0\"?>"
-"<root xmlns=\"urn:schemas-upnp-org:device-1-0\">"
-"<specVersion>"
-"<major>1</major>"
-"<minor>0</minor>"
-"</specVersion>"
-"<URLBase>http://%u.%u.%u.%u:%u/</URLBase>"
-"<device>"
-"<deviceType>%s</deviceType>"
-"<friendlyName>%s</friendlyName>"
-"<presentationURL>%s</presentationURL>"
-"<serialNumber>%s</serialNumber>"
-"<modelName>%s</modelName>"
-"<modelNumber>%s</modelNumber>"
-"<modelURL>%s</modelURL>"
-"<manufacturer>%s</manufacturer>"
-"<manufacturerURL>%s</manufacturerURL>"
-"<UDN>uuid:%s</UDN>"
-"</device>"
-"</root>\r\n"
-"\r\n";
-
+#define	HUE_XML			\
+"<root><device>\
+<deviceType>urn:schemas-upnp-org:device:basic:1</deviceType>\
+<friendlyName>%s</friendlyName>\
+<manufacturer>Royal Philips Electronics</manufacturer>\
+<manufacturerURL>http://www.noduino.org</manufacturerURL>\
+<modelDescription>Noduino %s</modelDescription>\
+<modelName>Philips hue bridge 2012</modelName>\
+<modelNumber>%s</modelNumber>\
+<serialNumber>001788102201</serialNumber>\
+<UDN>uuid:2f402f80-da50-11e1-9b23-001788102201</UDN>\
+</device></root>"
 
 int httpd_start(upnp_dev_t *d);
 void httpd_stop(upnp_dev_t *d);
