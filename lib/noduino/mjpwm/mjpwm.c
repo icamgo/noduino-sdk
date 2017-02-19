@@ -36,9 +36,12 @@
 
 static int nc = 2;
 
+static uint8_t pin_di = 13;
+static uint8_t pin_dcki = 15;
+
 LOCAL mjpwm_cmd_t mjpwm_commands[GPIO_MAX_INDEX + 1];
 
-void ICACHE_FLASH_ATTR mjpwm_di_pulse(uint8_t pin_di, uint16_t times)
+void ICACHE_FLASH_ATTR mjpwm_di_pulse(uint16_t times)
 {
 	uint16_t i;
 	for (i = 0; i < times; i++) {
@@ -50,7 +53,7 @@ void ICACHE_FLASH_ATTR mjpwm_di_pulse(uint8_t pin_di, uint16_t times)
 	}
 }
 
-void ICACHE_FLASH_ATTR mjpwm_dcki_pulse(uint8_t pin_dcki, uint16_t times)
+void ICACHE_FLASH_ATTR mjpwm_dcki_pulse(uint16_t times)
 {
 	uint16_t i;
 	for (i = 0; i < times; i++) {
@@ -61,11 +64,8 @@ void ICACHE_FLASH_ATTR mjpwm_dcki_pulse(uint8_t pin_dcki, uint16_t times)
 	}
 }
 
-//-----------------------------------------------------------------------------
-// Command Data
-//-----------------------------------------------------------------------------
 void ICACHE_FLASH_ATTR
-mjpwm_send_command(uint8_t pin_di, uint8_t pin_dcki, mjpwm_cmd_t command)
+mjpwm_send_command(mjpwm_cmd_t command)
 {
 	uint8_t i, n;
 	uint8_t command_data;
@@ -76,7 +76,7 @@ mjpwm_send_command(uint8_t pin_di, uint8_t pin_dcki, mjpwm_cmd_t command)
 	os_delay_us(12);
 	// Send 12 DI pulse, after 6 pulse's falling edge store duty data, and 12
 	// pulse's rising edge convert to command mode.
-	mjpwm_di_pulse(pin_di, 12);
+	mjpwm_di_pulse(12);
 	// Delay >12us, begin send CMD data
 	os_delay_us(12);
 	asm("nop;nop;");
@@ -120,19 +120,16 @@ mjpwm_send_command(uint8_t pin_di, uint8_t pin_dcki, mjpwm_cmd_t command)
 	os_delay_us(12);
 	// Send 16 DI pulse，at 14 pulse's falling edge store CMD data, and
 	// at 16 pulse's falling edge convert to duty mode.
-	mjpwm_di_pulse(pin_di, 16);
+	mjpwm_di_pulse(16);
 	// TStop > 12us.
 	os_delay_us(12);
 	asm("nop;nop;");
 	// ets_intr_unlock();
 }
 
-//-----------------------------------------------------------------------------
-// Image Data
-//-----------------------------------------------------------------------------
 void ICACHE_FLASH_ATTR
-mjpwm_send_duty(uint8_t pin_di, uint8_t pin_dcki, uint16_t duty_r,
-		uint16_t duty_g, uint16_t duty_b, uint16_t duty_w)
+mjpwm_send_duty(uint16_t duty_r, uint16_t duty_g,
+		uint16_t duty_b, uint16_t duty_w)
 {
 	uint8_t i = 0, n;
 	uint8_t channel = 0;
@@ -208,7 +205,7 @@ mjpwm_send_duty(uint8_t pin_di, uint8_t pin_dcki, uint16_t duty_r,
 	// TStart > 12us. Ready for send DI pulse.
 	os_delay_us(12);
 	// Send 8 DI pulse. After 8 pulse falling edge, store old data.
-	mjpwm_di_pulse(pin_di, 8);
+	mjpwm_di_pulse(8);
 	// TStop > 12us.
 	os_delay_us(12);
 	asm("nop;nop;");
@@ -216,8 +213,11 @@ mjpwm_send_duty(uint8_t pin_di, uint8_t pin_dcki, uint16_t duty_r,
 }
 
 void ICACHE_FLASH_ATTR
-mjpwm_init(uint8_t pin_di, uint8_t pin_dcki, uint8_t n_chips, mjpwm_cmd_t command)
+mjpwm_init(uint8_t di, uint8_t dcki, uint8_t n_chips, mjpwm_cmd_t cmd)
 {
+	pin_di = di;
+	pin_dcki = dcki;
+
 	MJPWM_DIRECT_GPIO(pin_di);
 	MJPWM_DIRECT_GPIO(pin_dcki);
 	MJPWM_DIRECT_MODE_OUTPUT(pin_di);
@@ -228,7 +228,7 @@ mjpwm_init(uint8_t pin_di, uint8_t pin_dcki, uint8_t n_chips, mjpwm_cmd_t comman
 	nc = n_chips;
 
 	// Clear all duty register
-	mjpwm_dcki_pulse(pin_dcki, 32 * nc);
+	mjpwm_dcki_pulse(32 * nc);
 
-	mjpwm_send_command(pin_di, pin_dcki, command);
+	mjpwm_send_command(cmd);
 }

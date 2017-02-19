@@ -67,9 +67,9 @@ typedef struct mjpwm_cmd_t {
 }
 
 void mjpwm_init(uint8_t pin_di, uint8_t pin_dcki, uint8_t n_chips, mjpwm_cmd_t command);
-void mjpwm_di_pulse(uint8_t pin_di, uint16_t times);
-void mjpwm_dcki_pulse(uint8_t pin_dcki, uint16_t times);
-void mjpwm_send_command(uint8_t pin_di, uint8_t pin_dcki, mjpwm_cmd_t command);
-void mjpwm_send_duty(uint8_t pin_di, uint8_t pin_dcki, uint16_t duty_r, uint16_t duty_g, uint16_t duty_b, uint16_t duty_w);
+void mjpwm_di_pulse(uint16_t times);
+void mjpwm_dcki_pulse(uint16_t times);
+void mjpwm_send_command(mjpwm_cmd_t command);
+void mjpwm_send_duty(uint16_t duty_r, uint16_t duty_g, uint16_t duty_b, uint16_t duty_w);
 
 #endif /* __NETWORK_H__ */
