@@ -168,11 +168,88 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 	}
 }
 
+irom uint32_t rgb2hsl(mcu_status_t *c)
+{
+	float max = fmax(fmax(c->r, c->g), c->b);
+	float min = fmin(fmin(c->r, c->g), c->b);
+
+	float h, s, l;
+	l = (max + min) / 2.0f;
+
+	if (max == min) {
+		h = s = 0.0f;
+	} else {
+		float d = max - min;
+		s = (l > 0.5f) ? d / (2.0f - max - min) : d / (max + min);
+
+		if (r > g && r > b)
+			h = (g - b) / d + (g < b ? 6.0f : 0.0f);
+		else if (g > b)
+			h = (b - r) / d + 2.0f;
+		else
+			h = (r - g) / d + 4.0f;
+
+		h /= 6.0f;
+	}
+
+	return ((uint32_t)(h * 255) << 16) |
+			((uint32_t)(s * 255) << 8) |
+			(uint32_t)(l * 255);
+}
+
+irom float hue2rgb(float p, float q, float t)
+{
+	if (t < 0f)
+		t += 1f;
+	if (t > 1f)
+		t -= 1f;
+	if (t < 1f/6f)
+		return p + (q - p) * 6f * t;
+	if (t < 1f/2f)
+		return q;
+	if (t < 2f/3f)
+		return p + (q - p) * (2f/3f - t) * 6f;
+
+	return p;
+}
+
+irom uint32_t hsl2rgb(uint32_t hsl)
+{
+	float h = (float)((hsl >> 16) & 0xff);
+	float s = (float)((hsl >> 8) & 0xff);
+	float l = (float)(hsl & 0xff);
+
+	float r, g, b;
+
+	if (s == 0f) {
+		r = g = b = l;
+	} else {
+		float q = l < 0.5f ? l * (1 + s) : l + s - l * s;
+		float p = 2 * l - q;
+		r = hue2rgb(p, q, h + 1f/3f);
+		g = hue2rgb(p, q, h);
+		b = hue2rgb(p, q, h - 1f/3f);
+	}
+	return ((uint32_t)(r * 255) << 16) |
+			((uint32_t)(g * 255) << 8) |
+			((uint32_t)(b * 255));
+}
+
+irom void change_light_grad(uint32_t from, uint32_t to)
+{
+
+}
+
 irom void set_light_status(mcu_status_t *st)
 {
+	mcu_status_t *o = NULL;
+
 	if (st == NULL) {
 		st = &(sys_status.mcu_status);
+	} else {
+		o = &(sys_status.mcu_status);
 	}
+
 	if (st->s) {
 		// we only change the led color when user setup apparently
 		mjpwm_send_duty(
