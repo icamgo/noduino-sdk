@@ -38,10 +38,9 @@ static os_timer_t effect_timer;
 static os_timer_t delay_timer;
 
 static light_effect_t smart_effect = 0;
-
 static app_state_t app_state = APP_STATE_NORMAL;
 
-void ICACHE_FLASH_ATTR app_push_status(mcu_status_t *st)
+irom void app_push_status(mcu_status_t *st)
 {
 	char msg[48];
 	os_memset(msg, 0, 48);
@@ -62,7 +61,7 @@ void ICACHE_FLASH_ATTR app_push_status(mcu_status_t *st)
 }
 
 #ifdef CONFIG_ALEXA
-void ICACHE_FLASH_ATTR app_push_voice_name(char *vname)
+irom void app_push_voice_name(char *vname)
 {
 	/* {"m":"voice_name", "d":"room light"} */
 
@@ -71,8 +70,7 @@ void ICACHE_FLASH_ATTR app_push_voice_name(char *vname)
 }
 #endif
 
-void ICACHE_FLASH_ATTR
-mjyun_receive(const char * event_name, const char * event_data)
+irom void mjyun_receive(const char * event_name, const char * event_data)
 {
 	/* {"m":"set", "d":{"r":18,"g":100,"b":7,"w":0,"s":1000}} */
 	INFO("RECEIVED: key:value [%s]:[%s]\r\n", event_name, event_data);
@@ -119,7 +117,7 @@ mjyun_receive(const char * event_name, const char * event_data)
 				}
 			}
 
-			app_apply_settings(&mst);
+			set_light_status(&mst);
 			app_check_mcu_save(&mst);
 
 			// notify the other users
@@ -170,8 +168,7 @@ mjyun_receive(const char * event_name, const char * event_data)
 	}
 }
 
-void ICACHE_FLASH_ATTR
-app_apply_settings(mcu_status_t *st)
+irom void set_light_status(mcu_status_t *st)
 {
 	if (st == NULL) {
 		st = &(sys_status.mcu_status);
@@ -179,27 +176,17 @@ app_apply_settings(mcu_status_t *st)
 	if (st->s) {
 		// we only change the led color when user setup apparently
 		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
 		    (uint16_t)(4095) * st->r / 255,
 		    (uint16_t)(4095) * st->g / 255,
 		    (uint16_t)(4095) * st->b / 255,
 		    (uint16_t)(4095) * st->w / 255
 		);
 	} else {
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    0,
-		    0,
-		    0,
-		    0
-		);
+		mjpwm_send_duty(0, 0, 0, 0);
 	}
 }
 
-void ICACHE_FLASH_ATTR
-app_param_load(void)
+irom void app_param_load(void)
 {
 	system_param_load(
 	    (APP_START_SEC),
@@ -243,14 +230,13 @@ app_param_load(void)
 #endif
 }
 
-void ICACHE_FLASH_ATTR app_start_status()
+irom void app_start_status()
 {
 	INFO("OpenLight APP: start count:%d, start continue:%d\r\n",
 			sys_status.start_count, sys_status.start_continue);
 }
 
-void ICACHE_FLASH_ATTR
-app_param_save(void)
+irom void app_param_save(void)
 {
 	INFO("Flash Saved !\r\n");
 	// sys_status.mcu_status = local_mcu_status;
@@ -260,8 +246,7 @@ app_param_save(void)
 	    sizeof(sys_status));
 }
 
-void ICACHE_FLASH_ATTR
-app_check_mcu_save(mcu_status_t *st)
+irom void app_check_mcu_save(mcu_status_t *st)
 {
 	if(st == NULL)
 		return;
@@ -286,80 +271,42 @@ app_check_mcu_save(mcu_status_t *st)
 	}
 }
 
-void ICACHE_FLASH_ATTR
-set_light_effect(light_effect_t effect)
+irom void set_light_effect(light_effect_t effect)
 {
 	smart_effect = effect;
 }
 
-void ICACHE_FLASH_ATTR
-light_effect_start()
+irom void light_effect_start()
 {
-	static uint16_t value = 0;
-
+	static uint16_t val = 0;
 	static bool flag = true;
 
 	switch (smart_effect) {
-	case RED_GRADIENT:
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    (uint16_t)value,
-		    0,
-		    0,
-		    0
-		);
-		break;
-	case GREEN_GRADIENT:
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    0,
-		    (uint16_t)value,
-		    0,
-		    0
-		);
-		break;
-	case BLUE_GRADIENT:
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    0,
-		    0,
-		    (uint16_t)value,
-		    0
-		);
-		break;
-	case WHITE_GRADIENT:
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    0,
-		    0,
-		    0,
-		    (uint16_t)value
-		);
-		break;
-	default:
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    (uint16_t)value,
-		    (uint16_t)value,
-		    (uint16_t)value,
-		    (uint16_t)value
-		);
-		break;
+		case RED_GRADIENT:
+			mjpwm_send_duty(val, 0, 0, 0);
+			break;
+		case GREEN_GRADIENT:
+			mjpwm_send_duty(0, val, 0, 0);
+			break;
+		case BLUE_GRADIENT:
+			mjpwm_send_duty(0, 0, val, 0);
+			break;
+		case WHITE_GRADIENT:
+			mjpwm_send_duty(0, 0, 0, val);
+			break;
+		default:
+			mjpwm_send_duty(val, val, val, val);
+			break;
 	}
 
 	if (flag)
-		value += 64;
+		val += 64;
 	else
-		value -= 64;
-	if (value / 64 == 4095 / 64 - 1) {
+		val -= 64;
+	if (val / 64 == 4095 / 64 - 1) {
 		flag = false;
 	}
-	if (value / 64 == 0) {
+	if (val / 64 == 0) {
 		flag = true;
 	}
 	os_timer_disarm(&effect_timer);
@@ -367,14 +314,12 @@ light_effect_start()
 	os_timer_arm(&effect_timer, 20, 1);
 }
 
-void ICACHE_FLASH_ATTR
-light_effect_stop()
+irom void light_effect_stop()
 {
 	os_timer_disarm(&effect_timer);
 }
 
-void ICACHE_FLASH_ATTR
-factory_reset()
+irom void factory_reset()
 {
 	mjyun_systemrecovery();
 	system_restore();
@@ -382,8 +327,7 @@ factory_reset()
 	system_restart();
 }
 
-void ICACHE_FLASH_ATTR
-app_start_check(uint32_t system_start_seconds)
+irom void app_start_check(uint32_t system_start_seconds)
 {
 	if ((sys_status.start_continue != 0) && (system_start_seconds > 5)) {
 		sys_status.start_continue = 0;
@@ -397,14 +341,8 @@ app_start_check(uint32_t system_start_seconds)
 		app_param_save();
 	} else if (sys_status.start_count <= 1) {
 		INFO("OpenLight APP: begin ageing\r\n");
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    4095,
-		    4095,
-		    4095,
-		    4095
-		);
+
+		mjpwm_send_duty(4095, 4095, 4095, 4095);
 	}
 #endif
 
@@ -426,27 +364,13 @@ app_start_check(uint32_t system_start_seconds)
 	} else if (sys_status.start_continue >= 5) {
 
 		light_effect_stop();
+		mjpwm_send_duty(4095, 0, 0, 0);
 
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    4095,
-		    0,
-		    0,
-		    0
-		);
 	} else if (sys_status.start_continue >= 4) {
 
 		light_effect_stop();
+		mjpwm_send_duty(0, 4095, 0, 0);
 
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    0,
-		    4095,
-		    0,
-		    0
-		);
 	} else if (sys_status.start_continue >= 3) {
 		if (APP_STATE_SMART != app_state) {
 			INFO("OpenLight APP: User request to enter into smart config mode\r\n");
@@ -478,7 +402,7 @@ app_start_check(uint32_t system_start_seconds)
 
 		app_state = APP_STATE_NORMAL;
 
-		app_apply_settings(NULL);
+		set_light_status(NULL);
 		app_push_status(NULL);
 
 		light_effect_stop();

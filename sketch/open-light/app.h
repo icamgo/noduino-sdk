@@ -60,8 +60,7 @@ typedef enum light_effect {
 void mjyun_receive(const char * event_name, const char * event_data);
 
 void set_light_effect(light_effect_t e);
-
-void app_apply_settings(mcu_status_t *pst);
+void set_light_status(mcu_status_t *pst);
 
 void app_param_load(void);
 void app_param_save(void);
