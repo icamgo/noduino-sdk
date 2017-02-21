@@ -67,6 +67,8 @@ void mjyun_receive(const char * event_name, const char * event_data);
 
 void set_light_effect(light_effect_t e);
 void set_light_status(mcu_status_t *pst);
+void change_light_grad(mcu_status_t *to);
+void change_light_lum(int bri);
 
 void app_param_load(void);
 void app_param_save(void);

@@ -76,7 +76,7 @@ irom void app_push_voice_name(char *vname)
 
 irom void mjyun_receive(const char * event_name, const char * event_data)
 {
-	/* {"m":"set", "d":{"r":18,"g":100,"b":7,"w":0,"s":1000}} */
+	/* {"m":"set", "d":{"r":18,"g":100,"b":7,"w":0,"s":1}} */
 	INFO("RECEIVED: key:value [%s]:[%s]\r\n", event_name, event_data);
 
 	if (0 == os_strcmp(event_name, "set")) {
@@ -130,6 +130,13 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 		cJSON_Delete(pD);
 	}
 
+	/* {"m":"bri", "d":23} */
+	if (0 == os_strcmp(event_name, "bri")) {
+		int bri = atoi(event_data);
+		INFO("RX set brightness %d Request!\r\n", bri);
+		change_light_lum(bri);
+	}
+
 	/* {"m":"set_voice_name", "d":"room light"} */
 	if (0 == os_strcmp(event_name, "set_voice_name")) {
 		INFO("RX set_voice_name = %s\r\n", event_data);
@@ -158,8 +165,8 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 #endif
 	}
 
-	/* {"m":"get"} */
-	if (0 == os_strcmp(event_name, "get")) {
+	/* {"m":"get_state"} */
+	if (0 == os_strcmp(event_name, "get_state")) {
 		INFO("RX Get status Request!\r\n");
 		app_push_status(NULL);
 	}
@@ -308,6 +315,39 @@ irom void change_light_grad(mcu_status_t *to)
 
 		l_from = 2.2f;
 	}
+}
+
+/*
+ * bri = [0, 255]
+ */
+irom void change_light_lum(int bri)
+{
+	mcu_status_t mt;
+
+	if (bri > 255)
+		bri = 255;
+
+	if (bri < 0)
+		bri = 0;
+
+	float l = bri / 255.0f;
+
+	os_memcpy(&mt, &(sys_status.mcu_status), sizeof(mcu_status_t));
+
+	hsl_t hsl;
+
+	rgb2hsl(&mt, &hsl);
+
+	hsl.l = l;
+
+	hsl2rgb(&hsl, &mt);
+
+//	if (bri == 0)
+//		mt.s = 0;
+//	else
+		mt.s = 1;
+
+	change_light_grad(&mt);
 }
 
 irom void set_light_status(mcu_status_t *st)
