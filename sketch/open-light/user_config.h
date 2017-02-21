@@ -17,6 +17,7 @@
 #include "upnp.h"
 
 #include "group.h"
+#include "math.h"
 
 #define CONFIG_ALEXA		1
 

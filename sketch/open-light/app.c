@@ -268,11 +268,7 @@ irom void change_light_grad(mcu_status_t *to)
 			l_to = hsl_to.l;
 		}
 
-		if (l_to > l_from) {
-			step = 0.02;
-		} else {
-			step = -0.02;
-		}
+		step = (l_to - l_from) / 50.0f;
 
 		INFO("l_from = %d, step = %d, l_to = %d\r\n", (int)(l_from*1000), (int)(step*1000), (int)(l_to*1000));
 	}
@@ -298,23 +294,17 @@ irom void change_light_grad(mcu_status_t *to)
 
 		if (l_to == 0) {
 			hsl_to.l = hsl_cur.l;
-			hsl2rgb(&hsl_to, &rgb);
-
 			rgb.s = 0;
-
-			set_light_status(&rgb);
-			app_check_mcu_save(&rgb);
-			INFO("rgbws-0: (%d, %d, %d, %d, %d)\r\n", rgb.r, rgb.g, rgb.b, rgb.w, rgb.s);
-			app_push_status(&rgb);
 		} else {
 			hsl_to.l = l_to;
-			hsl2rgb(&hsl_to, &rgb);
-
-			set_light_status(&rgb);
-			app_check_mcu_save(&rgb);
-			INFO("rgbws: (%d, %d, %d, %d, %d)\r\n", rgb.r, rgb.g, rgb.b, rgb.w, rgb.s);
-			app_push_status(&rgb);
 		}
+
+		hsl2rgb(&hsl_to, &rgb);
+
+		set_light_status(&rgb);
+		INFO("rgbws: (%d, %d, %d, %d, %d)\r\n", rgb.r, rgb.g, rgb.b, rgb.w, rgb.s);
+		app_check_mcu_save(&rgb);
+		app_push_status(&rgb);
 
 		l_from = 2.2f;
 	}
