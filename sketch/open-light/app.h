@@ -32,6 +32,12 @@ typedef struct mcu_status_t {
 	uint8 w;
 } __attribute__((aligned(1), packed)) mcu_status_t;
 
+typedef struct hsl {
+	float h;
+	float s;
+	float l;
+} __attribute__((aligned(4), packed)) hsl_t;
+
 typedef struct system_status_t {
 	uint8 init_flag;
 	uint16 start_count;
