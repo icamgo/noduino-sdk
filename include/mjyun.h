@@ -43,6 +43,7 @@ typedef enum {
 	WIFI_STATION_OK, 				/*设备在STATION模式*/
 	WIFI_STATION_ERROR, 			/*设备在STATION模式并发生了某些错误*/
 	WIFI_STA_DISCONNECTED,			/*设备与路由器连接断开*/
+	WIFI_TRY_CACHED_AP,
 	MJYUN_CONNECTING, 				/*正在连接摩羯云*/
 	MJYUN_CONNECTING_ERROR, 		/*连接摩羯云失败*/
 	MJYUN_CONNECTED, 				/*已连接摩羯云*/
