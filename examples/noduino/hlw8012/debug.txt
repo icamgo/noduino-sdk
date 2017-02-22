@@ -1,0 +1,150 @@
+[HLW] Default current multiplier :         14484.49
+[HLW] Default voltage multiplier :        326943.97
+[HLW] Default power multiplier   :       8275769.32
+[HLW] New current multiplier :          3488.60
+[HLW] New voltage multiplier :        350866.70
+[HLW] New power multiplier   :       2801029.62
+[HLW] Active Power (W)    : 22
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.10
+[HLW] Apparent Power (VA) : 22
+[HLW] Power Factor (%)    : 100
+
+[HLW] Active Power (W)    : 25
+[HLW] Voltage (V)         : 230
+[HLW] Current (A)         :             0.11
+[HLW] Apparent Power (VA) : 26
+[HLW] Power Factor (%)    : 96
+
+[HLW] Active Power (W)    : 27
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.13
+[HLW] Apparent Power (VA) : 27
+[HLW] Power Factor (%)    : 100
+
+[HLW] Active Power (W)    : 28
+[HLW] Voltage (V)         : 230
+[HLW] Current (A)         :             0.14
+[HLW] Apparent Power (VA) : 31
+[HLW] Power Factor (%)    : 90
+
+[HLW] Active Power (W)    : 28
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.15
+[HLW] Apparent Power (VA) : 32
+[HLW] Power Factor (%)    : 87
+
+[HLW] Active Power (W)    : 30
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.16
+[HLW] Apparent Power (VA) : 34
+[HLW] Power Factor (%)    : 88
+
+[HLW] Active Power (W)    : 30
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.16
+[HLW] Apparent Power (VA) : 35
+[HLW] Power Factor (%)    : 85
+
+[HLW] Active Power (W)    : 31
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.17
+[HLW] Apparent Power (VA) : 37
+[HLW] Power Factor (%)    : 83
+
+[HLW] Active Power (W)    : 31
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.17
+[HLW] Apparent Power (VA) : 38
+[HLW] Power Factor (%)    : 81
+
+[HLW] Active Power (W)    : 33
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.18
+[HLW] Apparent Power (VA) : 40
+[HLW] Power Factor (%)    : 82
+
+[HLW] Active Power (W)    : 32
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.19
+[HLW] Apparent Power (VA) : 41
+[HLW] Power Factor (%)    : 78
+
+[HLW] Active Power (W)    : 33
+[HLW] Voltage (V)         : 230
+[HLW] Current (A)         :             0.19
+[HLW] Apparent Power (VA) : 43
+[HLW] Power Factor (%)    : 76
+
+[HLW] Active Power (W)    : 33
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.19
+[HLW] Apparent Power (VA) : 42
+[HLW] Power Factor (%)    : 78
+
+[HLW] Active Power (W)    : 33
+[HLW] Voltage (V)         : 231
+[HLW] Current (A)         :             0.19
+[HLW] Apparent Power (VA) : 44
+[HLW] Power Factor (%)    : 75
+
+[HLW] Active Power (W)    : 33
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.20
+[HLW] Apparent Power (VA) : 44
+[HLW] Power Factor (%)    : 75
+
+[HLW] Active Power (W)    : 34
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.20
+[HLW] Apparent Power (VA) : 43
+[HLW] Power Factor (%)    : 79
+
+[HLW] Active Power (W)    : 34
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.21
+[HLW] Apparent Power (VA) : 45
+[HLW] Power Factor (%)    : 73
+
+[HLW] Active Power (W)    : 33
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.20
+[HLW] Apparent Power (VA) : 44
+[HLW] Power Factor (%)    : 75
+
+[HLW] Active Power (W)    : 34
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.21
+[HLW] Apparent Power (VA) : 45
+[HLW] Power Factor (%)    : 75
+
+[HLW] Active Power (W)    : 34
+[HLW] Voltage (V)         : 231
+[HLW] Current (A)         :             0.22
+[HLW] Apparent Power (VA) : 49
+[HLW] Power Factor (%)    : 69
+
+[HLW] Active Power (W)    : 34
+[HLW] Voltage (V)         : 230
+[HLW] Current (A)         :             0.22
+[HLW] Apparent Power (VA) : 50
+[HLW] Power Factor (%)    : 68
+
+[HLW] Active Power (W)    : 34
+[HLW] Voltage (V)         : 231
+[HLW] Current (A)         :             0.22
+[HLW] Apparent Power (VA) : 49
+[HLW] Power Factor (%)    : 69
+
+[HLW] Active Power (W)    : 34
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.23
+[HLW] Apparent Power (VA) : 49
+[HLW] Power Factor (%)    : 69
+
+[HLW] Active Power (W)    : 34
+[HLW] Voltage (V)         : 220
+[HLW] Current (A)         :             0.22
+[HLW] Apparent Power (VA) : 49
+[HLW] Power Factor (%)    : 69
+
