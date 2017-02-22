@@ -300,6 +300,10 @@ irom void change_light_grad(mcu_status_t *to)
 		hsl2rgb(&hsl_to, &rgb);
 
 		set_light_status(&rgb);
+
+		// update to global
+		os_memcpy(st, &rgb, sizeof(mcu_status_t));
+
 		INFO("rgbws: (%d, %d, %d, %d, %d)\r\n", rgb.r, rgb.g, rgb.b, rgb.w, rgb.s);
 
 		os_timer_disarm(&effect_timer);
@@ -368,6 +372,13 @@ irom int get_light_lum()
 	rgb2hsl(st, &hsl);
 
 	return (int)(hsl.l * 255.0f + 0.5f);
+}
+
+irom bool get_light_on()
+{
+	mcu_status_t *st = &(sys_status.mcu_status);
+
+	return st->s;
 }
 
 irom void set_light_status(mcu_status_t *st)

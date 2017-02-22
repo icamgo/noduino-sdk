@@ -70,6 +70,7 @@ void set_light_status(mcu_status_t *pst);
 void change_light_grad(mcu_status_t *to);
 void change_light_lum(int bri);
 int get_light_lum();
+bool get_light_on();
 
 void app_param_load(void);
 void app_param_save(void);

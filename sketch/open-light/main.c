@@ -50,7 +50,8 @@ upnp_dev_t upnp_devs[] = {
 		.way_on = light_on_saved_and_pub,
 		.way_off = light_off_saved_and_pub,
 		.set_pos = change_light_lum,
-		.get_pos = get_light_lum
+		.get_pos = get_light_lum,
+		.get_on = get_light_on
 	}
 };
 #endif
