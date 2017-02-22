@@ -17,7 +17,7 @@
 #include "mjyun.h"
 
 #define CONFIG_ALEXA		1
-#define DEFAULT_VOICE_NAME	"open plug"
+#define DEFAULT_VOICE_NAME	"plug"
 
 #define DEBUG				1
 
