@@ -275,13 +275,23 @@ irom void change_light_grad(mcu_status_t *to)
 			l_to = hsl_to.l;
 		}
 
-		step = (l_to - l_from) / 50.0f;
+		if (l_from < l_to)
+			step = 0.015;
+		else
+			step = -0.015;
+
+		//step = (l_to - l_from) / 50.0f;
 
 		INFO("l_from = %d, step = %d, l_to = %d\r\n", (int)(l_from*1000), (int)(step*1000), (int)(l_to*1000));
 	}
 
 	if ((l_to != l_from) && (fabsf(l_to - l_from) >= fabsf(step))) {
-		l_from += step;
+
+		// y = x^1.2, y' = 1.2 * x .^ 1.2
+		if (l_from == 0.0f)
+			l_from += step;
+		else
+			l_from += (step * 1.5 * powf(l_from, 0.5));
 
 		INFO("l_from = %d, l_to = %d\r\n", (int)(l_from*1000), (int)(l_to*1000));
 
@@ -294,7 +304,7 @@ irom void change_light_grad(mcu_status_t *to)
 
 		os_timer_disarm(&effect_timer);
 		os_timer_setfn(&effect_timer, (os_timer_func_t *)change_light_grad, (void *)to);
-		os_timer_arm(&effect_timer, 30, 1);
+		os_timer_arm(&effect_timer, 15, 1);
 	} else {
 		INFO("light_gradient end\r\n");
 		os_timer_disarm(&effect_timer);
