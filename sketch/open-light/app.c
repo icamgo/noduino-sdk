@@ -360,6 +360,16 @@ irom void change_light_lum(int bri)
 	change_light_grad(&mt);
 }
 
+irom int get_light_lum()
+{
+	mcu_status_t *st = &(sys_status.mcu_status);
+	hsl_t hsl;
+
+	rgb2hsl(st, &hsl);
+
+	return (int)(hsl.l * 255.0f + 0.5f);
+}
+
 irom void set_light_status(mcu_status_t *st)
 {
 	if (st == NULL) {

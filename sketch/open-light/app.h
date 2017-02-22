@@ -69,6 +69,7 @@ void set_light_effect(light_effect_t e);
 void set_light_status(mcu_status_t *pst);
 void change_light_grad(mcu_status_t *to);
 void change_light_lum(int bri);
+int get_light_lum();
 
 void app_param_load(void);
 void app_param_save(void);
