@@ -21,14 +21,21 @@
 
 #define CONFIG_ALEXA		1
 
-#define DEBUG				1
+#define CONFIG_INFO			1
+//#define CONFIG_DEBUG		1
 
 #define DEFAULT_VOICE_NAME	"open light"
 
-#ifdef DEBUG
+#ifdef CONFIG_INFO
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
 #else
 #define INFO( format, ... )
+#endif
+
+#ifdef CONFIG_DEBUG
+#define DEBUG( format, ... ) os_printf( format, ## __VA_ARGS__ )
+#else
+#define DEBUG( format, ... )
 #endif
 
 #define USE_OPTIMIZE_PRINTF

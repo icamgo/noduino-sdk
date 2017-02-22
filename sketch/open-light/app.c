@@ -282,7 +282,7 @@ irom void change_light_grad(mcu_status_t *to)
 
 		//step = (l_to - l_from) / 50.0f;
 
-		INFO("l_from = %d, step = %d, l_to = %d\r\n", (int)(l_from*1000), (int)(step*1000), (int)(l_to*1000));
+		DEBUG("l_from = %d, step = %d, l_to = %d\r\n", (int)(l_from*1000), (int)(step*1000), (int)(l_to*1000));
 	}
 
 	if ((l_to != l_from) && (fabsf(l_to - l_from) >= fabsf(step))) {
@@ -293,7 +293,7 @@ irom void change_light_grad(mcu_status_t *to)
 		else
 			l_from += (step * 1.5 * powf(l_from, 0.5));
 
-		INFO("l_from = %d, l_to = %d\r\n", (int)(l_from*1000), (int)(l_to*1000));
+		DEBUG("l_from = %d, l_to = %d\r\n", (int)(l_from*1000), (int)(l_to*1000));
 
 		hsl_to.l = l_from;
 
@@ -304,7 +304,7 @@ irom void change_light_grad(mcu_status_t *to)
 		// update to global
 		os_memcpy(st, &rgb, sizeof(mcu_status_t));
 
-		INFO("rgbws: (%d, %d, %d, %d, %d)\r\n", rgb.r, rgb.g, rgb.b, rgb.w, rgb.s);
+		DEBUG("rgbws: (%d, %d, %d, %d, %d)\r\n", rgb.r, rgb.g, rgb.b, rgb.w, rgb.s);
 
 		os_timer_disarm(&effect_timer);
 		os_timer_setfn(&effect_timer, (os_timer_func_t *)change_light_grad, (void *)to);
