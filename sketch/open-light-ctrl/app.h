@@ -32,6 +32,12 @@ typedef struct mcu_status_t {
 	uint8 w;
 } __attribute__((aligned(1), packed)) mcu_status_t;
 
+typedef struct hsl {
+	float h;
+	float s;
+	float l;
+} __attribute__((aligned(4), packed)) hsl_t;
+
 typedef struct system_status_t {
 	uint8 init_flag;
 	uint16 start_count;
@@ -60,8 +66,11 @@ typedef enum light_effect {
 void mjyun_receive(const char * event_name, const char * event_data);
 
 void set_light_effect(light_effect_t e);
-
-void app_apply_settings(mcu_status_t *pst);
+void set_light_status(mcu_status_t *pst);
+void change_light_grad(mcu_status_t *to);
+void change_light_lum(int bri);
+int get_light_lum();
+bool get_light_on();
 
 void app_param_load(void);
 void app_param_save(void);

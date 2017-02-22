@@ -38,10 +38,13 @@ static os_timer_t effect_timer;
 static os_timer_t delay_timer;
 
 static light_effect_t smart_effect = 0;
-
 static app_state_t app_state = APP_STATE_NORMAL;
 
-void ICACHE_FLASH_ATTR app_push_status(mcu_status_t *st)
+uint32_t rgb2hsl(mcu_status_t *c, hsl_t *h);
+void hsl2rgb(hsl_t *h, mcu_status_t *rr);
+void change_light_grad(mcu_status_t *to);
+
+irom void app_push_status(mcu_status_t *st)
 {
 	char msg[48];
 	os_memset(msg, 0, 48);
@@ -62,7 +65,7 @@ void ICACHE_FLASH_ATTR app_push_status(mcu_status_t *st)
 }
 
 #ifdef CONFIG_ALEXA
-void ICACHE_FLASH_ATTR app_push_voice_name(char *vname)
+irom void app_push_voice_name(char *vname)
 {
 	/* {"m":"voice_name", "d":"room light"} */
 
@@ -71,10 +74,9 @@ void ICACHE_FLASH_ATTR app_push_voice_name(char *vname)
 }
 #endif
 
-void ICACHE_FLASH_ATTR
-mjyun_receive(const char * event_name, const char * event_data)
+irom void mjyun_receive(const char * event_name, const char * event_data)
 {
-	/* {"m":"set", "d":{"r":18,"g":100,"b":7,"w":0,"s":1000}} */
+	/* {"m":"set", "d":{"r":18,"g":100,"b":7,"w":0,"s":1}} */
 	INFO("RECEIVED: key:value [%s]:[%s]\r\n", event_name, event_data);
 
 	if (0 == os_strcmp(event_name, "set")) {
@@ -119,15 +121,20 @@ mjyun_receive(const char * event_name, const char * event_data)
 				}
 			}
 
-			app_apply_settings(&mst);
-			app_check_mcu_save(&mst);
+			//set_light_status(&mst);
+			change_light_grad(&mst);
 
-			// notify the other users
-			app_push_status(&mst);
 		} else {
 			INFO("%s: Error when parse JSON\r\n", __func__);
 		}
 		cJSON_Delete(pD);
+	}
+
+	/* {"m":"bri", "d":23} */
+	if (0 == os_strcmp(event_name, "bri")) {
+		int bri = atoi(event_data);
+		INFO("RX set brightness %d Request!\r\n", bri);
+		change_light_lum(bri);
 	}
 
 	/* {"m":"set_voice_name", "d":"room light"} */
@@ -158,8 +165,8 @@ mjyun_receive(const char * event_name, const char * event_data)
 #endif
 	}
 
-	/* {"m":"get"} */
-	if (0 == os_strcmp(event_name, "get")) {
+	/* {"m":"get_state"} */
+	if (0 == os_strcmp(event_name, "get_state")) {
 		INFO("RX Get status Request!\r\n");
 		app_push_status(NULL);
 	}
@@ -170,36 +177,235 @@ mjyun_receive(const char * event_name, const char * event_data)
 	}
 }
 
-void ICACHE_FLASH_ATTR
-app_apply_settings(mcu_status_t *st)
+irom uint32_t rgb2hsl(mcu_status_t *c, hsl_t *h)
+{
+	float r = (float)(c->r/255.0f);
+	float g = (float)(c->g/255.0f);
+	float b = (float)(c->b/255.0f);
+
+	float max = fmax(fmax(r, g), b);
+	float min = fmin(fmin(r, g), b);
+
+	h->l = (max + min) / 2.0f;
+
+	if (max == min) {
+		h->h = h->s = 0.0f;
+	} else {
+		float d = max - min;
+		h->s = (h->l > 0.5f) ? d / (2.0f - max - min) : d / (max + min);
+
+		if (r > g && r > b)
+			h->h = (g - b) / d + (g < b ? 6.0f : 0.0f);
+		else if (g > b)
+			h->h = (b - r) / d + 2.0f;
+		else
+			h->h = (r - g) / d + 4.0f;
+
+		h->h /= 6.0f;
+	}
+}
+
+irom float hue2rgb(float p, float q, float t)
+{
+	if (t < 0.0f)
+		t += 1.0f;
+	if (t > 1.0f)
+		t -= 1.0f;
+	if (t < 1.0f/6.0f)
+		return p + (q - p) * 6.0f * t;
+	if (t < 1.0f/2.0f)
+		return q;
+	if (t < 2.0f/3.0f)
+		return p + (q - p) * (2.0f/3.0f - t) * 6.0f;
+
+	return p;
+}
+
+irom void hsl2rgb(hsl_t *h, mcu_status_t *rr)
+{
+	float r, g, b;
+
+	if (h->s == 0.0f) {
+		r = g = b = h->l;
+	} else {
+		float q = h->l < 0.5f ? h->l * (1.0f + h->s) : h->l + h->s - h->l * h->s;
+		float p = 2.0f * h->l - q;
+		r = hue2rgb(p, q, h->h + 1.0f/3.0f);
+		g = hue2rgb(p, q, h->h);
+		b = hue2rgb(p, q, h->h - 1.0f/3.0f);
+	}
+
+	rr->r = (uint8_t)(r*255 + 0.5f);
+	rr->g = (uint8_t)(g*255 + 0.5f);
+	rr->b = (uint8_t)(b*255 + 0.5f);
+}
+
+irom void change_light_grad(mcu_status_t *to)
+{
+	//change hsl_cur to hsl_to
+	mcu_status_t *st = &(sys_status.mcu_status);
+	mcu_status_t rgb;
+
+	rgb.s = 1;
+
+	static float step = 0.0f;
+	static float l_from = 2.2f;
+
+	static hsl_t hsl_cur, hsl_to;
+	static float l_to;
+
+	if (l_from == 2.2f) {
+		// first run
+
+		rgb2hsl(st, &hsl_cur);
+		rgb2hsl(to, &hsl_to);
+
+		if (st->s == 0) {
+			// current state is off
+			// need to change from 0 to l_to firstly
+			l_from = 0.0f;
+
+		} else {
+			l_from = hsl_cur.l;
+		}
+
+		if (to->s == 0) {
+			l_to = 0.0f;
+		} else {
+			l_to = hsl_to.l;
+		}
+
+		if (l_from < l_to)
+			step = 0.015;
+		else
+			step = -0.015;
+
+		//step = (l_to - l_from) / 50.0f;
+
+		DEBUG("l_from = %d, step = %d, l_to = %d\r\n", (int)(l_from*1000), (int)(step*1000), (int)(l_to*1000));
+	}
+
+	if ((l_to != l_from) && (fabsf(l_to - l_from) >= fabsf(step))) {
+
+		// y = x^1.2, y' = 1.2 * x .^ 1.2
+		if (l_from == 0.0f)
+			l_from += step;
+		else
+			l_from += (step * 1.5 * powf(l_from, 0.5));
+
+		DEBUG("l_from = %d, l_to = %d\r\n", (int)(l_from*1000), (int)(l_to*1000));
+
+		hsl_to.l = l_from;
+
+		hsl2rgb(&hsl_to, &rgb);
+
+		set_light_status(&rgb);
+
+		// update to global
+		os_memcpy(st, &rgb, sizeof(mcu_status_t));
+
+		DEBUG("rgbws: (%d, %d, %d, %d, %d)\r\n", rgb.r, rgb.g, rgb.b, rgb.w, rgb.s);
+
+		os_timer_disarm(&effect_timer);
+		os_timer_setfn(&effect_timer, (os_timer_func_t *)change_light_grad, (void *)to);
+		os_timer_arm(&effect_timer, 15, 1);
+	} else {
+		INFO("light_gradient end\r\n");
+		os_timer_disarm(&effect_timer);
+
+		if (l_to == 0) {
+			hsl_to.l = hsl_cur.l;
+			rgb.s = 0;
+		} else {
+			hsl_to.l = l_to;
+		}
+
+		hsl2rgb(&hsl_to, &rgb);
+
+		set_light_status(&rgb);
+		INFO("rgbws: (%d, %d, %d, %d, %d)\r\n", rgb.r, rgb.g, rgb.b, rgb.w, rgb.s);
+		app_check_mcu_save(&rgb);
+		app_push_status(&rgb);
+
+		l_from = 2.2f;
+	}
+}
+
+/*
+ * bri = [0, 255]
+ */
+irom void change_light_lum(int bri)
+{
+	mcu_status_t mt;
+
+	if (bri > 255)
+		bri = 255;
+
+	if (bri < 0)
+		bri = 0;
+
+	float l = bri / 255.0f;
+
+	os_memcpy(&mt, &(sys_status.mcu_status), sizeof(mcu_status_t));
+
+	hsl_t hsl;
+
+	rgb2hsl(&mt, &hsl);
+
+	hsl.l = l;
+
+	hsl2rgb(&hsl, &mt);
+
+//	if (bri == 0)
+//		mt.s = 0;
+//	else
+		mt.s = 1;
+
+	change_light_grad(&mt);
+}
+
+irom int get_light_lum()
+{
+	mcu_status_t *st = &(sys_status.mcu_status);
+	hsl_t hsl;
+
+	rgb2hsl(st, &hsl);
+
+	return (int)(hsl.l * 255.0f + 0.5f);
+}
+
+irom bool get_light_on()
+{
+	mcu_status_t *st = &(sys_status.mcu_status);
+
+	return st->s;
+}
+
+irom void set_light_status(mcu_status_t *st)
 {
 	if (st == NULL) {
 		st = &(sys_status.mcu_status);
 	}
+
+	if ((st->r == st->g) && (st->g == st->b))
+		st->w = st->r;
+	else
+		st->w = 0;
+
 	if (st->s) {
 		// we only change the led color when user setup apparently
 		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    (uint16_t)(4095) * st->r / 255,
-		    (uint16_t)(4095) * st->g / 255,
-		    (uint16_t)(4095) * st->b / 255,
-		    (uint16_t)(4095) * st->w / 255
+		    (uint16_t)(4095 * st->r / 255),
+		    (uint16_t)(4095 * st->g / 255),
+		    (uint16_t)(4095 * st->b / 255),
+		    (uint16_t)(4095 * st->w / 255)
 		);
 	} else {
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    0,
-		    0,
-		    0,
-		    0
-		);
+		mjpwm_send_duty(0, 0, 0, 0);
 	}
 }
 
-void ICACHE_FLASH_ATTR
-app_param_load(void)
+irom void app_param_load(void)
 {
 	system_param_load(
 	    (APP_START_SEC),
@@ -243,14 +449,13 @@ app_param_load(void)
 #endif
 }
 
-void ICACHE_FLASH_ATTR app_start_status()
+irom void app_start_status()
 {
 	INFO("OpenLight APP: start count:%d, start continue:%d\r\n",
 			sys_status.start_count, sys_status.start_continue);
 }
 
-void ICACHE_FLASH_ATTR
-app_param_save(void)
+irom void app_param_save(void)
 {
 	INFO("Flash Saved !\r\n");
 	// sys_status.mcu_status = local_mcu_status;
@@ -260,8 +465,7 @@ app_param_save(void)
 	    sizeof(sys_status));
 }
 
-void ICACHE_FLASH_ATTR
-app_check_mcu_save(mcu_status_t *st)
+irom void app_check_mcu_save(mcu_status_t *st)
 {
 	if(st == NULL)
 		return;
@@ -286,80 +490,42 @@ app_check_mcu_save(mcu_status_t *st)
 	}
 }
 
-void ICACHE_FLASH_ATTR
-set_light_effect(light_effect_t effect)
+irom void set_light_effect(light_effect_t effect)
 {
 	smart_effect = effect;
 }
 
-void ICACHE_FLASH_ATTR
-light_effect_start()
+irom void light_effect_start()
 {
-	static uint16_t value = 0;
-
+	static uint16_t val = 0;
 	static bool flag = true;
 
 	switch (smart_effect) {
-	case RED_GRADIENT:
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    (uint16_t)value,
-		    0,
-		    0,
-		    0
-		);
-		break;
-	case GREEN_GRADIENT:
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    0,
-		    (uint16_t)value,
-		    0,
-		    0
-		);
-		break;
-	case BLUE_GRADIENT:
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    0,
-		    0,
-		    (uint16_t)value,
-		    0
-		);
-		break;
-	case WHITE_GRADIENT:
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    0,
-		    0,
-		    0,
-		    (uint16_t)value
-		);
-		break;
-	default:
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    (uint16_t)value,
-		    (uint16_t)value,
-		    (uint16_t)value,
-		    (uint16_t)value
-		);
-		break;
+		case RED_GRADIENT:
+			mjpwm_send_duty(val, 0, 0, 0);
+			break;
+		case GREEN_GRADIENT:
+			mjpwm_send_duty(0, val, 0, 0);
+			break;
+		case BLUE_GRADIENT:
+			mjpwm_send_duty(0, 0, val, 0);
+			break;
+		case WHITE_GRADIENT:
+			mjpwm_send_duty(0, 0, 0, val);
+			break;
+		default:
+			mjpwm_send_duty(val, val, val, val);
+			break;
 	}
 
 	if (flag)
-		value += 64;
+		val += 64;
 	else
-		value -= 64;
-	if (value / 64 == 4095 / 64 - 1) {
+		val -= 64;
+	if (val / 64 == 4095 / 64 - 1) {
 		flag = false;
 	}
-	if (value / 64 == 0) {
+	if (val / 64 == 0) {
 		flag = true;
 	}
 	os_timer_disarm(&effect_timer);
@@ -367,14 +533,12 @@ light_effect_start()
 	os_timer_arm(&effect_timer, 20, 1);
 }
 
-void ICACHE_FLASH_ATTR
-light_effect_stop()
+irom void light_effect_stop()
 {
 	os_timer_disarm(&effect_timer);
 }
 
-void ICACHE_FLASH_ATTR
-factory_reset()
+irom void factory_reset()
 {
 	mjyun_systemrecovery();
 	system_restore();
@@ -382,8 +546,7 @@ factory_reset()
 	system_restart();
 }
 
-void ICACHE_FLASH_ATTR
-app_start_check(uint32_t system_start_seconds)
+irom void app_start_check(uint32_t system_start_seconds)
 {
 	if ((sys_status.start_continue != 0) && (system_start_seconds > 5)) {
 		sys_status.start_continue = 0;
@@ -397,14 +560,8 @@ app_start_check(uint32_t system_start_seconds)
 		app_param_save();
 	} else if (sys_status.start_count <= 1) {
 		INFO("OpenLight APP: begin ageing\r\n");
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    4095,
-		    4095,
-		    4095,
-		    4095
-		);
+
+		mjpwm_send_duty(4095, 4095, 4095, 4095);
 	}
 #endif
 
@@ -426,27 +583,13 @@ app_start_check(uint32_t system_start_seconds)
 	} else if (sys_status.start_continue >= 5) {
 
 		light_effect_stop();
+		mjpwm_send_duty(4095, 0, 0, 0);
 
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    4095,
-		    0,
-		    0,
-		    0
-		);
 	} else if (sys_status.start_continue >= 4) {
 
 		light_effect_stop();
+		mjpwm_send_duty(0, 4095, 0, 0);
 
-		mjpwm_send_duty(
-		    PIN_DI,
-		    PIN_DCKI,
-		    0,
-		    4095,
-		    0,
-		    0
-		);
 	} else if (sys_status.start_continue >= 3) {
 		if (APP_STATE_SMART != app_state) {
 			INFO("OpenLight APP: User request to enter into smart config mode\r\n");
@@ -478,7 +621,7 @@ app_start_check(uint32_t system_start_seconds)
 
 		app_state = APP_STATE_NORMAL;
 
-		app_apply_settings(NULL);
+		set_light_status(NULL);
 		app_push_status(NULL);
 
 		light_effect_stop();

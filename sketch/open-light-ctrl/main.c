@@ -27,9 +27,7 @@ void light_on_saved_and_pub()
 	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
 	mst.s = 1;
 
-	app_apply_settings(&mst);
-	app_check_mcu_save(&mst);
-	app_push_status(&mst);
+	change_light_grad(&mst);
 }
 
 void light_off_saved_and_pub()
@@ -38,9 +36,7 @@ void light_off_saved_and_pub()
 	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
 	mst.s = 0;
 
-	app_apply_settings(&mst);
-	app_check_mcu_save(&mst);
-	app_push_status(&mst);
+	change_light_grad(&mst);
 }
 
 upnp_dev_t upnp_devs[] = {
@@ -48,14 +44,19 @@ upnp_dev_t upnp_devs[] = {
 		.esp_conn = NULL,
 		.port = 80,
 		.dev_voice_name = DEFAULT_VOICE_NAME,
+		.model_name = "OpenLight Bulb",
+		.model_num = "1.0",
+		.dev_type = HUE,
 		.way_on = light_on_saved_and_pub,
-		.way_off = light_off_saved_and_pub
+		.way_off = light_off_saved_and_pub,
+		.set_pos = change_light_lum,
+		.get_pos = get_light_lum,
+		.get_on = get_light_on
 	}
 };
 #endif
 
-LOCAL void ICACHE_FLASH_ATTR
-mjyun_stated_cb(mjyun_state_t state)
+irom static void mjyun_stated_cb(mjyun_state_t state)
 {
 	if (mjyun_state() != state)
 		INFO("Platform: mjyun_state error \r\n");
@@ -151,8 +152,7 @@ void mjyun_disconnected()
 	//show the wifi status
 }
 
-void ICACHE_FLASH_ATTR
-platform_init(void)
+irom void platform_init(void)
 {
 	gpio16_output_conf();
 	gpio16_output_set(1);
@@ -217,7 +217,7 @@ irom void user_init()
 	mjpwm_init(PIN_DI, PIN_DCKI, 2, command);
 
 	/* Light the led ASAP */
-	app_apply_settings(NULL);
+	set_light_status(NULL);
 
 	system_init_done_cb(system_init_done);
 }
