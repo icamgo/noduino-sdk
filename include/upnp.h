@@ -20,32 +20,38 @@
 
 #include "udp_srv.h"
 
-#define UDP_SRV_IP		ipaddr_addr("239.255.255.250")
-#define UDP_SRV_PORT	1900
-
-#define SSDP_DISCOVER_RESP "HTTP/1.1 200 OK\r\n\
-CACHE-CONTROL: max-age=86400\r\n\
-DATE: Sat, 26 Nov 2016 04:56:29 GMT\r\n\
-EXT:\r\n\
-LOCATION: http://%s:%d/setup.xml\r\n\
-OPT: \"http://schemas.upnp.org/upnp/1/0/\"; ns=01\r\n\
-01-NLS: b9200ebb-736d-4b93-bf03-835149d13983\r\n\
-SERVER: Unspecified, UPnP/1.0, Unspecified\r\n\
-ST: urn:Belkin:device:**\r\n\
-USN: uuid: %s::urn:Belkin:device:**\r\n\
-X-User-Agent: redsonic\r\n\r\n"
+typedef enum {
+	WEMO_SWITCH,
+	WEMO_INSIGHT,
+	WEMO_LIGHTSWITCH,
+	WEMO_BULB,
+	WEMO_MOTION,
+	WEMO_MAKER,
+	HUE
+} dev_type_t;
 
 typedef void (*on_fn_t)(void);
 typedef void (*off_fn_t)(void);
+typedef void (*pos_fn_t)(int p);
+typedef int (*get_pos_t)();
+typedef bool (*get_on_t)();
 
 typedef struct upnp_dev {
 	struct espconn *esp_conn;
 	uint32_t port;
 	char dev_upnp_uuid[64];
 	char dev_voice_name[32];
+	char model_name[32];
+	char model_num[12];
+	dev_type_t dev_type;
 	on_fn_t way_on;
 	off_fn_t way_off;
+	pos_fn_t set_pos;
+	get_pos_t get_pos;
+	get_on_t get_on;
 } upnp_dev_t;
+
+char *get_dev_target(dev_type_t tp);
 
 int upnp_start(upnp_dev_t *devs, int ways);
 void upnp_stop(upnp_dev_t *devs, int ways);
