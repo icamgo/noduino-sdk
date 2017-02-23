@@ -281,6 +281,8 @@ irom void change_light_grad(mcu_status_t *to)
 			step = -0.015;
 
 		//step = (l_to - l_from) / 50.0f;
+		// turn off need to notify others ASAP
+		app_push_status(to);
 
 		DEBUG("l_from = %d, step = %d, l_to = %d\r\n", (int)(l_from*1000), (int)(step*1000), (int)(l_to*1000));
 	}
@@ -324,7 +326,10 @@ irom void change_light_grad(mcu_status_t *to)
 
 		set_light_status(&rgb);
 		INFO("rgbws: (%d, %d, %d, %d, %d)\r\n", rgb.r, rgb.g, rgb.b, rgb.w, rgb.s);
-		app_check_mcu_save(&rgb);
+
+		// update to global
+		os_memcpy(st, &rgb, sizeof(mcu_status_t));
+
 		app_push_status(&rgb);
 
 		l_from = 2.2f;
