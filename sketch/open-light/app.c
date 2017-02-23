@@ -329,6 +329,7 @@ irom void change_light_grad(mcu_status_t *to)
 
 		// update to global
 		os_memcpy(st, &rgb, sizeof(mcu_status_t));
+		app_param_save();
 
 		app_push_status(&rgb);
 
