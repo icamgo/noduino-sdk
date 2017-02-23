@@ -324,7 +324,10 @@ irom void change_light_grad(mcu_status_t *to)
 
 		set_light_status(&rgb);
 		INFO("rgbws: (%d, %d, %d, %d, %d)\r\n", rgb.r, rgb.g, rgb.b, rgb.w, rgb.s);
-		app_check_mcu_save(&rgb);
+
+		// update to global
+		os_memcpy(st, &rgb, sizeof(mcu_status_t));
+
 		app_push_status(&rgb);
 
 		l_from = 2.2f;
