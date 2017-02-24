@@ -249,9 +249,7 @@ irom void change_light_grad(mcu_status_t *to)
 {
 	//change hsl_cur to hsl_to
 	mcu_status_t *st = &(sys_status.mcu_status);
-	mcu_status_t rgb;
-
-	rgb.s = 1;
+	static mcu_status_t rgb;
 
 	static float step = 0.0f;
 	static float l_from = 2.2f;
@@ -306,6 +304,7 @@ irom void change_light_grad(mcu_status_t *to)
 
 		hsl2rgb(&hsl_to, &rgb);
 
+		rgb.s = 1;
 		set_light_status(&rgb);
 
 		// update to global
@@ -324,6 +323,7 @@ irom void change_light_grad(mcu_status_t *to)
 			hsl_to.l = hsl_cur.l;
 			rgb.s = 0;
 		} else {
+			rgb.s = 1;
 			hsl_to.l = l_to;
 		}
 
@@ -378,7 +378,7 @@ irom void change_light_lum(int bri)
 	app_check_mcu_save(&mt);
 	app_push_status(&mt);
 #else
-	//change_light_grad(&mt);
+	change_light_grad(&mt);
 #endif
 }
 
