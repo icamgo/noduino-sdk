@@ -27,7 +27,13 @@ void light_on_saved_and_pub()
 	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
 	mst.s = 1;
 
+#ifndef CONFIG_GRADIENT
+	set_light_status(&mst);
+	app_check_mcu_save(&mst);
+	app_push_status(&mst);
+#else
 	change_light_grad(&mst);
+#endif
 }
 
 void light_off_saved_and_pub()
@@ -36,7 +42,13 @@ void light_off_saved_and_pub()
 	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
 	mst.s = 0;
 
+#ifndef CONFIG_GRADIENT
+	set_light_status(&mst);
+	app_check_mcu_save(&mst);
+	app_push_status(&mst);
+#else
 	change_light_grad(&mst);
+#endif
 }
 
 upnp_dev_t upnp_devs[] = {
