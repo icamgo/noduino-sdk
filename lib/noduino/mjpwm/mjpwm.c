@@ -71,7 +71,7 @@ mjpwm_send_command(mjpwm_cmd_t command)
 	uint8_t command_data;
 	mjpwm_commands[pin_dcki] = command;
 
-	// ets_intr_lock();
+	ets_intr_lock();
 	// TStop > 12us.
 	os_delay_us(12);
 	// Send 12 DI pulse, after 6 pulse's falling edge store duty data, and 12
@@ -124,7 +124,7 @@ mjpwm_send_command(mjpwm_cmd_t command)
 	// TStop > 12us.
 	os_delay_us(12);
 	asm("nop;nop;");
-	// ets_intr_unlock();
+	ets_intr_unlock();
 }
 
 void ICACHE_FLASH_ATTR
@@ -157,7 +157,7 @@ mjpwm_send_duty(uint16_t duty_r, uint16_t duty_g,
 		break;
 	}
 
-	// ets_intr_lock();
+	ets_intr_lock();
 	// TStop > 12us.
 	os_delay_us(12);
 	asm("nop;nop;");
@@ -209,7 +209,7 @@ mjpwm_send_duty(uint16_t duty_r, uint16_t duty_g,
 	// TStop > 12us.
 	os_delay_us(12);
 	asm("nop;nop;");
-	// ets_intr_unlock();
+	ets_intr_unlock();
 }
 
 void ICACHE_FLASH_ATTR
