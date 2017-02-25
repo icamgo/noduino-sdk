@@ -121,9 +121,13 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 				}
 			}
 
-			//set_light_status(&mst);
+#ifndef CONFIG_GRADIENT
+			set_light_status(&mst);
+			app_check_mcu_save(&mst);
+			app_push_status(&mst);
+#else
 			change_light_grad(&mst);
-
+#endif
 		} else {
 			INFO("%s: Error when parse JSON\r\n", __func__);
 		}
@@ -240,13 +244,12 @@ irom void hsl2rgb(hsl_t *h, mcu_status_t *rr)
 	rr->b = (uint8_t)(b*255 + 0.5f);
 }
 
+#ifdef CONFIG_GRADIENT
 irom void change_light_grad(mcu_status_t *to)
 {
 	//change hsl_cur to hsl_to
 	mcu_status_t *st = &(sys_status.mcu_status);
-	mcu_status_t rgb;
-
-	rgb.s = 1;
+	static mcu_status_t rgb;
 
 	static float step = 0.0f;
 	static float l_from = 2.2f;
@@ -301,6 +304,7 @@ irom void change_light_grad(mcu_status_t *to)
 
 		hsl2rgb(&hsl_to, &rgb);
 
+		rgb.s = 1;
 		set_light_status(&rgb);
 
 		// update to global
@@ -319,6 +323,7 @@ irom void change_light_grad(mcu_status_t *to)
 			hsl_to.l = hsl_cur.l;
 			rgb.s = 0;
 		} else {
+			rgb.s = 1;
 			hsl_to.l = l_to;
 		}
 
@@ -336,6 +341,7 @@ irom void change_light_grad(mcu_status_t *to)
 		l_from = 2.2f;
 	}
 }
+#endif
 
 /*
  * bri = [0, 255]
@@ -367,7 +373,13 @@ irom void change_light_lum(int bri)
 //	else
 		mt.s = 1;
 
+#ifndef CONFIG_GRADIENT
+	set_light_status(&mt);
+	app_check_mcu_save(&mt);
+	app_push_status(&mt);
+#else
 	change_light_grad(&mt);
+#endif
 }
 
 irom int get_light_lum()
@@ -401,10 +413,10 @@ irom void set_light_status(mcu_status_t *st)
 	if (st->s) {
 		// we only change the led color when user setup apparently
 		mjpwm_send_duty(
-		    (uint16_t)(4095 * st->r / 255),
-		    (uint16_t)(4095 * st->g / 255),
-		    (uint16_t)(4095 * st->b / 255),
-		    (uint16_t)(4095 * st->w / 255)
+		    (uint16_t)(4095) * st->r / 255,
+		    (uint16_t)(4095) * st->g / 255,
+		    (uint16_t)(4095) * st->b / 255,
+		    (uint16_t)(4095) * st->w / 255
 		);
 	} else {
 		mjpwm_send_duty(0, 0, 0, 0);
