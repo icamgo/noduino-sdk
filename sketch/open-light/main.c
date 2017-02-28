@@ -226,7 +226,7 @@ irom void user_init()
 		.resv = 0,
 	};
 
-	mjpwm_init(PIN_DI, PIN_DCKI, 2, command);
+	mjpwm_init(PIN_DI, PIN_DCKI, 1, command);
 
 	/* Light the led ASAP */
 	set_light_status(NULL);
