@@ -20,7 +20,6 @@
 #include "math.h"
 
 #define CONFIG_ALEXA		1
-#define CONFIG_GRADIENT	1
 
 #define CONFIG_INFO			1
 //#define CONFIG_DEBUG		1

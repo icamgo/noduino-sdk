@@ -83,6 +83,15 @@ irom void app_push_cold_on()
 	mjyun_publish("cold_on", msg);
 }
 
+irom void app_push_grad_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", sys_status.grad_on);
+
+	mjyun_publish("grad_on", msg);
+}
+
 irom void mjyun_receive(const char * event_name, const char * event_data)
 {
 	/* {"m":"set", "d":{"r":18,"g":100,"b":7,"w":0,"s":1}} */
@@ -130,13 +139,13 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 				}
 			}
 
-#ifndef CONFIG_GRADIENT
-			set_light_status(&mst);
-			app_check_mcu_save(&mst);
-			app_push_status(&mst);
-#else
-			change_light_grad(&mst);
-#endif
+			if (sys_status.grad_on == 0) {
+				set_light_status(&mst);
+				app_check_mcu_save(&mst);
+				app_push_status(&mst);
+			} else {
+				change_light_grad(&mst);
+			}
 		} else {
 			INFO("%s: Error when parse JSON\r\n", __func__);
 		}
@@ -162,6 +171,20 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 	if (0 == os_strcmp(event_name, "get_cold_on")) {
 		INFO("RX Get cold_on Request!\r\n");
 		app_push_cold_on();
+	}
+
+	/* {"m":"set_grad_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_grad_on")) {
+		uint8_t go_on = atoi(event_data);
+		INFO("RX set grad_on %d Request!\r\n", go_on);
+		sys_status.grad_on = go_on;
+		app_param_save();
+		app_push_grad_on();
+	}
+	/* {"m":"get_grad_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_grad_on")) {
+		INFO("RX Get grad_on Request!\r\n");
+		app_push_grad_on();
 	}
 
 	/* {"m":"set_voice_name", "d":"room light"} */
@@ -267,7 +290,6 @@ irom void hsl2rgb(hsl_t *h, mcu_status_t *rr)
 	rr->b = (uint8_t)(b*255 + 0.5f);
 }
 
-#ifdef CONFIG_GRADIENT
 irom void change_light_grad(mcu_status_t *to)
 {
 	//change hsl_cur to hsl_to
@@ -364,7 +386,6 @@ irom void change_light_grad(mcu_status_t *to)
 		l_from = 2.2f;
 	}
 }
-#endif
 
 /*
  * bri = [0, 255]
@@ -396,13 +417,13 @@ irom void change_light_lum(int bri)
 //	else
 		mt.s = 1;
 
-#ifndef CONFIG_GRADIENT
-	set_light_status(&mt);
-	app_check_mcu_save(&mt);
-	app_push_status(&mt);
-#else
-	change_light_grad(&mt);
-#endif
+	if (sys_status.grad_on == 0) {
+		set_light_status(&mt);
+		app_check_mcu_save(&mt);
+		app_push_status(&mt);
+	} else {
+		change_light_grad(&mt);
+	}
 }
 
 irom int get_light_lum()
@@ -481,6 +502,11 @@ irom void app_param_load(void)
 		// invalid voice name in flash
 		os_strcpy(sys_status.voice_name, DEFAULT_VOICE_NAME);
 		INFO("Invalid voice name in flash, reset to default name\r\n");
+	}
+
+	if (sys_status.grad_on == 0xff) {
+		// reset the grad_on to 0x1 by default
+		sys_status.grad_on = 1;
 	}
 
 	sys_status.start_count += 1;

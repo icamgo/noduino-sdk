@@ -81,6 +81,7 @@ void app_param_save(void);
 void app_push_status(mcu_status_t *pst);
 void app_push_voice_name(char *vname);
 void app_push_cold_on();
+void app_push_grad_on();
 
 void app_check_mcu_save(mcu_status_t *st);
 void app_start_check(uint32_t system_start_seconds);
