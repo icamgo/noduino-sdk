@@ -45,7 +45,10 @@ typedef struct system_status_t {
 	mcu_status_t mcu_status;
 	uint8 sc_effect;
 	char voice_name[32];
-	uint8 packed[2];
+	uint8 cold_on;
+	uint8 grad_on;
+	uint8 alexa_on;
+	uint8 pack[3];
 } __attribute__((aligned(4), packed)) system_status_t;
 
 typedef enum app_state_t {
@@ -77,6 +80,7 @@ void app_param_save(void);
 
 void app_push_status(mcu_status_t *pst);
 void app_push_voice_name(char *vname);
+void app_push_cold_on();
 
 void app_check_mcu_save(mcu_status_t *st);
 void app_start_check(uint32_t system_start_seconds);

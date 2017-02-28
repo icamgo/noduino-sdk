@@ -156,7 +156,7 @@ void mjyun_connected()
 	app_push_voice_name(upnp_devs[0].dev_voice_name);
 #endif
 
-	// stop to show the wifi status
+	app_push_cold_on();
 }
 
 void mjyun_disconnected()

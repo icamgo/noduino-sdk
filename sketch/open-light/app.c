@@ -74,6 +74,15 @@ irom void app_push_voice_name(char *vname)
 }
 #endif
 
+irom void app_push_cold_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", sys_status.cold_on);
+
+	mjyun_publish("cold_on", msg);
+}
+
 irom void mjyun_receive(const char * event_name, const char * event_data)
 {
 	/* {"m":"set", "d":{"r":18,"g":100,"b":7,"w":0,"s":1}} */
@@ -141,6 +150,20 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 		change_light_lum(bri);
 	}
 
+	/* {"m":"set_cold_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_cold_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set cold_on %d Request!\r\n", cd_on);
+		sys_status.cold_on = cd_on;
+		app_param_save();
+		app_push_cold_on();
+	}
+	/* {"m":"get_cold_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_cold_on")) {
+		INFO("RX Get cold_on Request!\r\n");
+		app_push_cold_on();
+	}
+
 	/* {"m":"set_voice_name", "d":"room light"} */
 	if (0 == os_strcmp(event_name, "set_voice_name")) {
 		INFO("RX set_voice_name = %s\r\n", event_data);
@@ -161,7 +184,7 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 		}
 	}
 
-	/* {"m":"get_voice_name"} */
+	/* {"m":"get_voice_name", "d":""} */
 	if (0 == os_strcmp(event_name, "get_voice_name")) {
 #ifdef CONFIG_ALEXA
 		INFO("RX get_voice_name cmd\r\n");
@@ -169,7 +192,7 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 #endif
 	}
 
-	/* {"m":"get_state"} */
+	/* {"m":"get_state", "d":""} */
 	if (0 == os_strcmp(event_name, "get_state")) {
 		INFO("RX Get status Request!\r\n");
 		app_push_status(NULL);
@@ -437,8 +460,11 @@ irom void app_param_load(void)
 
 	if (sys_status.init_flag) {
 		if (warm_boot != 0x66AA) {
-			INFO("Cold boot up, set the switch on!\r\n");
-			sys_status.mcu_status.s = 1;
+			if (sys_status.cold_on != 0) {
+				INFO("Cold boot up, set the switch on!\r\n");
+				sys_status.mcu_status.s = 1;
+			}
+			INFO("cold on = 0x%x\r\n", sys_status.cold_on);
 
 			warm_boot = 0x66AA;
 			system_rtc_mem_write(64+20, (void *)&warm_boot, sizeof(warm_boot));
