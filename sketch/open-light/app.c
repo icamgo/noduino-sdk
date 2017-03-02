@@ -202,7 +202,7 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 			// save to flash
 			os_strcpy(sys_status.voice_name, event_data);
 			app_param_save();
-			app_push_voice_name(event_data);
+			app_push_voice_name(sys_status.voice_name);
 		} else {
 			INFO("RX Invalid voice name\r\n");
 		}
