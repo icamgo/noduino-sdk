@@ -78,6 +78,19 @@ void ICACHE_FLASH_ATTR param_init()
 		param_save();
 	}
 
+	if (minik_param.cold_on == 0xff) {
+		minik_param.cold_on = 0;
+		param_save();
+	}
+	if (minik_param.alexa_on == 0xff) {
+		minik_param.alexa_on = 1;
+		param_save();
+	}
+	if (minik_param.airkiss_nff_on == 0xff) {
+		minik_param.airkiss_nff_on = 1;
+		param_save();
+	}
+
 	int len = os_strlen(minik_param.voice_name);
 	if (len == 0 || len >= 32) {
 		// invalid voice name in flash
