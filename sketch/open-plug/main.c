@@ -35,13 +35,28 @@ void relay_off_saved_and_pub()
 	param_save();
 }
 
+bool get_relay_status()
+{
+	uint8_t rs = relay_get_status();
+
+	if (minik_param.status != rs) {
+		minik_param.status = rs;
+	}
+
+	return rs;
+}
+
 upnp_dev_t upnp_devs[] = {
 	{
 		.esp_conn = NULL,
 		.port = 80,
 		.dev_voice_name = DEFAULT_VOICE_NAME,
+		.model_name = "OpenPlug",
+		.model_num = "2.0",
+		.dev_type = WEMO_SWITCH,
 		.way_on = relay_on_saved_and_pub,
-		.way_off = relay_off_saved_and_pub
+		.way_off = relay_off_saved_and_pub,
+		.get_on = get_relay_status
 	}
 };
 #endif
@@ -230,9 +245,6 @@ void mjyun_receive(const char *event_name, const char *event_data)
 
 #ifdef CONFIG_ALEXA
 			os_strcpy(upnp_devs[0].dev_voice_name, event_data);
-
-			upnp_stop(upnp_devs, 1);
-			upnp_start(upnp_devs, 1);
 #endif
 			// save to flash
 			os_strcpy(minik_param.voice_name, event_data);
