@@ -46,8 +46,14 @@ void ICACHE_FLASH_ATTR param_save(void)
 			sizeof(struct minik_saved_param));
 }
 
+irom void param_restore(void)
+{
+	spi_flash_erase_sector(PARAM_START_SEC + 0);
+}
+
 void ICACHE_FLASH_ATTR param_init()
 {
+	int need_to_save = 0;
 	spi_flash_read((PARAM_START_SEC + 0) * SPI_FLASH_SEC_SIZE,
 		       (uint32 *) & minik_param,
 		       sizeof(struct minik_saved_param));
@@ -62,7 +68,7 @@ void ICACHE_FLASH_ATTR param_init()
 			if (minik_param.cold_on == 1) {
 				INFO("Cold boot up, set the switch on!\r\n");
 				minik_param.status = 1;
-				param_save();
+				need_to_save = 1;
 			}
 			INFO("cold_on = 0x%x\r\n", minik_param.cold_on);
 
@@ -75,20 +81,20 @@ void ICACHE_FLASH_ATTR param_init()
 		INFO("Invalid status value, reset to 0!\n");
 		minik_param.status = 0;
 		os_strcpy(minik_param.voice_name, DEFAULT_VOICE_NAME);
-		param_save();
+		need_to_save = 1;
 	}
 
 	if (minik_param.cold_on == 0xff) {
 		minik_param.cold_on = 0;
-		param_save();
+		need_to_save = 1;
 	}
 	if (minik_param.alexa_on == 0xff) {
 		minik_param.alexa_on = 1;
-		param_save();
+		need_to_save = 1;
 	}
 	if (minik_param.airkiss_nff_on == 0xff) {
 		minik_param.airkiss_nff_on = 1;
-		param_save();
+		need_to_save = 1;
 	}
 
 	int len = os_strlen(minik_param.voice_name);
@@ -96,6 +102,10 @@ void ICACHE_FLASH_ATTR param_init()
 		// invalid voice name in flash
 		INFO("Invalid voice name in flash, reset to default name\r\n");
 		os_strcpy(minik_param.voice_name, DEFAULT_VOICE_NAME);
+		need_to_save = 1;
+	}
+
+	if (need_to_save == 1) {
 		param_save();
 	}
 
