@@ -48,7 +48,8 @@ typedef struct system_status_t {
 	uint8 cold_on;
 	uint8 grad_on;
 	uint8 alexa_on;
-	uint8 pack[3];
+	uint8 airkiss_nff_on;
+	uint8 pack[2];
 } __attribute__((aligned(4), packed)) system_status_t;
 
 typedef enum app_state_t {
@@ -77,6 +78,7 @@ bool get_light_on();
 
 void app_param_load(void);
 void app_param_save(void);
+void app_param_restore(void);
 
 void app_push_status(mcu_status_t *pst);
 void app_push_voice_name(char *vname);

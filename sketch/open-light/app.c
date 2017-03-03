@@ -209,7 +209,7 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 	if (0 == os_strcmp(event_name, "set_alexa_on")) {
 		uint8_t cd_on = atoi(event_data);
 		INFO("RX set alexa_on %d Request!\r\n", cd_on);
-		minik_param.alexa_on = cd_on;
+		sys_status.alexa_on = cd_on;
 		app_param_save();
 		app_push_alexa_on();
 	}
@@ -223,7 +223,15 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 	if (0 == os_strcmp(event_name, "set_airkiss_nff_on")) {
 		uint8_t cd_on = atoi(event_data);
 		INFO("RX set airkiss_nff_on %d Request!\r\n", cd_on);
-		minik_param.airkiss_nff_on = cd_on;
+		sys_status.airkiss_nff_on = cd_on;
+
+		if (0 == cd_on) {
+			mjyun_lan_stop();
+		} else if (1 == cd_on) {
+			mjyun_lan_stop();
+			mjyun_lan_start();
+		}
+
 		app_param_save();
 		app_push_airkiss_nff_on();
 	}
@@ -550,6 +558,15 @@ irom void app_param_load(void)
 		INFO("Invalid voice name in flash, reset to default name\r\n");
 	}
 
+	if (sys_status.cold_on == 0xff) {
+		sys_status.cold_on = 1;
+	}
+	if (sys_status.alexa_on == 0xff) {
+		sys_status.alexa_on = 0;
+	}
+	if (sys_status.airkiss_nff_on == 0xff) {
+		sys_status.airkiss_nff_on = 1;
+	}
 	if (sys_status.grad_on == 0xff) {
 		// reset the grad_on to 0x1 by default
 		sys_status.grad_on = 1;
@@ -569,6 +586,11 @@ irom void app_start_status()
 {
 	INFO("OpenLight APP: start count:%d, start continue:%d\r\n",
 			sys_status.start_count, sys_status.start_continue);
+}
+
+irom void app_param_restore(void)
+{
+	spi_flash_erase_sector(APP_START_SEC);
 }
 
 irom void app_param_save(void)
@@ -686,8 +708,14 @@ irom void app_start_check(uint32_t system_start_seconds)
 			INFO("OpenLight APP: system restore\r\n");
 			app_state = APP_STATE_RESTORE;
 			// Init flag and counter
-			sys_status.init_flag = 0;
-			sys_status.start_continue = 0;
+			os_memset(&sys_status, 0, sizeof(system_status_t));
+			sys_status.mcu_status.r = 75;
+			sys_status.mcu_status.g = 255;
+			sys_status.mcu_status.s = 1;
+			sys_status.cold_on = 1;
+			sys_status.grad_on = 1;
+			sys_status.airkiss_nff_on = 1;
+			os_strcpy(sys_status.voice_name, DEFAULT_VOICE_NAME);
 			// Save param
 			app_param_save();
 
