@@ -205,6 +205,14 @@ void mjyun_receive(const char *event_name, const char *event_data)
 		uint8_t cd_on = atoi(event_data);
 		INFO("RX set airkiss_nff_on %d Request!\r\n", cd_on);
 		minik_param.airkiss_nff_on = cd_on;
+
+		if (0 == cd_on) {
+			mjyun_lan_stop();
+		} else if (1 == cd_on) {
+			mjyun_lan_stop();
+			mjyun_lan_start();
+		}
+
 		param_save();
 		push_airkiss_nff_on();
 	}

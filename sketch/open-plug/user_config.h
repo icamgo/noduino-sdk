@@ -61,6 +61,7 @@ void relay_publish_status();
 void param_set_status(uint8_t status);
 uint8_t param_get_status(void);
 void param_save(void);
+void param_restore(void);
 void param_init();
 
 void led_init();
