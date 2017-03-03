@@ -158,6 +158,8 @@ void mjyun_connected()
 
 	app_push_cold_on();
 	app_push_grad_on();
+	app_push_alexa_on();
+	app_push_airkiss_nff_on();
 }
 
 void mjyun_disconnected()

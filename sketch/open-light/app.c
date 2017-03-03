@@ -83,6 +83,24 @@ irom void app_push_cold_on()
 	mjyun_publish("cold_on", msg);
 }
 
+irom void app_push_alexa_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", sys_status.alexa_on);
+
+	mjyun_publish("alexa_on", msg);
+}
+
+irom void app_push_airkiss_nff_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", sys_status.airkiss_nff_on);
+
+	mjyun_publish("airkiss_nff_on", msg);
+}
+
 irom void app_push_grad_on()
 {
 	char msg[4];
@@ -185,6 +203,34 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 	if (0 == os_strcmp(event_name, "get_grad_on")) {
 		INFO("RX Get grad_on Request!\r\n");
 		app_push_grad_on();
+	}
+
+	/* {"m":"set_alexa_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_alexa_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set alexa_on %d Request!\r\n", cd_on);
+		minik_param.alexa_on = cd_on;
+		app_param_save();
+		app_push_alexa_on();
+	}
+	/* {"m":"get_alexa_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_alexa_on")) {
+		INFO("RX Get alexa_on Request!\r\n");
+		app_push_alexa_on();
+	}
+
+	/* {"m":"set_airkiss_nff_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_airkiss_nff_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set airkiss_nff_on %d Request!\r\n", cd_on);
+		minik_param.airkiss_nff_on = cd_on;
+		app_param_save();
+		app_push_airkiss_nff_on();
+	}
+	/* {"m":"get_airkiss_nff_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_airkiss_nff_on")) {
+		INFO("RX Get airkiss_nff_on Request!\r\n");
+		app_push_airkiss_nff_on();
 	}
 
 	/* {"m":"set_voice_name", "d":"room light"} */
