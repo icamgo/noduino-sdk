@@ -492,7 +492,7 @@ size_t ICACHE_FLASH_ATTR strlcpy(char *dst, const char *src, size_t size)
  * OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
  * SUCH DAMAGE.
  */
-
+#if 0
 long ICACHE_FLASH_ATTR strtol(const char *nptr, char **endptr, int base)
 {
 	const unsigned char *s = (const unsigned char *)nptr;
@@ -623,3 +623,4 @@ unsigned long ICACHE_FLASH_ATTR strtoul(const char *nptr, char **endptr, int bas
 		*endptr = (char *)(any ? (char *)s - 1 : nptr);
 	return (acc);
 }
+#endif
