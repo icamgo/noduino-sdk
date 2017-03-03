@@ -160,6 +160,7 @@ void mjyun_receive(const char *event_name, const char *event_data)
 			// save to flash
 			os_strcpy(minik_param.voice_name, event_data);
 			param_save();
+			push_voice_name(minik_param.voice_name);
 		} else {
 			INFO("RX Invalid voice name\r\n");
 		}
