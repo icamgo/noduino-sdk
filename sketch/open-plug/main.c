@@ -39,7 +39,7 @@ upnp_dev_t upnp_devs[] = {
 	{
 		.esp_conn = NULL,
 		.port = 80,
-		.dev_voice_name = "plug",
+		.dev_voice_name = DEFAULT_VOICE_NAME,
 		.way_on = relay_on_saved_and_pub,
 		.way_off = relay_off_saved_and_pub
 	}
@@ -52,6 +52,33 @@ void ICACHE_FLASH_ATTR push_voice_name(char *vname)
 
 	mjyun_publish("voice_name", vname);
 	INFO("Pushed voice name = %s\r\n", vname);
+}
+
+irom void push_cold_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", minik_param.cold_on);
+
+	mjyun_publish("cold_on", msg);
+}
+
+irom void push_alexa_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", minik_param.alexa_on);
+
+	mjyun_publish("alexa_on", msg);
+}
+
+irom void push_airkiss_nff_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", minik_param.airkiss_nff_on);
+
+	mjyun_publish("airkiss_nff_on", msg);
 }
 
 static void mjyun_stated_cb(mjyun_state_t state)
@@ -143,6 +170,48 @@ void mjyun_receive(const char *event_name, const char *event_data)
 		param_set_status(0);
 		param_save();
 		relay_set_status_and_publish(0);
+	}
+
+	/* {"m":"set_cold_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_cold_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set cold_on %d Request!\r\n", cd_on);
+		minik_param.cold_on = cd_on;
+		param_save();
+		push_cold_on();
+	}
+	/* {"m":"get_cold_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_cold_on")) {
+		INFO("RX Get cold_on Request!\r\n");
+		push_cold_on();
+	}
+
+	/* {"m":"set_alexa_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_alexa_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set alexa_on %d Request!\r\n", cd_on);
+		minik_param.alexa_on = cd_on;
+		param_save();
+		push_alexa_on();
+	}
+	/* {"m":"get_alexa_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_alexa_on")) {
+		INFO("RX Get alexa_on Request!\r\n");
+		push_alexa_on();
+	}
+
+	/* {"m":"set_airkiss_nff_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_airkiss_nff_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set airkiss_nff_on %d Request!\r\n", cd_on);
+		minik_param.airkiss_nff_on = cd_on;
+		param_save();
+		push_airkiss_nff_on();
+	}
+	/* {"m":"get_airkiss_nff_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_airkiss_nff_on")) {
+		INFO("RX Get airkiss_nff_on Request!\r\n");
+		push_airkiss_nff_on();
 	}
 
 	/* {"m":"set_voice_name", "d":"fan plug"} */

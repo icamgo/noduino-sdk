@@ -41,6 +41,10 @@ struct minik_saved_param {
 	uint8_t status;
 	uint8_t pad[3];
 	char voice_name[32];
+	uint8_t cold_on;
+	uint8_t alexa_on;
+	uint8_t airkiss_nff_on;
+	uint8_t pack[1];
 } __attribute__((aligned(4), packed));
 
 
