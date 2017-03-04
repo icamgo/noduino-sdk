@@ -117,6 +117,9 @@ upnp_dev_t upnp_devs[] = {
 		.esp_conn = NULL,
 		.port = 80,
 		.dev_voice_name = "relay 1",
+		.model_name = "OpenPlug",
+		.model_num = "1.0",
+		.dev_type = WEMO_SWITCH,
 		.way_on = relay1_on_saved_and_pub,
 		.way_off = relay1_off_saved_and_pub
 	},
@@ -124,6 +127,9 @@ upnp_dev_t upnp_devs[] = {
 		.esp_conn = NULL,
 		.port = 81,
 		.dev_voice_name = "relay 2",
+		.model_name = "OpenPlug",
+		.model_num = "1.0",
+		.dev_type = WEMO_SWITCH,
 		.way_on = relay2_on_saved_and_pub,
 		.way_off = relay2_off_saved_and_pub
 	},
@@ -131,6 +137,9 @@ upnp_dev_t upnp_devs[] = {
 		.esp_conn = NULL,
 		.port = 82,
 		.dev_voice_name = "relay 3",
+		.model_name = "OpenPlug",
+		.model_num = "1.0",
+		.dev_type = WEMO_SWITCH,
 		.way_on = relay3_on_saved_and_pub,
 		.way_off = relay3_off_saved_and_pub
 	},
@@ -138,6 +147,9 @@ upnp_dev_t upnp_devs[] = {
 		.esp_conn = NULL,
 		.port = 83,
 		.dev_voice_name = "relay 4",
+		.model_name = "OpenPlug",
+		.model_num = "1.0",
+		.dev_type = WEMO_SWITCH,
 		.way_on = relay4_on_saved_and_pub,
 		.way_off = relay4_off_saved_and_pub
 	},
@@ -145,6 +157,9 @@ upnp_dev_t upnp_devs[] = {
 		.esp_conn = NULL,
 		.port = 84,
 		.dev_voice_name = "relay 5",
+		.model_name = "OpenPlug",
+		.model_num = "1.0",
+		.dev_type = WEMO_SWITCH,
 		.way_on = relay5_on_saved_and_pub,
 		.way_off = relay5_off_saved_and_pub
 	}
