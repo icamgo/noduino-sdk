@@ -18,7 +18,7 @@
 #include "mjyun.h"
 #include "cJSON.h"
 
-#define CONFIG_ALEXA		1
+//#define CONFIG_ALEXA		1
 
 #define	CH1_DEFAULT_VOICE_NAME	"channel 1"
 #define	CH2_DEFAULT_VOICE_NAME	"channel 2"
