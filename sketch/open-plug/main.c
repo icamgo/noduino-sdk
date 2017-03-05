@@ -144,7 +144,12 @@ static void mjyun_stated_cb(mjyun_state_t state)
         case WIFI_STATION_OK:
             INFO("Platform: WIFI_STATION_OK\r\n");
 #ifdef CONFIG_ALEXA
-			upnp_start(upnp_devs, 1);
+			int ret = 0;
+			ret = upnp_start(upnp_devs, 1);
+			if (ret != 0) {
+				upnp_stop(upnp_devs, 1);
+				minik_param.alexa_on = 0;
+			}
 #endif
 			led_set_effect(1);
             break;
@@ -205,7 +210,25 @@ void mjyun_receive(const char *event_name, const char *event_data)
 	if (0 == os_strcmp(event_name, "set_alexa_on")) {
 		uint8_t cd_on = atoi(event_data);
 		INFO("RX set alexa_on %d Request!\r\n", cd_on);
+
+		if (0 == cd_on) {
+
+			upnp_ssdp_stop();
+
+		} else if (1 == cd_on) {
+
+			upnp_ssdp_stop();
+
+			int ret = 0;
+			ret = upnp_ssdp_start();
+			if (ret != 0) {
+				upnp_ssdp_stop();
+				cd_on = 0;
+			}
+		}
+
 		minik_param.alexa_on = cd_on;
+
 		param_save();
 		push_alexa_on();
 	}
@@ -273,6 +296,7 @@ void mjyun_connected()
 	// need to update the status in cloud
 	relay_publish_status();
 	push_voice_name(minik_param.voice_name);
+	push_alexa_on();
 
 	// stop to show the wifi status
 	wifi_led_disable();
