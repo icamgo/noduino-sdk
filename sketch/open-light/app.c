@@ -209,7 +209,25 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 	if (0 == os_strcmp(event_name, "set_alexa_on")) {
 		uint8_t cd_on = atoi(event_data);
 		INFO("RX set alexa_on %d Request!\r\n", cd_on);
+
+		if (0 == cd_on) {
+
+			upnp_ssdp_stop();
+
+		} else if (1 == cd_on) {
+
+			upnp_ssdp_stop();
+
+			int ret = 0;
+			ret = upnp_ssdp_start();
+			if (ret != 0) {
+				upnp_ssdp_stop();
+				cd_on = 0;
+			}
+		}
+
 		sys_status.alexa_on = cd_on;
+
 		app_param_save();
 		app_push_alexa_on();
 	}
@@ -249,9 +267,6 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 
 #ifdef CONFIG_ALEXA
 			os_strcpy(upnp_devs[0].dev_voice_name, event_data);
-			
-			upnp_stop(upnp_devs, 1);
-			upnp_start(upnp_devs, 1);
 #endif
 			// save to flash
 			os_strcpy(sys_status.voice_name, event_data);

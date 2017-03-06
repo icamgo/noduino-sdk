@@ -21,7 +21,7 @@
 
 #define CONFIG_ALEXA		1
 
-#define CONFIG_INFO			1
+//#define CONFIG_INFO		1
 //#define CONFIG_DEBUG		1
 
 #define DEFAULT_VOICE_NAME	"open light"
