@@ -55,4 +55,6 @@ char *get_dev_target(dev_type_t tp);
 
 int upnp_start(upnp_dev_t *devs, int ways);
 void upnp_stop(upnp_dev_t *devs, int ways);
+int upnp_ssdp_start();
+void upnp_ssdp_stop();
 #endif
