@@ -121,6 +121,9 @@ irom static void mjyun_stated_cb(mjyun_state_t state)
 			upnp_stop(upnp_devs, 1);
 			sys_status.alexa_on = 0;
 		}
+		if (sys_status.alexa_on == 0) {
+			upnp_ssdp_stop();
+		}
 #endif
 		break;
 	case WIFI_STATION_ERROR:
@@ -165,6 +168,10 @@ void mjyun_connected()
 	app_push_grad_on();
 	app_push_alexa_on();
 	app_push_airkiss_nff_on();
+
+	if (sys_status.airkiss_nff_on == 0) {
+		mjyun_lan_stop();
+	}
 }
 
 void mjyun_disconnected()
