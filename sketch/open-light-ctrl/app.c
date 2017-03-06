@@ -74,6 +74,42 @@ irom void app_push_voice_name(char *vname)
 }
 #endif
 
+irom void app_push_cold_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", sys_status.cold_on);
+
+	mjyun_publish("cold_on", msg);
+}
+
+irom void app_push_alexa_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", sys_status.alexa_on);
+
+	mjyun_publish("alexa_on", msg);
+}
+
+irom void app_push_airkiss_nff_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", sys_status.airkiss_nff_on);
+
+	mjyun_publish("airkiss_nff_on", msg);
+}
+
+irom void app_push_grad_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", sys_status.grad_on);
+
+	mjyun_publish("grad_on", msg);
+}
+
 irom void mjyun_receive(const char * event_name, const char * event_data)
 {
 	/* {"m":"set", "d":{"r":18,"g":100,"b":7,"w":0,"s":1}} */
@@ -121,13 +157,13 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 				}
 			}
 
-#ifndef CONFIG_GRADIENT
-			set_light_status(&mst);
-			app_check_mcu_save(&mst);
-			app_push_status(&mst);
-#else
-			change_light_grad(&mst);
-#endif
+			if (sys_status.grad_on == 0) {
+				set_light_status(&mst);
+				app_check_mcu_save(&mst);
+				app_push_status(&mst);
+			} else {
+				change_light_grad(&mst);
+			}
 		} else {
 			INFO("%s: Error when parse JSON\r\n", __func__);
 		}
@@ -139,6 +175,70 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 		int bri = atoi(event_data);
 		INFO("RX set brightness %d Request!\r\n", bri);
 		change_light_lum(bri);
+	}
+
+	/* {"m":"set_cold_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_cold_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set cold_on %d Request!\r\n", cd_on);
+		sys_status.cold_on = cd_on;
+		app_param_save();
+		app_push_cold_on();
+	}
+	/* {"m":"get_cold_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_cold_on")) {
+		INFO("RX Get cold_on Request!\r\n");
+		app_push_cold_on();
+	}
+
+	/* {"m":"set_grad_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_grad_on")) {
+		uint8_t go_on = atoi(event_data);
+		INFO("RX set grad_on %d Request!\r\n", go_on);
+		sys_status.grad_on = go_on;
+		app_param_save();
+		app_push_grad_on();
+	}
+	/* {"m":"get_grad_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_grad_on")) {
+		INFO("RX Get grad_on Request!\r\n");
+		app_push_grad_on();
+	}
+
+	/* {"m":"set_alexa_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_alexa_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set alexa_on %d Request!\r\n", cd_on);
+		sys_status.alexa_on = cd_on;
+		app_param_save();
+		app_push_alexa_on();
+	}
+	/* {"m":"get_alexa_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_alexa_on")) {
+		INFO("RX Get alexa_on Request!\r\n");
+		app_push_alexa_on();
+	}
+
+	/* {"m":"set_airkiss_nff_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_airkiss_nff_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set airkiss_nff_on %d Request!\r\n", cd_on);
+		sys_status.airkiss_nff_on = cd_on;
+
+		if (0 == cd_on) {
+			mjyun_lan_stop();
+		} else if (1 == cd_on) {
+			mjyun_lan_stop();
+			mjyun_lan_start();
+		}
+
+		app_param_save();
+		app_push_airkiss_nff_on();
+	}
+	/* {"m":"get_airkiss_nff_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_airkiss_nff_on")) {
+		INFO("RX Get airkiss_nff_on Request!\r\n");
+		app_push_airkiss_nff_on();
 	}
 
 	/* {"m":"set_voice_name", "d":"room light"} */
@@ -156,12 +256,12 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 			// save to flash
 			os_strcpy(sys_status.voice_name, event_data);
 			app_param_save();
+			app_push_voice_name(sys_status.voice_name);
 		} else {
 			INFO("RX Invalid voice name\r\n");
 		}
 	}
-
-	/* {"m":"get_voice_name"} */
+	/* {"m":"get_voice_name", "d":""} */
 	if (0 == os_strcmp(event_name, "get_voice_name")) {
 #ifdef CONFIG_ALEXA
 		INFO("RX get_voice_name cmd\r\n");
@@ -169,7 +269,7 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 #endif
 	}
 
-	/* {"m":"get_state"} */
+	/* {"m":"get_state", "d":""} */
 	if (0 == os_strcmp(event_name, "get_state")) {
 		INFO("RX Get status Request!\r\n");
 		app_push_status(NULL);
@@ -244,7 +344,6 @@ irom void hsl2rgb(hsl_t *h, mcu_status_t *rr)
 	rr->b = (uint8_t)(b*255 + 0.5f);
 }
 
-#ifdef CONFIG_GRADIENT
 irom void change_light_grad(mcu_status_t *to)
 {
 	//change hsl_cur to hsl_to
@@ -341,7 +440,6 @@ irom void change_light_grad(mcu_status_t *to)
 		l_from = 2.2f;
 	}
 }
-#endif
 
 /*
  * bri = [0, 255]
@@ -373,13 +471,13 @@ irom void change_light_lum(int bri)
 //	else
 		mt.s = 1;
 
-#ifndef CONFIG_GRADIENT
-	set_light_status(&mt);
-	app_check_mcu_save(&mt);
-	app_push_status(&mt);
-#else
-	change_light_grad(&mt);
-#endif
+	if (sys_status.grad_on == 0) {
+		set_light_status(&mt);
+		app_check_mcu_save(&mt);
+		app_push_status(&mt);
+	} else {
+		change_light_grad(&mt);
+	}
 }
 
 irom int get_light_lum()
@@ -437,8 +535,11 @@ irom void app_param_load(void)
 
 	if (sys_status.init_flag) {
 		if (warm_boot != 0x66AA) {
-			INFO("Cold boot up, set the switch on!\r\n");
-			sys_status.mcu_status.s = 1;
+			if (sys_status.cold_on != 0) {
+				INFO("Cold boot up, set the switch on!\r\n");
+				sys_status.mcu_status.s = 1;
+			}
+			INFO("cold on = 0x%x\r\n", sys_status.cold_on);
 
 			warm_boot = 0x66AA;
 			system_rtc_mem_write(64+20, (void *)&warm_boot, sizeof(warm_boot));
@@ -457,6 +558,20 @@ irom void app_param_load(void)
 		INFO("Invalid voice name in flash, reset to default name\r\n");
 	}
 
+	if (sys_status.cold_on == 0xff) {
+		sys_status.cold_on = 1;
+	}
+	if (sys_status.alexa_on == 0xff) {
+		sys_status.alexa_on = 0;
+	}
+	if (sys_status.airkiss_nff_on == 0xff) {
+		sys_status.airkiss_nff_on = 1;
+	}
+	if (sys_status.grad_on == 0xff) {
+		// reset the grad_on to 0x1 by default
+		sys_status.grad_on = 1;
+	}
+
 	sys_status.start_count += 1;
 	sys_status.start_continue += 1;
 	app_param_save();
@@ -471,6 +586,11 @@ irom void app_start_status()
 {
 	INFO("OpenLight APP: start count:%d, start continue:%d\r\n",
 			sys_status.start_count, sys_status.start_continue);
+}
+
+irom void app_param_restore(void)
+{
+	spi_flash_erase_sector(APP_START_SEC);
 }
 
 irom void app_param_save(void)
@@ -588,8 +708,14 @@ irom void app_start_check(uint32_t system_start_seconds)
 			INFO("OpenLight APP: system restore\r\n");
 			app_state = APP_STATE_RESTORE;
 			// Init flag and counter
-			sys_status.init_flag = 0;
-			sys_status.start_continue = 0;
+			os_memset(&sys_status, 0, sizeof(system_status_t));
+			sys_status.mcu_status.r = 75;
+			sys_status.mcu_status.g = 255;
+			sys_status.mcu_status.s = 1;
+			sys_status.cold_on = 1;
+			sys_status.grad_on = 1;
+			sys_status.airkiss_nff_on = 1;
+			os_strcpy(sys_status.voice_name, DEFAULT_VOICE_NAME);
 			// Save param
 			app_param_save();
 

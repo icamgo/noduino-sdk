@@ -27,13 +27,13 @@ void light_on_saved_and_pub()
 	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
 	mst.s = 1;
 
-#ifndef CONFIG_GRADIENT
-	set_light_status(&mst);
-	app_check_mcu_save(&mst);
-	app_push_status(&mst);
-#else
-	change_light_grad(&mst);
-#endif
+	if (sys_status.grad_on == 0) {
+		set_light_status(&mst);
+		app_check_mcu_save(&mst);
+		app_push_status(&mst);
+	} else {
+		change_light_grad(&mst);
+	}
 }
 
 void light_off_saved_and_pub()
@@ -42,13 +42,13 @@ void light_off_saved_and_pub()
 	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
 	mst.s = 0;
 
-#ifndef CONFIG_GRADIENT
-	set_light_status(&mst);
-	app_check_mcu_save(&mst);
-	app_push_status(&mst);
-#else
-	change_light_grad(&mst);
-#endif
+	if (sys_status.grad_on == 0) {
+		set_light_status(&mst);
+		app_check_mcu_save(&mst);
+		app_push_status(&mst);
+	} else {
+		change_light_grad(&mst);
+	}
 }
 
 upnp_dev_t upnp_devs[] = {
@@ -156,7 +156,10 @@ void mjyun_connected()
 	app_push_voice_name(upnp_devs[0].dev_voice_name);
 #endif
 
-	// stop to show the wifi status
+	app_push_cold_on();
+	app_push_grad_on();
+	app_push_alexa_on();
+	app_push_airkiss_nff_on();
 }
 
 void mjyun_disconnected()
@@ -226,7 +229,7 @@ irom void user_init()
 		.resv = 0,
 	};
 
-	mjpwm_init(PIN_DI, PIN_DCKI, 2, command);
+	mjpwm_init(PIN_DI, PIN_DCKI, 1, command);
 
 	/* Light the led ASAP */
 	set_light_status(NULL);
