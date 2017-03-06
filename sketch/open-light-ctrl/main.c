@@ -113,10 +113,15 @@ irom static void mjyun_stated_cb(mjyun_state_t state)
 		INFO("Platform: WIFI_AP_STATION_ERROR\r\n");
 		break;
 	case WIFI_STATION_OK:
-#ifdef CONFIG_ALEXA
-		upnp_start(upnp_devs, 1);
-#endif
 		INFO("Platform: WIFI_STATION_OK\r\n");
+#ifdef CONFIG_ALEXA
+		int ret = 0;
+		ret = upnp_start(upnp_devs, 1);
+		if (ret != 0) {
+			upnp_stop(upnp_devs, 1);
+			sys_status.alexa_on = 0;
+		}
+#endif
 		break;
 	case WIFI_STATION_ERROR:
 		INFO("Platform: WIFI_STATION_ERROR\r\n");
