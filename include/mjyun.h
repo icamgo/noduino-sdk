@@ -127,4 +127,7 @@ void mjyun_check_update(); //检查固件更新
 
 void mjyun_mini_ota_start(const char * path);
 
+bool mjyun_lan_start(void);
+bool mjyun_lan_stop(void);
+
 #endif /*  __MJYUN_H__ */
