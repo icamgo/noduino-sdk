@@ -64,7 +64,6 @@ irom void app_push_status(mcu_status_t *st)
 	INFO("Pushed status = %s\r\n", msg);
 }
 
-#ifdef CONFIG_ALEXA
 irom void app_push_voice_name(char *vname)
 {
 	/* {"m":"voice_name", "d":"room light"} */
@@ -72,7 +71,6 @@ irom void app_push_voice_name(char *vname)
 	mjyun_publish("voice_name", vname);
 	INFO("Pushed voice name = %s\r\n", vname);
 }
-#endif
 
 irom void app_push_cold_on()
 {
@@ -278,10 +276,8 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 	}
 	/* {"m":"get_voice_name", "d":""} */
 	if (0 == os_strcmp(event_name, "get_voice_name")) {
-#ifdef CONFIG_ALEXA
 		INFO("RX get_voice_name cmd\r\n");
-		app_push_voice_name(upnp_devs[0].dev_voice_name);
-#endif
+		app_push_voice_name(sys_status.voice_name);
 	}
 
 	/* {"m":"get_state", "d":""} */

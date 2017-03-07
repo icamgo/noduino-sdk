@@ -18,9 +18,9 @@
 #include "user_config.h"
 #include "compile.h"
 
-#ifdef CONFIG_ALEXA
 extern system_status_t sys_status;
 
+#ifdef CONFIG_ALEXA
 void light_on_saved_and_pub()
 {
 	mcu_status_t mst;
