@@ -155,13 +155,17 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 				}
 			}
 
+#ifdef CONFIG_GRADIENT
 			if (sys_status.grad_on == 0) {
+#endif
 				set_light_status(&mst);
 				app_check_mcu_save(&mst);
 				app_push_status(&mst);
+#ifdef CONFIG_GRADIENT
 			} else {
 				change_light_grad(&mst);
 			}
+#endif
 		} else {
 			INFO("%s: Error when parse JSON\r\n", __func__);
 		}
@@ -355,6 +359,7 @@ irom void hsl2rgb(hsl_t *h, mcu_status_t *rr)
 	rr->b = (uint8_t)(b*255 + 0.5f);
 }
 
+#ifdef CONFIG_GRADIENT
 irom void change_light_grad(mcu_status_t *to)
 {
 	//change hsl_cur to hsl_to
@@ -451,6 +456,7 @@ irom void change_light_grad(mcu_status_t *to)
 		l_from = 2.2f;
 	}
 }
+#endif
 
 /*
  * bri = [0, 255]
@@ -482,13 +488,17 @@ irom void change_light_lum(int bri)
 //	else
 		mt.s = 1;
 
+#ifdef CONFIG_GRADIENT
 	if (sys_status.grad_on == 0) {
+#endif
 		set_light_status(&mt);
 		app_check_mcu_save(&mt);
 		app_push_status(&mt);
+#ifdef CONFIG_GRADIENT
 	} else {
 		change_light_grad(&mt);
 	}
+#endif
 }
 
 irom int get_light_lum()

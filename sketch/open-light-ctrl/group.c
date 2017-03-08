@@ -1,18 +1,16 @@
 #include "user_config.h"
 
-LOCAL void ICACHE_FLASH_ATTR
-esp_now_receive_callback(uint8_t * macaddr, uint8_t * data, uint8_t length)
+irom void esp_now_receive_callback(uint8_t * macaddr, uint8_t * data, uint8_t length)
 {
 	INFO("%s: ESPNow receive\r\n", __func__);
 }
 
-LOCAL void ICACHE_FLASH_ATTR
-esp_now_send_callback(uint8_t * mac_addr, uint8_t status)
+irom void esp_now_send_callback(uint8_t * mac_addr, uint8_t status)
 {
 	INFO("%s: ESPNow send\r\n", __func__);
 }
 
-void ICACHE_FLASH_ATTR espnow_delete(void)
+irom void espnow_delete(void)
 {
 	esp_now_unregister_send_cb();
 	esp_now_unregister_recv_cb();
@@ -20,7 +18,7 @@ void ICACHE_FLASH_ATTR espnow_delete(void)
 	INFO("%s: ESPNow delete OK\r\n", __func__);
 }
 
-void ICACHE_FLASH_ATTR espnow_create(void)
+irom void espnow_create(void)
 {
 	int32_t result;
 	uint8_t esp_now_key[16] = {

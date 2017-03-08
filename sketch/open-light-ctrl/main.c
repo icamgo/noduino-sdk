@@ -21,34 +21,42 @@
 extern system_status_t sys_status;
 
 #ifdef CONFIG_ALEXA
-void light_on_saved_and_pub()
+irom void light_on_saved_and_pub()
 {
 	mcu_status_t mst;
 	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
 	mst.s = 1;
 
+#ifdef CONFIG_GRADIENT
 	if (sys_status.grad_on == 0) {
+#endif
 		set_light_status(&mst);
 		app_check_mcu_save(&mst);
 		app_push_status(&mst);
+#ifdef CONFIG_GRADIENT
 	} else {
 		change_light_grad(&mst);
 	}
+#endif
 }
 
-void light_off_saved_and_pub()
+irom void light_off_saved_and_pub()
 {
 	mcu_status_t mst;
 	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
 	mst.s = 0;
 
+#ifdef CONFIG_GRADIENT
 	if (sys_status.grad_on == 0) {
+#endif
 		set_light_status(&mst);
 		app_check_mcu_save(&mst);
 		app_push_status(&mst);
+#ifdef CONFIG_GRADIENT
 	} else {
 		change_light_grad(&mst);
 	}
+#endif
 }
 
 upnp_dev_t upnp_devs[] = {
@@ -155,7 +163,7 @@ const mjyun_config_t mjyun_conf = {
 	WITH_MQTT
 };
 
-void mjyun_connected()
+irom void mjyun_connected()
 {
 	// need to update the status in cloud
 	app_push_status(NULL);
@@ -174,7 +182,7 @@ void mjyun_connected()
 	}
 }
 
-void mjyun_disconnected()
+irom void mjyun_disconnected()
 {
 	//show the wifi status
 }

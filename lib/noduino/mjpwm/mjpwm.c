@@ -39,9 +39,9 @@ static int nc = 2;
 static uint8_t pin_di = 13;
 static uint8_t pin_dcki = 15;
 
-LOCAL mjpwm_cmd_t mjpwm_commands[GPIO_MAX_INDEX + 1];
+static mjpwm_cmd_t mjpwm_commands[GPIO_MAX_INDEX + 1];
 
-void ICACHE_FLASH_ATTR mjpwm_di_pulse(uint16_t times)
+iram void mjpwm_di_pulse(uint16_t times)
 {
 	uint16_t i;
 	for (i = 0; i < times; i++) {
@@ -53,7 +53,7 @@ void ICACHE_FLASH_ATTR mjpwm_di_pulse(uint16_t times)
 	}
 }
 
-void ICACHE_FLASH_ATTR mjpwm_dcki_pulse(uint16_t times)
+irom void mjpwm_dcki_pulse(uint16_t times)
 {
 	uint16_t i;
 	for (i = 0; i < times; i++) {
@@ -64,8 +64,7 @@ void ICACHE_FLASH_ATTR mjpwm_dcki_pulse(uint16_t times)
 	}
 }
 
-void ICACHE_FLASH_ATTR
-mjpwm_send_command(mjpwm_cmd_t command)
+irom void mjpwm_send_command(mjpwm_cmd_t command)
 {
 	uint8_t i, n;
 	uint8_t command_data;
@@ -127,8 +126,7 @@ mjpwm_send_command(mjpwm_cmd_t command)
 	ets_intr_unlock();
 }
 
-void ICACHE_FLASH_ATTR
-mjpwm_send_duty(uint16_t duty_r, uint16_t duty_g,
+iram void mjpwm_send_duty(uint16_t duty_r, uint16_t duty_g,
 		uint16_t duty_b, uint16_t duty_w)
 {
 	uint8_t i = 0, n;
@@ -212,8 +210,7 @@ mjpwm_send_duty(uint16_t duty_r, uint16_t duty_g,
 	ets_intr_unlock();
 }
 
-void ICACHE_FLASH_ATTR
-mjpwm_init(uint8_t di, uint8_t dcki, uint8_t n_chips, mjpwm_cmd_t cmd)
+irom void mjpwm_init(uint8_t di, uint8_t dcki, uint8_t n_chips, mjpwm_cmd_t cmd)
 {
 	pin_di = di;
 	pin_dcki = dcki;
