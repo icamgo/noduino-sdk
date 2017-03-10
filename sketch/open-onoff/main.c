@@ -35,13 +35,28 @@ void relay_off_saved_and_pub()
 	param_save();
 }
 
+bool get_relay_status()
+{
+	uint8_t rs = relay_get_status();
+
+	if (minik_param.status != rs) {
+		minik_param.status = rs;
+	}
+
+	return rs;
+}
+
 upnp_dev_t upnp_devs[] = {
 	{
 		.esp_conn = NULL,
 		.port = 80,
-		.dev_voice_name = "kitchen light",
+		.dev_voice_name = DEFAULT_VOICE_NAME,
+		.model_name = "OpenPlug",
+		.model_num = "2.0",
+		.dev_type = WEMO_SWITCH,
 		.way_on = relay_on_saved_and_pub,
-		.way_off = relay_off_saved_and_pub
+		.way_off = relay_off_saved_and_pub,
+		.get_on = get_relay_status
 	}
 };
 #endif
@@ -52,6 +67,33 @@ void ICACHE_FLASH_ATTR push_voice_name(char *vname)
 
 	mjyun_publish("voice_name", vname);
 	INFO("Pushed voice name = %s\r\n", vname);
+}
+
+irom void push_cold_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", minik_param.cold_on);
+
+	mjyun_publish("cold_on", msg);
+}
+
+irom void push_alexa_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", minik_param.alexa_on);
+
+	mjyun_publish("alexa_on", msg);
+}
+
+irom void push_airkiss_nff_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", minik_param.airkiss_nff_on);
+
+	mjyun_publish("airkiss_nff_on", msg);
 }
 
 static void mjyun_stated_cb(mjyun_state_t state)
@@ -103,7 +145,12 @@ static void mjyun_stated_cb(mjyun_state_t state)
 			led_set_effect(1);
             INFO("Platform: WIFI_STATION_OK\r\n");
 #ifdef CONFIG_ALEXA
-			upnp_start(upnp_devs, 1);
+			int ret = 0;
+			ret = upnp_start(upnp_devs, 1);
+			if (ret != 0) {
+				upnp_stop(upnp_devs, 1);
+				minik_param.alexa_on = 0;
+			}
 #endif
             break;
         case WIFI_STATION_ERROR:
@@ -145,6 +192,75 @@ void mjyun_receive(const char *event_name, const char *event_data)
 		relay_set_status_and_publish(0);
 	}
 
+	/* {"m":"set_cold_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_cold_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set cold_on %d Request!\r\n", cd_on);
+		minik_param.cold_on = cd_on;
+		param_save();
+		push_cold_on();
+	}
+	/* {"m":"get_cold_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_cold_on")) {
+		INFO("RX Get cold_on Request!\r\n");
+		push_cold_on();
+	}
+
+	/* {"m":"set_alexa_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_alexa_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set alexa_on %d Request!\r\n", cd_on);
+
+		if (0 == cd_on) {
+
+			upnp_ssdp_stop();
+
+		} else if (1 == cd_on) {
+
+			upnp_ssdp_stop();
+
+			int ret = 0;
+			ret = upnp_ssdp_start();
+			if (ret != 0) {
+				upnp_ssdp_stop();
+				cd_on = 0;
+			}
+		}
+
+		minik_param.alexa_on = cd_on;
+
+		param_save();
+		push_alexa_on();
+	}
+	/* {"m":"get_alexa_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_alexa_on")) {
+		INFO("RX Get alexa_on Request!\r\n");
+		push_alexa_on();
+	}
+
+	/* {"m":"set_airkiss_nff_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_airkiss_nff_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set airkiss_nff_on %d Request!\r\n", cd_on);
+		minik_param.airkiss_nff_on = cd_on;
+
+		if (0 == cd_on) {
+			mjyun_lan_stop();
+		} else if (1 == cd_on) {
+			mjyun_lan_stop();
+			mjyun_lan_start();
+		}
+
+		param_save();
+		push_airkiss_nff_on();
+	}
+	/* {"m":"get_airkiss_nff_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_airkiss_nff_on")) {
+		INFO("RX Get airkiss_nff_on Request!\r\n");
+		push_airkiss_nff_on();
+	}
+
+
 	/* {"m":"set_voice_name", "d":"fan switch"} */
 	if (0 == os_strcmp(event_name, "set_voice_name")) {
 		INFO("RX set_voice_name = %s\r\n", event_data);
@@ -182,8 +298,8 @@ void mjyun_connected()
 {
 	// need to update the status in cloud
 	relay_publish_status();
-
 	push_voice_name(minik_param.voice_name);
+	push_alexa_on();
 
 	// stop to show the wifi status
 	wifi_led_disable();

@@ -26,6 +26,7 @@ iram void xkey_long_press(void)
 	os_printf("key long pressed\r\n");
 #endif
 	mjyun_systemrecovery();
+	param_restore();
     system_restore();
     system_restart();
 }
