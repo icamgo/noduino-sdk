@@ -583,7 +583,7 @@ irom void app_param_load(void)
 		sys_status.cold_on = 1;
 	}
 	if (sys_status.alexa_on == 0xff) {
-		sys_status.alexa_on = 0;
+		sys_status.alexa_on = 1;
 	}
 	if (sys_status.airkiss_nff_on == 0xff) {
 		sys_status.airkiss_nff_on = 1;
