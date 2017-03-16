@@ -18,37 +18,45 @@
 #include "user_config.h"
 #include "compile.h"
 
-#ifdef CONFIG_ALEXA
 extern system_status_t sys_status;
 
-void light_on_saved_and_pub()
+#ifdef CONFIG_ALEXA
+irom void light_on_saved_and_pub()
 {
 	mcu_status_t mst;
 	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
 	mst.s = 1;
 
+#ifdef CONFIG_GRADIENT
 	if (sys_status.grad_on == 0) {
+#endif
 		set_light_status(&mst);
 		app_check_mcu_save(&mst);
 		app_push_status(&mst);
+#ifdef CONFIG_GRADIENT
 	} else {
 		change_light_grad(&mst);
 	}
+#endif
 }
 
-void light_off_saved_and_pub()
+irom void light_off_saved_and_pub()
 {
 	mcu_status_t mst;
 	os_memcpy(&mst, &(sys_status.mcu_status), sizeof(mcu_status_t));
 	mst.s = 0;
 
+#ifdef CONFIG_GRADIENT
 	if (sys_status.grad_on == 0) {
+#endif
 		set_light_status(&mst);
 		app_check_mcu_save(&mst);
 		app_push_status(&mst);
+#ifdef CONFIG_GRADIENT
 	} else {
 		change_light_grad(&mst);
 	}
+#endif
 }
 
 upnp_dev_t upnp_devs[] = {
@@ -155,9 +163,9 @@ const mjyun_config_t mjyun_conf = {
 	WITH_MQTT
 };
 
-void mjyun_connected()
+irom void mjyun_connected()
 {
-	// need to update the status in cloud
+	/* need to update the status in cloud */
 	app_push_status(NULL);
 
 #ifdef CONFIG_ALEXA
@@ -174,9 +182,9 @@ void mjyun_connected()
 	}
 }
 
-void mjyun_disconnected()
+irom void mjyun_disconnected()
 {
-	//show the wifi status
+	/* show the wifi status */
 }
 
 irom void platform_init(void)
@@ -185,12 +193,10 @@ irom void platform_init(void)
 	gpio16_output_set(1);
 
 	mjyun_statechanged(mjyun_stated_cb);
-	espnow_create();
+	espnow_start();
 
-	// execute app_start_check() every one second
+	/* execute app_start_check() every one second */
 	network_sys_timer_cb_reg(app_start_check);
-
-	//app_start_check(0);
 
 	mjyun_setssidprefix("NOD_");
 
@@ -212,7 +218,7 @@ irom void system_init_done()
 
 	app_start_status();
 
-	// Init platform
+	/* Init platform */
 	platform_init();
 }
 
@@ -220,19 +226,9 @@ irom void user_init()
 {
 	app_param_load();
 
-#define DEV_MODE 1
-#if defined(DEV_MODE)
 	uart_init(BIT_RATE_115200, BIT_RATE_115200);
-#else
-	// Set the port to print log info.
-	UART_SetPrintPort(UART1);
-	// Swap UART Port to RS485 bus
-	system_uart_swap();
-	// Set RS485 and LOG baudrate
-	uart_init(BIT_RATE_9600, BIT_RATE_115200);
-#endif
 
-	mjpwm_cmd_t command = {
+	mjpwm_cmd_t init_cmd = {
 		.scatter = MJPWM_CMD_SCATTER_APDM,
 		.frequency = MJPWM_CMD_FREQUENCY_DIVIDE_1,
 		.bit_width = MJPWM_CMD_BIT_WIDTH_12,
@@ -241,7 +237,7 @@ irom void user_init()
 		.resv = 0,
 	};
 
-	mjpwm_init(PIN_DI, PIN_DCKI, 1, command);
+	mjpwm_init(PIN_DI, PIN_DCKI, 1, init_cmd);
 
 	/* Light the led ASAP */
 	set_light_status(NULL);
