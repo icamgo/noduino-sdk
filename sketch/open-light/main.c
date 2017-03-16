@@ -240,7 +240,43 @@ irom void user_init()
 	mjpwm_init(PIN_DI, PIN_DCKI, 1, init_cmd);
 
 	/* Light the led ASAP */
-	set_light_status(NULL);
+#ifdef CONFIG_GRADIENT
+	if (sys_status.grad_on == 0) {
+#endif
+		if ((!is_warm_boot()) && (sys_status.cold_on != 0)) {
+			sys_status.mcu_status.s = 1;
+		}
+
+		set_light_status(NULL);
+#ifdef CONFIG_GRADIENT
+	} else {
+		mcu_status_t mt;
+		os_memcpy(&mt, &(sys_status.mcu_status), sizeof(mcu_status_t));
+
+		if (!is_warm_boot()) {
+			/* boot up from cold state */
+			if (sys_status.cold_on == 1) {
+				/* don't care the saved state, turn on */
+				sys_status.mcu_status.s = 0;
+				mt.s = 1;
+				change_light_grad(&mt);
+			} else {
+				/* case the saved off state */
+				if (sys_status.mcu_status.s == 1) {
+					sys_status.mcu_status.s = 0;
+					mt.s = 1;
+					change_light_grad(&mt);
+				} else {
+					INFO("Boot from cold state, saved state is off, do nothing\r\n");
+				}
+			}
+		} else {
+			/* warm boot up, just refresh the state */
+			set_light_status(NULL);
+		}
+	}
+#endif
+	set_warm_boot_flag();
 
 	system_init_done_cb(system_init_done);
 }

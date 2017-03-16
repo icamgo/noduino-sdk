@@ -79,6 +79,8 @@ bool get_light_on();
 void app_param_load(void);
 void app_param_save(void);
 void app_param_restore(void);
+bool is_warm_boot();
+void set_warm_boot_flag();
 
 void app_push_status(mcu_status_t *pst);
 void app_push_voice_name(char *vname);

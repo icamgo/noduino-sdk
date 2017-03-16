@@ -542,6 +542,21 @@ irom void set_light_status(mcu_status_t *st)
 	}
 }
 
+irom bool is_warm_boot()
+{
+	uint32_t warm_boot = 0;
+	system_rtc_mem_read(64+20, (void *)&warm_boot, sizeof(warm_boot));
+	//INFO("rtc warm_boot = %X\r\n", warm_boot);
+
+	return (warm_boot == 0x66AA);
+}
+
+irom void set_warm_boot_flag()
+{
+	uint32_t warm_boot = 0x66AA;
+	system_rtc_mem_write(64+20, (void *)&warm_boot, sizeof(warm_boot));
+}
+
 irom void app_param_load(void)
 {
 	system_param_load(
@@ -550,24 +565,7 @@ irom void app_param_load(void)
 	    (void *)(&sys_status),
 	    sizeof(sys_status));
 
-	uint32_t warm_boot = 0;
-	system_rtc_mem_read(64+20, (void *)&warm_boot, sizeof(warm_boot));
-	//INFO("rtc warm_boot = %X\r\n", warm_boot);
-
-	if (sys_status.init_flag) {
-		if (warm_boot != 0x66AA) {
-			if (sys_status.cold_on != 0) {
-				INFO("Cold boot up, set the switch on!\r\n");
-				sys_status.mcu_status.s = 1;
-			}
-			INFO("cold on = 0x%x\r\n", sys_status.cold_on);
-
-			warm_boot = 0x66AA;
-			system_rtc_mem_write(64+20, (void *)&warm_boot, sizeof(warm_boot));
-		} else {
-			INFO("Warm boot up, use the status saved in flash!\r\n");
-		}
-	} else {
+	if (sys_status.init_flag == 0xff) {
 		sys_status.init_flag = 1;
 		os_strcpy(sys_status.voice_name, DEFAULT_VOICE_NAME);
 	}
