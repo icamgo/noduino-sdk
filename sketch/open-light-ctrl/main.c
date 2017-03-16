@@ -193,7 +193,7 @@ irom void platform_init(void)
 	gpio16_output_set(1);
 
 	mjyun_statechanged(mjyun_stated_cb);
-	espnow_create();
+	espnow_start();
 
 	// execute app_start_check() every one second
 	network_sys_timer_cb_reg(app_start_check);
