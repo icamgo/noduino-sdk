@@ -49,16 +49,18 @@ void led_set_effect(uint8_t ef)
 
 irom void led_init()
 {
-	pinMode(3, OUTPUT);
+	pinMode(LED_GPIO_NUM, OUTPUT);
 
-	// GPIO3: the wifi status led
-	wifi_status_led_install(3, PERIPHS_IO_MUX_U0RXD_U, FUNC_GPIO3);
+	// LED_GPIO_NUM: the wifi status led
+	wifi_status_led_install(LED_GPIO_NUM, LED_GPIO_MUX,
+			LED_GPIO_FUNC);
 }
 
 irom void wifi_led_enable()
 {
-	// GPIO13: the wifi status led
-	wifi_status_led_install(3, PERIPHS_IO_MUX_U0RXD_U, FUNC_GPIO3);
+	// LED_GPIO_NUM: the wifi status led
+	wifi_status_led_install(LED_GPIO_NUM, LED_GPIO_MUX,
+			LED_GPIO_FUNC);
 }
 
 irom void wifi_led_disable()
@@ -68,5 +70,15 @@ irom void wifi_led_disable()
 
 void led_set(uint8_t st)
 {
-	digitalWrite(3, st);
+	digitalWrite(LED_GPIO_NUM, st);
+}
+
+void led_on()
+{
+	led_set(0);
+}
+
+void led_off()
+{
+	led_set(1);
 }

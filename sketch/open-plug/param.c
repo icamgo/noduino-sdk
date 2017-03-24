@@ -19,7 +19,7 @@
 
 extern upnp_dev_t upnp_devs[];
 
-struct minik_saved_param minik_param;
+struct dev_param minik_param;
 
 void ICACHE_FLASH_ATTR param_set_status(uint8_t status)
 {
@@ -43,7 +43,7 @@ void ICACHE_FLASH_ATTR param_save(void)
 	spi_flash_erase_sector(PARAM_START_SEC + 0);
 	spi_flash_write((PARAM_START_SEC + 0) * SPI_FLASH_SEC_SIZE,
 			(uint32 *) & minik_param,
-			sizeof(struct minik_saved_param));
+			sizeof(struct dev_param));
 }
 
 irom void param_restore(void)
@@ -56,7 +56,7 @@ void ICACHE_FLASH_ATTR param_init()
 	int need_to_save = 0;
 	spi_flash_read((PARAM_START_SEC + 0) * SPI_FLASH_SEC_SIZE,
 		       (uint32 *) & minik_param,
-		       sizeof(struct minik_saved_param));
+		       sizeof(struct dev_param));
 
 	uint32_t warm_boot = 0;
 	system_rtc_mem_read(64+20, (void *)&warm_boot, sizeof(warm_boot));

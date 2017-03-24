@@ -17,28 +17,23 @@
 */
 #include "user_config.h"
 
-//uint8_t relay_pin = 4;	/* For v0.2 HEX-Relay board, D8(GPIO4) */
-uint8_t relay_pin = 12;		/* D5(GPIO12) control the relay */
-
 void relay_init()
 {
-	pinMode(relay_pin, OUTPUT);
+	pinMode(RELAY_GPIO_NUM, OUTPUT);
 }
 
 void relay_on()
 {
-#ifdef DEBUG
-	os_printf("set relay on\n");
-#endif
-	digitalWrite(relay_pin, HIGH);
+	INFO("set relay on\n");
+	digitalWrite(RELAY_GPIO_NUM, HIGH);
+	//led_on();
 }
 
 void relay_off()
 {
-#ifdef DEBUG
-	os_printf("set relay off\n");
-#endif
-	digitalWrite(relay_pin, LOW);
+	INFO("set relay off\n");
+	digitalWrite(RELAY_GPIO_NUM, LOW);
+	//led_off();
 }
 
 void relay_set_status(uint8_t status)
@@ -63,7 +58,7 @@ void relay_set_status_and_publish(uint8_t status)
 
 uint8_t relay_get_status()
 {
-	return digitalRead(relay_pin);
+	return digitalRead(RELAY_GPIO_NUM);
 }
 
 void relay_publish_status()

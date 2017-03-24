@@ -18,7 +18,7 @@
 #include "user_config.h"
 #include "compile.h"
 
-extern struct minik_saved_param minik_param;
+extern struct dev_param minik_param;
 
 #ifdef CONFIG_ALEXA
 void relay_on_saved_and_pub()
