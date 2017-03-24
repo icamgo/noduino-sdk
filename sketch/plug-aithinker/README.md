@@ -3,13 +3,13 @@ Old Ai-Thinker Smart Plug Reference Firmware
 
 ### Overview
 
-![Plug Ai-Thinker](plug-aithinker-1.jpg)
+![Plug Ai-Thinker](doc/plug-aithinker-1.jpg)
 
 
-![Plug Ai-Thinker](plug-aithinker-2.jpg)
+![Plug Ai-Thinker](doc/plug-aithinker-2.jpg)
 
 
-![Plug Ai-Thinker](plug-aithinker-3.jpg)
+![Plug Ai-Thinker](doc/plug-aithinker-3.jpg)
 
 
 ### Pin Resource
@@ -51,7 +51,7 @@ Then connect the 3.3V to power up the board:
 * FT232_VCC3.3 ---> Plug_3.3V (Power supply must be 3.3V!)
 
 
-![Plug Ai-Thinker](plug-aithinker-4.jpg)
+![Plug Ai-Thinker](doc/plug-aithinker-4.jpg)
 
 
 ```bash
