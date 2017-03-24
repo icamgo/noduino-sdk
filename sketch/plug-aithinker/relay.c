@@ -17,38 +17,31 @@
 */
 #include "user_config.h"
 
+void relay_init()
+{
+	pinMode(RELAY_GPIO_NUM, OUTPUT);
+}
+
 void relay_on()
 {
-#ifdef DEBUG
-	INFO("set gpio4 to high\n");
-#endif
-	gpio_output_set(BIT4, 0, BIT4, 0);
+	INFO("set relay on\n");
+	digitalWrite(RELAY_GPIO_NUM, HIGH);
+	led_on();
 }
 
 void relay_off()
 {
-#ifdef DEBUG
-	INFO("set gpio4 to low\n");
-#endif
-	gpio_output_set(0, BIT4, BIT4, 0);
-}
-
-void relay_init()
-{
-	gpio_init();
-
-	// Set GPIO4 to output mode
-	PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO4_U, FUNC_GPIO4);
+	INFO("set relay off\n");
+	digitalWrite(RELAY_GPIO_NUM, LOW);
+	led_off();
 }
 
 void relay_set_status(uint8_t status)
 {
 	if(status == 0) {
 		relay_off();
-		led_set_status(0);
 	} else if (status == 1) {
 		relay_on();
-		led_set_status(1);
 	}
 }
 
@@ -56,18 +49,16 @@ void relay_set_status_and_publish(uint8_t status)
 {
 	if(status == 0) {
 		relay_off();
-		led_set_status(0);
 		mjyun_publishstatus("off");
 	} else if (status == 1) {
 		relay_on();
-		led_set_status(1);
 		mjyun_publishstatus("on");
 	}
 }
 
 uint8_t relay_get_status()
 {
-	return (GPIO_REG_READ(GPIO_OUT_ADDRESS) & BIT4) == 0 ? 0 : 1;
+	return digitalRead(RELAY_GPIO_NUM);
 }
 
 void relay_publish_status()

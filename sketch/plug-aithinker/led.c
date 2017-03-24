@@ -17,51 +17,69 @@
 */
 #include "user_config.h"
 
-void ICACHE_FLASH_ATTR red_led_on()
+static os_timer_t led_ef_timer;
+
+static uint8_t smart_ef = 0;
+
+void led_effect_tick()
 {
-#ifdef DEBUG
-	INFO("led on\r\n");
-	INFO("set gpio12 to low\r\n");
-#endif
-	gpio_output_set(0, BIT12, BIT12, 0);
-}
+	static bool val = 0;
 
-void ICACHE_FLASH_ATTR red_led_off()
-{
-#ifdef DEBUG
-	INFO("led off\r\n");
-	INFO("set gpio12 to high\r\n");
-#endif
-	gpio_output_set(BIT12, 0, BIT12, 0);
-}
+	os_timer_disarm(&led_ef_timer);
 
-void ICACHE_FLASH_ATTR led_init()
-{
-	gpio_init();
-
-	// GPIO13: the wifi status led
-	wifi_status_led_install (13, PERIPHS_IO_MUX_MTCK_U, FUNC_GPIO13);
-
-	// Set GPIO12 to output mode
-	PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDI_U, FUNC_GPIO12);
-}
-
-void ICACHE_FLASH_ATTR led_set_status(uint8_t status)
-{
-	if(status == 0) {
-		red_led_off();
-	} else if (status == 1) {
-		red_led_on();
+	switch (smart_ef) {
+		case 0:
+			led_set(val);
+			val = !val;
+			os_timer_setfn(&led_ef_timer, (os_timer_func_t *)led_effect_tick, NULL);
+			os_timer_arm(&led_ef_timer, 800, 1);
+			break;
+		case 1:
+			led_set(0);
+			return;
+			break;
 	}
 }
 
-void ICACHE_FLASH_ATTR wifi_led_enable()
+void led_set_effect(uint8_t ef)
 {
-	// GPIO13: the wifi status led
-	wifi_status_led_install (13, PERIPHS_IO_MUX_MTCK_U, FUNC_GPIO13);
+	smart_ef = ef;
+	led_effect_tick();
 }
 
-void ICACHE_FLASH_ATTR wifi_led_disable()
+irom void led_init()
+{
+	pinMode(LED_GPIO_NUM, OUTPUT);
+	pinMode(RELAY_LED_NUM, OUTPUT);
+
+	// LED_GPIO_NUM: the wifi status led
+	wifi_status_led_install(LED_GPIO_NUM, LED_GPIO_MUX,
+			LED_GPIO_FUNC);
+}
+
+irom void wifi_led_enable()
+{
+	// LED_GPIO_NUM: the wifi status led
+	wifi_status_led_install(LED_GPIO_NUM, LED_GPIO_MUX,
+			LED_GPIO_FUNC);
+}
+
+irom void wifi_led_disable()
 {
 	wifi_status_led_uninstall();
+}
+
+void led_set(uint8_t st)
+{
+	digitalWrite(RELAY_LED_NUM, st);
+}
+
+void led_on()
+{
+	led_set(0);
+}
+
+void led_off()
+{
+	led_set(1);
 }
