@@ -17,19 +17,68 @@
 */
 #include "user_config.h"
 
+static os_timer_t led_ef_timer;
+
+static uint8_t smart_ef = 0;
+
+void led_effect_tick()
+{
+	static bool val = 0;
+
+	os_timer_disarm(&led_ef_timer);
+
+	switch (smart_ef) {
+		case 0:
+			led_set(val);
+			val = !val;
+			os_timer_setfn(&led_ef_timer, (os_timer_func_t *)led_effect_tick, NULL);
+			os_timer_arm(&led_ef_timer, 800, 1);
+			break;
+		case 1:
+			led_set(0);
+			return;
+			break;
+	}
+}
+
+void led_set_effect(uint8_t ef)
+{
+	smart_ef = ef;
+	led_effect_tick();
+}
+
 irom void led_init()
 {
-	// GPIO13: the wifi status led
-	wifi_status_led_install(13, PERIPHS_IO_MUX_MTCK_U, FUNC_GPIO13);
+	pinMode(LED_GPIO_NUM, OUTPUT);
+
+	// LED_GPIO_NUM: the wifi status led
+	wifi_status_led_install(LED_GPIO_NUM, LED_GPIO_MUX,
+			LED_GPIO_FUNC);
 }
 
 irom void wifi_led_enable()
 {
-	// GPIO13: the wifi status led
-	wifi_status_led_install(13, PERIPHS_IO_MUX_MTCK_U, FUNC_GPIO13);
+	// LED_GPIO_NUM: the wifi status led
+	wifi_status_led_install(LED_GPIO_NUM, LED_GPIO_MUX,
+			LED_GPIO_FUNC);
 }
 
 irom void wifi_led_disable()
 {
 	wifi_status_led_uninstall();
+}
+
+void led_set(uint8_t st)
+{
+	digitalWrite(LED_GPIO_NUM, st);
+}
+
+void led_on()
+{
+	led_set(0);
+}
+
+void led_off()
+{
+	led_set(1);
 }
