@@ -3,13 +3,13 @@ Small K mini Smart Plug Reference Firmware
 
 ### Overview
 
-![Plug miniK](plug-minik-1.jpg)
+![Plug miniK](doc/plug-minik-1.jpg)
 
 
-![Plug miniK](plug-minik-2.jpg)
+![Plug miniK](doc/plug-minik-2.jpg)
 
 
-![Plug miniK](plug-minik-3.jpg)
+![Plug miniK](doc/plug-minik-3.jpg)
 
 
 ### Pin Resource
@@ -51,7 +51,7 @@ And then connect the 3.3V to power up the board:
 * FT232_VCC3.3 ---> Plug_3.3V (Power supply must be 3.3V!)
 
 
-![Plug miniK Upload](plug-minik-4.jpg)
+![Plug miniK Upload](doc/plug-minik-4.jpg)
 
 
 
