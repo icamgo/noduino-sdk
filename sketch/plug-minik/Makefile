@@ -25,13 +25,13 @@ sinclude .config
 #XLD		:= $(TOOLCHAIN_DIR)/xtensa-lx106-elf/bin/xtensa-lx106-elf-gcc
 
 # include path used in this project
-SDK_INCDIR	+=
+SDK_INCDIR	+= include/noduino include/lwip
 
 # libraries used in this project
-LIBS		+=
+LIBS		+= cirom noduino espudpd echo
 
 # compiler flags using during compilation of source files
-CFLAGS		+=
+CFLAGS		+= -DLWIP_OPEN_SRC
 
 # linker flags used to generate the main object file
 LDFLAGS		+=
@@ -42,6 +42,3 @@ include $(SDK_BASE)/scripts/Makefile.ota
 else
 include $(SDK_BASE)/scripts/Makefile
 endif
-
-recover:
-	-$(ESPTOOL) -cd $(CONFIG_BOARD) -cb $(CONFIG_ESPBAUD) -cp $(CONFIG_ESPPORT) -ca 0x0 -cf ./fw/miniK-25l80.bin

@@ -17,28 +17,23 @@
 */
 #include "user_config.h"
 
+void relay_init()
+{
+	pinMode(RELAY_GPIO_NUM, OUTPUT);
+}
+
 void relay_on()
 {
-#ifdef DEBUG
-	os_printf("set gpio15 to high\n");
-#endif
-	gpio_output_set(BIT15, 0, BIT15, 0);
+	INFO("set relay on\n");
+	digitalWrite(RELAY_GPIO_NUM, HIGH);
+	//led_on();
 }
 
 void relay_off()
 {
-#ifdef DEBUG
-	os_printf("set gpio15 to low\n");
-#endif
-	gpio_output_set(0, BIT15, BIT15, 0);
-}
-
-void relay_init()
-{
-	gpio_init();
-
-	// Set GPIO15 to output mode
-	PIN_FUNC_SELECT(PERIPHS_IO_MUX_MTDO_U, FUNC_GPIO15);
+	INFO("set relay off\n");
+	digitalWrite(RELAY_GPIO_NUM, LOW);
+	//led_off();
 }
 
 void relay_set_status(uint8_t status)
@@ -63,7 +58,7 @@ void relay_set_status_and_publish(uint8_t status)
 
 uint8_t relay_get_status()
 {
-	return (GPIO_REG_READ(GPIO_OUT_ADDRESS) & BIT15) == 0 ? 0 : 1;
+	return digitalRead(RELAY_GPIO_NUM);
 }
 
 void relay_publish_status()
