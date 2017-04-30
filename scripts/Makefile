@@ -19,7 +19,7 @@ ESPSDK_LDDIR	= ld
 # libraries used in this project, mainly provided by the ESPSDK
 LIBS		+= gcc
 LIBS		+= crypto espnow json lwip_536 lwip mesh net80211 phy pp pwm smartconfig mbedtls upgrade wpa wps main
-LIBS		+= driver mjyun airkiss
+LIBS		+= driver cloud airkiss
 
 # toolchain
 XCC		?= $(TOOLCHAIN_DIR)/xtensa-lx106-elf/bin/xtensa-lx106-elf-gcc
@@ -227,6 +227,14 @@ zero:
 getdevid:
 	-$(ESPTOOL_PY) --port $(CONFIG_ESPPORT) read_flash $(CONFIG_YUNCONF_ADDR) 0x1000 mjyun.bin
 	-$(Q) echo "The original mjyun data is got into mjyun.bin"
+
+getsys:
+	-$(ESPTOOL_PY) --port $(CONFIG_ESPPORT) read_flash $(CONFIG_SYSCONF_ADDR) 0x1000 sys.bin
+
+setsys:
+	-$(ESPTOOL) -cd $(CONFIG_BOARD) -cb $(CONFIG_ESPBAUD) -cp $(CONFIG_ESPPORT)	\
+				-ca $(CONFIG_SYSCONF_ADDR) -cf sys.bin		\
+				-ca $(shell printf "0x%x" $$(($(CONFIG_SYSCONF_ADDR)+0x1000))) -cf sys.bin
 
 setdevid:
 	-$(if $(value DID),, $(error Device ID (DID) is not set!))
