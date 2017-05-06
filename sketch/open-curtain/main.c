@@ -112,7 +112,7 @@ void mjyun_receive(const char *event_name, const char *event_data)
 
 	if(os_strncmp(event_data, "ota", 3) == 0) {
 		INFO("OTA: upgrade the firmware!\r\n");
-		mjyun_mini_ota_start("ota/dev/kt320/files");
+		mjyun_mini_ota_start("ota/dev/opencurtain/files");
 	}
 
 	if(os_strncmp(event_data, "reset", 5) == 0) {
