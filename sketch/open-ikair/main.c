@@ -113,8 +113,9 @@ static int httprate_min = HTTP_SEND_RATE_MIN; //5 min
 
 static int tmp_timer = 0;
 
-irom char *str_trim(char *str)
+irom char *str_trim(const char *p)
 {
+	char *str = (char *)p;
 	char *end;
 
 	// Trim leading space
@@ -135,7 +136,7 @@ irom char *str_trim(char *str)
 
 static upload_fail_cnt = 0;
 
-void http_upload_temp_error_handle()
+void http_upload_error_handle()
 {
 	upload_fail_cnt++;
 	if(upload_fail_cnt >= 3) {
@@ -147,7 +148,7 @@ void http_upload_temp_error_handle()
 	//TODO: store the data in flash
 }
 
-void http_upload_temp_cb(char *response, int http_status, char *full_response)
+void http_upload_cb(char *response, int http_status, char *full_response)
 {
 	if ( HTTP_STATUS_GENERIC_ERROR != http_status )
 	{
@@ -158,23 +159,24 @@ void http_upload_temp_cb(char *response, int http_status, char *full_response)
 #endif
 
 		if(os_strncmp(response, "ok", 2) != 0)
-			http_upload_temp_error_handle();
+			http_upload_error_handle();
 
 	} else {
-		http_upload_temp_error_handle();
+		http_upload_error_handle();
 #ifdef DEBUG
 		os_printf( "%s: http_status=%d\r\n", __func__, http_status );
 #endif
 	}
 }
 
-void http_upload_temp(char *tt)
+void http_upload(char *tt, char *hh)
 {
-	uint8_t * URL = (uint8_t *) os_zalloc( os_strlen(HTTP_UPLOAD_URL) +
-	                  os_strlen( mjyun_getdeviceid() ) +
-	                  os_strlen( mjyun_get_product_id() ) +
-	                  os_strlen( tt ) +
+	uint8_t * URL = (uint8_t *) os_zalloc(os_strlen(HTTP_UPLOAD_URL) +
+	                  os_strlen(mjyun_getdeviceid()) +
+	                  os_strlen(mjyun_get_product_id()) +
+	                  os_strlen(tt) + os_strlen(hh) +
 	                  12);
+
 	if ( URL == NULL ) {
 #ifdef DEBUG
 		os_printf( "%s: not enough memory\r\n", __func__ );
@@ -189,8 +191,9 @@ void http_upload_temp(char *tt)
 	            mjyun_getdeviceid(),
 				mjyun_get_product_id(),
 	            str_trim(tt),
+	            str_trim(hh),
 	            cs);
-	http_get((const char *) URL , "", http_upload_temp_cb);
+	http_get((const char *) URL , "", http_upload_cb);
 #ifdef DEBUG
 	os_printf("%s\r\n", (char *)URL);
 #endif
@@ -202,6 +205,9 @@ void push_temp_humi()
 {
 	char t_buf[8];
 	char h_buf[8];
+	char msg[64];
+
+	os_memset(msg, 0, 64);
 
 	sht2x_reset();
 	float temp = sht2x_GetTemperature();
@@ -209,20 +215,25 @@ void push_temp_humi()
 	dtostrf(temp, 5, 2, t_buf),
 	dtostrf(humi, 5, 2, h_buf);
 
-	os_printf("Temperature(C): %s\r\n", t_buf);
-	os_printf("Humidity(%RH): %s\r\n", h_buf);
+	char *t = str_trim(t_buf);
+	char *h = str_trim(h_buf);
+
+	//os_printf("Temperature(C): %s\r\n", t);
+	//os_printf("Humidity(%RH): %s\r\n", h);
 
 	if (1 == realtime) {
 		if (fabsf(temp - pre_temp) > 0.1) {
 
 			pre_temp = temp;
 
+			os_sprintf(msg, "{\"temp\":%s,\"humi\":%s}", t, h);
+
 			/* data changed, need update via mqtt */
-			mjyun_publishstatus(t_buf);
-			http_upload_temp(t_buf);
+			mjyun_publishstatus(msg);
+			http_upload(t, h);
 		}
 	} else {
-		http_upload_temp(t_buf);
+		http_upload(t, h);
 	}
 }
 
