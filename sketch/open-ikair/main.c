@@ -24,6 +24,7 @@
 
 static uint32_t realtime = 0;
 static uint32_t network_state = 0;
+static uint32_t wan_ok = 0;
 
 irom static void mjyun_stated_cb(mjyun_state_t state)
 {
@@ -78,12 +79,15 @@ irom static void mjyun_stated_cb(mjyun_state_t state)
             os_printf("Platform: MJYUN_CONNECTING\r\n");
             break;
         case MJYUN_CONNECTING_ERROR:
+			wan_ok = 0;
             os_printf("Platform: MJYUN_CONNECTING_ERROR\r\n");
             break;
         case MJYUN_CONNECTED:
+			wan_ok = 1;
             os_printf("Platform: MJYUN_CONNECTED \r\n");
             break;
         case MJYUN_DISCONNECTED:
+			wan_ok = 0;
             os_printf("Platform: MJYUN_DISCONNECTED\r\n");
             break;
         default:
@@ -113,25 +117,25 @@ static int httprate_min = HTTP_SEND_RATE_MIN; //5 min
 
 static int tmp_timer = 0;
 
-irom char *str_trim(const char *p)
+irom char *strstrip(char *s)
 {
-	char *str = (char *)p;
+	size_t size;
 	char *end;
 
-	// Trim leading space
-	while(isspace(*str)) str++;
+	size = strlen(s);
 
-	if(*str == 0)  // All spaces?
-	return str;
+	if (!size)
+		return s;
 
-	// Trim trailing space
-	end = str + strlen(str) - 1;
-	while(end > str && isspace(*end)) end--;
+	end = s + size - 1;
+	while (end >= s && isspace(*end))
+		end--;
+	*(end + 1) = '\0';
 
-	// Write new null terminator
-	*(end+1) = 0;
+	while (*s && isspace(*s))
+		s++;
 
-	return str;
+	return s;
 }
 
 static upload_fail_cnt = 0;
@@ -190,8 +194,8 @@ void http_upload(char *tt, char *hh)
 	            HTTP_UPLOAD_URL,
 	            mjyun_getdeviceid(),
 				mjyun_get_product_id(),
-	            str_trim(tt),
-	            str_trim(hh),
+	            (tt),
+	            (hh),
 	            cs);
 	http_get((const char *) URL , "", http_upload_cb);
 #ifdef DEBUG
@@ -215,8 +219,8 @@ void push_temp_humi()
 	dtostrf(temp, 5, 2, t_buf),
 	dtostrf(humi, 5, 2, h_buf);
 
-	char *t = str_trim(t_buf);
-	char *h = str_trim(h_buf);
+	char *t = strstrip(t_buf);
+	char *h = strstrip(h_buf);
 
 	//os_printf("Temperature(C): %s\r\n", t);
 	//os_printf("Humidity(%RH): %s\r\n", h);
@@ -249,6 +253,8 @@ void mjyun_connected()
 	time_init();
 
 	mjyun_setssidprefix("NOD_");
+
+	wan_ok = 1;
 
 	// stop to show the wifi status
 	wifi_led_disable();
@@ -303,8 +309,7 @@ irom void setup()
 
 void loop()
 {
-	if (network_state == WIFI_STATION_OK ||
-			network_state == WIFI_AP_STATION_OK) {
+	if (wan_ok == 1) {
 		push_temp_humi();
 		if(realtime == 1)
 			delay(mqttrate_sec*1000);
