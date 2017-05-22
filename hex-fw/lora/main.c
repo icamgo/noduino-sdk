@@ -89,7 +89,7 @@ int main(void)
 					}
 
 					sx1278_set_opmode(STANDBY);
-					sx1278_write_reg(REG_LR_IRQFLAGSMASK, IRQN_RXD_Value); //打开发送中断
+					sx1278_write_reg(REG_LR_IRQFLAGSMASK, IRQN_RXD_Value);
 					sx1278_write_reg(REG_LR_HOPPERIOD, PACKET_MIAX_Value);
 					sx1278_write_reg(REG_LR_DIOMAPPING1, 0X00);
 					sx1278_write_reg(REG_LR_DIOMAPPING2, 0x00);
@@ -98,16 +98,16 @@ int main(void)
 				} else if ((irq_flag & 0x08) == 0x08) {
 
 					sx1278_set_opmode(STANDBY);
-					sx1278_write_reg(REG_LR_IRQFLAGSMASK, IRQN_RXD_Value); //打开发送中断
+					sx1278_write_reg(REG_LR_IRQFLAGSMASK, IRQN_RXD_Value);
 					sx1278_write_reg(REG_LR_HOPPERIOD, PACKET_MIAX_Value);
 					sx1278_write_reg(REG_LR_DIOMAPPING1, 0X00);
 					sx1278_write_reg(REG_LR_DIOMAPPING2, 0x00);
 					sx1278_set_opmode(RX);
 
 				} else if ((irq_flag & 0x04) == 0x04) {
-					if ((irq_flag & 0x01) == 0x01) { //表示CAD 检测到扩频信号 模块进入了接收状态来接收数据
+					if ((irq_flag & 0x01) == 0x01) {
 						sx1278_set_opmode(STANDBY);
-						sx1278_write_reg(REG_LR_IRQFLAGSMASK, IRQN_RXD_Value); //打开发送中断
+						sx1278_write_reg(REG_LR_IRQFLAGSMASK, IRQN_RXD_Value);
 						sx1278_write_reg(REG_LR_HOPPERIOD, PACKET_MIAX_Value);
 						sx1278_write_reg(REG_LR_DIOMAPPING1, 0X02);
 						sx1278_write_reg(REG_LR_DIOMAPPING2, 0x00);
@@ -115,14 +115,14 @@ int main(void)
 					} else {                          
 						sx1278_set_opmode(STANDBY);
 						sx1278_write_reg(REG_LR_IRQFLAGSMASK,
-								IRQN_SEELP_Value);   //打开发送中断
+								IRQN_SEELP_Value);
 						sx1278_write_reg(REG_LR_DIOMAPPING1, 0X00);
 						sx1278_write_reg(REG_LR_DIOMAPPING2, 0X00);
 						sx1278_set_opmode(SLEEP);
 					}
 				} else {
 					sx1278_set_opmode(STANDBY);
-					sx1278_write_reg(REG_LR_IRQFLAGSMASK, IRQN_RXD_Value);  //打开发送中断
+					sx1278_write_reg(REG_LR_IRQFLAGSMASK, IRQN_RXD_Value);
 					sx1278_write_reg(REG_LR_HOPPERIOD, PACKET_MIAX_Value);
 					sx1278_write_reg(REG_LR_DIOMAPPING1, 0X02);
 					sx1278_write_reg(REG_LR_DIOMAPPING2, 0x00);
