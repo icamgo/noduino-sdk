@@ -37,6 +37,10 @@ typedef struct ctrl_status_t {
 	char ch3_voice_name[32];
 	char ch4_voice_name[32];
 	char ch5_voice_name[32];
+	uint8_t cold_on;
+	uint8_t alexa_on;
+	uint8_t airkiss_nff_on;
+	uint8_t pack[1];
 } __attribute__((aligned(4), packed)) ctrl_status_t;
 
 void param_load();

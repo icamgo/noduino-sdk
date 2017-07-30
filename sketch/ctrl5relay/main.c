@@ -486,7 +486,7 @@ irom void setup()
 	INFO("Current firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
 	INFO("%s", noduino_banner);
 
-	param_load();
+	param_init();
 	relay_init();
 
 	led_init();
