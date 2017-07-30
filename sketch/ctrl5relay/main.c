@@ -190,6 +190,15 @@ void ICACHE_FLASH_ATTR push_voice_name()
 	msg = NULL;
 }
 
+irom void push_cold_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", ctrl_st.cold_on);
+
+	mjyun_publish("cold_on", msg);
+}
+
 static void mjyun_stated_cb(mjyun_state_t state)
 {
     if (mjyun_state() != state)
@@ -315,6 +324,20 @@ void mjyun_receive(const char *event_name, const char *event_data)
 		}
 
 		cJSON_Delete(pD);
+	}
+
+	/* {"m":"set_cold_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_cold_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set cold_on %d Request!\r\n", cd_on);
+		ctrl_st.cold_on = cd_on;
+		param_save();
+		push_cold_on();
+	}
+	/* {"m":"get_cold_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_cold_on")) {
+		INFO("RX Get cold_on Request!\r\n");
+		push_cold_on();
 	}
 
 	/* {"m":"set_voice_name", "d":{"ch1":"channel 1", "ch2":"channel 2"}} */
