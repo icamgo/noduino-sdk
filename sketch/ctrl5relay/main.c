@@ -208,6 +208,15 @@ irom void push_alexa_on()
 	mjyun_publish("alexa_on", msg);
 }
 
+irom void push_airkiss_nff_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", ctrl_st.airkiss_nff_on);
+
+	mjyun_publish("airkiss_nff_on", msg);
+}
+
 static void mjyun_stated_cb(mjyun_state_t state)
 {
     if (mjyun_state() != state)
@@ -379,6 +388,28 @@ void mjyun_receive(const char *event_name, const char *event_data)
 	if (0 == os_strcmp(event_name, "get_alexa_on")) {
 		INFO("RX Get alexa_on Request!\r\n");
 		push_alexa_on();
+	}
+
+	/* {"m":"set_airkiss_nff_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_airkiss_nff_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set airkiss_nff_on %d Request!\r\n", cd_on);
+		ctrl_st.airkiss_nff_on = cd_on;
+
+		if (0 == cd_on) {
+			mjyun_lan_stop();
+		} else if (1 == cd_on) {
+			mjyun_lan_stop();
+			mjyun_lan_start();
+		}
+
+		param_save();
+		push_airkiss_nff_on();
+	}
+	/* {"m":"get_airkiss_nff_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_airkiss_nff_on")) {
+		INFO("RX Get airkiss_nff_on Request!\r\n");
+		push_airkiss_nff_on();
 	}
 
 	/* {"m":"set_voice_name", "d":{"ch1":"channel 1", "ch2":"channel 2"}} */
