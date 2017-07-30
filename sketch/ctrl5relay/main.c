@@ -175,7 +175,7 @@ void ICACHE_FLASH_ATTR push_voice_name()
 		return;
 	}
 
-	os_sprintf(msg, "{\"ch1\":%s,\"ch2\":%s,\"ch3\":%s,\"ch4\":%s,\"ch5\":%s}",
+	os_sprintf(msg, "{\"ch1\":\"%s\",\"ch2\":\"%s\",\"ch3\":\"%s\",\"ch4\":\"%s\",\"ch5\":\"%s\"}",
 				ctrl_st.ch1_voice_name,
 				ctrl_st.ch2_voice_name,
 				ctrl_st.ch3_voice_name,
@@ -183,7 +183,7 @@ void ICACHE_FLASH_ATTR push_voice_name()
 				ctrl_st.ch5_voice_name
 			);
 
-	mjyun_publish("voice_name", msg);
+	mjyun_publish("set_voice_name", msg);
 	INFO("Pushed voice name = %s\r\n", msg);
 
 	os_free(msg);
