@@ -199,6 +199,15 @@ irom void push_cold_on()
 	mjyun_publish("cold_on", msg);
 }
 
+irom void push_alexa_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", ctrl_st.alexa_on);
+
+	mjyun_publish("alexa_on", msg);
+}
+
 static void mjyun_stated_cb(mjyun_state_t state)
 {
     if (mjyun_state() != state)
@@ -338,6 +347,38 @@ void mjyun_receive(const char *event_name, const char *event_data)
 	if (0 == os_strcmp(event_name, "get_cold_on")) {
 		INFO("RX Get cold_on Request!\r\n");
 		push_cold_on();
+	}
+
+	/* {"m":"set_alexa_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_alexa_on")) {
+		uint8_t cd_on = atoi(event_data);
+		INFO("RX set alexa_on %d Request!\r\n", cd_on);
+
+		if (0 == cd_on) {
+
+			upnp_ssdp_stop();
+
+		} else if (1 == cd_on) {
+
+			upnp_ssdp_stop();
+
+			int ret = 0;
+			ret = upnp_ssdp_start();
+			if (ret != 0) {
+				upnp_ssdp_stop();
+				cd_on = 0;
+			}
+		}
+
+		ctrl_st.alexa_on = cd_on;
+
+		param_save();
+		push_alexa_on();
+	}
+	/* {"m":"get_alexa_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_alexa_on")) {
+		INFO("RX Get alexa_on Request!\r\n");
+		push_alexa_on();
 	}
 
 	/* {"m":"set_voice_name", "d":{"ch1":"channel 1", "ch2":"channel 2"}} */
