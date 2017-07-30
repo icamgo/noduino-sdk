@@ -265,7 +265,12 @@ static void mjyun_stated_cb(mjyun_state_t state)
         case WIFI_STATION_OK:
             INFO("Platform: WIFI_STATION_OK\r\n");
 #ifdef CONFIG_ALEXA
-			upnp_start(upnp_devs, 5);
+			int ret = 0;
+			ret = upnp_start(upnp_devs, 5);
+			if (ret != 0) {
+				upnp_stop(upnp_devs, 5);
+				ctrl_st.alexa_on = 0;
+			}
 #endif
 			led_set_effect(1);
             break;
