@@ -63,8 +63,8 @@ irom void param_init()
 		} else {
 			//INFO("Warm boot up, use the status saved in flash\r\n");
 		}
-	} else {
 #endif
+	} else {
 		INFO("Invalid parameters, reset to default!\n");
 		os_memset(&ctrl_st, 0, sizeof(ctrl_status_t));
 
