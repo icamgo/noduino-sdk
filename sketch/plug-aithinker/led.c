@@ -21,6 +21,11 @@ static os_timer_t led_ef_timer;
 
 static uint8_t smart_ef = 0;
 
+void green_led_set(uint8_t st)
+{
+	digitalWrite(LED_GPIO_NUM, st);
+}
+
 void led_effect_tick()
 {
 	static bool val = 0;
@@ -29,13 +34,13 @@ void led_effect_tick()
 
 	switch (smart_ef) {
 		case 0:
-			led_set(val);
+			green_led_set(val);
 			val = !val;
 			os_timer_setfn(&led_ef_timer, (os_timer_func_t *)led_effect_tick, NULL);
 			os_timer_arm(&led_ef_timer, 800, 1);
 			break;
 		case 1:
-			led_set(0);
+			green_led_set(0);
 			return;
 			break;
 	}
