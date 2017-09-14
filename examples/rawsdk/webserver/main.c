@@ -108,6 +108,10 @@ void user_init(void)
 	uart_init(115200, 115200);
 	os_printf("SDK version:%s\n", system_get_sdk_version());
 
+#ifndef CONFIG_AP_MODE
 	start_station_mode();
-	//start_ap_mode();
+#else
+	start_ap_mode();
+	httpd_start(&httpd);
+#endif
 }

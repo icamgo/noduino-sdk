@@ -8,4 +8,6 @@
 #define	SSID		"YOUR_ROUTER_SSID"
 #define PASSWORD	"YOUR_ROUTER_PASSWD"
 
+#define	CONFIG_AP_MODE		1
+
 #endif
