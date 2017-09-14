@@ -34,13 +34,13 @@
 //#define	DEBUG			1
 
 #ifdef INFO
-#define HTTPD_INFO( format, ... ) os_printf( "UPNP: "format, ## __VA_ARGS__ )
+#define HTTPD_INFO( format, ... ) os_printf( "HTTPD: "format, ## __VA_ARGS__ )
 #else
 #define HTTPD_INFO( format, ... )
 #endif
 
 #ifdef DEBUG
-#define HTTPD_DEBUG( format, ... ) os_printf( "UPNP: "format, ## __VA_ARGS__ )
+#define HTTPD_DEBUG( format, ... ) os_printf( "HTTPD: "format, ## __VA_ARGS__ )
 #else
 #define HTTPD_DEBUG( format, ... )
 #endif
@@ -50,19 +50,6 @@ Server: lwIP/1.4.0\r\n\
 Content-type: %s\r\n\
 Content-Length: %d\r\n\
 Connection: close\r\n\r\n%s\r\n"
-
-#define	HUE_XML			\
-"<root><device>\
-<deviceType>urn:schemas-upnp-org:device:basic:1</deviceType>\
-<friendlyName>%s</friendlyName>\
-<manufacturer>Royal Philips Electronics</manufacturer>\
-<manufacturerURL>http://www.noduino.org</manufacturerURL>\
-<modelDescription>Noduino %s</modelDescription>\
-<modelName>Philips hue bridge 2012</modelName>\
-<modelNumber>%s</modelNumber>\
-<serialNumber>001788102201</serialNumber>\
-<UDN>uuid:2f402f80-da50-11e1-9b23-001788102201</UDN>\
-</device></root>"
 
 typedef struct httpd {
 	struct espconn *esp_conn;
