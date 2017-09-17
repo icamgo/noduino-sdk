@@ -15,7 +15,10 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
 */
-#include "user_config.h"
+#include "noduino.h"
+#include "softuart.h"
+
+Softuart softuart;
 
 static os_timer_t test_timer;
 
@@ -23,6 +26,16 @@ static httpd_t httpd = {
    .esp_conn = NULL,
    .port = 80
 };
+
+void rs485_init()
+{
+	Softuart_SetPinRx(&softuart,14);
+	Softuart_SetPinTx(&softuart,12);
+	Softuart_Init(&softuart,9600);
+	//set pin 13 as output to control tx enable/disable of rs485
+	pinMode(13, OUTPUT);
+	Softuart_EnableRs485(&softuart, 13);
+}
 
 irom void start_ap_mode()
 {
@@ -42,11 +55,17 @@ irom void start_ap_mode()
 	wifi_softap_set_config(&config);
 }
 
-void user_init(void)
+void setup(void)
 {
 	uart_init(115200, 115200);
 	os_printf("SDK version:%s\n", system_get_sdk_version());
 
+	rs485_init();
+
 	start_ap_mode();
 	httpd_start(&httpd);
+}
+
+void loop()
+{
 }

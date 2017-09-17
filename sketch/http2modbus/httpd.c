@@ -16,6 +16,9 @@
  *
 */
 #include "httpd.h"
+#include "softuart.h"
+
+extern Softuart softuart;
 
 irom void httpd_handle_root(void *arg)
 {
@@ -29,7 +32,54 @@ irom void httpd_handle_root(void *arg)
 	espconn_sent(pespconn, resp, os_strlen(resp));
 }
 
-irom void httpd_handle_dev(void *arg, char *data)
+irom void httpd_handle_rs485(void *arg, char *data)
+{
+	struct espconn *pespconn = (struct espconn *)arg;
+
+	char *resp = (char *)os_zalloc(256);
+	char out[64] = { 0 };
+	char rs485_body[256] = { 0 };
+
+	if (resp == NULL) {
+		HTTPD_INFO("resp mem alloc failed when response upnp ctrl\r\n");
+		return;
+	}
+
+	char *p = (char *)os_strstr(data, "GET /rs485?d=");
+	if (p != NULL) {
+		char *curstr = p + 13;
+		char *tmpstr = curstr;
+		while (' ' != *tmpstr && '&' != *tmpstr) {
+			tmpstr++;
+		}
+		int len = tmpstr - curstr;
+		strncpy(out, curstr, len);
+		out[len] = '\0';
+		HTTPD_INFO("tx via rs485: [%s]\r\n", out);
+		Softuart_Puts(&softuart, out);
+
+		delay(300);
+		if(Softuart_Available(&softuart)) {
+			Softuart_Readline(&softuart, rs485_body, 255);
+		}
+		HTTPD_INFO("rx via rs485: [%s]\r\n", rs485_body);
+
+	} else {
+		os_sprintf(rs485_body,
+			"<html><head><title>Noduino</title></head>"
+			"<body><center>Welcome to Noduino!</body></html>"
+			);
+	}
+	os_sprintf(resp, HTTP_OK_HDR, "text/html",
+			os_strlen(rs485_body), rs485_body);
+
+	espconn_sent(pespconn, resp, os_strlen(resp));
+
+	os_free(resp);
+	resp = NULL;
+}
+
+irom void httpd_handle_modbus(void *arg, char *data)
 {
 	struct espconn *pespconn = (struct espconn *)arg;
 
@@ -40,7 +90,7 @@ irom void httpd_handle_dev(void *arg, char *data)
 		return;
 	}
 
-	char *p = (char *)os_strstr(data, "GET /dev?ops=");
+	char *p = (char *)os_strstr(data, "GET /modbus?d=");
 	if (p != NULL) {
 		if (*(p+13) == 'r') {
 
@@ -56,13 +106,6 @@ irom void httpd_handle_dev(void *arg, char *data)
 			os_sprintf(body,
 					"<html><head><title>Noduino</title></head>"
 					"<body><center>RX dev write operation</body></html>"
-					);
-		} else {
-
-			HTTPD_INFO("Unsupported operation: %c\r\n", *(p+13));
-			os_sprintf(body,
-					"<html><head><title>Noduino</title></head>"
-					"<body><center>Unsupported operation</body></html>"
 					);
 		}
 	} else {
@@ -116,9 +159,9 @@ irom void tcp_srv_recv_cb(void *arg, char *data, uint16_t len)
 
 	if (strncmp(d, "GET / ", 6) == 0 ) {
 		httpd_handle_root(arg);
-	} else if (strncmp(d, "GET /dev", 8) == 0) {
-		HTTPD_INFO("------------ TCP Recv: GET /dev\r\n%s\r\n", d);
-		httpd_handle_dev(arg, data);
+	} else if (strncmp(d, "GET /rs485", 8) == 0) {
+		//HTTPD_INFO("------------ TCP Recv: GET /dev\r\n%s\r\n", d);
+		httpd_handle_rs485(arg, data);
 	} else {
 		HTTPD_INFO("------- TCP recv: -------\r\n%s\r\n------------------\r\n", data);
 		httpd_not_found(arg);
