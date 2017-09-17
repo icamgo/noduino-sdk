@@ -155,7 +155,7 @@ irom void init_yun()
 	wifi_set_sleep_type(MODEM_SLEEP_T);
 }
 
-irom void setup(void)
+irom void user_init(void)
 {
 #ifdef DEBUG
 	uart_init(115200, 115200);
@@ -166,6 +166,8 @@ irom void setup(void)
 	INFO("Current firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
 	INFO("%s", noduino_banner);
 
+	noduino_init();
+
 	param_init();
 	curtain_init();
 	encoder_init();
@@ -173,8 +175,4 @@ irom void setup(void)
 	//curtain_set_status(param_get_status(), param_get_position());
 
 	init_yun();
-}
-
-void loop()
-{
 }
