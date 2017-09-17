@@ -42,6 +42,8 @@ irom void user_init()
     //uart_div_modify(0, UART_CLK_FREQ / 9600);
 	uart_init(BIT_RATE_115200, BIT_RATE_115200);
 
+	wifi_set_opmode(NULL_MODE);
+
 	//init software uart
 	Softuart_SetPinRx(&softuart,14);	
 	Softuart_SetPinTx(&softuart,12);
