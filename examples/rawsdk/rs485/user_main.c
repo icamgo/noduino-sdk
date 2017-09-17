@@ -40,7 +40,7 @@ irom void user_init()
 {
 	// Initialize UART0 to use as debug
     //uart_div_modify(0, UART_CLK_FREQ / 9600);
-	uart_init(BIT_RATE_9600, BIT_RATE_9600);
+	uart_init(BIT_RATE_115200, BIT_RATE_115200);
 
 	//init software uart
 	Softuart_SetPinRx(&softuart,14);	
