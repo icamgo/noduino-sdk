@@ -15,7 +15,7 @@
 #include "mjyun.h"
 #include "cJSON.h"
 
-#define	DEBUG			1
+//#define	DEBUG			1
 
 #ifdef DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
