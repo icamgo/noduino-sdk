@@ -29,12 +29,12 @@ static httpd_t httpd = {
 
 void rs485_init()
 {
-	Softuart_SetPinRx(&softuart,14);
-	Softuart_SetPinTx(&softuart,12);
+	Softuart_SetPinRx(&softuart,13);
+	Softuart_SetPinTx(&softuart,14);
 	Softuart_Init(&softuart,9600);
-	//set pin 13 as output to control tx enable/disable of rs485
-	pinMode(13, OUTPUT);
-	Softuart_EnableRs485(&softuart, 13);
+	//set pin 12 as output to control tx enable/disable of rs485
+	pinMode(12, OUTPUT);
+	Softuart_EnableRs485(&softuart, 12);
 }
 
 irom void start_ap_mode()
