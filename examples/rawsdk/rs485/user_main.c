@@ -21,12 +21,13 @@ irom static void loop(os_event_t *events)
 
 	if(Softuart_Available(&softuart)) {
 		ic = Softuart_Read(&softuart);
-		os_printf("%c", ic);
+		os_printf("rs485 rx: %c\r\n", ic);
 	}
 
 	if(ic == 'r') {
 		//write example output to softuart 1
-		Softuart_Puts(&softuart,"rx read cmd");
+		Softuart_Puts(&softuart,"rx read cmd\n");
+		os_printf("rx read cmd\r\n");
 	}
 
 	//some delay until we run this task again
