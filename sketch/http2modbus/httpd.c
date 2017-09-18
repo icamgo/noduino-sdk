@@ -15,6 +15,7 @@
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
 */
+#include "noduino.h"
 #include "httpd.h"
 #include "softuart.h"
 
@@ -36,9 +37,11 @@ irom void httpd_handle_rs485(void *arg, char *data)
 {
 	struct espconn *pespconn = (struct espconn *)arg;
 
-	char *resp = (char *)os_zalloc(256);
+	char *resp = (char *)os_zalloc(512);
 	char out[64] = { 0 };
-	char rs485_body[256] = { 0 };
+	char body[256] = { 0 };
+
+	uint8_t raw[64] = { 0 };
 
 	if (resp == NULL) {
 		HTTPD_INFO("resp mem alloc failed when response upnp ctrl\r\n");
@@ -55,23 +58,31 @@ irom void httpd_handle_rs485(void *arg, char *data)
 		int len = tmpstr - curstr;
 		strncpy(out, curstr, len);
 		out[len] = '\0';
+
 		HTTPD_INFO("tx via rs485: [%s]\r\n", out);
+
+		str2hex(raw, out, len);
+		int i;
+		for(i = 0; i < len/2; i++)
+			os_printf("%02X", raw[i]);
+		os_printf("\r\n");
+
 		Softuart_Puts(&softuart, out);
 
 		delay(300);
 		if(Softuart_Available(&softuart)) {
-			Softuart_Readline(&softuart, rs485_body, 255);
+			Softuart_Readline(&softuart, body, 255);
 		}
-		HTTPD_INFO("rx via rs485: [%s]\r\n", rs485_body);
+		HTTPD_INFO("rx via rs485: [%s]\r\n", body);
 
 	} else {
-		os_sprintf(rs485_body,
+		os_sprintf(body,
 			"<html><head><title>Noduino</title></head>"
 			"<body><center>Welcome to Noduino!</body></html>"
 			);
 	}
 	os_sprintf(resp, HTTP_OK_HDR, "text/html",
-			os_strlen(rs485_body), rs485_body);
+			os_strlen(body), body);
 
 	espconn_sent(pespconn, resp, os_strlen(resp));
 
@@ -83,8 +94,13 @@ irom void httpd_handle_modbus(void *arg, char *data)
 {
 	struct espconn *pespconn = (struct espconn *)arg;
 
-	char *resp = (char *)os_zalloc(256);
-	char body[128] = { 0 };
+	char *resp = (char *)os_zalloc(512);
+	char out[64] = { 0 };
+
+	char body[512] = { 0 };
+
+	uint8_t raw[256] = { 0 };
+
 	if (resp == NULL) {
 		HTTPD_INFO("resp mem alloc failed when response upnp ctrl\r\n");
 		return;
@@ -92,21 +108,44 @@ irom void httpd_handle_modbus(void *arg, char *data)
 
 	char *p = (char *)os_strstr(data, "GET /modbus?d=");
 	if (p != NULL) {
-		if (*(p+13) == 'r') {
+		char *curstr = p + 14;
+		char *tmpstr = curstr;
+		while (' ' != *tmpstr && '&' != *tmpstr) {
+			tmpstr++;
+		}
+		int len = tmpstr - curstr;
+		strncpy(out, curstr, len);
+		out[len] = '\0';
 
-			HTTPD_INFO("RX read operation\r\n");
-			os_sprintf(body,
-					"<html><head><title>Noduino</title></head>"
-					"<body><center>RX dev read operation</body></html>"
-					);
+		HTTPD_INFO("tx via modbus: [%s]\r\n", out);
 
-		} else if (*(p+13) == 'w') {
+		str2hex(raw, out, len);
+		int i;
+		for(i = 0; i < len/2; i++)
+			os_printf("%02X", raw[i]);
+		os_printf("\r\n");
 
-			HTTPD_INFO("RX write operation\r\n");
-			os_sprintf(body,
-					"<html><head><title>Noduino</title></head>"
-					"<body><center>RX dev write operation</body></html>"
-					);
+		uint16_t crc = crc16(raw, len/2);
+		raw[len/2] = crc & 0xFF;
+		raw[len/2 + 1] = (crc >> 8) & 0xFF;
+
+		for(i = 0; i < len/2+2; i++)
+			os_printf("%02X", raw[i]);
+		os_printf("\r\n");
+
+		Softuart_Putbuf(&softuart, raw, len/2 + 2);
+
+		delay(260);
+		if(Softuart_Available(&softuart)) {
+			memset(raw, 0, 256);
+
+			Softuart_Readbuf(&softuart, raw, 64);
+
+			for(i = 0; i < 64; i++) {
+				os_printf("%02X", raw[i]);
+				os_sprintf(body+i*2, "%02X", raw[i]);
+			}
+			os_printf("\r\n");
 		}
 	} else {
 		os_sprintf(body,
@@ -160,8 +199,11 @@ irom void tcp_srv_recv_cb(void *arg, char *data, uint16_t len)
 	if (strncmp(d, "GET / ", 6) == 0 ) {
 		httpd_handle_root(arg);
 	} else if (strncmp(d, "GET /rs485", 8) == 0) {
-		//HTTPD_INFO("------------ TCP Recv: GET /dev\r\n%s\r\n", d);
+		//HTTPD_INFO("------------ TCP Recv:\r\n%s\r\n", d);
 		httpd_handle_rs485(arg, data);
+	} else if (strncmp(d, "GET /modbus", 9) == 0) {
+		//HTTPD_INFO("------------ TCP Recv:\r\n%s\r\n", d);
+		httpd_handle_modbus(arg, data);
 	} else {
 		HTTPD_INFO("------- TCP recv: -------\r\n%s\r\n------------------\r\n", data);
 		httpd_not_found(arg);
