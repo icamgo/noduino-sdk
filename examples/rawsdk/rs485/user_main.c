@@ -14,19 +14,29 @@ os_event_t    user_procTaskQueue[user_procTaskQueueLen];
 //create global softuart instances
 Softuart softuart;
 
+uint8_t mb_echo[11] = {
+	0x11, 0x03, 0x06, 0x27, 0x10, 0x27,
+	0x10, 0x27, 0x10, 0x3A, 0xEC
+};
+
 // loop function will be execute by "os" periodically
 irom static void loop(os_event_t *events)
 {
-	uint8_t ic = 0;
+	uint8_t ic[32] = { 0 };
 
 	if(Softuart_Available(&softuart)) {
-		ic = Softuart_Read(&softuart);
-		os_printf("rs485 rx: %c (0x%02X)\r\n", ic, ic);
+		Softuart_Readbuf(&softuart, ic, 32);
+		os_printf("rs485 rx: 0x%02X 0x%02X\r\n", ic[0], ic[1]);
 	}
 
-	if(ic == 'r') {
+	if(ic[0] == 'r') {
 		os_printf("rx read cmd, send rs485 echo...\r\n");
 		Softuart_Puts(&softuart,"rx read cmd\n");
+	}
+
+	if(ic[0] == 0x11) {
+		os_printf("rx modbus cmd, send modbus echo...\r\n");
+		Softuart_Putbuf(&softuart, mb_echo, 11);
 	}
 
 	//some delay until we run this task again
