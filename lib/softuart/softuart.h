@@ -3,7 +3,7 @@
 
 #include "user_interface.h"
 
-#define SOFTUART_MAX_RX_BUFF 64 
+#define SOFTUART_MAX_RX_BUFF 512
 
 #define SOFTUART_GPIO_COUNT 16
 
@@ -41,7 +41,8 @@ void Softuart_Init(Softuart *s, uint32_t baudrate);
 void Softuart_Putchar(Softuart *s, char data);
 void Softuart_Puts(Softuart *s, const char *c );
 void Softuart_Putbuf(Softuart *s, const uint8_t *c, size_t len);
-uint8_t Softuart_Readline(Softuart *s, char* Buffer, uint8_t MaxLen );
+uint8_t Softuart_Readbuf(Softuart *s, uint8_t *buf, size_t len);
+uint8_t Softuart_Readline(Softuart *s, char *buf, size_t len);
 
 //define mapping from pin to functio mode
 typedef struct {

@@ -364,10 +364,30 @@ void Softuart_Putbuf(Softuart *s, const uint8_t *c, size_t len)
 	}
 }
 
-uint8_t Softuart_Readline(Softuart *s, char* Buffer, uint8_t MaxLen )
+uint8_t Softuart_Readbuf(Softuart *s, uint8_t *buf, size_t len)
+{
+	uint8_t next;
+	size_t i = 0;
+
+	while( Softuart_Available(s) )
+	{
+		next = Softuart_Read(s);
+
+		if(i < len - 1 ) {
+			*buf++ = next;
+			i++;
+		} else {
+			break;
+		}
+	}
+
+	return len;
+}
+
+uint8_t Softuart_Readline(Softuart *s, char* Buffer, size_t MaxLen )
 {
 	uint8_t NextChar;
-	uint8_t len = 0;
+	size_t len = 0;
 
 	while( Softuart_Available(s) )
 	{
