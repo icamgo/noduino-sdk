@@ -356,6 +356,14 @@ void Softuart_Puts(Softuart *s, const char *c )
 	}
 }
 
+void Softuart_Putbuf(Softuart *s, const uint8_t *c, size_t len)
+{
+	int i;
+	for (i = 0; i < len; i++) {
+		Softuart_Putchar(s, c[i]);
+	}
+}
+
 uint8_t Softuart_Readline(Softuart *s, char* Buffer, uint8_t MaxLen )
 {
 	uint8_t NextChar;

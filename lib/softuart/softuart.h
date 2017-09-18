@@ -40,6 +40,7 @@ void Softuart_EnableRs485(Softuart *s, uint8_t gpio_id);
 void Softuart_Init(Softuart *s, uint32_t baudrate);
 void Softuart_Putchar(Softuart *s, char data);
 void Softuart_Puts(Softuart *s, const char *c );
+void Softuart_Putbuf(Softuart *s, const uint8_t *c, size_t len);
 uint8_t Softuart_Readline(Softuart *s, char* Buffer, uint8_t MaxLen );
 
 //define mapping from pin to functio mode
