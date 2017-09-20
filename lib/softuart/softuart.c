@@ -373,7 +373,7 @@ uint8_t Softuart_Readbuf(Softuart *s, uint8_t *buf, size_t len)
 	{
 		next = Softuart_Read(s);
 
-		if(i < len - 1 ) {
+		if(i < len) {
 			*buf++ = next;
 			i++;
 		} else {
