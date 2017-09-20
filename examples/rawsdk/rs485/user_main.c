@@ -26,7 +26,8 @@ irom static void loop(os_event_t *events)
 
 	if(Softuart_Available(&softuart)) {
 		Softuart_Readbuf(&softuart, ic, 32);
-		os_printf("rs485 rx: 0x%02X 0x%02X\r\n", ic[0], ic[1]);
+		os_printf("rs485 rx: 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X 0x%02X\r\n",
+				ic[0], ic[1], ic[2], ic[3], ic[4], ic[5], ic[6], ic[7]);
 	}
 
 	if(ic[0] == 'r') {
