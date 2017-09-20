@@ -34,13 +34,13 @@
 //#define	DEBUG			1
 
 #ifdef INFO
-#define HTTPD_INFO( format, ... ) os_printf( "HTTPD: "format, ## __VA_ARGS__ )
+#define HTTPD_INFO( format, ... ) serial1_printf( format, ## __VA_ARGS__ )
 #else
 #define HTTPD_INFO( format, ... )
 #endif
 
 #ifdef DEBUG
-#define HTTPD_DEBUG( format, ... ) os_printf( "HTTPD: "format, ## __VA_ARGS__ )
+#define HTTPD_DEBUG( format, ... ) serial1_printf( format, ## __VA_ARGS__ )
 #else
 #define HTTPD_DEBUG( format, ... )
 #endif

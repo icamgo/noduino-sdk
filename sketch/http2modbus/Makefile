@@ -28,7 +28,7 @@ sinclude .config
 SDK_INCDIR	+= include/noduino include/lwip
 
 # libraries used in this project
-LIBS		+= cirom noduino softuart
+LIBS		+= noduino cirom softuart
 
 # compiler flags using during compilation of source files
 CFLAGS		+= -DLWIP_OPEN_SRC

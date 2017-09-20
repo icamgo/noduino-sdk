@@ -18,7 +18,9 @@
 #include "noduino.h"
 #include "softuart.h"
 
+#ifdef USE_SW_UART
 Softuart softuart;
+#endif
 
 static os_timer_t test_timer;
 
@@ -29,12 +31,58 @@ static httpd_t httpd = {
 
 void rs485_init()
 {
+#ifdef USE_SW_UART
 	Softuart_SetPinRx(&softuart,13);
 	Softuart_SetPinTx(&softuart,14);
 	Softuart_Init(&softuart,9600);
 	//set pin 12 as output to control tx enable/disable of rs485
 	pinMode(12, OUTPUT);
 	Softuart_EnableRs485(&softuart, 12);
+#else
+	serial_begin(9600);
+	pinMode(12, OUTPUT);
+
+	digitalWrite(12, LOW);
+#endif
+}
+
+void rs485_write(uint8_t *d, int len)
+{
+#ifdef USE_SW_UART
+	Softuart_Putbuf(&softuart, d, len);
+#else
+	int i;
+
+	digitalWrite(12, HIGH);
+
+	for (i=0; i < len; i++) {
+		serial_write(d[i]);
+		serial_flush();
+	}
+
+	digitalWrite(12, LOW);
+#endif
+}
+
+void rs485_read(uint8_t *d, int len)
+{
+#ifdef USE_SW_UART
+	if(Softuart_Available(&softuart)) {
+		Softuart_Readbuf(&softuart, d, len);
+	}
+#else
+	int i = 0;
+	uint8_t c;
+	while (serial_available()) {
+		c = serial_read();
+		if (i < len) {
+			d[i] = c;
+			i++;
+		} else {
+			break;
+		}
+	}
+#endif
 }
 
 irom void start_ap_mode()
@@ -57,8 +105,10 @@ irom void start_ap_mode()
 
 void setup(void)
 {
-	uart_init(115200, 115200);
-	os_printf("SDK version:%s\n", system_get_sdk_version());
+	serial1_begin(115200);
+	delay(2);
+
+	serial1_printf("http2modbus sketch!\r\n");
 
 	rs485_init();
 
@@ -68,4 +118,6 @@ void setup(void)
 
 void loop()
 {
+	//serial1_printf("Hello world!\r\n");
+	delay(2000);
 }

@@ -19,8 +19,6 @@
 #include "httpd.h"
 #include "softuart.h"
 
-extern Softuart softuart;
-
 irom void httpd_handle_root(void *arg)
 {
 	char resp[256];
@@ -64,15 +62,14 @@ irom void httpd_handle_rs485(void *arg, char *data)
 		str2hex(raw, out, len);
 		int i;
 		for(i = 0; i < len/2; i++)
-			os_printf("%02X", raw[i]);
-		os_printf("\r\n");
+			HTTPD_DEBUG("%02X", raw[i]);
+		HTTPD_DEBUG("\r\n");
 
-		Softuart_Puts(&softuart, out);
+		rs485_write(raw, len/2);
 
-		delay(300);
-		if(Softuart_Available(&softuart)) {
-			Softuart_Readline(&softuart, body, 255);
-		}
+		delay(260);
+
+		rs485_read(body, 128);
 		HTTPD_INFO("rx via rs485: [%s]\r\n", body);
 
 	} else {
@@ -122,31 +119,29 @@ irom void httpd_handle_modbus(void *arg, char *data)
 		str2hex(raw, out, len);
 		int i;
 		for(i = 0; i < len/2; i++)
-			os_printf("%02X", raw[i]);
-		os_printf("\r\n");
+			HTTPD_INFO("%02X", raw[i]);
+		HTTPD_INFO("\r\n");
 
 		uint16_t crc = crc16(raw, len/2);
 		raw[len/2] = crc & 0xFF;
 		raw[len/2 + 1] = (crc >> 8) & 0xFF;
 
 		for(i = 0; i < len/2+2; i++)
-			os_printf("%02X", raw[i]);
-		os_printf("\r\n");
+			HTTPD_INFO("%02X", raw[i]);
+		HTTPD_INFO("\r\n");
 
-		Softuart_Putbuf(&softuart, raw, len/2 + 2);
+		rs485_write(raw, len/2+2);
 
-		delay(260);
-		if(Softuart_Available(&softuart)) {
-			memset(raw, 0, 256);
+		os_delay_us(10000000/9600*(len/2));
+		memset(raw, 0, 256);
 
-			Softuart_Readbuf(&softuart, raw, 64);
+		rs485_read(raw, 32);
 
-			for(i = 0; i < 64; i++) {
-				os_printf("%02X", raw[i]);
-				os_sprintf(body+i*2, "%02X", raw[i]);
-			}
-			os_printf("\r\n");
+		for(i = 0; i < 32; i++) {
+			HTTPD_INFO("%02X", raw[i]);
+			os_sprintf(body+i*2, "%02X", raw[i]);
 		}
+		HTTPD_INFO("\r\n");
 	} else {
 		os_sprintf(body,
 			"<html><head><title>Noduino</title></head>"
@@ -160,6 +155,11 @@ irom void httpd_handle_modbus(void *arg, char *data)
 
 	os_free(resp);
 	resp = NULL;
+}
+
+irom void httpd_handle_dl645(void *arg, char *data)
+{
+	struct espconn *pespconn = (struct espconn *)arg;
 }
 
 irom void httpd_handle_bad_req(void *arg)
@@ -204,6 +204,9 @@ irom void tcp_srv_recv_cb(void *arg, char *data, uint16_t len)
 	} else if (strncmp(d, "GET /modbus", 9) == 0) {
 		//HTTPD_INFO("------------ TCP Recv:\r\n%s\r\n", d);
 		httpd_handle_modbus(arg, data);
+	} else if (strncmp(d, "GET /dl645", 8) == 0) {
+		//HTTPD_INFO("------------ TCP Recv:\r\n%s\r\n", d);
+		httpd_handle_dl645(arg, data);
 	} else {
 		HTTPD_INFO("------- TCP recv: -------\r\n%s\r\n------------------\r\n", data);
 		httpd_not_found(arg);
