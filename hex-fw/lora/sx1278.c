@@ -204,7 +204,6 @@ void sx1278_init(void)
 	sx1278_set_rfmode(LORA);
 
 	sx1278_write_reg(REG_LR_DIOMAPPING1, GPIO_VARE_1);
-	sx1278_write_reg(REG_LR_DIOMAPPING1, GPIO_VARE_1);
 	sx1278_write_reg(REG_LR_DIOMAPPING2, GPIO_VARE_2);
 
 	sx1278_set_rf_freq();

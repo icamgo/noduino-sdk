@@ -67,9 +67,9 @@ int main(void)
 
 			sx1278_write_reg(REG_LR_IRQFLAGS, 0xff);
 
-			_delay_ms(8000);
+			_delay_ms(5000);
 		} else {
-
+#if 0
 			irq_flag = sx1278_read_reg(REG_LR_IRQFLAGS);
 
 			if (irq_flag > 0) {
@@ -132,6 +132,7 @@ int main(void)
 				sx1278_write_reg(REG_LR_IRQFLAGS, 0xff);
 				_delay_ms(300);
 			}
+#endif
 		}
 	}
 	return 0;
