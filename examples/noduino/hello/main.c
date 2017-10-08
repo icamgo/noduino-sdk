@@ -20,6 +20,7 @@
 void setup()
 {
 	serial_begin(115200);
+	wifi_set_opmode(NULL_MODE);
 }
 
 void loop()

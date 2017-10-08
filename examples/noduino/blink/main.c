@@ -24,6 +24,8 @@ void setup()
 {
 	pinMode(LED, OUTPUT);		// set gpio2 to output mode
 	digitalWrite(LED, LOW);
+
+	wifi_set_opmode(NULL_MODE);
 }
 
 void loop()
