@@ -42,23 +42,36 @@ void setup()
 	sx1278_reset();
 
 	sx1278_init();
+	serial_printf("Lora testing sketch\r\n");
 }
 
 void loop()
 {
-	serial_printf("Lora testing sketch\r\n");
+	serial_printf("Lora sync word = 0x%x\r\n", sx1278_get_syncword());
+	serial_printf("Lora Preamble Len = %d\r\n", sx1278_get_preamble_len());
+	//serial_printf("Lora RSSI = %d\r\n", sx1278_get_rssi());
+
+	uint8_t f[3];
+	sx1278_get_rf_freq(f);
+	serial_printf("Lora Freq = 0x%X%02X%02X\r\n", f[0], f[1], f[2]);
+	serial_printf("Lora Spread Factor = %d\r\n", sx1278_get_spread_fact());
+
+	serial_printf("Lora modem conf1 = 0x%x\r\n", sx1278_read_reg(REG_MODEMCONFIG1));
+	serial_printf("Lora modem conf2 = 0x%x\r\n", sx1278_read_reg(REG_MODEMCONFIG2));
+	serial_printf("Lora modem conf3 = 0x%x\r\n", sx1278_read_reg(REG_MODEMCONFIG3));
 
 	serial_printf("Lora opmode = 0x%x\r\n", sx1278_get_opmode());
 	serial_printf("Lora rfmode = 0x%x\r\n", sx1278_get_rfmode());
 
-	sx1278_write_reg(REG_LR_IRQFLAGS, 0xff);
+	sx1278_write_reg(REG_IRQFLAGS, 0xff);
 
-	sx1278_send_data("lora.noduino.org", 16);
-	serial_printf("Lora opmode = 0x%x\r\n", sx1278_get_opmode());
+	sx1278_send_data("noduino", 7);
+	serial_printf("Lora opmode = 0x%x\r\n\r\n", sx1278_get_opmode());
 
 	delay(1000);
 
-	sx1278_write_reg(REG_LR_IRQFLAGS, 0xff);
+	sx1278_write_reg(REG_IRQFLAGS, 0xff);
 
-	delay(5000);
+	wifi_set_sleep_type(MODEM_SLEEP_T);
+	delay(6000);
 }
