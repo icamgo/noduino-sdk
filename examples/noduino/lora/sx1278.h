@@ -62,6 +62,8 @@
 #define REG_HOPPERIOD                             0x24
 #define REG_FIFORXBYTEADDR                        0x25
 #define REG_MODEMCONFIG3                          0x26
+#define REG_DETECTIONOPTIMIZE					0x31
+#define REG_DETECTIONTHRESHOLD					0x37
 #define REG_SYNCWORD							0x39
 // end of documented register in datasheet
 // I/O settings

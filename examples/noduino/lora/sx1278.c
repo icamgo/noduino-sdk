@@ -18,22 +18,6 @@
 
 #include "sx1278.h"
 
-#define FREQ_STEP	61.03515625
-/*
- * freq = (uint32_t)((double)434000000 / (double)FREQ_STEP)
- *      = 7094272 = 0x6C8000 			 // 434.0MHz
- *
- *  const uint32_t CH_00_433 = 0x6C5333; // 433.3MHz
- *  const uint32_t CH_01_433 = 0x6C6666; // 433.6MHz
- *  const uint32_t CH_02_433 = 0x6C7999; // 433.9MHz
- *  const uint32_t CH_03_433 = 0x6C9333; // 434.3MHz
- *
- *  lora_freq[0] = msb = (uint8_t) ((freq >> 16) & 0xff)
- *  lora_freq[1] = mid = (uint8_t) ((freq >> 8) & 0xff)
- *  lora_freq[2] = lsb = (uint8_t) (freq & 0xff)
- *
- */
-uint8_t lora_freq[3] = { 0x6C, 0x79, 0x99 };	// set to 433.3MHz
 
 uint8_t rf_power = 7;
 uint8_t power_data[8] = {
@@ -80,27 +64,12 @@ void sx1278_write_buf(uint8_t addr, uint8_t *data, uint8_t len)
 	spi_write_buf(addr | 0x80, data, len);
 }
 
-///////////////////////////////////////////////////////////////
-void sx1278_get_rf_freq(uint8_t *d)
-{
-	d[0] = sx1278_read_reg(REG_FRFMSB);
-	d[1] = sx1278_read_reg(REG_FRFMID);
-	d[2] = sx1278_read_reg(REG_FRFLSB);
-}
-
-void sx1278_set_rf_freq(void)
-{
-	sx1278_write_reg(REG_FRFMSB, lora_freq[0]);
-	sx1278_write_reg(REG_FRFMID, lora_freq[1]);
-	sx1278_write_reg(REG_FRFLSB, lora_freq[2]);
-}
-
-void sx1278_set_nb_trig_peaks(uint8_t value)
+void sx1278_set_lora_detect_opti(uint8_t value)
 {
 	uint8_t d;
-	d = sx1278_read_reg(0x31);
+	d = sx1278_read_reg(REG_DETECTIONOPTIMIZE);
 	d = (d & 0xF8) | value;
-	sx1278_write_reg(0x31, d);
+	sx1278_write_reg(REG_DETECTIONOPTIMIZE, d);
 }
 
 uint8_t sx1278_get_spread_fact()
@@ -130,20 +99,26 @@ int sx1278_get_rssi()
 void sx1278_set_spread_fact(uint8_t factor)
 {
 	uint8_t d;
-	//sx1278_set_nb_trig_peaks(3);
 	d = sx1278_read_reg(REG_MODEMCONFIG2);
 	d = (d & MODEMCONFIG2_SF_MASK) | (factor << 4);
 	sx1278_write_reg(REG_MODEMCONFIG2, d);
+
+	if (factor == 6) {
+		sx1278_write_reg(REG_DETECTIONOPTIMIZE, 0x5);
+		sx1278_write_reg(REG_DETECTIONTHRESHOLD, 0xC);
+	} else {
+		sx1278_write_reg(REG_DETECTIONOPTIMIZE, 0x3);
+		sx1278_write_reg(REG_DETECTIONTHRESHOLD, 0xA);
+	}
 }
 
-void sx1278_set_error_coding(uint8_t value)
+void sx1278_set_coding_rate(uint8_t value)
 {
 	uint8_t d;
 	d = sx1278_read_reg(REG_MODEMCONFIG1);
 	d = (d & MODEMCONFIG1_CODINGRATE_MASK)
 	    | (value << 1);
 	sx1278_write_reg(REG_MODEMCONFIG1, d);
-// LoRaSettings.error_coding = value;
 }
 
 void sx1278_set_bandwidth(uint8_t bw)
@@ -154,12 +129,11 @@ void sx1278_set_bandwidth(uint8_t bw)
 	sx1278_write_reg(REG_MODEMCONFIG1, d);
 }
 
-void sx1278_set_head_on(bool enable)
+void sx1278_set_head_off(bool enable)
 {
 	uint8_t rxd;
 	rxd = sx1278_read_reg(REG_MODEMCONFIG1);
-	rxd = (rxd & MODEMCONFIG1_IMPLICITHEADER_MASK)
-				| (enable);
+	rxd = (rxd & MODEMCONFIG1_IMPLICITHEADER_MASK) | (enable);
 	sx1278_write_reg(REG_MODEMCONFIG1, rxd);
 }
 
@@ -247,6 +221,13 @@ uint8_t sx1278_get_syncword()
 	return sx1278_read_reg(REG_SYNCWORD);
 }
 
+void sx1278_get_rf_freq(uint8_t *d)
+{
+	d[0] = sx1278_read_reg(REG_FRFMSB);
+	d[1] = sx1278_read_reg(REG_FRFMID);
+	d[2] = sx1278_read_reg(REG_FRFLSB);
+}
+
 void sx1278_set_opmode(opmode_t opmode)
 {
 	uint8_t opm;
@@ -258,19 +239,71 @@ void sx1278_set_opmode(opmode_t opmode)
 
 void sx1278_set_rf_power(uint8_t power)
 {
-	sx1278_write_reg(REG_PADAC, 0x87);
-	sx1278_write_reg(REG_PACONFIG, power_data[power]);
+	//sx1278_write_reg(REG_PADAC, 0x87);
+	sx1278_write_reg(REG_PACONFIG, 0x8F);
 }
 
 /*
  * 0x12 -- 150mA
  * 0x10 -- 130mA
  * 0x0B -- 100mA
+ * 0x1B -- 240mA
  */
 void sx1278_set_max_current(uint8_t rate)
 {
 	rate |= 0b00100000;
 	sx1278_write_reg(REG_OCP, rate);
+}
+
+/*
+ * 0x0 - 3.4ms
+ * 0x1 - 2ms
+ * 0x2 - 1ms
+ * 0x3 - 500us
+ * 0x4 - 250us
+ * 0x5 - 125us
+ * 0x6 - 100us
+ * 0x7 - 62us
+ * 0x8 - 50us
+ * 0x9 - 40us
+ * 0xa - 31us
+ * 0xb - 25us
+ * 0xc - 20us
+ * 0xd - 15us
+ * 0xe - 12us
+ * 0xf - 10us
+ */
+void sx1278_set_pa_ramp()
+{
+	sx1278_write_reg(REG_PARAMP, 0x08);
+	/* set 50us PA ramp-up time */
+}
+
+///////////////////////////////////////////////////////////////
+#define FREQ_STEP	61.03515625
+/*
+ * freq = (uint32_t)((double)434000000 / (double)FREQ_STEP)
+ *      = 7094272 = 0x6C8000 			 // 434.0MHz
+ *
+ *  const uint32_t CH_00_433 = 0x6C5333; // 433.3MHz
+ *  const uint32_t CH_01_433 = 0x6C6666; // 433.6MHz
+ *  const uint32_t CH_02_433 = 0x6C7999; // 433.9MHz
+ *  const uint32_t CH_03_433 = 0x6C9333; // 434.3MHz
+ *
+ *  const uint32_t CH_00_470 = 0x758000; // 470.0MHz
+ *
+ *  lora_freq[0] = msb = (uint8_t) ((freq >> 16) & 0xff)
+ *  lora_freq[1] = mid = (uint8_t) ((freq >> 8) & 0xff)
+ *  lora_freq[2] = lsb = (uint8_t) (freq & 0xff)
+ *
+ */
+uint8_t lora_freq[3] = { 0x6C, 0x93, 0x33 };	// set to 434.3MHz
+
+void sx1278_set_rf_freq(void)
+{
+	sx1278_write_reg(REG_FRFMSB, lora_freq[0]);
+	sx1278_write_reg(REG_FRFMID, lora_freq[1]);
+	sx1278_write_reg(REG_FRFLSB, lora_freq[2]);
 }
 
 void sx1278_init(void)
@@ -281,29 +314,33 @@ void sx1278_init(void)
 	//sx1278_write_reg(REG_DIOMAPPING1, GPIO_VARE_1);
 	//sx1278_write_reg(REG_DIOMAPPING2, GPIO_VARE_2);
 
-	sx1278_set_rf_freq();
+	sx1278_set_pa_ramp();		// 50us
+	sx1278_set_rf_freq();		// 434.3MHz
 
-	sx1278_set_spread_fact(12);
+#if 0
 	sx1278_set_bandwidth(7);	// 125KHz
-	//sx1278_set_lowdatarate_opti(true);
-	sx1278_write_reg(REG_MODEMCONFIG3, 0x8 | 0x4);
+	sx1278_set_coding_rate(1);
+	sx1278_set_head_off(false);
+#else
+	sx1278_write_reg(REG_MODEMCONFIG1, 0x72);		// 125KHz, 4/5, Explicit Header
+#endif
 
-	//sx1278_set_bandwidth(1);	// 10.4KHz
-	//sx1278_set_bandwidth(0);	// 7.8KHz 
+#if 0
+	sx1278_set_spread_fact(12);
+	sx1278_set_crc_on(true);
+#else
+	sx1278_write_reg(REG_MODEMCONFIG2, 0xC4);		// SF=12, TxContin single pkt, crc on, RX timeout msb - 0x0
+#endif
+
+	//sx1278_set_lowdatarate_opti(true);
+	sx1278_write_reg(REG_MODEMCONFIG3, 0x0C);
 
 	sx1278_set_syncword(0x34);
 
-	sx1278_set_max_current(0x12);
+	sx1278_set_max_current(0x1B);	// 240mA
 	sx1278_set_rf_power(rf_power);
 
-	sx1278_set_error_coding(2);
-	sx1278_set_crc_on(true);
-	//
-	//sx1278_set_head_on(false);
-
-	//sx1278_set_payload_len(0xff);		// 0x22 timeout interrupt
 	//sx1278_set_symb_timeout(0x3FF);
-
 	//lora_rx_mode();
 }
 
