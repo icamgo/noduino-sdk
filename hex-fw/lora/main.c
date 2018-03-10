@@ -20,7 +20,6 @@
 
 // lora tx node
 int tx = 1;
-uint8_t recv[255];
 
 void sleep_avr()
 {
@@ -59,26 +58,27 @@ int main(void)
 
 		if (tx == 1) {
 
-			sx1278_write_reg(REG_LR_IRQFLAGS, 0xff);
+			sx1278_write_reg(REG_IRQFLAGS, 0xff);
 
 			sx1278_send_data("lora.noduino.org", 16);
 
 			_delay_ms(1000);
 
-			sx1278_write_reg(REG_LR_IRQFLAGS, 0xff);
+			sx1278_write_reg(REG_IRQFLAGS, 0xff);
 
 			_delay_ms(5000);
 		} else {
 #if 0
-			irq_flag = sx1278_read_reg(REG_LR_IRQFLAGS);
+			uint8_t recv[255];
+			irq_flag = sx1278_read_reg(REG_IRQFLAGS);
 
 			if (irq_flag > 0) {
 				if ((irq_flag & 0x40) == 0x40) {
 
-					crc = sx1278_read_reg(REG_LR_MODEMCONFIG2);
+					crc = sx1278_read_reg(REG_MODEMCONFIG2);
 					if (crc & 0x04 == 0x04) {
-						sx1278_write_reg(REG_LR_FIFOADDRPTR, 0x00);
-						int len = sx1278_read_reg(REG_LR_NBRXBYTES);
+						sx1278_write_reg(REG_FIFOADDRPTR, 0x00);
+						int len = sx1278_read_reg(REG_NBRXBYTES);
 
 						spi_read_buf(0x0, recv, len);
 						recv[len] = '\0';
@@ -89,47 +89,47 @@ int main(void)
 					}
 
 					sx1278_set_opmode(STANDBY);
-					sx1278_write_reg(REG_LR_IRQFLAGSMASK, IRQN_RXD_Value);
-					sx1278_write_reg(REG_LR_HOPPERIOD, PACKET_MIAX_Value);
-					sx1278_write_reg(REG_LR_DIOMAPPING1, 0X00);
-					sx1278_write_reg(REG_LR_DIOMAPPING2, 0x00);
+					sx1278_write_reg(REG_IRQFLAGSMASK, IRQN_RXD_Value);
+					sx1278_write_reg(REG_HOPPERIOD, PACKET_MIAX_Value);
+					sx1278_write_reg(REG_DIOMAPPING1, 0X00);
+					sx1278_write_reg(REG_DIOMAPPING2, 0x00);
 					sx1278_set_opmode(RX);
 
 				} else if ((irq_flag & 0x08) == 0x08) {
 
 					sx1278_set_opmode(STANDBY);
-					sx1278_write_reg(REG_LR_IRQFLAGSMASK, IRQN_RXD_Value);
-					sx1278_write_reg(REG_LR_HOPPERIOD, PACKET_MIAX_Value);
-					sx1278_write_reg(REG_LR_DIOMAPPING1, 0X00);
-					sx1278_write_reg(REG_LR_DIOMAPPING2, 0x00);
+					sx1278_write_reg(REG_IRQFLAGSMASK, IRQN_RXD_Value);
+					sx1278_write_reg(REG_HOPPERIOD, PACKET_MIAX_Value);
+					sx1278_write_reg(REG_DIOMAPPING1, 0X00);
+					sx1278_write_reg(REG_DIOMAPPING2, 0x00);
 					sx1278_set_opmode(RX);
 
 				} else if ((irq_flag & 0x04) == 0x04) {
 					if ((irq_flag & 0x01) == 0x01) {
 						sx1278_set_opmode(STANDBY);
-						sx1278_write_reg(REG_LR_IRQFLAGSMASK, IRQN_RXD_Value);
-						sx1278_write_reg(REG_LR_HOPPERIOD, PACKET_MIAX_Value);
-						sx1278_write_reg(REG_LR_DIOMAPPING1, 0X02);
-						sx1278_write_reg(REG_LR_DIOMAPPING2, 0x00);
+						sx1278_write_reg(REG_IRQFLAGSMASK, IRQN_RXD_Value);
+						sx1278_write_reg(REG_HOPPERIOD, PACKET_MIAX_Value);
+						sx1278_write_reg(REG_DIOMAPPING1, 0X02);
+						sx1278_write_reg(REG_DIOMAPPING2, 0x00);
 						sx1278_set_opmode(RX);
 					} else {                          
 						sx1278_set_opmode(STANDBY);
-						sx1278_write_reg(REG_LR_IRQFLAGSMASK,
+						sx1278_write_reg(REG_IRQFLAGSMASK,
 								IRQN_SEELP_Value);
-						sx1278_write_reg(REG_LR_DIOMAPPING1, 0X00);
-						sx1278_write_reg(REG_LR_DIOMAPPING2, 0X00);
+						sx1278_write_reg(REG_DIOMAPPING1, 0X00);
+						sx1278_write_reg(REG_DIOMAPPING2, 0X00);
 						sx1278_set_opmode(SLEEP);
 					}
 				} else {
 					sx1278_set_opmode(STANDBY);
-					sx1278_write_reg(REG_LR_IRQFLAGSMASK, IRQN_RXD_Value);
-					sx1278_write_reg(REG_LR_HOPPERIOD, PACKET_MIAX_Value);
-					sx1278_write_reg(REG_LR_DIOMAPPING1, 0X02);
-					sx1278_write_reg(REG_LR_DIOMAPPING2, 0x00);
+					sx1278_write_reg(REG_IRQFLAGSMASK, IRQN_RXD_Value);
+					sx1278_write_reg(REG_HOPPERIOD, PACKET_MIAX_Value);
+					sx1278_write_reg(REG_DIOMAPPING1, 0X02);
+					sx1278_write_reg(REG_DIOMAPPING2, 0x00);
 					sx1278_set_opmode(RX);
 				}
 
-				sx1278_write_reg(REG_LR_IRQFLAGS, 0xff);
+				sx1278_write_reg(REG_IRQFLAGS, 0xff);
 				_delay_ms(300);
 			}
 #endif
