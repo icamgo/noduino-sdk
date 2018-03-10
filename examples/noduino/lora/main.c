@@ -65,7 +65,7 @@ void loop()
 
 	sx1278_write_reg(REG_IRQFLAGS, 0xff);
 
-	sx1278_send_data("noduino", 7);
+	sx1278_send_data("noduino.org", 11);
 	serial_printf("Lora opmode = 0x%x\r\n\r\n", sx1278_get_opmode());
 
 	delay(1000);
@@ -73,5 +73,5 @@ void loop()
 	sx1278_write_reg(REG_IRQFLAGS, 0xff);
 
 	wifi_set_sleep_type(MODEM_SLEEP_T);
-	delay(6000);
+	delay(4000);
 }
