@@ -1,6 +1,6 @@
 /*
-	SFE_BMP180.cpp
-	Bosch BMP180 pressure sensor library for the Arduino microcontroller
+	SFE_BMP085.cpp
+	Bosch BMP085 pressure sensor library for the Arduino microcontroller
 	Mike Grusin, SparkFun Electronics
 
 	Uses floating-point equations from the Weather Station Data Logger project
@@ -17,14 +17,14 @@
 	buy me a (root) beer someday.
 */
 
-#include "bmp180.h"
+#include "bmp085.h"
 
 int16_t AC1, AC2, AC3, VB1, VB2, MB, MC, MD;
 uint16_t AC4, AC5, AC6;
 double c5, c6, mc, md, x0, x1, x2, Y0, Y1, y2, p0, p1, p2;
-char bmp180_error;
+char bmp085_error;
 
-irom char bmp180_begin()
+irom char bmp085_begin()
 // Initialize library for subsequent pressure measurements
 {
 	double c3, c4, b1;
@@ -33,22 +33,22 @@ irom char bmp180_begin()
 
 	wire_begin();
 
-	// The BMP180 includes factory calibration data stored on the device.
+	// The BMP085 includes factory calibration data stored on the device.
 	// Each device has different numbers, these must be retrieved and
 	// used in the calculations when taking pressure measurements.
 
 	// Retrieve calibration data from device:
 
-	if (bmp180_readInt(0xAA, &AC1) &&
-	    bmp180_readInt(0xAC, &AC2) &&
-	    bmp180_readInt(0xAE, &AC3) &&
-	    bmp180_readUInt(0xB0, &AC4) &&
-	    bmp180_readUInt(0xB2, &AC5) &&
-	    bmp180_readUInt(0xB4, &AC6) &&
-	    bmp180_readInt(0xB6, &VB1) &&
-	    bmp180_readInt(0xB8, &VB2) &&
-	    bmp180_readInt(0xBA, &MB) &&
-	    bmp180_readInt(0xBC, &MC) && bmp180_readInt(0xBE, &MD)) {
+	if (bmp085_readInt(0xAA, &AC1) &&
+	    bmp085_readInt(0xAC, &AC2) &&
+	    bmp085_readInt(0xAE, &AC3) &&
+	    bmp085_readUInt(0xB0, &AC4) &&
+	    bmp085_readUInt(0xB2, &AC5) &&
+	    bmp085_readUInt(0xB4, &AC6) &&
+	    bmp085_readInt(0xB6, &VB1) &&
+	    bmp085_readInt(0xB8, &VB2) &&
+	    bmp085_readInt(0xBA, &MB) &&
+	    bmp085_readInt(0xBC, &MC) && bmp085_readInt(0xBE, &MD)) {
 
 		// All reads completed successfully!
 
@@ -60,7 +60,7 @@ irom char bmp180_begin()
 		// AC1 = 408; AC2 = -72; AC3 = -14383; AC4 = 32741; AC5 = 32757; AC6 = 23153;
 		// B1 = 6190; B2 = 4; MB = -32768; MC = -8711; MD = 2868;
 
-		// Example from http://wmrx00.sourceforge.net/Arduino/BMP180-Calcs.pdf
+		// Example from http://wmrx00.sourceforge.net/Arduino/BMP085-Calcs.pdf
 		// AC1 = 7911; AC2 = -934; AC3 = -14306; AC4 = 31567; AC5 = 25671; AC6 = 18974;
 		// VB1 = 5498; VB2 = 46; MB = -32768; MC = -11075; MD = 2432;
 
@@ -125,7 +125,7 @@ irom char bmp180_begin()
 	}
 }
 
-irom char bmp180_readInt(char address, int16_t * value)
+irom char bmp085_readInt(char address, int16_t * value)
 // Read a signed integer (two bytes) from device
 // address: register to start reading (plus subsequent register)
 // value: external variable to store data (function modifies value)
@@ -133,7 +133,7 @@ irom char bmp180_readInt(char address, int16_t * value)
 	unsigned char data[2];
 
 	data[0] = address;
-	if (bmp180_readBytes(data, 2)) {
+	if (bmp085_readBytes(data, 2)) {
 		*value = (int16_t) ((data[0] << 8) | data[1]);
 		//if (*value & 0x8000) *value |= 0xFFFF0000; // sign extend if negative
 		return (1);
@@ -142,7 +142,7 @@ irom char bmp180_readInt(char address, int16_t * value)
 	return (0);
 }
 
-irom char bmp180_readUInt(char address, uint16_t * value)
+irom char bmp085_readUInt(char address, uint16_t * value)
 // Read an unsigned integer (two bytes) from device
 // address: register to start reading (plus subsequent register)
 // value: external variable to store data (function modifies value)
@@ -150,7 +150,7 @@ irom char bmp180_readUInt(char address, uint16_t * value)
 	unsigned char data[2];
 
 	data[0] = address;
-	if (bmp180_readBytes(data, 2)) {
+	if (bmp085_readBytes(data, 2)) {
 		*value = (((uint16_t) data[0] << 8) | (uint16_t) data[1]);
 		return (1);
 	}
@@ -158,18 +158,18 @@ irom char bmp180_readUInt(char address, uint16_t * value)
 	return (0);
 }
 
-irom char bmp180_readBytes(unsigned char *values, char length)
+irom char bmp085_readBytes(unsigned char *values, char length)
 // Read an array of bytes from device
 // values: external array to hold data. Put starting register in values[0].
 // length: number of bytes to read
 {
 	char x;
 
-	wire_beginTransmission(BMP180_ADDR);
+	wire_beginTransmission(BMP085_ADDR);
 	wire_write(values[0]);
-	bmp180_error = wire_endTransmission();
-	if (bmp180_error == 0) {
-		wire_requestFrom(BMP180_ADDR, length);
+	bmp085_error = wire_endTransmission();
+	if (bmp085_error == 0) {
+		wire_requestFrom(BMP085_ADDR, length);
 		while (wire_available() != length) ;	// wait until bytes are ready
 		for (x = 0; x < length; x++) {
 			values[x] = wire_read();
@@ -179,7 +179,7 @@ irom char bmp180_readBytes(unsigned char *values, char length)
 	return (0);
 }
 
-irom char bmp180_writeBytes(unsigned char *values, char length)
+irom char bmp085_writeBytes(unsigned char *values, char length)
 // Write an array of bytes to device
 // values: external array of data to write. Put starting register in values[0].
 // length: number of bytes to write
@@ -187,32 +187,32 @@ irom char bmp180_writeBytes(unsigned char *values, char length)
 	char x;
 	int i;
 
-	wire_beginTransmission(BMP180_ADDR);
+	wire_beginTransmission(BMP085_ADDR);
 	for (i = 0; i < length; i++) 
 		wire_write(values[i]);
-	bmp180_error = wire_endTransmission();
-	if (bmp180_error == 0)
+	bmp085_error = wire_endTransmission();
+	if (bmp085_error == 0)
 		return (1);
 	else
 		return (0);
 }
 
-irom char bmp180_startTemperature(void)
+irom char bmp085_startTemperature(void)
 // Begin a temperature reading.
 // Will return delay in ms to wait, or 0 if I2C error
 {
 	unsigned char data[2], result;
 
-	data[0] = BMP180_REG_CONTROL;
-	data[1] = BMP180_COMMAND_TEMPERATURE;
-	result = bmp180_writeBytes(data, 2);
+	data[0] = BMP085_REG_CONTROL;
+	data[1] = BMP085_COMMAND_TEMPERATURE;
+	result = bmp085_writeBytes(data, 2);
 	if (result)		// good write?
 		return (5);	// return the delay in ms (rounded up) to wait before retrieving data
 	else
 		return (0);	// or return 0 if there was a problem communicating with the BMP
 }
 
-irom char bmp180_getTemperature(double *T)
+irom char bmp085_getTemperature(double *T)
 // Retrieve a previously-started temperature reading.
 // Requires begin() to be called once prior to retrieve calibration parameters.
 // Requires startTemperature() to have been called prior and sufficient time elapsed.
@@ -223,9 +223,9 @@ irom char bmp180_getTemperature(double *T)
 	char result;
 	double tu, a;
 
-	data[0] = BMP180_REG_RESULT;
+	data[0] = BMP085_REG_RESULT;
 
-	result = bmp180_readBytes(data, 2);
+	result = bmp085_readBytes(data, 2);
 	if (result)		// good read, calculate temperature
 	{
 		tu = (data[0] * 256.0) + data[1];
@@ -252,35 +252,35 @@ irom char bmp180_getTemperature(double *T)
 // Begin a pressure reading.
 // Oversampling: 0 to 3, higher numbers are slower, higher-res outputs.
 // Will return delay in ms to wait, or 0 if I2C error.
-irom char bmp180_startPressure(char oversampling)
+irom char bmp085_startPressure(char oversampling)
 {
 	unsigned char data[2], result, delay;
 
-	data[0] = BMP180_REG_CONTROL;
+	data[0] = BMP085_REG_CONTROL;
 
 	switch (oversampling) {
 	case 0:
-		data[1] = BMP180_COMMAND_PRESSURE0;
+		data[1] = BMP085_COMMAND_PRESSURE0;
 		delay = 5;
 		break;
 	case 1:
-		data[1] = BMP180_COMMAND_PRESSURE1;
+		data[1] = BMP085_COMMAND_PRESSURE1;
 		delay = 8;
 		break;
 	case 2:
-		data[1] = BMP180_COMMAND_PRESSURE2;
+		data[1] = BMP085_COMMAND_PRESSURE2;
 		delay = 14;
 		break;
 	case 3:
-		data[1] = BMP180_COMMAND_PRESSURE3;
+		data[1] = BMP085_COMMAND_PRESSURE3;
 		delay = 26;
 		break;
 	default:
-		data[1] = BMP180_COMMAND_PRESSURE0;
+		data[1] = BMP085_COMMAND_PRESSURE0;
 		delay = 5;
 		break;
 	}
-	result = bmp180_writeBytes(data, 2);
+	result = bmp085_writeBytes(data, 2);
 	if (result)		// good write?
 		return (delay);	// return the delay in ms (rounded up) to wait before retrieving data
 	else
@@ -295,15 +295,15 @@ irom char bmp180_startPressure(char oversampling)
 // T: previously-calculated temperature.
 // Returns 1 for success, 0 for I2C error.
 // Note that calculated pressure value is absolute mbars, to compensate for altitude call sealevel().
-irom char bmp180_getPressure(double *P, double *T)
+irom char bmp085_getPressure(double *P, double *T)
 {
 	unsigned char data[3];
 	char result;
 	double pu, s, x, y, z;
 
-	data[0] = BMP180_REG_RESULT;
+	data[0] = BMP085_REG_RESULT;
 
-	result = bmp180_readBytes(data, 3);
+	result = bmp085_readBytes(data, 3);
 	if (result)		// good read, calculate pressure
 	{
 		pu = (data[0] * 256.0) + data[1] + (data[2] / 256.0);
@@ -337,14 +337,14 @@ irom char bmp180_getPressure(double *P, double *T)
 // Given a pressure P (mb) taken at a specific altitude (meters),
 // return the equivalent pressure (mb) at sea level.
 // This produces pressure readings that can be used for weather measurements.
-irom double bmp180_sealevel(double P, double A)
+irom double bmp085_sealevel(double P, double A)
 {
 	return (P / pow(1 - (A / 44330.0), 5.255));
 }
 
 // Given a pressure measurement P (mb) and the pressure at a baseline P0 (mb),
 // return altitude (meters) above baseline.
-irom double bmp180_altitude(double P, double P0)
+irom double bmp085_altitude(double P, double P0)
 {
 	return (44330.0 * (1 - pow(P / P0, 1 / 5.255)));
 }
@@ -356,7 +356,7 @@ irom double bmp180_altitude(double P, double P0)
 // 2 = Received NACK on transmit of address
 // 3 = Received NACK on transmit of data
 // 4 = Other error
-irom char bmp180_getError(void)
+irom char bmp085_getError(void)
 {
-	return (bmp180_error);
+	return (bmp085_error);
 }
