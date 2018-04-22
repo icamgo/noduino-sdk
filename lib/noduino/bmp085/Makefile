@@ -12,7 +12,7 @@
 #
 
 ifndef PDIR
-GEN_LIBS = libbmp085.a
+GEN_LIBS = libbmp180.a
 endif
 
 # noduino sdk base dir

@@ -52,18 +52,18 @@
 #define BMP085_READPRESSURECMD   0x34
 
 
-bool bmp085_begin();  // by default go highres
-float bmp085_readTemperature();
-float bmp085_readAltitude(float sealevelPressure); // std atmosphere
-int32_t bmp085_readPressure();
-int32_t bmp085_readSealevelPressure(float altitude_meters);
-uint16_t bmp085_readRawTemperature();
-uint32_t bmp085_readRawPressure();
+bool bmp180_begin();  // by default go highres
+float bmp180_readTemperature();
+float bmp180_readAltitude(float sealevelPressure); // std atmosphere
+int32_t bmp180_readPressure();
+int32_t bmp180_readSealevelPressure(float altitude_meters);
+uint16_t bmp180_readRawTemperature();
+uint32_t bmp180_readRawPressure();
   
-int32_t bmp085_computeB5(int32_t UT);
-uint8_t bmp085_read8(uint8_t addr);
-uint16_t bmp085_read16(uint8_t addr);
-void bmp085_write8(uint8_t addr, uint8_t data);
+int32_t bmp180_computeB5(int32_t UT);
+uint8_t bmp180_read8(uint8_t addr);
+uint16_t bmp180_read16(uint8_t addr);
+void bmp180_write8(uint8_t addr, uint8_t data);
 
-uint8_t bmp085_oversampling;
+uint8_t bmp180_oversampling;
 #endif

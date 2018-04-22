@@ -20,36 +20,36 @@
  *
 */
 
-#include "bmp085.h"
+#include "bmp180.h"
 
 int16_t ac1, ac2, ac3, b1, b2, mb, mc, md;
 uint16_t ac4, ac5, ac6;
 
-bool ICACHE_FLASH_ATTR bmp085_begin()
+bool ICACHE_FLASH_ATTR bmp180_begin()
 {
   uint8_t mode = BMP085_ULTRAHIGHRES;
   if (mode > BMP085_ULTRAHIGHRES) 
     mode = BMP085_ULTRAHIGHRES;
-  bmp085_oversampling = mode;
+  bmp180_oversampling = mode;
 
   wire_begin();
 
-  if (bmp085_read8(0xD0) != 0x55) return false;
+  if (bmp180_read8(0xD0) != 0x55) return false;
 
-  /* bmp085_read calibration data */
-  ac1 = bmp085_read16(BMP085_CAL_AC1);
-  ac2 = bmp085_read16(BMP085_CAL_AC2);
-  ac3 = bmp085_read16(BMP085_CAL_AC3);
-  ac4 = bmp085_read16(BMP085_CAL_AC4);
-  ac5 = bmp085_read16(BMP085_CAL_AC5);
-  ac6 = bmp085_read16(BMP085_CAL_AC6);
+  /* bmp180_read calibration data */
+  ac1 = bmp180_read16(BMP085_CAL_AC1);
+  ac2 = bmp180_read16(BMP085_CAL_AC2);
+  ac3 = bmp180_read16(BMP085_CAL_AC3);
+  ac4 = bmp180_read16(BMP085_CAL_AC4);
+  ac5 = bmp180_read16(BMP085_CAL_AC5);
+  ac6 = bmp180_read16(BMP085_CAL_AC6);
 
-  b1 = bmp085_read16(BMP085_CAL_B1);
-  b2 = bmp085_read16(BMP085_CAL_B2);
+  b1 = bmp180_read16(BMP085_CAL_B1);
+  b2 = bmp180_read16(BMP085_CAL_B2);
 
-  mb = bmp085_read16(BMP085_CAL_MB);
-  mc = bmp085_read16(BMP085_CAL_MC);
-  md = bmp085_read16(BMP085_CAL_MD);
+  mb = bmp180_read16(BMP085_CAL_MB);
+  mc = bmp180_read16(BMP085_CAL_MC);
+  md = bmp180_read16(BMP085_CAL_MD);
 #if (BMP085_DEBUG == 1)
   serial_printf("ac1 = %d\r\n",ac1);
   serial_printf("ac2 = %d\r\n",ac2);
@@ -69,49 +69,49 @@ bool ICACHE_FLASH_ATTR bmp085_begin()
   return true;
 }
 
-int32_t ICACHE_FLASH_ATTR bmp085_computeB5(int32_t UT)
+int32_t ICACHE_FLASH_ATTR bmp180_computeB5(int32_t UT)
 {
   int32_t X1 = (UT - (int32_t)ac6) * ((int32_t)ac5) >> 15;
   int32_t X2 = ((int32_t)mc << 11) / (X1+(int32_t)md);
   return X1 + X2;
 }
 
-uint16_t ICACHE_FLASH_ATTR bmp085_readRawTemperature()
+uint16_t ICACHE_FLASH_ATTR bmp180_readRawTemperature()
 {
-  bmp085_write8(BMP085_CONTROL, BMP085_READTEMPCMD);
+  bmp180_write8(BMP085_CONTROL, BMP085_READTEMPCMD);
   delay(5);
 #if BMP085_DEBUG == 1
-  serial_printf("Raw temp: %d\r\n", bmp085_read16(BMP085_TEMPDATA));
+  serial_printf("Raw temp: %d\r\n", bmp180_read16(BMP085_TEMPDATA));
 #endif
-  return bmp085_read16(BMP085_TEMPDATA);
+  return bmp180_read16(BMP085_TEMPDATA);
 }
 
-uint32_t ICACHE_FLASH_ATTR bmp085_readRawPressure()
+uint32_t ICACHE_FLASH_ATTR bmp180_readRawPressure()
 {
   uint32_t raw;
 
-  bmp085_write8(BMP085_CONTROL, BMP085_READPRESSURECMD + (bmp085_oversampling << 6));
+  bmp180_write8(BMP085_CONTROL, BMP085_READPRESSURECMD + (bmp180_oversampling << 6));
 
-  if (bmp085_oversampling == BMP085_ULTRALOWPOWER) 
+  if (bmp180_oversampling == BMP085_ULTRALOWPOWER) 
     delay(5);
-  else if (bmp085_oversampling == BMP085_STANDARD) 
+  else if (bmp180_oversampling == BMP085_STANDARD) 
     delay(8);
-  else if (bmp085_oversampling == BMP085_HIGHRES) 
+  else if (bmp180_oversampling == BMP085_HIGHRES) 
     delay(14);
   else 
     delay(26);
 
-  raw = bmp085_read16(BMP085_PRESSUREDATA);
+  raw = bmp180_read16(BMP085_PRESSUREDATA);
 
   raw <<= 8;
-  raw |= bmp085_read8(BMP085_PRESSUREDATA+2);
-  raw >>= (8 - bmp085_oversampling);
+  raw |= bmp180_read8(BMP085_PRESSUREDATA+2);
+  raw >>= (8 - bmp180_oversampling);
 
  /* this pull broke stuff, look at it later?
-  if (bmp085_oversampling==0) {
+  if (bmp180_oversampling==0) {
     raw <<= 8;
-    raw |= bmp085_read8(BMP085_PRESSUREDATA+2);
-    raw >>= (8 - bmp085_oversampling);
+    raw |= bmp180_read8(BMP085_PRESSUREDATA+2);
+    raw >>= (8 - bmp180_oversampling);
   }
  */
 
@@ -122,13 +122,13 @@ uint32_t ICACHE_FLASH_ATTR bmp085_readRawPressure()
 }
 
 
-int32_t ICACHE_FLASH_ATTR bmp085_readPressure()
+int32_t ICACHE_FLASH_ATTR bmp180_readPressure()
 {
   int32_t UT, UP, B3, B5, B6, X1, X2, X3, p;
   uint32_t B4, B7;
 
-  UT = bmp085_readRawTemperature();
-  UP = bmp085_readRawPressure();
+  UT = bmp180_readRawTemperature();
+  UP = bmp180_readRawPressure();
 
 #if BMP085_DEBUG == 1
   // use datasheet numbers!
@@ -144,10 +144,10 @@ int32_t ICACHE_FLASH_ATTR bmp085_readPressure()
   ac2 = -72;
   ac1 = 408;
   ac4 = 32741;
-  bmp085_oversampling = 0;
+  bmp180_oversampling = 0;
 #endif
 
-  B5 = bmp085_computeB5(UT);
+  B5 = bmp180_computeB5(UT);
 
 #if BMP085_DEBUG == 1
   serial_printf("X1 = %d\r\n", X1);
@@ -160,7 +160,7 @@ int32_t ICACHE_FLASH_ATTR bmp085_readPressure()
   X1 = ((int32_t)b2 * ( (B6 * B6)>>12 )) >> 11;
   X2 = ((int32_t)ac2 * B6) >> 11;
   X3 = X1 + X2;
-  B3 = ((((int32_t)ac1*4 + X3) << bmp085_oversampling) + 2) / 4;
+  B3 = ((((int32_t)ac1*4 + X3) << bmp180_oversampling) + 2) / 4;
 
 #if BMP085_DEBUG == 1
   serial_printf("B6 = %d\r\n", B6);
@@ -173,7 +173,7 @@ int32_t ICACHE_FLASH_ATTR bmp085_readPressure()
   X2 = ((int32_t)b1 * ((B6 * B6) >> 12)) >> 16;
   X3 = ((X1 + X2) + 2) >> 2;
   B4 = ((uint32_t)ac4 * (uint32_t)(X3 + 32768)) >> 15;
-  B7 = ((uint32_t)UP - B3) * (uint32_t)( 50000UL >> bmp085_oversampling );
+  B7 = ((uint32_t)UP - B3) * (uint32_t)( 50000UL >> bmp180_oversampling );
 
 #if BMP085_DEBUG == 1
   serial_printf("X1 = %d\r\n", X1);
@@ -204,18 +204,18 @@ int32_t ICACHE_FLASH_ATTR bmp085_readPressure()
   return p;
 }
 
-int32_t ICACHE_FLASH_ATTR bmp085_readSealevelPressure(float altitude_meters)
+int32_t ICACHE_FLASH_ATTR bmp180_readSealevelPressure(float altitude_meters)
 {
-  float pressure = bmp085_readPressure();
+  float pressure = bmp180_readPressure();
   return (int32_t)(pressure / pow(1.0-altitude_meters/44330, 5.255));
 }
 
-float ICACHE_FLASH_ATTR bmp085_readTemperature()
+float ICACHE_FLASH_ATTR bmp180_readTemperature()
 {
   int32_t UT, B5;     // following ds convention
   float temp = 0;
 
-  UT = bmp085_readRawTemperature();
+  UT = bmp180_readRawTemperature();
 
 #if BMP085_DEBUG == 1
   serial_printf("readTemp: UT: %d\r\n", UT);
@@ -227,24 +227,24 @@ float ICACHE_FLASH_ATTR bmp085_readTemperature()
   md = 2868;
 #endif
 
-  B5 = bmp085_computeB5(UT);
+  B5 = bmp180_computeB5(UT);
   temp = (((float)B5 + 8) / 16) / 10;
 
   return temp;
 }
 
-float ICACHE_FLASH_ATTR bmp085_readAltitude(float sealevelPressure)
+float ICACHE_FLASH_ATTR bmp180_readAltitude(float sealevelPressure)
 {
   float altitude;
 
-  float pressure = bmp085_readPressure();
+  float pressure = bmp180_readPressure();
 
   altitude = 44330 * (1.0 - pow(pressure /sealevelPressure,0.1903));
 
   return altitude;
 }
 
-uint8_t ICACHE_FLASH_ATTR bmp085_read8(uint8_t a)
+uint8_t ICACHE_FLASH_ATTR bmp180_read8(uint8_t a)
 {
   uint8_t ret;
 
@@ -260,7 +260,7 @@ uint8_t ICACHE_FLASH_ATTR bmp085_read8(uint8_t a)
   return ret;
 }
 
-uint16_t ICACHE_FLASH_ATTR bmp085_read16(uint8_t a)
+uint16_t ICACHE_FLASH_ATTR bmp180_read16(uint8_t a)
 {
   uint16_t ret;
 
@@ -278,7 +278,7 @@ uint16_t ICACHE_FLASH_ATTR bmp085_read16(uint8_t a)
   return ret;
 }
 
-void ICACHE_FLASH_ATTR bmp085_write8(uint8_t a, uint8_t d)
+void ICACHE_FLASH_ATTR bmp180_write8(uint8_t a, uint8_t d)
 {
   wire_beginTransmission(BMP085_I2CADDR);	// start transmission to device 
   wire_write(a);							// sends register address to read from
