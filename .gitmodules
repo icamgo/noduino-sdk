@@ -1,6 +1,6 @@
 [submodule "toolchain"]
 	path = toolchain
-	url = git://github.com/icamgo/xtensa-toolchain.git
+	url = git://github.com/noduino/xtensa-toolchain.git
 [submodule "rtos/esp8266"]
 	path = rtos/esp8266
 	url = git://github.com/espressif/esp8266_rtos_sdk.git
