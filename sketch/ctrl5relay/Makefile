@@ -28,7 +28,7 @@ sinclude .config
 SDK_INCDIR	+= include/noduino include/lwip
 
 # libraries used in this project
-LIBS		+= cloud cirom mirom noduino ssl espudpd echo
+LIBS		+= cloud cirom mirom noduino ssl espudpd echo sht2x bmp180 tsl2561
 
 # compiler flags using during compilation of source files
 CFLAGS		+= -DLWIP_OPEN_SRC

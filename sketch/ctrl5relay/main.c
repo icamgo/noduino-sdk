@@ -575,6 +575,66 @@ void init_yun()
 	wifi_set_sleep_type(MODEM_SLEEP_T);
 }
 
+#ifdef CONFIG_SENSOR
+/* sensor supporting start */
+irom void setup_tsl2561()
+{
+	if (!tsl2561_begin(TSL2561_ADDR_LOW)) {
+		serial_print("Could not found TSL2561 sensor!\r\n");
+	}
+
+	// You can change the gain on the fly, to adapt to brighter/dimmer
+	// light situations
+	//tsl2561_setGain(TSL2561_GAIN_0X);		// set no gain (for bright situtations)
+	tsl2561_setGain(TSL2561_GAIN_16X);		// set 16x gain (for dim situations)
+
+	// Changing the integration time gives you a longer time over which to sense light
+	// longer timelines are slower, but are good in very low light situtations!
+	tsl2561_setTiming(TSL2561_INTEGRATIONTIME_13MS);	// shortest integration time (bright light)
+}
+
+irom void do_tsl2561()
+{
+	// Simple data read example. Just read the infrared, fullspecrtrum diode
+	// or 'visible' (difference between the two) channels.
+	// This can take 13-402 ms
+	uint16_t x = tsl2561_getLuminosity(TSL2561_VISIBLE);
+
+	INFO("Luminosity:\t\t%d\r\n", x);
+}
+
+irom void setup_bmp180()
+{
+	if (!bmp180_begin()) {
+		serial_print("Could not find a valid BMP180 sensor!\r\n");
+	}
+}
+
+void do_bmp180()
+{
+	char obuf[16];
+
+	INFO("Pressure:\t\t%d Pa\r\n", bmp180_readPressure());
+
+	dtostrf(bmp180_readTemperature(), 16, 1, obuf);
+	INFO("Temperature:\t%s C\r\n", obuf);
+}
+
+void do_sht2x()
+{
+	char t_buf[8];
+	char h_buf[8];
+
+	sht2x_reset();
+
+	dtostrf(sht2x_GetTemperature(), 5, 1, t_buf),
+	dtostrf(sht2x_GetHumidity(), 5, 1, h_buf);
+	INFO("Temperature(C):\t\t\t%s\r\n", t_buf);
+	INFO("Humidity(%):\t\t\t%s\r\n\r\n", h_buf);
+}
+/* sensor end */
+#endif
+
 irom void setup()
 {
 #ifdef DEBUG
@@ -595,9 +655,22 @@ irom void setup()
 	init_yun();
 
 	wifi_set_sleep_type(MODEM_SLEEP_T);
+
+#ifdef CONFIG_SENSOR
+	wire_begin();
+	setup_tsl2561();
+	setup_bmp180();
+#endif
 }
 
 void loop()
 {
+#ifdef CONFIG_SENSOR
+	do_sht2x();
+	do_bmp180();
+	do_tsl2561();
+	INFO("#####################################\r\n");
+#endif
+
 	delay(10*1000);
 }

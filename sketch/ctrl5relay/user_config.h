@@ -18,6 +18,10 @@
 #include "mjyun.h"
 #include "cJSON.h"
 
+#include "sht2x.h"
+#include "tsl2561.h"
+#include "bmp180.h"
+
 //#define CONFIG_ALEXA		1
 
 #define	CH1_DEFAULT_VOICE_NAME	"channel 1"
@@ -27,6 +31,7 @@
 #define	CH5_DEFAULT_VOICE_NAME	"channel 5"
 
 #define	DEBUG			1
+#define CONFIG_SENSOR	1
 
 #ifdef DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
