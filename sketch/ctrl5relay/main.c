@@ -604,6 +604,64 @@ void init_yun()
 }
 
 #ifdef CONFIG_SENSOR
+static upload_fail_cnt = 0;
+
+void http_error_handle()
+{
+	upload_fail_cnt++;
+	if(upload_fail_cnt >= 3) {
+		// failed about 5min
+		os_printf("http pushed failed %d times, reset the system\r\n", upload_fail_cnt);
+		//system_restart();
+	}
+
+	//TODO: store the data in flash
+}
+
+void http_upload_cb(char *response, int http_status, char *full_response)
+{
+	if ( HTTP_STATUS_GENERIC_ERROR != http_status )
+	{
+		INFO( "%s: strlen(full_response)=%d\r\n", __func__, strlen( full_response ) );
+		INFO( "%s: response=%s<EOF>\r\n", __func__, response );
+		INFO( "%s: memory left=%d\r\n", __func__, system_get_free_heap_size() );
+
+		if(os_strncmp(response, "ok", 2) != 0)
+			http_error_handle();
+
+	} else {
+		http_error_handle();
+		INFO( "%s: http_status=%d\r\n", __func__, http_status );
+	}
+}
+
+void http_upload(char *tt, char *hh, int hp, int lumi)
+{
+	uint8_t * URL = (uint8_t *) os_zalloc(os_strlen(HTTP_UPLOAD_URL) +
+	                  os_strlen(mjyun_getdeviceid()) +
+	                  os_strlen(mjyun_get_product_id()) +
+	                  os_strlen(tt) + os_strlen(hh) +
+	                  12);
+
+	if ( URL == NULL ) {
+		INFO( "%s: not enough memory\r\n", __func__ );
+		return;
+	}
+
+	uint32_t cs = time(NULL);
+
+	os_sprintf( URL,
+	            HTTP_UPLOAD_URL,
+	            mjyun_getdeviceid(),
+	            (tt),
+	            (hh),
+				hp,
+	            lumi );
+	http_get((const char *) URL , "", http_upload_cb);
+	INFO("%s\r\n", (char *)URL);
+	os_free( URL );
+}
+
 /* sensor supporting start */
 irom void setup_tsl2561()
 {
@@ -657,7 +715,10 @@ irom void push_sensor_data()
 	INFO("Humidity(%):\t\t\t%s\r\n", h);
 	INFO("Pressure(hPa):\t\t\t%d\r\n", pressure);
 	INFO("Luminosity:\t\t\t%d\r\n", lumi);
+
+	http_upload(t, h, pressure, lumi);
 }
+
 /* sensor end */
 #endif
 

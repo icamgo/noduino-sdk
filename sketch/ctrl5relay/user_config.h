@@ -22,6 +22,8 @@
 #include "tsl2561.h"
 #include "bmp180.h"
 
+#include "httpclient.h"
+
 //#define CONFIG_ALEXA		1
 
 #define	CH1_DEFAULT_VOICE_NAME	"channel 1"
@@ -38,6 +40,8 @@
 #else
 #define INFO( format, ... )
 #endif
+
+#define	HTTP_UPLOAD_URL	"http://api.noduino.org/dev/weather?devid=%s&temp=%s&humi=%s&pres=%d&lumi=%d"
 
 #define	XKEY_NUM		1
 
