@@ -18,7 +18,7 @@
 #include "noduino.h"
 #include "sht2x.h"
 #include "tsl2561.h"
-#include "bmp085.h"
+#include "bmp180.h"
 
 irom void setup_tsl2561()
 {
@@ -64,8 +64,8 @@ void do_tsl2561()
 
 irom void setup_bmp180()
 {
-	if (!bmp085_begin()) {
-		serial_print("Could not find a valid BMP085 sensor!\r\n");
+	if (!bmp180_begin()) {
+		serial_print("Could not find a valid BMP180 sensor!\r\n");
 	}
 }
 
@@ -73,22 +73,10 @@ void do_bmp180()
 {
 	char obuf[16];
 
-	serial_printf("Pressure:\t\t%d Pa\r\n", bmp085_readPressure());
+	serial_printf("Pressure:\t\t%d Pa\r\n", bmp180_readPressure());
 
-	dtostrf(bmp085_readTemperature(), 16, 1, obuf);
+	dtostrf(bmp180_readTemperature(), 16, 1, obuf);
 	serial_printf("Temperature:\t%s C\r\n", obuf);
-
-	// Calculate altitude assuming 'standard' barometric
-	// pressure of 1013.25 millibar = 101325 Pascal
-	serial_printf("Pressure at sealevel:\t%d Pa\r\n",
-			bmp085_readSealevelPressure(30));
-
-	// you can get a more precise measurement of altitude
-	// if you know the current sea level pressure which will
-	// vary with weather and such. If it is 1015 millibars
-	// that is equal to 101500 Pascals.
-	dtostrf(bmp085_readAltitude(102300), 16, 0, obuf);
-	serial_printf("Real altitude:\t%s M\r\n\r\n", obuf);
 }
 
 void do_sht2x()

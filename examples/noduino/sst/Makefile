@@ -28,7 +28,7 @@ sinclude .config
 SDK_INCDIR	+= include/noduino
 
 # libraries used in this project
-LIBS		+= mirom noduino sht2x bmp085 tsl2561
+LIBS		+= mirom noduino sht2x bmp180 tsl2561
 
 # compiler flags using during compilation of source files
 CFLAGS		+=
