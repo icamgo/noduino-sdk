@@ -703,7 +703,7 @@ irom void push_sensor_data()
 
 	sht2x_reset();
 	dtostrf(sht2x_GetTemperature(), 5, 1, t_buf),
-	dtostrf(sht2x_GetHumidity(), 5, 1, h_buf);
+	dtostrf(sht2x_GetHumidity(), 5, 0, h_buf);
 
 	char *t = strstrip(t_buf);
 	char *h = strstrip(h_buf);
