@@ -18,8 +18,31 @@
 #include "user_config.h"
 #include "compile.h"
 
+static uint32_t wan_ok = 0;
+#define	DATARATE_MIN		1
 
 extern ctrl_status_t ctrl_st;
+
+irom char *strstrip(char *s)
+{
+	size_t size;
+	char *end;
+
+	size = strlen(s);
+
+	if (!size)
+		return s;
+
+	end = s + size - 1;
+	while (end >= s && isspace(*end))
+		end--;
+	*(end + 1) = '\0';
+
+	while (*s && isspace(*s))
+		s++;
+
+	return s;
+}
 
 #ifdef CONFIG_ALEXA
 void relay1_on_saved_and_pub()
@@ -281,12 +304,15 @@ static void mjyun_stated_cb(mjyun_state_t state)
             INFO("Platform: MJYUN_CONNECTING\r\n");
             break;
         case MJYUN_CONNECTING_ERROR:
+			wan_ok = 0;
             INFO("Platform: MJYUN_CONNECTING_ERROR\r\n");
             break;
         case MJYUN_CONNECTED:
+			wan_ok = 1;
             INFO("Platform: MJYUN_CONNECTED \r\n");
             break;
         case MJYUN_DISCONNECTED:
+			wan_ok = 0;
             INFO("Platform: MJYUN_DISCONNECTED\r\n");
             break;
         default:
@@ -541,6 +567,8 @@ void mjyun_connected()
 	app_push_status(NULL);
 	push_voice_name();
 
+	wan_ok = 1;
+
 	// stop to show the wifi status
 	wifi_led_disable();
 }
@@ -583,24 +611,22 @@ irom void setup_tsl2561()
 		serial_print("Could not found TSL2561 sensor!\r\n");
 	}
 
-	// You can change the gain on the fly, to adapt to brighter/dimmer
-	// light situations
-	//tsl2561_setGain(TSL2561_GAIN_0X);		// set no gain (for bright situtations)
-	tsl2561_setGain(TSL2561_GAIN_16X);		// set 16x gain (for dim situations)
+	/*
+	 * You can change the gain on the fly, to adapt
+	 * to brighter/dimmer light situations
+	 */
+	tsl2561_setGain(TSL2561_GAIN_0X);		// set no gain (for bright situtations)
+	//tsl2561_setGain(TSL2561_GAIN_16X);		// set 16x gain (for dim situations)
 
-	// Changing the integration time gives you a longer time over which to sense light
-	// longer timelines are slower, but are good in very low light situtations!
+	/*
+	 * Changing the integration time gives you a longer
+	 * time over which to sense light
+	 *
+	 * longer timelines are slower, but are good in very
+	 * low light situtations!
+	 *
+	 */
 	tsl2561_setTiming(TSL2561_INTEGRATIONTIME_13MS);	// shortest integration time (bright light)
-}
-
-irom void do_tsl2561()
-{
-	// Simple data read example. Just read the infrared, fullspecrtrum diode
-	// or 'visible' (difference between the two) channels.
-	// This can take 13-402 ms
-	uint16_t x = tsl2561_getLuminosity(TSL2561_VISIBLE);
-
-	INFO("Luminosity:\t\t%d\r\n", x);
 }
 
 irom void setup_bmp180()
@@ -610,27 +636,27 @@ irom void setup_bmp180()
 	}
 }
 
-void do_bmp180()
-{
-	char obuf[16];
-
-	INFO("Pressure:\t\t%d Pa\r\n", bmp180_readPressure());
-
-	dtostrf(bmp180_readTemperature(), 16, 1, obuf);
-	INFO("Temperature:\t%s C\r\n", obuf);
-}
-
-void do_sht2x()
+irom void push_sensor_data()
 {
 	char t_buf[8];
 	char h_buf[8];
+	int pressure;
+	int lumi;
 
 	sht2x_reset();
-
 	dtostrf(sht2x_GetTemperature(), 5, 1, t_buf),
 	dtostrf(sht2x_GetHumidity(), 5, 1, h_buf);
-	INFO("Temperature(C):\t\t\t%s\r\n", t_buf);
-	INFO("Humidity(%):\t\t\t%s\r\n\r\n", h_buf);
+
+	char *t = strstrip(t_buf);
+	char *h = strstrip(h_buf);
+
+	pressure = bmp180_readPressure() / 100;
+	lumi = tsl2561_getLuminosity(TSL2561_VISIBLE);
+
+	INFO("Temperature(C):\t\t\t%s\r\n", t);
+	INFO("Humidity(%):\t\t\t%s\r\n", h);
+	INFO("Pressure(hPa):\t\t\t%d\r\n", pressure);
+	INFO("Luminosity:\t\t\t%d\r\n", lumi);
 }
 /* sensor end */
 #endif
@@ -665,12 +691,12 @@ irom void setup()
 
 void loop()
 {
+	if (wan_ok == 1) {
 #ifdef CONFIG_SENSOR
-	do_sht2x();
-	do_bmp180();
-	do_tsl2561();
-	INFO("#####################################\r\n");
+		push_sensor_data();
+		INFO("#####################################\r\n");
 #endif
+	}
 
-	delay(10*1000);
+	delay(DATARATE_MIN*60*1000);
 }
