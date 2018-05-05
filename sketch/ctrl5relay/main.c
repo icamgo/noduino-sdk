@@ -657,9 +657,10 @@ void http_upload(char *tt, char *hh, int hp, int lumi)
 	            (hh),
 				hp,
 	            lumi );
-	http_get((const char *) URL , "", http_upload_cb);
+
+	http_post((const char *)URL , "Content-Type:application/json\r\n", "", http_upload_cb);
 	INFO("%s\r\n", (char *)URL);
-	os_free( URL );
+	os_free(URL);
 }
 
 /* sensor supporting start */
