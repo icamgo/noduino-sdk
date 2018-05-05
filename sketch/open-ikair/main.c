@@ -220,8 +220,8 @@ void push_temp_humi()
 	sht2x_reset();
 	float temp = sht2x_GetTemperature();
 	float humi = sht2x_GetHumidity();
-	dtostrf(temp, 5, 2, t_buf),
-	dtostrf(humi, 5, 2, h_buf);
+	dtostrf(temp, 5, 1, t_buf),
+	dtostrf(humi, 5, 1, h_buf);
 
 	char *t = strstrip(t_buf);
 	char *h = strstrip(h_buf);
