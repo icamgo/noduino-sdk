@@ -154,8 +154,7 @@ void http_upload_error_handle()
 
 void http_upload_cb(char *response, int http_status, char *full_response)
 {
-	if ( HTTP_STATUS_GENERIC_ERROR != http_status )
-	{
+	if(HTTP_STATUS_GENERIC_ERROR != http_status) {
 #ifdef DEBUG
 		os_printf( "%s: strlen(full_response)=%d\r\n", __func__, strlen( full_response ) );
 		os_printf( "%s: response=%s<EOF>\r\n", __func__, response );
@@ -177,9 +176,8 @@ void http_upload(char *tt, char *hh)
 {
 	uint8_t * URL = (uint8_t *) os_zalloc(os_strlen(HTTP_UPLOAD_URL) +
 	                  os_strlen(mjyun_getdeviceid()) +
-	                  os_strlen(mjyun_get_product_id()) +
 	                  os_strlen(tt) + os_strlen(hh) +
-	                  12);
+	                  12 + 12);
 
 	if ( URL == NULL ) {
 #ifdef DEBUG
@@ -188,16 +186,22 @@ void http_upload(char *tt, char *hh)
 		return;
 	}
 
+	uint8_t ma[6];
+	char sta_mac[16];
+	os_memset(sta_mac, 0, sizeof(sta_mac) / sizeof(char));
+	wifi_get_macaddr(STATION_IF, ma);
+	os_sprintf(sta_mac, "%02X%02X%02X%02X%02X%02X", ma[0], ma[1], ma[2], ma[3], ma[4], ma[5]);
+
 	uint32_t cs = time(NULL);
 
-	os_sprintf( URL,
-	            HTTP_UPLOAD_URL,
-	            mjyun_getdeviceid(),
-				mjyun_get_product_id(),
-	            (tt),
-	            (hh),
-	            cs);
-	http_get((const char *) URL , "", http_upload_cb);
+	os_sprintf(URL,
+	           HTTP_UPLOAD_URL,
+	           mjyun_getdeviceid(),
+	           (tt),
+	           (hh),
+	           cs,
+	           sta_mac);
+	http_post((const char *)URL , "Content-Type:application/json\r\n", "", http_upload_cb);
 #ifdef DEBUG
 	os_printf("%s\r\n", (char *)URL);
 #endif
