@@ -33,7 +33,7 @@
 #define	CH5_DEFAULT_VOICE_NAME	"channel 5"
 
 #define	DEBUG			1
-#define CONFIG_SENSOR	1
+//#define CONFIG_SENSOR	1
 
 #ifdef DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
