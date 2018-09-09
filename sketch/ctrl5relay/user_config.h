@@ -42,6 +42,7 @@
 #endif
 
 #define	HTTP_UPLOAD_URL	"http://api.noduino.org/dev/weather?devid=%s&temp=%s&humi=%s&pres=%d&lumi=%d"
+#define	HTTP_CHECK_ONLINE_URL	"http://api.noduino.org/dev/online?devid=%s"
 
 #define	XKEY_NUM		1
 
