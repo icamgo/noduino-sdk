@@ -723,7 +723,8 @@ irom void push_sensor_data()
 /* sensor end */
 #endif
 
-irom void check_online_cb(char *response, int http_status, char *full_response)
+#ifdef CONFIG_MQTT_ROBUST
+void check_online_cb(char *response, int http_status, char *full_response)
 {
 	if(HTTP_STATUS_GENERIC_ERROR != http_status) {
 
@@ -754,7 +755,7 @@ irom void check_online_cb(char *response, int http_status, char *full_response)
 	}
 }
 
-irom void check_online()
+void check_online()
 {
 	uint8_t *buf = (uint8_t *) os_zalloc(os_strlen(HTTP_CHECK_ONLINE_URL) +
 					os_strlen(mjyun_getdeviceid()));
@@ -769,6 +770,7 @@ irom void check_online()
 	INFO("%s\r\n", (char *)buf);
 	os_free(buf);
 }
+#endif
 
 
 irom void setup()
@@ -801,7 +803,9 @@ irom void setup()
 
 void loop()
 {
+#ifdef CONFIG_MQTT_ROBUST
 	static uint32_t cnt = 0;
+#endif
 
 	if (wan_ok == 1) {
 #ifdef CONFIG_SENSOR
@@ -810,12 +814,14 @@ void loop()
 #endif
 	}
 
+#ifdef CONFIG_MQTT_ROBUST
 	cnt++;
 
 	if(cnt % 5 == 0) {
 		INFO("Checking the online state via http\r\n");
 		check_online();
 	}
+#endif
 
 	delay(DATARATE_MIN*60*1000);
 }

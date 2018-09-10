@@ -332,6 +332,7 @@ void init_yun()
 	wifi_set_sleep_type(MODEM_SLEEP_T);
 }
 
+#ifdef CONFIG_MQTT_ROBUST
 static upload_fail_cnt = 0;
 
 void http_error_handle()
@@ -392,6 +393,7 @@ void check_online()
 	INFO("%s\r\n", (char *)buf);
 	os_free(buf);
 }
+#endif
 
 irom void setup()
 {
@@ -419,6 +421,8 @@ void loop()
 {
 	delay(5*60*1000);
 
+#ifdef CONFIG_MQTT_ROBUST
 	INFO("Checking the online state via http\r\n");
 	check_online();
+#endif
 }

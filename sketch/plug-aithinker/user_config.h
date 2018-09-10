@@ -40,6 +40,7 @@
 #define DEFAULT_VOICE_NAME	"open plug"
 
 #define DEBUG				1
+#define	CONFIG_MQTT_ROBUST	1
 
 #ifdef DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
