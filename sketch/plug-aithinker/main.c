@@ -357,12 +357,14 @@ void check_online_cb(char *response, int http_status, char *full_response)
 		if((NULL != pRoot) && (cJSON_Object == pRoot->type)) {
 			cJSON * pOnline = cJSON_GetObjectItem(pRoot, "online");
 
-			if ((NULL != pOnline) && (cJSON_Number == pOnline->type) && (0 == pOnline->valueint)) {
-				//need to restart the system
-				INFO("Using http to find device offline, reset the device\r\n");
-				system_restart();
-			} else {
-				INFO("Device online (via http)\r\n");
+			if ((NULL != pOnline) && (cJSON_Number == pOnline->type)) {
+				if (0 == pOnline->valueint) {
+					//need to restart the system
+					INFO("Using http to find device offline, reset the device\r\n");
+					system_restart();
+				} else if (1 == pOnline->valueint) {
+					INFO("Device online (via http)\r\n");
+				}
 			}
 		} else  {
 			INFO( "%s: Error when parse JSON\r\n", __func__ );
