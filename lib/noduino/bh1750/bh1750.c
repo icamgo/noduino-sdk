@@ -16,9 +16,14 @@
 
 #include "bh1750.h"
 
-irom void bh1750_begin()
+uint8_t bh1750_addr;
+
+irom void bh1750_begin(uint8_t addr)
 {
 	uint8_t mode = BH1750_CONTINUOUS_HIGH_RES_MODE;
+
+	bh1750_addr = addr;
+
 	wire_begin();
 	bh1750_setMode(mode);
 }
@@ -45,12 +50,12 @@ irom void bh1750_setMode(uint8_t mode)
 	}
 }
 
-irom uint16_t bh1750_readLightLevel(void)
+irom uint16_t bh1750_readLightLevel()
 {
 	uint16_t level;
 
-	wire_beginTransmission(BH1750_I2CADDR);
-	wire_requestFrom(BH1750_I2CADDR, 2);
+	wire_beginTransmission(bh1750_addr);
+	wire_requestFrom(bh1750_addr, 2);
 	level = wire_read();
 	level <<= 8;
 	level |= wire_read();
@@ -70,7 +75,7 @@ irom uint16_t bh1750_readLightLevel(void)
 
 irom void bh1750_write8(uint8_t d)
 {
-	wire_beginTransmission(BH1750_I2CADDR);
+	wire_beginTransmission(bh1750_addr);
 	wire_write(d);
 	wire_endTransmission();
 }
