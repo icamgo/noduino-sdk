@@ -20,7 +20,6 @@
 #define	MQTT_SEND_RATE_SEC	2
 #define	HTTP_SEND_RATE_MIN	3
 
-//#define	HTTP_UPLOAD_URL	"http://api.noduino.org/tempdata/updata.php?dvid=%s&productid=%s&temp=%s&humi=%s&time=%u"
-#define	HTTP_UPLOAD_URL	"http://api.noduino.org/dev/temphumi?devid=%s&temp=%s&humi=%s&time=%u&mac=%s"
+#define	HTTP_UPLOAD_URL	"http://api.noduino.org/dev/ikair?devid=%s&temp=%s&humi=%s&light=%d&time=%u&mac=%s"
 
 #endif

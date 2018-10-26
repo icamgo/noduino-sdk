@@ -18,6 +18,7 @@
 #include "user_config.h"
 #include "time.h"
 #include "sht2x.h"
+#include "bh1750.h"
 #include "compile.h"
 
 #define DEBUG				1
@@ -172,12 +173,12 @@ void http_upload_cb(char *response, int http_status, char *full_response)
 	}
 }
 
-void http_upload(char *tt, char *hh)
+void http_upload(char *tt, char *hh, int ll)
 {
 	uint8_t * URL = (uint8_t *) os_zalloc(os_strlen(HTTP_UPLOAD_URL) +
 	                  os_strlen(mjyun_getdeviceid()) +
-	                  os_strlen(tt) + os_strlen(hh) +
-	                  12 + 12);
+	                  os_strlen(tt) + os_strlen(hh) + 4 +
+	                  32);
 
 	if ( URL == NULL ) {
 #ifdef DEBUG
@@ -199,6 +200,7 @@ void http_upload(char *tt, char *hh)
 	           mjyun_getdeviceid(),
 	           (tt),
 	           (hh),
+			   ll,
 	           cs,
 	           sta_mac);
 	http_post((const char *)URL , "Content-Type:application/json\r\n", "", http_upload_cb);
@@ -209,19 +211,30 @@ void http_upload(char *tt, char *hh)
 }
 
 static float pre_temp = 0;
-void push_temp_humi()
+void push_temp_humi_light()
 {
 	char t_buf[8];
 	char h_buf[8];
-	char msg[64];
+	char msg[128];
 
-	os_memset(msg, 0, 64);
+	int lux = 0;
+
+	os_memset(msg, 0, 128);
 
 	sht2x_reset();
 	float temp = sht2x_GetTemperature();
 	float humi = sht2x_GetHumidity();
+
 	dtostrf(temp, 5, 1, t_buf),
 	dtostrf(humi, 5, 1, h_buf);
+
+	/*
+	 * The light sensor address is 0x5C
+	 * The ADDR pin of BH1750 is pulled up (HIGH)
+	*/
+	bh1750_begin(0x5C);
+
+	lux = bh1750_readLightLevel();
 
 	char *t = strstrip(t_buf);
 	char *h = strstrip(h_buf);
@@ -234,14 +247,14 @@ void push_temp_humi()
 
 			pre_temp = temp;
 
-			os_sprintf(msg, "{\"temp\":%s,\"humi\":%s}", t, h);
+			os_sprintf(msg, "{\"temp\":%s,\"humi\":%s,\"light\":%d}", t, h, lux);
 
 			/* data changed, need update via mqtt */
 			mjyun_publishstatus(msg);
-			http_upload(t, h);
+			http_upload(t, h, lux);
 		}
 	} else {
-		http_upload(t, h);
+		http_upload(t, h, lux);
 	}
 }
 
@@ -314,7 +327,7 @@ irom void setup()
 void loop()
 {
 	if (wan_ok == 1) {
-		push_temp_humi();
+		push_temp_humi_light();
 		if(realtime == 1)
 			delay(mqttrate_sec*1000);
 		else
