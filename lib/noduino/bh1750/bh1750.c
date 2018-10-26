@@ -50,32 +50,41 @@ irom void bh1750_setMode(uint8_t mode)
 	}
 }
 
-irom uint16_t bh1750_readLightLevel()
+irom int bh1750_readLightLevel()
 {
-	uint16_t level;
+	int level;
+	int error = 0;
 
 	wire_beginTransmission(bh1750_addr);
 	wire_requestFrom(bh1750_addr, 2);
 	level = wire_read();
 	level <<= 8;
 	level |= wire_read();
-	wire_endTransmission();
 
+	error = wire_endTransmission();
+
+	if (error == 0) {
 #if BH1750_DEBUG == 1
-	serial_printf("Raw Light level: %d\r\n", level);
+		serial_printf("Raw Light level: %d\r\n", level);
 #endif
-
-	level = level / 1.2;	// convert to lux
-
+		level = level / 1.2;	// convert to lux
 #if BH1750_DEBUG == 1
-	serial_printf("Light level: %d\r\n", level);
+		serial_printf("Light level: %d\r\n", level);
 #endif
-	return level;
+		return level;
+	} else {
+		return -1;
+	}
 }
 
-irom void bh1750_write8(uint8_t d)
+irom int bh1750_write8(uint8_t d)
 {
+	int error = 0;
+
 	wire_beginTransmission(bh1750_addr);
 	wire_write(d);
-	wire_endTransmission();
+
+	error = wire_endTransmission();
+
+	return error;
 }

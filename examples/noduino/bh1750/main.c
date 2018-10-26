@@ -41,7 +41,11 @@ irom void setup()
 
 void loop()
 {
-	uint16_t lux = bh1750_readLightLevel();
-	serial_printf("Current Environment Light is: %d lx\r\n", lux);
+	int lux = bh1750_readLightLevel();
+
+	if (lux >= 0)
+		serial_printf("Current Environment Light is: %d lx\r\n", lux);
+	else
+		serial_printf("Read Light failed\r\n");
 	delay(2000);
 }

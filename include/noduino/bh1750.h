@@ -56,8 +56,7 @@
 
 void bh1750_begin(uint8_t addr);
 void bh1750_setMode(uint8_t mode);
-uint16_t bh1750_readLightLevel();
-
-void bh1750_write8(uint8_t data);
+int bh1750_readLightLevel();
+int bh1750_write8(uint8_t data);
 
 #endif
