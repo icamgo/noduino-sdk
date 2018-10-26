@@ -21,7 +21,8 @@
 
 #define BH1750_DEBUG 0
 
-#define BH1750_I2CADDR 0x23
+#define BH1750_I2CADDR_H 0x5C		// ADDR pin is HIGH
+#define BH1750_I2CADDR_L 0x23		// ADDR pin is LOW
 
 // No active state
 #define BH1750_POWER_DOWN 0x00
@@ -53,9 +54,9 @@
 // Device is automatically set to Power Down after measurement.
 #define BH1750_ONE_TIME_LOW_RES_MODE  0x23
 
-void bh1750_begin();
+void bh1750_begin(uint8_t addr);
 void bh1750_setMode(uint8_t mode);
-uint16_t bh1750_readLightLevel(void);
+uint16_t bh1750_readLightLevel();
 
 void bh1750_write8(uint8_t data);
 
