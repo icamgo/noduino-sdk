@@ -33,7 +33,9 @@
 irom void setup()
 {
 	serial_begin(115200);
-	bh1750_begin();
+
+	bh1750_begin(0x5C);		// the ADDR pin of BH1750 is HIGH, address is 0x5C
+
 	serial_printf("BH1750 digital light sensor Example\r\n");
 }
 
