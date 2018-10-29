@@ -22,9 +22,7 @@ struct single_key_param *single_key[XKEY_NUM];
 
 irom void xkey_long_press(void)
 {
-#ifdef DEBUG
 	INFO("key long pressed\r\n");
-#endif
 	mjyun_systemrecovery();
 	system_restore();
 	system_restart();
@@ -33,9 +31,7 @@ irom void xkey_long_press(void)
 irom void xkey_short_press(void)
 {
 	// reverse the status of relay
-#ifdef DEBUG
 	INFO("key short pressed\r\n");
-#endif
 	mjyun_forceentersmartlinkmode();
 	toggle_led();
 }

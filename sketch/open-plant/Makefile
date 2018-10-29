@@ -28,7 +28,7 @@ sinclude .config
 SDK_INCDIR	+= include/noduino
 
 # libraries used in this project
-LIBS		+= mjyun cirom mirom noduino sht2x pcf8563
+LIBS		+= cloud cirom noduino sht2x pcf8563 mcp342x
 
 # compiler flags using during compilation of source files
 CFLAGS		+=

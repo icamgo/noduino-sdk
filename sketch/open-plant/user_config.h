@@ -13,24 +13,20 @@
 #include "driver/key.h"
 #include "noduino.h"
 #include "led.h"
-#include "xkey.h"
-#include "twi.h"
-#include "pcf8563.h"
 
 #include "mjyun.h"
 #include "httpclient.h"
+#include "xkey.h"
+#include "led.h"
 
 #define	DEBUG			    1
+
+#define	HTTP_UPLOAD_URL	"http://api.noduino.org/dev/plant?devid=%s&temp=%s&humi=%s&vbat=%s&light=%d&co2=%d&time=%u&mac=%s"
 
 #ifdef DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
 #else
 #define INFO( format, ... )
 #endif
-
-#define	MQTT_SEND_RATE_SEC	2
-#define	HTTP_SEND_RATE_MIN	3
-
-#define	HTTP_UPLOAD_URL	"http://wx.mjyun.com/tempdata/updata.php?dvid=%s&productid=%s&temp=%s&time=%u"
 
 #endif
