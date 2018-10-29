@@ -339,7 +339,9 @@ irom void setup()
 	wifi_set_sleep_type(MODEM_SLEEP_T);
 }
 
-//static float pre_hot_data = 0;
+#ifdef CONFIG_CHECK_HOTDATA
+static float pre_hot_data = 0;
+#endif
 
 static uint32_t cnt = 0;
 
@@ -347,19 +349,37 @@ void loop()
 {
 	char *tt, *hh, *vv;
 
+	float hot_data = 0.0;
+
 	if (wan_ok == 1) {
 
 		cnt++;
 
 		if(realtime == 1) {
-			tt = get_temp(NULL);
-			hh = get_humi(NULL);
-			vv = get_vbat(NULL);
-			publish_sensor_data(tt, hh, vv, g_light, g_co2);
+
+			hh = get_humi(&hot_data);
+
+#ifdef CONFIG_CHECK_HOTDATA
+			if (fabsf(hot_data - pre_hot_data) > 1.0) {
+				pre_hot_data = hot_data;
+#endif
+				tt = get_temp(NULL);
+				vv = get_vbat(NULL);
+				publish_sensor_data(tt, hh, vv, g_light, g_co2);
+
+#ifdef CONFIG_CHECK_HOTDATA
+				http_upload(tt, hh, vv, g_light, g_co2);
+
+				if (cnt * mqtt_rate >= http_rate) {
+					cnt = 0;
+					goto next;
+				}
+			}
+#endif
 		}
 
 
-		if (cnt * 2 >= http_rate) {
+		if (cnt * mqtt_rate >= http_rate) {
 			tt = get_temp(NULL);
 			hh = get_humi(NULL);
 			vv = get_vbat(NULL);
@@ -371,5 +391,6 @@ void loop()
 		}
 	}
 
+next:
 	delay(mqtt_rate*1000);
 }

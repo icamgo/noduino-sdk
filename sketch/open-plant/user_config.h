@@ -19,7 +19,8 @@
 #include "xkey.h"
 #include "led.h"
 
-#define	DEBUG			    1
+#define	DEBUG			    	1
+#define	CONFIG_CHECK_HOTDATA	1
 
 #define	HTTP_UPLOAD_URL	"http://api.noduino.org/dev/plant?devid=%s&temp=%s&humi=%s&vbat=%s&light=%d&co2=%d&time=%u&mac=%s"
 
