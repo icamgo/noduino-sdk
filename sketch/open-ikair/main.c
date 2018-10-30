@@ -21,75 +21,76 @@
 #include "bh1750.h"
 #include "compile.h"
 
-#define DEBUG				1
+static int mqtt_rate = 2; //2 second
+static int http_rate = 60; //60 second
 
-static uint32_t realtime = 0;
-static uint32_t network_state = 0;
-static uint32_t wan_ok = 0;
+static int realtime = 0;
+static int network_state = 0;
+static int wan_ok = 0;
 
 irom static void mjyun_stated_cb(mjyun_state_t state)
 {
     if (mjyun_state() != state)
-        os_printf("Platform: mjyun_state error \r\n");
+        INFO("Platform: mjyun_state error \r\n");
 
     switch (state)
     {
         case WIFI_IDLE:
-            os_printf("Platform: WIFI_IDLE\r\n");
+            INFO("Platform: WIFI_IDLE\r\n");
             break;
         case WIFI_SMARTLINK_LINKING:
-            os_printf("Platform: WIFI_SMARTLINK_LINKING\r\n");
+            INFO("Platform: WIFI_SMARTLINK_LINKING\r\n");
             break;
         case WIFI_SMARTLINK_FINDING:
-            os_printf("Platform: WIFI_SMARTLINK_FINDING\r\n");
+            INFO("Platform: WIFI_SMARTLINK_FINDING\r\n");
             break;
         case WIFI_SMARTLINK_TIMEOUT:
-            os_printf("Platform: WIFI_SMARTLINK_TIMEOUT\r\n");
+            INFO("Platform: WIFI_SMARTLINK_TIMEOUT\r\n");
             break;
         case WIFI_SMARTLINK_GETTING:
-            os_printf("Platform: WIFI_SMARTLINK_GETTING\r\n");
+            INFO("Platform: WIFI_SMARTLINK_GETTING\r\n");
             break;
         case WIFI_SMARTLINK_OK:
-            os_printf("Platform: WIFI_SMARTLINK_OK\r\n");
+            INFO("Platform: WIFI_SMARTLINK_OK\r\n");
             break;
         case WIFI_AP_OK:
-            os_printf("Platform: WIFI_AP_OK\r\n");
+            INFO("Platform: WIFI_AP_OK\r\n");
             break;
         case WIFI_AP_ERROR:
-            os_printf("Platform: WIFI_AP_ERROR\r\n");
+            INFO("Platform: WIFI_AP_ERROR\r\n");
             break;
         case WIFI_AP_STATION_OK:
-            os_printf("Platform: WIFI_AP_STATION_OK\r\n");
+            INFO("Platform: WIFI_AP_STATION_OK\r\n");
 			network_state = WIFI_AP_STATION_OK;
             break;
         case WIFI_AP_STATION_ERROR:
-            os_printf("Platform: WIFI_AP_STATION_ERROR\r\n");
+            INFO("Platform: WIFI_AP_STATION_ERROR\r\n");
             break;
         case WIFI_STATION_OK:
-            os_printf("Platform: WIFI_STATION_OK\r\n");
+            INFO("Platform: WIFI_STATION_OK\r\n");
 			network_state = WIFI_STATION_OK;
             break;
         case WIFI_STATION_ERROR:
-            os_printf("Platform: WIFI_STATION_ERROR\r\n");
+            INFO("Platform: WIFI_STATION_ERROR\r\n");
             break;
         case WIFI_STA_DISCONNECTED:
-            os_printf("Platform: WIFI_STA_DISCONNECTED\r\n");
+            INFO("Platform: WIFI_STA_DISCONNECTED\r\n");
 			network_state = WIFI_STA_DISCONNECTED;
             break;
         case MJYUN_CONNECTING:
-            os_printf("Platform: MJYUN_CONNECTING\r\n");
+            INFO("Platform: MJYUN_CONNECTING\r\n");
             break;
         case MJYUN_CONNECTING_ERROR:
 			wan_ok = 0;
-            os_printf("Platform: MJYUN_CONNECTING_ERROR\r\n");
+            INFO("Platform: MJYUN_CONNECTING_ERROR\r\n");
             break;
         case MJYUN_CONNECTED:
 			wan_ok = 1;
-            os_printf("Platform: MJYUN_CONNECTED \r\n");
+            INFO("Platform: MJYUN_CONNECTED \r\n");
             break;
         case MJYUN_DISCONNECTED:
 			wan_ok = 0;
-            os_printf("Platform: MJYUN_DISCONNECTED\r\n");
+            INFO("Platform: MJYUN_DISCONNECTED\r\n");
             break;
         default:
             break;
@@ -98,25 +99,18 @@ irom static void mjyun_stated_cb(mjyun_state_t state)
 
 irom void mjyun_receive(const char *event_name, const char *event_data)
 {
-#ifdef DEBUG
-	os_printf("RECEIVED: key:value [%s]:[%s]", event_name, event_data);
+#ifdef CONFIG_DEBUG
+	INFO("RECEIVED: key:value [%s]:[%s]", event_name, event_data);
 #endif
 
 	if(os_strncmp(event_data, "ota", 3) == 0)
 	{
-#ifdef DEBUG
-		os_printf("OTA: upgrade the firmware!\r\n");
+#ifdef CONFIG_DEBUG
+		INFO("OTA: upgrade the firmware!\r\n");
 #endif
 		mjyun_mini_ota_start("ota/dev/openikair/files");
 	}
 }
-
-os_timer_t time_temp;
-
-static int mqttrate_sec = MQTT_SEND_RATE_SEC; //2 second
-static int httprate_min = HTTP_SEND_RATE_MIN; //5 min
-
-static int tmp_timer = 0;
 
 irom char *strstrip(char *s)
 {
@@ -146,7 +140,7 @@ void http_upload_error_handle()
 	upload_fail_cnt++;
 	if(upload_fail_cnt >= 3) {
 		// failed about 5min
-		os_printf("http pushed failed %d times, reset the system\r\n", upload_fail_cnt);
+		INFO("http pushed failed %d times, reset the system\r\n", upload_fail_cnt);
 		//system_restart();
 	}
 
@@ -156,10 +150,10 @@ void http_upload_error_handle()
 void http_upload_cb(char *response, int http_status, char *full_response)
 {
 	if(HTTP_STATUS_GENERIC_ERROR != http_status) {
-#ifdef DEBUG
-		os_printf( "%s: strlen(full_response)=%d\r\n", __func__, strlen( full_response ) );
-		os_printf( "%s: response=%s<EOF>\r\n", __func__, response );
-		os_printf( "%s: memory left=%d\r\n", __func__, system_get_free_heap_size() );
+#ifdef CONFIG_DEBUG
+		INFO("%s: strlen(full_response)=%d\r\n", __func__, strlen(full_response));
+		INFO("%s: response=%s<EOF>\r\n", __func__, response);
+		INFO("%s: memory left=%d\r\n", __func__, system_get_free_heap_size());
 #endif
 
 		if(os_strncmp(response, "ok", 2) != 0)
@@ -167,8 +161,8 @@ void http_upload_cb(char *response, int http_status, char *full_response)
 
 	} else {
 		http_upload_error_handle();
-#ifdef DEBUG
-		os_printf( "%s: http_status=%d\r\n", __func__, http_status );
+#ifdef CONFIG_DEBUG
+		INFO("%s: http_status=%d\r\n", __func__, http_status);
 #endif
 	}
 }
@@ -180,9 +174,9 @@ void http_upload(char *tt, char *hh, int ll)
 	                  os_strlen(tt) + os_strlen(hh) + 4 +
 	                  32);
 
-	if ( URL == NULL ) {
-#ifdef DEBUG
-		os_printf( "%s: not enough memory\r\n", __func__ );
+	if (URL == NULL) {
+#ifdef CONFIG_DEBUG
+		INFO("%s: not enough memory\r\n", __func__);
 #endif
 		return;
 	}
@@ -204,65 +198,17 @@ void http_upload(char *tt, char *hh, int ll)
 	           cs,
 	           sta_mac);
 	http_post((const char *)URL , "Content-Type:application/json\r\n", "", http_upload_cb);
-#ifdef DEBUG
-	os_printf("%s\r\n", (char *)URL);
+#ifdef CONFIG_DEBUG
+	INFO("%s\r\n", (char *)URL);
 #endif
-	os_free( URL );
-}
-
-static float pre_temp = 0;
-void push_temp_humi_light()
-{
-	char t_buf[8];
-	char h_buf[8];
-	char msg[128];
-
-	int lux = 0;
-
-	os_memset(msg, 0, 128);
-
-	sht2x_reset();
-	float temp = sht2x_GetTemperature();
-	float humi = sht2x_GetHumidity();
-
-	dtostrf(temp, 5, 1, t_buf),
-	dtostrf(humi, 5, 1, h_buf);
-
-	/*
-	 * The light sensor address is 0x5C
-	 * The ADDR pin of BH1750 is pulled up (HIGH)
-	*/
-	bh1750_begin(0x5C);
-
-	lux = bh1750_readLightLevel();
-
-	char *t = strstrip(t_buf);
-	char *h = strstrip(h_buf);
-
-	//os_printf("Temperature(C): %s\r\n", t);
-	//os_printf("Humidity(%RH): %s\r\n", h);
-
-	if (1 == realtime) {
-		if (fabsf(temp - pre_temp) > 0.1) {
-
-			pre_temp = temp;
-
-			os_sprintf(msg, "{\"temp\":%s,\"humi\":%s,\"light\":%d}", t, h, lux);
-
-			/* data changed, need update via mqtt */
-			mjyun_publishstatus(msg);
-			http_upload(t, h, lux);
-		}
-	} else {
-		http_upload(t, h, lux);
-	}
+	os_free(URL);
 }
 
 irom void time_init()
 {
 	//struct tm *tblock;
 	uint32_t cs = time(NULL);
-	os_printf("Current timestamp: %d\r\n", cs);
+	INFO("Current timestamp: %d\r\n", cs);
 }
 
 void mjyun_connected()
@@ -285,15 +231,11 @@ void mjyun_disconnected()
 
 mjyun_config_t mjyun_conf = {
 	"MJP2090591473",		/* Maike Noduino iKair */
-	HW_VERSION,				/* 产品子id (一般用于微信设备) [选填]*/
+	HW_VERSION,
 	FW_VERSION,
-	FW_VERSION,				/* 设备上线时，给app发送 online 消息中的附加数据，[选填] */
-	"Device Offline",		/* 设备掉线时，给app发送 offline 消息中的附加数据，[选填] */
-#ifdef LOW_POWER
+	FW_VERSION,
+	"Device Offline",
 	0,
-#else
-	WITH_MQTT,
-#endif
 };
 
 irom void init_yun()
@@ -308,13 +250,75 @@ irom void init_yun()
 	mjyun_run(&mjyun_conf);
 }
 
+static char g_temp[8];
+static char g_humi[8];
+static int g_light = -1;
+
+char *get_temp(float *ft)
+{
+	sht2x_reset();
+	float temp = sht2x_GetTemperature();
+
+	dtostrf(temp, 5, 1, g_temp);
+
+	if(ft != NULL)
+		*ft = temp;
+
+	char *t = strstrip(g_temp);
+	//INFO("Temperature(C): %s\r\n", t);
+
+	return t;
+}
+
+char *get_humi(float *fh)
+{
+	sht2x_reset();
+	float humi = sht2x_GetHumidity();
+
+	dtostrf(humi, 5, 1, g_humi);
+
+	if(fh != NULL)
+		*fh = humi;
+
+	char *h = strstrip(g_humi);
+	//INFO("Humidity(%RH): %s\r\n", h);
+
+	return h;
+}
+
+int get_light()
+{
+	int lux = 0;
+
+	/*
+	 * The light sensor address is 0x5C
+	 * The ADDR pin of BH1750 is pulled up (HIGH)
+	*/
+	bh1750_begin(0x5C);
+
+	lux = bh1750_readLightLevel();
+
+	return lux;
+}
+
+void publish_sensor_data(char *tt, char *hh, int ll)
+{
+	char msg[128];
+
+	os_memset(msg, 0, 128);
+
+	os_sprintf(msg, "{\"temp\":%s,\"humi\":%s,\"light\":%d}", tt, hh, ll);
+
+	mjyun_publishstatus(msg);
+}
+
 irom void setup()
 {
-#ifdef DEBUG
+#ifdef CONFIG_DEBUG
 	uart_init(115200, 115200);
 #endif
-	os_printf("Current firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
-	os_printf("%s", noduino_banner);
+	INFO("Current firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
+	INFO("%s", noduino_banner);
 
 	realtime = 1;
 
@@ -324,13 +328,59 @@ irom void setup()
 	wifi_set_sleep_type(MODEM_SLEEP_T);
 }
 
+#ifdef CONFIG_CHECK_HOTDATA
+static float pre_hot_data = 0;
+#endif
+
+static uint32_t cnt = 0;
+
 void loop()
 {
+	char *tt, *hh;
+	int ll = -1;
+
+	float hot_data = 0.0;
+
 	if (wan_ok == 1) {
-		push_temp_humi_light();
-		if(realtime == 1)
-			delay(mqttrate_sec*1000);
-		else
-			delay(httprate_min*60*1000);
+
+		cnt++;
+
+		if(realtime == 1) {
+
+			hh = get_humi(&hot_data);
+
+#ifdef CONFIG_CHECK_HOTDATA
+			if (fabsf(hot_data - pre_hot_data) > 2.0) {
+				pre_hot_data = hot_data;
+#endif
+				tt = get_temp(NULL);
+				ll = get_light();
+				publish_sensor_data(tt, hh, ll);
+
+#ifdef CONFIG_CHECK_HOTDATA
+				http_upload(tt, hh, ll);
+
+				if (cnt * mqtt_rate >= http_rate) {
+					cnt = 0;
+					goto next;
+				}
+			}
+#endif
+		}
+
+
+		if (cnt * mqtt_rate >= http_rate) {
+			tt = get_temp(NULL);
+			hh = get_humi(NULL);
+			ll = get_light();
+
+			// need to push the sensor data via http
+			http_upload(tt, hh, ll);
+
+			cnt = 0;
+		}
 	}
+
+next:
+	delay(mqtt_rate*1000);
 }

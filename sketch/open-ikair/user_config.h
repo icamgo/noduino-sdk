@@ -16,10 +16,15 @@
 #include "mjyun.h"
 #include "httpclient.h"
 
-#define	DEBUG			    1
-#define	MQTT_SEND_RATE_SEC	2
-#define	HTTP_SEND_RATE_MIN	3
+#define	CONFIG_DEBUG			1
+#define	CONFIG_CHECK_HOTDATA	1
 
 #define	HTTP_UPLOAD_URL	"http://api.noduino.org/dev/ikair?devid=%s&temp=%s&humi=%s&light=%d&time=%u&mac=%s"
+
+#ifdef CONFIG_DEBUG
+#define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
+#else
+#define INFO( format, ... )
+#endif
 
 #endif
