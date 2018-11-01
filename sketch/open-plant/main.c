@@ -147,22 +147,46 @@ void http_upload_error_handle()
 	//TODO: store the data in flash
 }
 
-void http_upload_cb(char *response, int http_status, char *full_response)
+/*
+ * {"code": 0, "message": "ok", "mqtt": "enable"}
+ *
+*/
+void http_upload_cb(char *resp, int http_status, char *full_resp)
 {
-	if(HTTP_STATUS_GENERIC_ERROR != http_status) {
+	if (HTTP_STATUS_GENERIC_ERROR != http_status) {
 #ifdef DEBUG
-		INFO( "%s: strlen(full_response)=%d\r\n", __func__, strlen( full_response ) );
-		INFO( "%s: response=%s<EOF>\r\n", __func__, response );
-		INFO( "%s: memory left=%d\r\n", __func__, system_get_free_heap_size() );
+		INFO("%s: strlen(full_response)=%d\r\n", __func__, strlen(full_resp));
+		INFO("%s: response=%s<EOF>\r\n", __func__, resp);
+		INFO("%s: memory left=%d\r\n", __func__, system_get_free_heap_size());
 #endif
+		cJSON *root = cJSON_Parse(resp);
+		if ((NULL != root) && (cJSON_Object == root->type)) {
+			cJSON *msg = cJSON_GetObjectItem(root, "message");
 
-		if(os_strncmp(response, "ok", 2) != 0)
-			http_upload_error_handle();
+			if ((NULL != msg) && (cJSON_String == msg->type)
+				&& (NULL != msg->valuestring)) {
 
+				if (os_strncmp((char *)msg->valuestring, "OK", 2) != 0) {
+					http_upload_error_handle();
+				} else {
+					INFO("http return message is not OK\r\n");
+				}
+			} else {
+#ifdef DEBUG
+				INFO("cjson message object error\r\n");
+#endif
+			}
+
+		} else {
+#ifdef DEBUG
+			INFO("cjson root object error\r\n");
+#endif
+		}
+		cJSON_Delete(root);
 	} else {
 		http_upload_error_handle();
 #ifdef DEBUG
-		INFO( "%s: http_status=%d\r\n", __func__, http_status );
+		INFO("%s: http_status=%d\r\n", __func__, http_status);
 #endif
 	}
 }
@@ -176,7 +200,7 @@ void http_upload(char *tt, char *hh, char *vbat, int light, int co2)
 
 	if ( URL == NULL ) {
 #ifdef DEBUG
-		INFO( "%s: not enough memory\r\n", __func__ );
+		INFO("%s: not enough memory\r\n", __func__);
 #endif
 		return;
 	}
