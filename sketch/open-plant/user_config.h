@@ -19,6 +19,7 @@
 #include "httpclient.h"
 #include "xkey.h"
 #include "led.h"
+#include "param.h"
 
 #define	DEBUG			    	1
 #define	CONFIG_CHECK_HOTDATA	1

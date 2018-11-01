@@ -21,10 +21,11 @@
 #include "mcp342x.h"
 #include "compile.h"
 
+extern struct dev_param g_param;
+
 static int mqtt_rate = 2; //2 second
 static int http_rate = 60; //60 second
 
-static int realtime = 0;
 static int network_state = 0;
 static int wan_ok = 0;
 
@@ -155,13 +156,14 @@ void http_upload_cb(char *resp, int http_status, char *full_resp)
 {
 	if (HTTP_STATUS_GENERIC_ERROR != http_status) {
 #ifdef DEBUG
-		INFO("%s: strlen(full_response)=%d\r\n", __func__, strlen(full_resp));
-		INFO("%s: response=%s<EOF>\r\n", __func__, resp);
+		INFO("%s: strlen(full_resp) = %d\r\n", __func__, strlen(full_resp));
+		INFO("%s: resp = %s<EOF>\r\n", __func__, resp);
 		INFO("%s: memory left=%d\r\n", __func__, system_get_free_heap_size());
 #endif
 		cJSON *root = cJSON_Parse(resp);
 		if ((NULL != root) && (cJSON_Object == root->type)) {
 			cJSON *msg = cJSON_GetObjectItem(root, "message");
+			cJSON *mqtt = cJSON_GetObjectItem(root, "mqtt");
 
 			if ((NULL != msg) && (cJSON_String == msg->type)
 				&& (NULL != msg->valuestring)) {
@@ -174,6 +176,37 @@ void http_upload_cb(char *resp, int http_status, char *full_resp)
 			} else {
 #ifdef DEBUG
 				INFO("cjson message object error\r\n");
+#endif
+			}
+
+			if ((NULL != mqtt) && (cJSON_String == mqtt->type)
+				&& (NULL != mqtt->valuestring)) {
+
+				if (os_strncmp((char *)mqtt->valuestring, "enable", 6) == 0) {
+
+					if (param_get_realtime() == 0) {
+
+						param_set_realtime(1);
+						param_save();
+
+						INFO("Enable the MQTT, try to restart the system...\r\n");
+						system_restart();
+					}
+				} else if (os_strncmp((char *)mqtt->valuestring, "disable", 7) == 0) {
+					// check the mqtt flag
+					if (param_get_realtime() != 0) {
+
+						param_set_realtime(0);
+						param_save();
+
+						INFO("Disable the MQTT, try to restart the system...\r\n");
+						system_restart();
+					}
+
+				}
+			} else {
+#ifdef DEBUG
+				INFO("cjson mqtt object error\r\n");
 #endif
 			}
 
@@ -271,8 +304,10 @@ irom void init_yun()
 	mjyun_onconnected(mjyun_connected);
 	mjyun_ondisconnected(mjyun_disconnected);
 
-	if (realtime == 1)
+	if (param_get_realtime() != 0) {
+		INFO("MQTT is enabled in flash, run the cloud with mqtt \r\n");
 		mjyun_conf.run_flag |= WITH_MQTT;
+	}
 	mjyun_run(&mjyun_conf);
 }
 
@@ -352,7 +387,7 @@ irom void setup()
 	INFO("Current firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
 	INFO("%s", noduino_banner);
 
-	realtime = 1;
+	param_init();
 
 	mcp342x_init();
 	mcp342x_set_oneshot();
@@ -379,7 +414,7 @@ void loop()
 
 		cnt++;
 
-		if(realtime == 1) {
+		if(param_get_realtime() == 1) {
 
 			hh = get_humi(&hot_data);
 
