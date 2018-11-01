@@ -13,6 +13,7 @@
 #include "noduino.h"
 #include "led.h"
 
+#include "cJSON.h"
 #include "mjyun.h"
 #include "httpclient.h"
 

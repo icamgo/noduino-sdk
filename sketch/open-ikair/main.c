@@ -147,17 +147,32 @@ void http_upload_error_handle()
 	//TODO: store the data in flash
 }
 
-void http_upload_cb(char *response, int http_status, char *full_response)
+void http_upload_cb(char *resp, int http_status, char *full_resp)
 {
 	if(HTTP_STATUS_GENERIC_ERROR != http_status) {
 #ifdef CONFIG_DEBUG
-		INFO("%s: strlen(full_response)=%d\r\n", __func__, strlen(full_response));
-		INFO("%s: response=%s<EOF>\r\n", __func__, response);
+		INFO("%s: strlen(full_resp)=%d\r\n", __func__, strlen(full_resp));
+		INFO("%s: response=%s<EOF>\r\n", __func__, resp);
 		INFO("%s: memory left=%d\r\n", __func__, system_get_free_heap_size());
 #endif
+		cJSON *root = cJSON_Parse(resp);
+		if ((NULL != root) && (cJSON_Object == root->type)) {
+			cJSON *msg = cJSON_GetObjectItem(root, "message");
 
-		if(os_strncmp(response, "ok", 2) != 0)
-			http_upload_error_handle();
+			if ((NULL != msg) && (cJSON_String == msg->type)
+				&& (NULL != msg->valuestring)) {
+
+				if (os_strncmp((char *)msg->valuestring, "OK", 2) != 0) {
+					http_upload_error_handle();
+				} else {
+					INFO("http responsing message is not OK\r\n");
+				}
+			} else {
+				INFO("cjson message object error\r\n");
+			}
+		} else {
+			INFO("cjson root object error\r\n");
+		}
 
 	} else {
 		http_upload_error_handle();
