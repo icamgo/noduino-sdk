@@ -17,23 +17,26 @@
 */
 #include "user_config.h"
 
-static struct keys_param keys;
-static struct single_key_param *single_key[KEY_NUM];
+LOCAL struct keys_param keys;
+LOCAL struct single_key_param *single_key[XKEY_NUM];
 
 iram void xkey_long_press(void)
 {
-	INFO("key long pressed\r\n");
+#ifdef DEBUG
+	os_printf("key long pressed\r\n");
+#endif
 	mjyun_systemrecovery();
-	param_restore();
-	system_restore();
-	system_restart();
+    system_restore();
+    system_restart();
 }
 
 iram void xkey_short_press(void)
 {
 	// reverse the status of relay
 	uint8_t st = (~relay_get_status()) & 0x1;
-	INFO("key short pressed\r\n");
+#ifdef DEBUG
+	os_printf("key short pressed\r\n");
+#endif
 
 	param_set_status(st);
 	param_save();
@@ -43,7 +46,7 @@ iram void xkey_short_press(void)
 
 irom void xkey_init()
 {
-	single_key[0] = key_init_single (KEY_GPIO_NUM, KEY_GPIO_MUX, KEY_GPIO_FUNC,
+	single_key[0] = key_init_single (XKEY_IO_NUM, XKEY_IO_MUX, XKEY_IO_FUNC,
 							xkey_long_press, xkey_short_press);
 
 	// key level is LOW when key is pressed
