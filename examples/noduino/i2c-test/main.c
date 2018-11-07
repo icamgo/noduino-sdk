@@ -17,20 +17,24 @@
 */
 #include "noduino.h"
 
-#define	SCL_HIGH()	digitalWrite(5, 1)
-#define	SCL_LOW()	digitalWrite(5, 0)
+static uint8_t twi_sda = 4, twi_scl = 5;
+#define SCL_LOW()   (GPES = (1 << twi_scl))
+#define SCL_HIGH()  (GPEC = (1 << twi_scl))
 
-#define	SDA_HIGH()	digitalWrite(4, 1)
-#define	SDA_LOW()	digitalWrite(4, 0)
+#define SDA_LOW()   (GPES = (1 << twi_sda))
+#define SDA_HIGH()  (GPEC = (1 << twi_sda))
 
-#define get_SCL()	digitalRead(5)
-#define	get_SDA()	digitalRead(4)
+#define get_SCL()  ((GPI & (1 << twi_scl)) != 0)
+#define get_SDA()  ((GPI & (1 << twi_sda)) != 0)
+
+static int clock_stretch = 3 * 230;
  
+
 void i2c_delay(void)
 {
 	int i;
 
-	int dcount = 19;	// about 100KHz
+	int dcount = 42;	// about 100KHz
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
@@ -49,9 +53,13 @@ void i2c_init()
 void i2c_start(void)
 {
 	SDA_HIGH();             // i2c start bit sequence
-	i2c_delay();
-
 	SCL_HIGH();
+
+	if (get_SDA() == 0) {
+		serial_printf("i2c write start sda read false\r\n");
+		return;
+	}
+
 	i2c_delay();
 
 	SDA_LOW();
@@ -63,6 +71,7 @@ void i2c_start(void)
  
 void i2c_stop(void)
 {
+	SCL_LOW();
 	SDA_LOW();             // i2c stop bit sequence
 	i2c_delay();
 
@@ -72,66 +81,53 @@ void i2c_stop(void)
 	SDA_HIGH();
 	i2c_delay();
 }
- 
-uint8_t i2c_rx(bool ack)
+
+bool i2c_read_bit()
 {
-	uint8_t x, d=0;
+	int i = 0;
 
-	SDA_HIGH(); 
-
-	for(x=0; x<8; x++) {
-		d <<= 1;
-		do {
-			SCL_HIGH();
-		} while(get_SCL() == 0);	// wait for any SCL clock stretching
-
-		i2c_delay();
-
-		if(get_SDA())
-			d |= 1;
-
-		SCL_LOW();
-	} 
-
-	if(ack)
-		SDA_LOW();
-	else
-		SDA_HIGH();
-
-	SCL_HIGH();
-	i2c_delay();             // send (N)ACK bit
 	SCL_LOW();
 	SDA_HIGH();
+	i2c_delay();
 
-	return d;
+	SCL_HIGH();
+
+	while(get_SCL() == 0 && (i++) < clock_stretch);
+
+	bool b = get_SDA();          
+
+	i2c_delay();
+	return b;
 }
  
-bool i2c_tx(uint8_t d)
+bool i2c_write_byte(uint8_t d)
 {
 	uint8_t x;
-	static bool b;
+	bool b;
+	int i = 0;
 
 	for(x = 8; x; x--) {
+
+		SCL_LOW();
 
 		if(d & 0x80)
 			SDA_HIGH();
 		else
 			SDA_LOW();
 
+		i2c_delay();
+
 		SCL_HIGH();
+
+		while (get_SCL() == 0 && (i++) < clock_stretch);
+		i2c_delay();
+
 		d <<= 1;
-		SCL_LOW();
 	}
 
-	SDA_HIGH();
-	SCL_HIGH();
+	b = !i2c_read_bit();
 
-	i2c_delay();
-
-	b = get_SDA();          // possible ACK bit
-
-	SCL_LOW();
-	return b;
+	return !b;		//ACK or NACK
 }
 
 void setup()
@@ -145,14 +141,17 @@ void setup()
 
 void loop()
 {
-	serial_printf("Hello World!\r\n");
+	serial_printf("Testing i2c write...\r\n");
 
 	i2c_start();
-	i2c_tx(0x00);
-	i2c_tx(0x28);
-	i2c_tx(0x44);
-	i2c_tx(0x28);
-	i2c_tx(0x44);
+	i2c_write_byte(0x00);
+	i2c_write_byte(0x12);
+	i2c_write_byte(0x1e);
+	i2c_write_byte(0x03);
+	i2c_write_byte(0x02);
+	i2c_write_byte(0x00);
+	i2c_write_byte(0x00);
+	i2c_write_byte(0x1A);
 	i2c_stop();
 
 	delay(5000);
