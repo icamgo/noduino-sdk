@@ -39,7 +39,7 @@ void loop()
 	serial_printf("I2C Scanning...\r\n");
 
 	nDevices = 0;
-	for (address = 1; address < 127; address++) {
+	for (address = 0; address <= 127; address++) {
 		// The i2c_scanner uses the return value of
 		// the wire_endTransmisstion to see if
 		// a device did acknowledge to the address.
