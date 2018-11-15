@@ -33,10 +33,14 @@
 
 #include "mjyun.h"
 
+#include "cJSON.h"
+#include "httpclient.h"
+
 #define CONFIG_ALEXA		1
 #define DEFAULT_VOICE_NAME	"open plug"
 
 #define DEBUG				1
+#define	CONFIG_MQTT_ROBUST	1
 
 #ifdef DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
@@ -81,6 +85,8 @@
 #define KEY_GPIO_MUX		PERIPHS_IO_MUX_U0TXD_U
 #define KEY_GPIO_FUNC		FUNC_GPIO1
 #endif
+
+#define	HTTP_CHECK_ONLINE_URL	"http://api.noduino.org/dev/online?devid=%s"
 
 // NOTICE: --- For 1024KB spi flash
 // 0xFA000

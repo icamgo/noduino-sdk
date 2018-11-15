@@ -332,6 +332,70 @@ void init_yun()
 	wifi_set_sleep_type(MODEM_SLEEP_T);
 }
 
+#ifdef CONFIG_MQTT_ROBUST
+static upload_fail_cnt = 0;
+
+void http_error_handle()
+{
+	upload_fail_cnt++;
+	if(upload_fail_cnt >= 3) {
+		// failed about 5min
+		os_printf("http pushed failed %d times, reset the system\r\n", upload_fail_cnt);
+		//system_restart();
+	}
+
+	//TODO: store the data in flash
+}
+
+void check_online_cb(char *response, int http_status, char *full_response)
+{
+	if(HTTP_STATUS_GENERIC_ERROR != http_status) {
+
+		INFO( "%s: response=%s<EOF>\r\n", __func__, response );
+		INFO( "%s: memory left=%d\r\n", __func__, system_get_free_heap_size() );
+
+		cJSON* pRoot = cJSON_Parse(response);
+		if((NULL != pRoot) && (cJSON_Object == pRoot->type)) {
+			cJSON * pOnline = cJSON_GetObjectItem(pRoot, "online");
+
+			if ((NULL != pOnline) && (cJSON_Number == pOnline->type)) {
+				if (0 == pOnline->valueint) {
+					//need to restart the system
+					INFO("Using http to find device offline, reset the device\r\n");
+					system_restart();
+				} else if (1 == pOnline->valueint) {
+					INFO("Device online (via http)\r\n");
+				}
+			}
+		} else  {
+			INFO( "%s: Error when parse JSON\r\n", __func__ );
+		}
+		cJSON_Delete(pRoot);
+
+	} else {
+		http_error_handle();
+		INFO("%s: http_status=%d\r\n", __func__, http_status);
+	}
+}
+
+void check_online()
+{
+	uint8_t *buf = (uint8_t *) os_zalloc(os_strlen(HTTP_CHECK_ONLINE_URL) +
+					os_strlen(mjyun_getdeviceid()));
+	if (buf == NULL) {
+		INFO( "%s: not enough memory\r\n", __func__ );
+		return;
+	}
+
+	os_sprintf(buf, HTTP_CHECK_ONLINE_URL, mjyun_getdeviceid());
+
+	http_get((const char *)buf, "Content-Type:application/json\r\n", check_online_cb);
+	INFO("%s\r\n", (char *)buf);
+	os_free(buf);
+}
+#endif
+
+
 irom void setup()
 {
 #ifdef DEBUG
@@ -356,5 +420,10 @@ irom void setup()
 
 void loop()
 {
-	delay(10*1000);
+	delay(5*60*1000);
+
+#ifdef CONFIG_MQTT_ROBUST
+	INFO("Checking the online state via http\r\n");
+	check_online();
+#endif
 }
