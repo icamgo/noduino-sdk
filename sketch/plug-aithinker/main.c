@@ -389,7 +389,7 @@ void check_online()
 
 	os_sprintf(buf, HTTP_CHECK_ONLINE_URL, mjyun_getdeviceid());
 
-	http_post((const char *)buf, "Content-Type:application/json\r\n", "", check_online_cb);
+	http_get((const char *)buf, "Content-Type:application/json\r\n", check_online_cb);
 	INFO("%s\r\n", (char *)buf);
 	os_free(buf);
 }
