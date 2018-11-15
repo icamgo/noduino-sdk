@@ -15,7 +15,10 @@
 #include "mjyun.h"
 #include "cJSON.h"
 
+#include "httpclient.h"
+
 //#define	DEBUG			1
+#define	CONFIG_MQTT_ROBUST	1
 
 #ifdef DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
@@ -28,6 +31,8 @@
 #define XKEY_IO_MUX		PERIPHS_IO_MUX_GPIO0_U
 #define XKEY_IO_NUM		0
 #define XKEY_IO_FUNC	FUNC_GPIO0
+
+#define	HTTP_CHECK_ONLINE_URL	"http://api.noduino.org/dev/online?devid=%s"
 
 // NOTICE: --- For 1024KB spi flash
 // 0x3C000
