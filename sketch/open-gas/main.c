@@ -29,6 +29,16 @@ static int http_rate = 60; //60 second
 static int network_state = 0;
 static int wan_ok = 0;
 
+static char g_temp[8];
+static char g_humi[8];
+static char g_press[8];
+static int g_light = -1;
+
+static int g_ch4 = -1;	// in ppm
+
+static int need_calibration = 0;
+static int cali_delay_cnt = 0;
+
 irom static void mjyun_stated_cb(mjyun_state_t state)
 {
     if (mjyun_state() != state)
@@ -225,6 +235,14 @@ void mjyun_connected()
 
 	wan_ok = 1;
 
+	float uv;
+
+	if (need_calibration == 0) {
+		g_ch4 = get_ch4(&uv);
+		publish_sensor_data(g_ch4, (int)uv, (int)(g_param.v0 * 1000.0));
+		http_upload(g_ch4);
+	}
+
 	// stop to show the wifi status
 	wifi_led_disable();
 }
@@ -237,7 +255,7 @@ void mjyun_disconnected()
 
 mjyun_config_t mjyun_conf = {
 	"MKP2018111619",		/* Maike Noduino OpenGas*/
-	HW_VERSION,	
+	HW_VERSION,
 	FW_VERSION,
 	FW_VERSION,
 	"Device Offline",
@@ -258,18 +276,29 @@ irom void init_yun()
 	mjyun_run(&mjyun_conf);
 }
 
-static char g_temp[8];
-static char g_humi[8];
-static char g_press[8];
-static int g_light = -1;
-
-static int g_ch4 = -1;
-
-int get_ch4()
+int get_ch4(float *v)
 {
-	int uv = mcp342x_get_uv();
 
-	return uv/1000;
+	int uv, ppm;
+	float delta = 0;
+
+	uv = mcp342x_get_uv();
+
+	if (v != NULL) {
+		*v = (float) uv;
+	}
+
+	delta = uv/1000.0;
+
+	delta -= g_param.v0;
+
+	if (delta >= 0.0) {
+		ppm = (int)(delta / 25.0 * 10000.0);
+	} else {
+		ppm = 0;
+	}
+
+	return ppm;
 }
 
 #ifdef CONFIG_EXTEND_SENSOR
@@ -358,12 +387,12 @@ void http_upload(char *tt, char *hh, char *pp, int light, int ch4)
 	os_free( URL );
 }
 #else
-void publish_sensor_data(int ch4)
+void publish_sensor_data(int ch4, int uv, int v0)
 {
-	char msg[32];
-	os_memset(msg, 0, 32);
+	char msg[64];
+	os_memset(msg, 0, 64);
 
-	os_sprintf(msg, "{\"ch4\":%d}", ch4);
+	os_sprintf(msg, "{\"ch4\":%d,\"uv\":%d,\"v0\":%d}", ch4, uv, v0);
 
 	mjyun_publishstatus(msg);
 }
@@ -400,7 +429,6 @@ void http_upload(int ch4)
 }
 #endif
 
-
 irom void setup()
 {
 #ifdef DEBUG
@@ -408,6 +436,22 @@ irom void setup()
 #endif
 	INFO("Current firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
 	INFO("%s", noduino_banner);
+
+	uint32_t warm_boot = 0;
+	system_rtc_mem_read(64+20, (void *)&warm_boot, sizeof(warm_boot));
+	//INFO("rtc warm_boot = %X\r\n", warm_boot);
+
+	if (warm_boot != 0x66AA) {
+
+		INFO("Cold boot up!\r\n");
+		// need to calibrate the gas sensor
+		need_calibration = 1;
+		cali_delay_cnt = 0;
+
+		// save the warm boot flag into rtc mem
+		warm_boot = 0x66AA;
+		system_rtc_mem_write(64+20, (void *)&warm_boot, sizeof(warm_boot));
+	}
 
 	param_init();
 
@@ -432,18 +476,21 @@ void loop()
 
 	float hot_data = 0.0;
 
-	if (wan_ok == 1) {
+	float uv = 0;
+
+	if (wan_ok == 1 && need_calibration != 1) {
 
 		cnt++;
 
 		if(param_get_realtime() == 1) {
 
-			g_ch4 = get_ch4();
+			g_ch4 = get_ch4(&uv);
 
 			hot_data = g_ch4;
 
 #ifdef CONFIG_CHECK_HOTDATA
 			if (fabsf(hot_data - pre_hot_data) > 1.0) {
+				// update when > 1ppm
 				pre_hot_data = hot_data;
 #endif
 			#ifdef CONFIG_EXTEND_SENSOR
@@ -452,7 +499,7 @@ void loop()
 				pp = get_press(NULL);
 				publish_sensor_data(tt, hh, pp, g_light, g_ch4);
 			#else
-				publish_sensor_data(g_ch4);
+				publish_sensor_data(g_ch4, (int)uv, (int)(g_param.v0 * 1000.0));
 			#endif
 
 #ifdef CONFIG_CHECK_HOTDATA
@@ -472,6 +519,9 @@ void loop()
 
 
 		if (cnt * mqtt_rate >= http_rate) {
+
+			g_ch4 = get_ch4(&uv);
+
 #ifdef CONFIG_EXTEND_SENSOR
 			tt = get_temp(NULL);
 			hh = get_humi(NULL);
@@ -483,6 +533,37 @@ void loop()
 			http_upload(g_ch4);
 #endif
 			cnt = 0;
+		}
+	}
+
+	static float sum = 0;
+
+	if (need_calibration == 1) {
+
+		cali_delay_cnt++;
+
+		if (cali_delay_cnt % 5 == 0) {
+			// delay 5s, 10s, 15s...
+			get_ch4(&uv);
+			sum += uv;
+		}
+
+		if (cali_delay_cnt / 5 >= 18) {
+			// calibration end, save the uv as mv
+			g_param.v0 = sum / (cali_delay_cnt / 5) / 1000.0;
+
+			INFO("Calibration end, V0 = %d mV\r\n", (int)(g_param.v0));
+
+			need_calibration = 0;
+			cali_delay_cnt = 0;
+
+			g_ch4 = get_ch4(&uv);
+			publish_sensor_data(g_ch4, (int)uv, (int)(g_param.v0 * 1000.0));
+
+			sum = 0;
+			uv = 0;
+
+			param_save();
 		}
 	}
 

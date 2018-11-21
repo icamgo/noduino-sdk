@@ -24,12 +24,16 @@
 #define	DEBUG			    	1
 #define	CONFIG_CHECK_HOTDATA	1
 
-#define	HTTP_UPLOAD_URL	"http://api.noduino.org/dev/gas?devid=%s&CH4=%s&v=%s&time=%u&mac=%s"
+#define	HTTP_UPLOAD_URL	"http://api.noduino.org/dev/gas?devid=%s&CH4=%d&time=%u&mac=%s"
 
 #ifdef DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
 #else
 #define INFO( format, ... )
 #endif
+
+int get_ch4(float *v);
+void http_upload(int ch4);
+void publish_sensor_data(int ch4, int uv, int v0);
 
 #endif

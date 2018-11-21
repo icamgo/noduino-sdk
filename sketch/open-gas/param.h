@@ -18,7 +18,7 @@
 #ifndef __PARAM_H__
 #define __PARAM_H__
 
-/* 
+/*
  * 1MB spi flash: 0x0FA000
  * 4MB spi flash: 0x3FA000
  */
@@ -27,12 +27,14 @@
 struct dev_param {
 	float temp;
 	float humi;
-	int light;
+	float light;
 	float press;
-	int ch4;
-	uint8_t realtime;				/* 1: mqtt enable, 0: mqtt disable */
+	uint32_t ch4;
+	float v0;					/* init voltage of bridge, in mV */
+	uint8_t relay;
+	uint8_t realtime;			/* 1: mqtt enable, 0: mqtt disable */
 	uint8_t airkiss_nff_on;
-	uint8_t pack[3];
+	uint8_t pack[2];
 } __attribute__((aligned(4), packed));
 
 uint8_t param_get_realtime();
