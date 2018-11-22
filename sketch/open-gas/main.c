@@ -24,7 +24,7 @@
 extern struct dev_param g_param;
 
 static int mqtt_rate = 2; //2 second
-static int http_rate = 60; //60 second
+static int http_rate = 600; //10 min
 
 static int network_state = 0;
 static int wan_ok = 0;
