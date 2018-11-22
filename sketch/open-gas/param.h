@@ -39,6 +39,8 @@ struct dev_param {
 
 uint8_t param_get_realtime();
 void param_set_realtime(uint8_t d);
+uint8_t param_get_relay();
+void param_set_relay(uint8_t d);
 void param_save();
 void param_erase_all();
 void param_init();

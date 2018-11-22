@@ -29,6 +29,23 @@ irom void param_set_realtime(uint8_t d)
 	g_param.realtime = d;
 }
 
+irom void param_set_relay(uint8_t status)
+{
+	if (status != g_param.relay) {
+		if (status > 1) {
+			INFO("Error status input!\n");
+			return;
+		}
+
+		g_param.relay = status;
+	}
+}
+
+irom uint8_t param_get_relay(void)
+{
+	return g_param.relay;
+}
+
 irom void param_save(void)
 {
 	spi_flash_erase_sector(PARAM_START_SEC + 0);
@@ -61,6 +78,11 @@ irom void param_init()
 		g_param.v0 = 0;
 
 		g_param.realtime = 1;
+		need_to_save = 1;
+	}
+
+	if (g_param.relay = 0xff) {
+		g_param.relay = 0;
 		need_to_save = 1;
 	}
 

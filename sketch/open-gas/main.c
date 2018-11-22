@@ -112,6 +112,22 @@ irom void mjyun_receive(const char *event_name, const char *event_data)
 {
 	INFO("RECEIVED: key:value [%s]:[%s]", event_name, event_data);
 
+	if(os_strncmp(event_data, "on", 2) == 0)
+	{
+		INFO("set switch on\r\n");
+		param_set_relay(1);
+		param_save();
+		relay_set_status_and_publish(1);
+	}
+
+	if(os_strncmp(event_data, "off", 3) == 0)
+	{
+		INFO("set switch off\r\n");
+		param_set_relay(0);
+		param_save();
+		relay_set_status_and_publish(0);
+	}
+
 	if(os_strncmp(event_data, "ota", 3) == 0)
 	{
 		INFO("OTA: upgrade the firmware!\r\n");
@@ -242,6 +258,9 @@ void mjyun_connected()
 		publish_sensor_data(g_ch4, (int)uv, (int)(g_param.v0 * 1000.0));
 		http_upload(g_ch4);
 	}
+
+	// need to update the status in cloud
+	relay_publish_status();
 
 	// stop to show the wifi status
 	wifi_led_disable();
@@ -454,9 +473,13 @@ irom void setup()
 	}
 
 	param_init();
+	relay_init();
 
 	mcp342x_init();
 	mcp342x_set_oneshot();
+
+	// restore the relay status quickly
+	relay_set_status(param_get_relay());
 
 	led_init();
 	init_yun();
@@ -478,7 +501,7 @@ void loop()
 
 	float uv = 0;
 
-	if (wan_ok == 1 && need_calibration != 1) {
+	if (wan_ok == 1 && need_calibration == 0) {
 
 		cnt++;
 
