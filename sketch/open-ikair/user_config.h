@@ -19,8 +19,11 @@
 
 #define	CONFIG_DEBUG			1
 #define	CONFIG_CHECK_HOTDATA	1
+#define CONFIG_MQTT_ROBUST		1
 
 #define	HTTP_UPLOAD_URL	"http://api.noduino.org/dev/ikair?devid=%s&temp=%s&humi=%s&light=%d&time=%u&mac=%s"
+
+#define	HTTP_CHECK_ONLINE_URL	"http://api.noduino.org/dev/online?devid=%s"
 
 #ifdef CONFIG_DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
