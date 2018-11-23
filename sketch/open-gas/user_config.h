@@ -23,8 +23,11 @@
 
 #define	DEBUG			    	1
 #define	CONFIG_CHECK_HOTDATA	1
+#define CONFIG_MQTT_ROBUST		1
 
 #define	HTTP_UPLOAD_URL	"http://api.noduino.org/dev/gas?devid=%s&CH4=%d&time=%u&mac=%s"
+
+#define	HTTP_CHECK_ONLINE_URL	"http://api.noduino.org/dev/online?devid=%s"
 
 #ifdef DEBUG
 #define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
