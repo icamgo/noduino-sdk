@@ -20,12 +20,12 @@
 
 #include "twi.h"
 
-#define	MCP342X_DEBUG		1
+//#define	MCP342X_DEBUG		1
 
 #ifdef MCP342X_DEBUG
-#define INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
+#define MCP342X_INFO( format, ... ) os_printf( format, ## __VA_ARGS__ )
 #else
-#define INFO( format, ... )
+#define MCP342X_INFO( format, ... )
 #endif
 
 // I2C address for MCP3422 - base address for MCP3424 = 0x68

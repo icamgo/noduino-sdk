@@ -46,7 +46,7 @@ irom uint8_t mcp342x_read(int32_t *data)
       do {   // 18-bit mode
          wire_requestFrom(MCP342X_ADDRESS, 4);
          if (wire_available() != 4) {
-            INFO("read failed");
+            MCP342X_INFO("read failed");
             return false;
          }
          for (i = 2; i >= 0; i--) {
@@ -65,7 +65,7 @@ irom uint8_t mcp342x_read(int32_t *data)
       do {  // 12-bit to 16-bit mode
          wire_requestFrom(MCP342X_ADDRESS, 3);
          if (wire_available() != 3) {
-            INFO("read failed");
+            MCP342X_INFO("read failed");
             return false;
          }
          p[1] = wire_read();
@@ -78,7 +78,7 @@ irom uint8_t mcp342x_read(int32_t *data)
          if ((s & MCP342X_BUSY) == 0) return true;  // or escape here
       } while (millis() - start < 500);   // allows rollover of millis()
    }
-   INFO("read timeout");      // dang it
+   MCP342X_INFO("read timeout");      // dang it
    return false;
 }
 
@@ -116,11 +116,11 @@ irom int mcp342x_get_uv()
 	mcp342x_set_cfg(adc_cfg);
 
 	if (!mcp342x_read(&data)) {
-		INFO("mcp342x read failed!\r\n");
+		MCP342X_INFO("mcp342x read failed!\r\n");
 		return (2048000 + 10000);
 	}
 
-	INFO("data = %d\r\n", data);
+	MCP342X_INFO("data = %d\r\n", data);
 
 	// voltage in millivolts
 	double mv = ((double)data * 2048.0) / (double) divisor;
