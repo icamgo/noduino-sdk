@@ -564,8 +564,8 @@ void loop()
 			hot_data = g_ch4;
 
 #ifdef CONFIG_CHECK_HOTDATA
-			if (fabsf(hot_data - pre_hot_data) > 1.0) {
-				// update when > 1ppm
+			if (fabsf(hot_data - pre_hot_data) > 10.0) {
+				// update when > 10ppm
 				pre_hot_data = hot_data;
 #endif
 			#ifdef CONFIG_EXTEND_SENSOR
