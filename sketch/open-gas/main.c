@@ -110,6 +110,8 @@ irom static void mjyun_stated_cb(mjyun_state_t state)
 
 irom void mjyun_receive(const char *event_name, const char *event_data)
 {
+	float uv;
+
 	INFO("RECEIVED: key:value [%s]:[%s]", event_name, event_data);
 
 	if(os_strncmp(event_data, "on", 2) == 0)
@@ -132,6 +134,13 @@ irom void mjyun_receive(const char *event_name, const char *event_data)
 	{
 		INFO("OTA: upgrade the firmware!\r\n");
 		mjyun_mini_ota_start("ota/dev/opengas/files");
+	}
+
+	if(os_strncmp(event_data, "pubdata", 7) == 0)
+	{
+		INFO("publish the sensor data\r\n");
+		g_ch4 = get_ch4(&uv);
+		publish_sensor_data(g_ch4, (int)uv, (int)(g_param.v0 * 1000.0));
 	}
 }
 
