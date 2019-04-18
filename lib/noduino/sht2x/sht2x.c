@@ -167,8 +167,16 @@ irom static uint16_t sht2x_readSensor(uint8_t command)
  */
 irom float sht2x_GetHumidity(void)
 {
-	return (-6.0 +
-		125.0 / 65536.0 * (float)(sht2x_readSensor(RH_NO_HOLD_CMD)));
+	uint16_t sd = 2;
+	int cnt = 0;
+
+	while ((sd == 1 || sd == 2) && cnt <= 3) {
+		delay(10);
+		sd = sht2x_readSensor(RH_NO_HOLD_CMD);
+		cnt++;
+	}
+
+	return (-6.0 + 125.0 / 65536.0 * (float)sd);
 }
 
 /*
@@ -177,6 +185,14 @@ irom float sht2x_GetHumidity(void)
  */
 irom float sht2x_GetTemperature(void)
 {
-	return (-46.85 +
-		175.72 / 65536.0 * (float)(sht2x_readSensor(T_NO_HOLD_CMD)));
+	uint16_t sd = 2;
+	int cnt = 0;
+
+	while ((sd == 1 || sd == 2) && cnt <= 3) {
+		delay(10);
+		sd = sht2x_readSensor(T_NO_HOLD_CMD);
+		cnt++;
+	}
+
+	return (-46.85 + 175.72 / 65536.0 * (float)sd);
 }
