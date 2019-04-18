@@ -133,14 +133,14 @@ irom char *strstrip(char *s)
 	return s;
 }
 
-static upload_fail_cnt = 0;
+static uint32_t http_fail_cnt = 0;
 
 void http_error_handle()
 {
-	upload_fail_cnt++;
-	if(upload_fail_cnt >= 3) {
+	http_fail_cnt++;
+	if(http_fail_cnt >= 3) {
 		// failed about 5min
-		os_printf("http pushed failed %d times, reset the system\r\n", upload_fail_cnt);
+		os_printf("http pushed failed %d times, reset the system\r\n", http_fail_cnt);
 		//system_restart();
 	}
 
