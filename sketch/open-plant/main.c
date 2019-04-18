@@ -24,7 +24,7 @@
 extern struct dev_param g_param;
 
 static int mqtt_rate = 2; //2 second
-static int http_rate = 60; //60 second
+static int http_rate = 300; //5 min
 
 static int network_state = 0;
 static int wan_ok = 0;
@@ -395,14 +395,14 @@ irom void setup()
 	led_init();
 	init_yun();
 
-	wifi_set_sleep_type(MODEM_SLEEP_T);
+	wifi_set_sleep_type(LIGHT_SLEEP_T);
 }
 
 #ifdef CONFIG_CHECK_HOTDATA
 static float pre_hot_data = 0;
 #endif
 
-static uint32_t cnt = 0;
+static int32_t cnt = -1;
 
 void loop()
 {
@@ -411,8 +411,6 @@ void loop()
 	float hot_data = 0.0;
 
 	if (wan_ok == 1) {
-
-		cnt++;
 
 		if(param_get_realtime() == 1) {
 
@@ -427,18 +425,14 @@ void loop()
 				publish_sensor_data(tt, hh, vv, g_light, g_co2);
 
 #ifdef CONFIG_CHECK_HOTDATA
-				http_upload(tt, hh, vv, g_light, g_co2);
-
-				if (cnt * mqtt_rate >= http_rate) {
-					cnt = 0;
-					goto next;
-				}
+				if (cnt != -1)
+					http_upload(tt, hh, vv, g_light, g_co2);
 			}
 #endif
 		}
 
 
-		if (cnt * mqtt_rate >= http_rate) {
+		if (cnt * mqtt_rate >= http_rate || cnt == -1) {
 			tt = get_temp(NULL);
 			hh = get_humi(NULL);
 			vv = get_vbat(NULL);
@@ -448,6 +442,8 @@ void loop()
 
 			cnt = 0;
 		}
+
+		cnt++;
 	}
 
 next:
