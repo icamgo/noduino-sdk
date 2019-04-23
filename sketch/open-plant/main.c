@@ -337,7 +337,6 @@ char *get_vbat(float *fv)
 
 char *get_temp(float *ft)
 {
-	sht2x_reset();
 	float temp = sht2x_GetTemperature();
 
 	dtostrf(temp, 5, 1, g_temp);
@@ -353,7 +352,6 @@ char *get_temp(float *ft)
 
 char *get_humi(float *fh)
 {
-	sht2x_reset();
 	float humi = sht2x_GetHumidity();
 
 	dtostrf(humi, 5, 1, g_humi);

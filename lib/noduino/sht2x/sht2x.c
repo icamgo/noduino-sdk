@@ -171,7 +171,8 @@ irom float sht2x_GetHumidity(void)
 	int cnt = 0;
 
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
-		delay(10);
+		sht2x_reset();
+		delay(15);
 		sd = sht2x_readSensor(RH_NO_HOLD_CMD);
 		cnt++;
 	}
@@ -189,7 +190,8 @@ irom float sht2x_GetTemperature(void)
 	int cnt = 0;
 
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
-		delay(10);
+		sht2x_reset();
+		delay(15);
 		sd = sht2x_readSensor(T_NO_HOLD_CMD);
 		cnt++;
 	}
