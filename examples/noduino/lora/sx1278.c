@@ -322,17 +322,24 @@ void sx1278_init(void)
 	sx1278_set_coding_rate(1);
 	sx1278_set_head_off(false);
 #else
-	sx1278_write_reg(REG_MODEMCONFIG1, 0x72);		// 125KHz, 4/5, Explicit Header
+	// 125KHz, 4/5, Explicit Header
+	sx1278_write_reg(REG_MODEMCONFIG1, 0x72);
 #endif
 
 #if 0
 	sx1278_set_spread_fact(12);
 	sx1278_set_crc_on(true);
 #else
-	sx1278_write_reg(REG_MODEMCONFIG2, 0xC4);		// SF=12, TxContin single pkt, crc on, RX timeout msb - 0x0
+	// SF=12, TxContin single pkt, crc on, RX timeout msb - 0x0
+	sx1278_write_reg(REG_MODEMCONFIG2, 0xC4);
 #endif
 
 	//sx1278_set_lowdatarate_opti(true);
+
+	/*
+	 * LowDataRateOptimize = 1, mandated for when symbol len > 16ms
+	 * AgcAutoOn = 1, LNA gain set by the internal AGC loop
+	*/
 	sx1278_write_reg(REG_MODEMCONFIG3, 0x0C);
 
 	sx1278_set_syncword(0x34);
