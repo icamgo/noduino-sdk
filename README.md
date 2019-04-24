@@ -11,6 +11,8 @@ It has a lot of cool examples and reference sketches. You can make a smart IoT d
 
 It's based on Espressif SDK 1.5.4.1
 
+The esp_init_data_default.bin is rf_init_data_v1.5.4.1.bin
+
 
 Supported Boards
 ------------------
