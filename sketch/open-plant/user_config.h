@@ -32,4 +32,6 @@
 #define INFO( format, ... )
 #endif
 
+char *dtostrf(double n, signed char w, unsigned char p, char *s);
+
 #endif

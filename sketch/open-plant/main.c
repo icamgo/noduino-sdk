@@ -23,11 +23,91 @@
 
 extern struct dev_param g_param;
 
+os_timer_t worker_timer;
+
 static int mqtt_rate = 2; //2 second
 static int http_rate = 300; //5 min
 
 static int network_state = 0;
 static int wan_ok = 0;
+
+void worker();
+
+irom char *dtostrf(double number, signed char width, unsigned char prec,
+		   char *s)
+{
+	bool negative = false;
+
+	if (isnan(number)) {
+		strcpy(s, "nan");
+		return s;
+	}
+	if (isinf(number)) {
+		strcpy(s, "inf");
+		return s;
+	}
+
+	char *out = s;
+
+	int fillme = width;	// how many cells to fill for the integer part
+	if (prec > 0) {
+		fillme -= (prec + 1);
+	}
+	// Handle negative numbers
+	if (number < 0.0) {
+		negative = true;
+		fillme--;
+		number = -number;
+	}
+	// Round correctly so that print(1.999, 2) prints as "2.00"
+	// I optimized out most of the divisions
+	double rounding = 2.0;
+	uint8_t i;
+	for (i = 0; i < prec; ++i)
+		rounding *= 10.0;
+	rounding = 1.0 / rounding;
+
+	number += rounding;
+
+	// Figure out how big our number really is
+	double tenpow = 1.0;
+	int digitcount = 1;
+	while (number >= 10.0 * tenpow) {
+		tenpow *= 10.0;
+		digitcount++;
+	}
+
+	number /= tenpow;
+	fillme -= digitcount;
+
+	// Pad unused cells with spaces
+	while (fillme-- > 0) {
+		*out++ = ' ';
+	}
+
+	// Handle negative sign
+	if (negative)
+		*out++ = '-';
+
+	// Print the digits, and if necessary, the decimal point
+	digitcount += prec;
+	int8_t digit = 0;
+	while (digitcount-- > 0) {
+		digit = (int8_t) number;
+		if (digit > 9)
+			digit = 9;	// insurance
+		*out++ = (char)('0' | digit);
+		if ((digitcount == prec) && (prec > 0)) {
+			*out++ = '.';
+		}
+		number -= digit;
+		number *= 10.0;
+	}
+
+	// make sure the string is terminated
+	*out = 0;
+	return s;
+}
 
 irom static void mjyun_stated_cb(mjyun_state_t state)
 {
@@ -274,12 +354,18 @@ void mjyun_connected()
 {
 	time_init();
 
+	os_timer_disarm(&worker_timer);
+	os_timer_setfn(&worker_timer, (os_timer_func_t *) worker, NULL);
+	os_timer_arm(&worker_timer, mqtt_rate*1000, 1);
+
 	mjyun_setssidprefix("NOD_");
 
 	wan_ok = 1;
 
 	// stop to show the wifi status
 	wifi_led_disable();
+
+	wifi_set_sleep_type(LIGHT_SLEEP_T);
 }
 
 void mjyun_disconnected()
@@ -377,7 +463,7 @@ void publish_sensor_data(char *tt, char *hh, char *vbat, int light, int co2)
 	mjyun_publishstatus(msg);
 }
 
-irom void setup()
+irom void user_init()
 {
 #ifdef DEBUG
 	uart_init(115200, 115200);
@@ -391,9 +477,8 @@ irom void setup()
 	mcp342x_set_oneshot();
 
 	led_init();
-	init_yun();
 
-	wifi_set_sleep_type(LIGHT_SLEEP_T);
+	system_init_done_cb(init_yun);
 }
 
 #ifdef CONFIG_CHECK_HOTDATA
@@ -402,7 +487,7 @@ static float pre_hot_data = 0;
 
 static int32_t cnt = -1;
 
-void loop()
+void worker()
 {
 	char *tt, *hh, *vv;
 
@@ -443,7 +528,4 @@ void loop()
 
 		cnt++;
 	}
-
-next:
-	delay(mqtt_rate*1000);
 }
