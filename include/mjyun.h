@@ -13,6 +13,7 @@
 /* mjyun flag */
 #define	WITH_MQTT				0x1
 #define	WITH_HTTPS				0x2
+#define	WITHOUT_PING			0x4
 
 /*
  * 对mjyun库进行配置

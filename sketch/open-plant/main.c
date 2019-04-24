@@ -393,6 +393,9 @@ irom void init_yun()
 	if (param_get_realtime() != 0) {
 		INFO("MQTT is enabled in flash, run the cloud with mqtt \r\n");
 		mjyun_conf.run_flag |= WITH_MQTT;
+	} else {
+		// low power mode
+		mjyun_conf.run_flag |= WITHOUT_PING;
 	}
 	mjyun_run(&mjyun_conf);
 }
