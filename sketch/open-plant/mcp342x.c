@@ -29,7 +29,6 @@ static uint32_t divisor;
 
 static uint8_t adc_cfg = (MCP342X_START			\
 						| MCP342X_CHANNEL_1		\
-						| MCP342X_CONTINUOUS	\
 						| MCP342X_GAIN_X1		\
 						| MCP342X_18_BIT);
 
