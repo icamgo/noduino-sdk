@@ -502,11 +502,11 @@ irom void user_init()
 	/* read the hot data from rtc memory */
 	system_rtc_mem_read(RTC_MEM_START, (void *)&g_hb, sizeof(struct hotbuf));
 
-	if (g_hb.bootflag != INIT_MAGIC) {
+	param_init();
 
-		INFO("Cold boot up!\r\n");
+	if (g_hb.bootflag != INIT_MAGIC || param_get_realtime() == 1) {
 
-		param_init();
+		INFO("Cold boot up or realtime mode!\r\n");
 
 		mcp342x_init();
 		mcp342x_set_oneshot();
@@ -517,9 +517,6 @@ irom void user_init()
 		system_rtc_mem_write(RTC_MEM_START, (void *)&g_hb, sizeof(struct hotbuf));
 
 		system_init_done_cb(init_yun);
-
-	} else if (g_hb.cnt > MAX_DP_NUM) {
-		INFO("warm boot up, datapoints is full!\r\n");
 
 	} else {
 		INFO("Warm boot up, need to save the sensor data into rtc memory...\r\n");
@@ -544,6 +541,9 @@ irom void user_init()
 
 		// Uploads or go to sleep
 		if(g_hb.cnt == MAX_DP_NUM) {
+
+			mcp342x_init();
+			mcp342x_set_oneshot();
 
 			//upload the 20 datapoints;
 			push_datapoints();
@@ -601,10 +601,12 @@ void worker()
 
 			cnt = 0;
 
-			/* enter deep sleep after cold boot up 5 min later */
-			INFO("Enter deep sleep in woker...\r\n");
-			set_deepsleep_wakeup_no_rf();
-			system_deep_sleep(SLEEP_TIME);
+			if(param_get_realtime() != 1) {
+				/* enter deep sleep after cold boot up 5 min later */
+				INFO("Enter deep sleep in woker...\r\n");
+				set_deepsleep_wakeup_no_rf();
+				system_deep_sleep(SLEEP_TIME);
+			}
 		}
 
 		cnt++;
