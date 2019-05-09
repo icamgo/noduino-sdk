@@ -20,7 +20,9 @@
 
 #define	INIT_MAGIC			0x7E7E55AA
 
-#define	SLEEP_TIME			60000000	// 60s
+#define	MQTT_RATE			2			// 2s 
+#define	HTTP_RATE			100 		// 200s 
+#define	SLEEP_TIME			30000000	// 30s
 #define	MAX_DP_NUM			20
 #define RTC_MEM_START		128			// (256/4) is the rtc time, use 128 for safe
 

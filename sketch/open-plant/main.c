@@ -27,9 +27,6 @@ struct hotbuf g_hb;
 
 os_timer_t worker_timer;
 
-static int mqtt_rate = 2; //2 second
-static int http_rate = 300; //5 min
-
 static int network_state = 0;
 static int wan_ok = 0;
 
@@ -358,7 +355,7 @@ void mjyun_connected()
 
 	os_timer_disarm(&worker_timer);
 	os_timer_setfn(&worker_timer, (os_timer_func_t *) worker, NULL);
-	os_timer_arm(&worker_timer, mqtt_rate*1000, 1);
+	os_timer_arm(&worker_timer, MQTT_RATE*1000, 1);
 
 	mjyun_setssidprefix("NOD_");
 
@@ -555,8 +552,7 @@ irom void user_init()
 
 			/* enter deep sleep */
 			INFO("Enter deep sleep...\r\n");
-			system_deep_sleep(SLEEP_TIME);		/* 60s */
-
+			system_deep_sleep(SLEEP_TIME);
 		}
 	}
 }
@@ -595,7 +591,7 @@ void worker()
 		}
 
 
-		if (cnt * mqtt_rate >= http_rate || cnt == -1) {
+		if (cnt * MQTT_RATE >= HTTP_RATE || cnt == -1) {
 			tt = get_temp(NULL);
 			hh = get_humi(NULL);
 			vv = get_vbat(NULL);
@@ -608,7 +604,7 @@ void worker()
 			/* enter deep sleep after cold boot up 5 min later */
 			INFO("Enter deep sleep in woker...\r\n");
 			set_deepsleep_wakeup_no_rf();
-			system_deep_sleep(SLEEP_TIME);		/* 60s */
+			system_deep_sleep(SLEEP_TIME);
 		}
 
 		cnt++;
