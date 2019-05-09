@@ -49,22 +49,7 @@ irom void param_init()
 		       (uint32 *) & g_param,
 		       sizeof(struct dev_param));
 
-	uint32_t warm_boot = 0;
-	system_rtc_mem_read(64+20, (void *)&warm_boot, sizeof(warm_boot));
-	//INFO("rtc warm_boot = %X\r\n", warm_boot);
-
-	if (g_param.realtime != 0xff) {
-		if (warm_boot != 0x66AA) {
-
-			INFO("Cold boot up!\r\n");
-
-			// set the warm boot flag in rtc mem
-			warm_boot = 0x66AA;
-			system_rtc_mem_write(64+20, (void *)&warm_boot, sizeof(warm_boot));
-		} else {
-			INFO("Warm boot up, use the data saved in flash!\r\n");
-		}
-	} else {
+	if (g_param.realtime == 0xff) {
 		INFO("Invalid param area, init the area...\n");
 		g_param.temp = 0;
 		g_param.humi = 0;

@@ -23,6 +23,8 @@
 
 extern struct dev_param g_param;
 
+struct hotbuf g_hb;
+
 os_timer_t worker_timer;
 
 static int mqtt_rate = 2; //2 second
@@ -343,7 +345,7 @@ void http_upload(char *tt, char *hh, char *vbat, int light, int co2)
 	os_free( URL );
 }
 
-irom void time_init()
+irom void show_time()
 {
 	//struct tm *tblock;
 	uint32_t cs = time(NULL);
@@ -352,7 +354,7 @@ irom void time_init()
 
 void mjyun_connected()
 {
-	time_init();
+	show_time();
 
 	os_timer_disarm(&worker_timer);
 	os_timer_setfn(&worker_timer, (os_timer_func_t *) worker, NULL);
@@ -455,6 +457,18 @@ char *get_humi(float *fh)
 	return h;
 }
 
+void fetch_datapoint()
+{
+	struct datapoint *pdp = &(g_hb.datapoints[g_hb.cnt]);
+
+	get_vbat(&(pdp->vbat));
+	get_temp(&(pdp->temp));
+	get_humi(&(pdp->humi)) ;
+
+	pdp->light = -1;
+	pdp->timestamp = time(NULL);
+}
+
 void publish_sensor_data(char *tt, char *hh, char *vbat, int light, int co2)
 {
 	char msg[128];
@@ -466,22 +480,85 @@ void publish_sensor_data(char *tt, char *hh, char *vbat, int light, int co2)
 	mjyun_publishstatus(msg);
 }
 
+void push_datapoints()
+{
+	// for testing only now
+	char *tt, *hh, *vv;
+
+	tt = get_temp(NULL);
+	hh = get_humi(NULL);
+	vv = get_vbat(NULL);
+
+	http_upload(tt, hh, vv, g_light, g_co2);
+}
+
+// entry function when power on or wakeup from deep sleep
 irom void user_init()
 {
+
 #ifdef DEBUG
 	uart_init(115200, 115200);
 #endif
 	INFO("Current firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
 	INFO("%s", noduino_banner);
 
-	param_init();
+	/* read the hot data from rtc memory */
+	system_rtc_mem_read(RTC_MEM_START, (void *)&g_hb, sizeof(struct hotbuf));
 
-	mcp342x_init();
-	mcp342x_set_oneshot();
+	if (g_hb.bootflag != INIT_MAGIC) {
 
-	led_init();
+		INFO("Cold boot up!\r\n");
 
-	system_init_done_cb(init_yun);
+		param_init();
+
+		mcp342x_init();
+		mcp342x_set_oneshot();
+
+		/* mark the flag as warm boot in rtc mem */
+		g_hb.bootflag = INIT_MAGIC;
+		g_hb.cnt = 0;
+		system_rtc_mem_write(RTC_MEM_START, (void *)&g_hb, sizeof(struct hotbuf));
+
+		system_init_done_cb(init_yun);
+
+	} else if (g_hb.cnt > MAX_DP_NUM) {
+		INFO("warm boot up, datapoints is full!\r\n");
+
+	} else {
+		INFO("Warm boot up, need to save the sensor data into rtc memory...\r\n");
+
+		/* range check and resets counter if needed */
+		if(g_hb.cnt < 0 || g_hb.cnt >= MAX_DP_NUM)
+			g_hb.cnt = 0;
+
+		/* fetch sensor data, timestamp... */
+		fetch_datapoint();
+
+		g_hb.cnt++;
+
+		system_rtc_mem_write(RTC_MEM_START, (void *)&g_hb, sizeof(struct hotbuf));
+
+
+		/* Setup next sleep cycle */
+		if (g_hb.cnt == MAX_DP_NUM - 1)
+			set_deepsleep_wakeup_normal();
+		else
+			set_deepsleep_wakeup_no_rf();
+
+		// Uploads or go to sleep
+		if(g_hb.cnt == MAX_DP_NUM) {
+
+			//upload the 20 datapoints;
+			push_datapoints();
+
+		} else {
+
+			/* enter deep sleep */
+			INFO("Enter deep sleep...\r\n");
+			system_deep_sleep(SLEEP_TIME);		/* 60s */
+
+		}
+	}
 }
 
 #ifdef CONFIG_CHECK_HOTDATA
@@ -527,6 +604,11 @@ void worker()
 			http_upload(tt, hh, vv, g_light, g_co2);
 
 			cnt = 0;
+
+			/* enter deep sleep after cold boot up 5 min later */
+			INFO("Enter deep sleep in woker...\r\n");
+			set_deepsleep_wakeup_no_rf();
+			system_deep_sleep(SLEEP_TIME);		/* 60s */
 		}
 
 		cnt++;
