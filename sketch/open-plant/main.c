@@ -364,7 +364,7 @@ void mjyun_connected()
 	// stop to show the wifi status
 	wifi_led_disable();
 
-	wifi_set_sleep_type(LIGHT_SLEEP_T);
+	//wifi_set_sleep_type(LIGHT_SLEEP_T);
 }
 
 void mjyun_disconnected()
@@ -569,6 +569,8 @@ void worker()
 
 	float hot_data = 0.0;
 
+	INFO("Woker start working...\r\n");
+
 	if (wan_ok == 1) {
 
 		if(param_get_realtime() == 1) {
@@ -601,7 +603,7 @@ void worker()
 
 			cnt = 0;
 
-			if(param_get_realtime() != 1) {
+			if(param_get_realtime() != 1 && cnt != -1) {
 				/* enter deep sleep after cold boot up 5 min later */
 				INFO("Enter deep sleep in woker...\r\n");
 				set_deepsleep_wakeup_no_rf();
