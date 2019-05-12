@@ -458,7 +458,9 @@ void fetch_datapoint()
 {
 	struct datapoint *pdp = &(g_hb.datapoints[g_hb.cnt]);
 
-	get_vbat(&(pdp->vbat));
+	INFO("fetch datapoint...\r\n");
+
+	INFO("vbat = %s\r\n", get_vbat(&(pdp->vbat)));
 	get_temp(&(pdp->temp));
 	get_humi(&(pdp->humi)) ;
 
@@ -495,8 +497,9 @@ irom void user_init()
 
 #ifdef DEBUG
 	uart_init(115200, 115200);
+	os_delay_us(1000000);
 #endif
-	INFO("Current firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
+	INFO("\r\n\r\n\r\n\r\n\r\n\r\nCurrent firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
 	INFO("%s", noduino_banner);
 
 	/* read the hot data from rtc memory */
@@ -506,7 +509,7 @@ irom void user_init()
 
 	if (g_hb.bootflag != INIT_MAGIC || param_get_realtime() == 1) {
 
-		INFO("Cold boot up or realtime mode!\r\n");
+		INFO("Cold boot up or realtime mode! flag: 0x%08X\r\n", g_hb.bootflag);
 
 		mcp342x_init();
 		mcp342x_set_oneshot();
@@ -519,11 +522,14 @@ irom void user_init()
 		system_init_done_cb(init_yun);
 
 	} else {
-		INFO("Warm boot up, need to save the sensor data into rtc memory...\r\n");
+		INFO("\r\n\r\n\r\n\r\n\r\n\r\nWarm boot up, save the sensor data into rtc memory, cnt = %d\r\n", g_hb.cnt);
 
 		/* range check and resets counter if needed */
 		if(g_hb.cnt < 0 || g_hb.cnt >= MAX_DP_NUM)
 			g_hb.cnt = 0;
+
+		mcp342x_init();
+		mcp342x_set_oneshot();
 
 		/* fetch sensor data, timestamp... */
 		fetch_datapoint();
@@ -532,18 +538,17 @@ irom void user_init()
 
 		system_rtc_mem_write(RTC_MEM_START, (void *)&g_hb, sizeof(struct hotbuf));
 
-
 		/* Setup next sleep cycle */
-		if (g_hb.cnt == MAX_DP_NUM - 1)
+		if (g_hb.cnt == MAX_DP_NUM - 1) {
 			set_deepsleep_wakeup_normal();
-		else
+			INFO("set deepsleep wakeup normal\r\n");
+		} else {
 			set_deepsleep_wakeup_no_rf();
+			INFO("set deepsleep wakeup no rf\r\n");
+		}
 
 		// Uploads or go to sleep
 		if(g_hb.cnt == MAX_DP_NUM) {
-
-			mcp342x_init();
-			mcp342x_set_oneshot();
 
 			//upload the 20 datapoints;
 			push_datapoints();
@@ -552,6 +557,7 @@ irom void user_init()
 
 			/* enter deep sleep */
 			INFO("Enter deep sleep...\r\n");
+			cloud_disable_timer();
 			system_deep_sleep(SLEEP_TIME);
 		}
 	}
@@ -565,6 +571,8 @@ static int32_t cnt = -1;
 
 void worker()
 {
+	uint32_t test = 0;
+
 	char *tt, *hh, *vv;
 
 	float hot_data = 0.0;
@@ -592,7 +600,6 @@ void worker()
 #endif
 		}
 
-
 		if (cnt * MQTT_RATE >= HTTP_RATE || cnt == -1) {
 			tt = get_temp(NULL);
 			hh = get_humi(NULL);
@@ -605,7 +612,10 @@ void worker()
 
 			if(param_get_realtime() != 1 && cnt != -1) {
 				/* enter deep sleep after cold boot up 5 min later */
-				INFO("Enter deep sleep in woker...\r\n");
+				system_rtc_mem_read(RTC_MEM_START, (void *)&test, 4);
+				INFO("Enter deep sleep in woker... flag: 0x%08X\r\n", test);
+
+				cloud_disable_timer();
 				set_deepsleep_wakeup_no_rf();
 				system_deep_sleep(SLEEP_TIME);
 			}
