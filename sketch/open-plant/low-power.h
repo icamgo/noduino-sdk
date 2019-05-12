@@ -20,11 +20,11 @@
 
 #define	INIT_MAGIC			0x7E7E55AA
 
-#define	MQTT_RATE			2			// 2s 
-#define	HTTP_RATE			100 		// 200s 
+#define	MQTT_RATE			1			// 1s
+#define	HTTP_RATE			60	 		// 60s
 #define	SLEEP_TIME			30000000	// 30s
-#define	MAX_DP_NUM			20
-#define RTC_MEM_START		128			// (256/4) is the rtc time, use 128 for safe
+#define	MAX_DP_NUM			5
+#define RTC_MEM_START		(64+6)		// (256 ~ 256+24, 64~64+6) used by rtc time
 
 #define	set_deepsleep_wakeup_no_rf()	system_deep_sleep_set_option(4)
 #define	set_deepsleep_wakeup_normal()	system_deep_sleep_set_option(1)
@@ -48,7 +48,7 @@ struct hotbuf {
 	uint16_t realtime;		/* 1: mqtt enable, 0: mqtt disable */
 	uint8_t airkiss_nff_on;
 
-	uint8_t cnt;			/* max = (256/2 + 512) / sizeof(data_point) */
+	uint8_t cnt;			/* max = (512-24-8) / sizeof(data_point) */
 	struct datapoint datapoints[MAX_DP_NUM];
 } __attribute__((aligned(4), packed));
 

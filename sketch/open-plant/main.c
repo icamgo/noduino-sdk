@@ -29,6 +29,7 @@ os_timer_t worker_timer;
 
 static int network_state = 0;
 static int wan_ok = 0;
+static int read_push_flag = 0;
 
 void worker();
 
@@ -303,7 +304,7 @@ void http_upload_cb(char *resp, int http_status, char *full_resp)
 	}
 }
 
-void http_upload(char *tt, char *hh, char *vbat, int light, int co2)
+void http_upload(char *tt, char *hh, char *vbat, int light, int co2, uint32_t ts)
 {
 	uint8_t * URL = (uint8_t *) os_zalloc(os_strlen(HTTP_UPLOAD_URL) +
 	                  os_strlen(mjyun_getdeviceid()) +
@@ -323,8 +324,6 @@ void http_upload(char *tt, char *hh, char *vbat, int light, int co2)
 	wifi_get_macaddr(STATION_IF, ma);
 	os_sprintf(sta_mac, "%02X%02X%02X%02X%02X%02X", ma[0], ma[1], ma[2], ma[3], ma[4], ma[5]);
 
-	uint32_t cs = time(NULL);
-
 	os_sprintf(URL,
 	           HTTP_UPLOAD_URL,
 	           mjyun_getdeviceid(),
@@ -333,7 +332,7 @@ void http_upload(char *tt, char *hh, char *vbat, int light, int co2)
 			   (vbat),
 			   light,
 			   co2,
-	           cs,
+	           ts,
 	           sta_mac);
 	http_post((const char *)URL , "Content-Type:application/json\r\n", "", http_upload_cb);
 #ifdef DEBUG
@@ -457,15 +456,16 @@ char *get_humi(float *fh)
 void fetch_datapoint()
 {
 	struct datapoint *pdp = &(g_hb.datapoints[g_hb.cnt]);
+	uint32_t ts = time(NULL);
 
-	INFO("fetch datapoint...\r\n");
+	INFO("fetch datapoint @ time: %d...\r\n", ts);
 
 	INFO("vbat = %s\r\n", get_vbat(&(pdp->vbat)));
 	get_temp(&(pdp->temp));
 	get_humi(&(pdp->humi)) ;
 
 	pdp->light = -1;
-	pdp->timestamp = time(NULL);
+	pdp->timestamp = ts;
 }
 
 void publish_sensor_data(char *tt, char *hh, char *vbat, int light, int co2)
@@ -484,11 +484,20 @@ void push_datapoints()
 	// for testing only now
 	char *tt, *hh, *vv;
 
-	tt = get_temp(NULL);
-	hh = get_humi(NULL);
-	vv = get_vbat(NULL);
+	uint8_t len = read_push_flag, i;
+	INFO("push %d datapoint...\r\n", len);
+	for(i = 0; i < len; i++) {
+		dtostrf(g_hb.datapoints[i].vbat, 6, 2, g_vbat);
+		vv = strstrip(g_vbat);
 
-	http_upload(tt, hh, vv, g_light, g_co2);
+		dtostrf(g_hb.datapoints[i].temp, 5, 1, g_temp);
+		tt = strstrip(g_temp);
+
+		dtostrf(g_hb.datapoints[i].humi, 5, 1, g_humi);
+		hh = strstrip(g_humi);
+
+		http_upload(tt, hh, vv, g_light, g_co2, g_hb.datapoints[i].timestamp);
+	}
 }
 
 // entry function when power on or wakeup from deep sleep
@@ -499,7 +508,7 @@ irom void user_init()
 	uart_init(115200, 115200);
 	os_delay_us(1000000);
 #endif
-	INFO("\r\n\r\n\r\n\r\n\r\n\r\nCurrent firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
+	INFO("\r\n\r\n\r\nCurrent firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
 	INFO("%s", noduino_banner);
 
 	/* read the hot data from rtc memory */
@@ -509,10 +518,17 @@ irom void user_init()
 
 	if (g_hb.bootflag != INIT_MAGIC || param_get_realtime() == 1) {
 
-		INFO("Cold boot up or realtime mode! flag: 0x%08X\r\n", g_hb.bootflag);
+		INFO("\r\nCold boot up or Need push data or realtime mode. Flag: 0x%08X, cnt: %d\r\n", g_hb.bootflag, g_hb.cnt);
 
 		mcp342x_init();
 		mcp342x_set_oneshot();
+		sht2x_init();
+
+		// need to push the datapoints
+		if (g_hb.cnt == MAX_DP_NUM - 1) {
+
+			read_push_flag = g_hb.cnt;
+		}
 
 		/* mark the flag as warm boot in rtc mem */
 		g_hb.bootflag = INIT_MAGIC;
@@ -522,7 +538,10 @@ irom void user_init()
 		system_init_done_cb(init_yun);
 
 	} else {
-		INFO("\r\n\r\n\r\n\r\n\r\n\r\nWarm boot up, save the sensor data into rtc memory, cnt = %d\r\n", g_hb.cnt);
+		INFO("\r\nWarm boot up, save the sensor data into rtc memory, cnt = %d\r\n", g_hb.cnt);
+
+		/* maybe wakeup by key pressed */
+		// show_oled();		// turn off 3s later
 
 		/* range check and resets counter if needed */
 		if(g_hb.cnt < 0 || g_hb.cnt >= MAX_DP_NUM)
@@ -530,36 +549,32 @@ irom void user_init()
 
 		mcp342x_init();
 		mcp342x_set_oneshot();
+		sht2x_init();
 
 		/* fetch sensor data, timestamp... */
 		fetch_datapoint();
 
 		g_hb.cnt++;
 
-		system_rtc_mem_write(RTC_MEM_START, (void *)&g_hb, sizeof(struct hotbuf));
-
 		/* Setup next sleep cycle */
 		if (g_hb.cnt == MAX_DP_NUM - 1) {
 			set_deepsleep_wakeup_normal();
 			INFO("set deepsleep wakeup normal\r\n");
+
+			// clear the flag to enter the cold boot up next time
+			g_hb.bootflag = 0;
+
 		} else {
 			set_deepsleep_wakeup_no_rf();
 			INFO("set deepsleep wakeup no rf\r\n");
 		}
 
-		// Uploads or go to sleep
-		if(g_hb.cnt == MAX_DP_NUM) {
+		system_rtc_mem_write(RTC_MEM_START, (void *)&g_hb, sizeof(struct hotbuf));
 
-			//upload the 20 datapoints;
-			push_datapoints();
-
-		} else {
-
-			/* enter deep sleep */
-			INFO("Enter deep sleep...\r\n");
-			cloud_disable_timer();
-			system_deep_sleep(SLEEP_TIME);
-		}
+		/* enter deep sleep */
+		INFO("Enter deep sleep...\r\n");
+		cloud_disable_timer();
+		system_deep_sleep(SLEEP_TIME);
 	}
 }
 
@@ -571,7 +586,7 @@ static int32_t cnt = -1;
 
 void worker()
 {
-	uint32_t test = 0;
+	uint32_t test = 0, ts;
 
 	char *tt, *hh, *vv;
 
@@ -583,6 +598,7 @@ void worker()
 
 		if(param_get_realtime() == 1) {
 
+			ts = time(NULL);
 			hh = get_humi(&hot_data);
 
 #ifdef CONFIG_CHECK_HOTDATA
@@ -595,30 +611,47 @@ void worker()
 
 #ifdef CONFIG_CHECK_HOTDATA
 				if (cnt != -1)
-					http_upload(tt, hh, vv, g_light, g_co2);
+					http_upload(tt, hh, vv, g_light, g_co2, ts);
 			}
 #endif
 		}
 
+		if(param_get_realtime() != 1 && cnt >= 50) {
+			/* enter deep sleep after cold boot up 50s later */
+			system_rtc_mem_read(RTC_MEM_START, (void *)&test, 4);
+			INFO("Enter deep sleep in woker... flag: 0x%08X\r\n", test);
+
+			cloud_disable_timer();
+			set_deepsleep_wakeup_no_rf();
+			system_deep_sleep(SLEEP_TIME);
+		}
+
 		if (cnt * MQTT_RATE >= HTTP_RATE || cnt == -1) {
+
+			// cold bootup first time or http_rate interval
+
+			if (read_push_flag != 0) {
+				/*
+				 * We clear the warm boot flag last time and enter the cold bootup
+				 * process this time when need to push the datapoints in rtc mem
+				 *
+				*/
+				INFO("push the MAX_DP_NUM -1 datapoints\r\n");
+				push_datapoints();
+
+				read_push_flag = 0;
+			}
+
+			ts = time(NULL);
+
 			tt = get_temp(NULL);
 			hh = get_humi(NULL);
 			vv = get_vbat(NULL);
 
 			// need to push the sensor data via http
-			http_upload(tt, hh, vv, g_light, g_co2);
+			http_upload(tt, hh, vv, g_light, g_co2, ts);
 
 			cnt = 0;
-
-			if(param_get_realtime() != 1 && cnt != -1) {
-				/* enter deep sleep after cold boot up 5 min later */
-				system_rtc_mem_read(RTC_MEM_START, (void *)&test, 4);
-				INFO("Enter deep sleep in woker... flag: 0x%08X\r\n", test);
-
-				cloud_disable_timer();
-				set_deepsleep_wakeup_no_rf();
-				system_deep_sleep(SLEEP_TIME);
-			}
 		}
 
 		cnt++;
