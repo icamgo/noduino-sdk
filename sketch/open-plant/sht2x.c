@@ -133,14 +133,14 @@ irom static uint16_t sht2x_readSensor(uint8_t command)
 	wire_write(command);				//send the pointer location
 	ret = wire_endTransmission();		//end
 
-	os_delay_us(1000*85);
+	os_delay_us(85000);
 
 	wire_requestFrom(SHT2X_ADDR, 3);
 
 	int count = 0;
 	while (wire_available() < 3) {
 		count++;
-		os_delay_us(1000*1);
+		os_delay_us(1000);
 		if (count > 1000) {
 			os_printf("SHT2x: wire request(read) timeout!\r\n");
 			return 1;
@@ -198,4 +198,10 @@ irom float sht2x_GetTemperature(void)
 	}
 
 	return (-46.85 + 175.72 / 65536.0 * (float)sd);
+}
+
+irom void sht2x_init()
+{
+	wire_begin();
+
 }
