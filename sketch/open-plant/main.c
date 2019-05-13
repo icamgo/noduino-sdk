@@ -696,8 +696,8 @@ void worker()
 			cnt = 0;	// Reset the cnt
 		}
 
-		if(param_get_realtime() != 1 && cnt >= 50) {
-			/* enter deep sleep after cold boot up 50s later */
+		if(param_get_realtime() != 1 && cnt >= 5) {
+			/* enter deep sleep after cold boot up 5s later */
 			system_rtc_mem_read(RTC_MEM_START, (void *)&test, 4);
 			INFO("Enter deep sleep in woker... flag: 0x%08X\r\n", test);
 

@@ -23,7 +23,7 @@
 #define	MQTT_RATE			1			// 1s
 #define	HTTP_RATE			60	 		// 60s
 #define	SLEEP_TIME			60000000	// 60s
-#define	MAX_DP_NUM			5
+#define	MAX_DP_NUM			10
 #define RTC_MEM_START		(64+6)		// (256 ~ 256+24, 64~64+6) used by rtc time
 
 #define	DATA_PUSH_URL		"http://api.noduino.org/dev/plant/data?devid=%s&mac=%s"
