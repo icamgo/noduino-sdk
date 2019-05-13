@@ -26,6 +26,8 @@
 #define	MAX_DP_NUM			5
 #define RTC_MEM_START		(64+6)		// (256 ~ 256+24, 64~64+6) used by rtc time
 
+#define	DATA_PUSH_URL		"http://api.noduino.org/dev/plant/data?devid=%s&mac=%s"
+
 #define	set_deepsleep_wakeup_no_rf()	system_deep_sleep_set_option(4)
 #define	set_deepsleep_wakeup_normal()	system_deep_sleep_set_option(1)
 

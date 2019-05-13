@@ -487,8 +487,38 @@ void push_datapoints()
 	char *tt, *hh, *vv;
 	uint32_t ts = 0;
 
+	uint8_t ma[6];
+	char mac[14];
+	char j_dp[56];
+	int body_len = 0;
+
 	uint8_t len = read_push_flag, i;
 	INFO("push %d datapoint...\r\n", len);
+
+	uint8_t *url = (uint8_t *) os_zalloc(os_strlen(DATA_PUSH_URL) +
+	                  os_strlen(mjyun_getdeviceid()) + 14);
+	if(url == NULL) {
+		INFO("Request url mem faild...\r\n");
+		return;
+	}
+
+	wifi_get_macaddr(STATION_IF, ma);
+	os_sprintf(mac, "%02X%02X%02X%02X%02X%02X", ma[0], ma[1], ma[2], ma[3], ma[4], ma[5]);
+	os_sprintf(url, DATA_PUSH_URL, mjyun_getdeviceid(), mac);
+
+	INFO("url = %s, len = %d\r\n", url, os_strlen(url));
+
+	// pack the data body
+	// [{"t":-20.2,"h":17.2,"v":3.84,"ts":1557711767},]
+
+	char *body = (char *) os_zalloc(2+len*(3+6+5+5+5+5+5+10+5)+8);
+	if(body == NULL) {
+		INFO("Request http body mem faild...\r\n");
+		return;
+	}
+
+	body[0] = '[';
+
 	for(i = 0; i < len; i++) {
 		dtostrf(g_hb.datapoints[i].vbat, 6, 2, g_vbat);
 		vv = strstrip(g_vbat);
@@ -501,8 +531,20 @@ void push_datapoints()
 
 		ts = g_hb.start_ts + i * SLEEP_TIME / 1000000;
 
-		http_upload(tt, hh, vv, g_light, g_co2, ts);
+		os_sprintf(j_dp, "{\"t\":%s,\"h\":%s,\"v\":%s,\"ts\":%d},", tt, hh, vv, ts);
+		INFO("http body item: %s, len = %d\r\n", j_dp, os_strlen(j_dp));
+
+		os_strcat(body, j_dp);
 	}
+
+	body_len = os_strlen(body);
+	body[body_len-1] = ']';
+
+	http_post((const char *)url , "Content-Type:application/json\r\n", body, http_upload_cb);
+	//INFO("%s\r\n", body);
+
+	os_free(url);
+	os_free(body);
 }
 
 // entry function when power on or wakeup from deep sleep
