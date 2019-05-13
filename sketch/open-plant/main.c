@@ -466,6 +466,8 @@ void fetch_datapoint()
 #ifdef CONFIG_LIGHT
 	pdp->light = -1;
 #endif
+
+	g_hb.cnt++;		/* update the cnt */
 }
 
 void publish_sensor_data(char *tt, char *hh, char *vbat, int light, int co2)
@@ -530,6 +532,8 @@ irom void user_init()
 		// need to push the datapoints
 		if (g_hb.cnt == MAX_DP_NUM - 1) {
 
+			fetch_datapoint();		/* fetch the datapoint this time */
+
 			read_push_flag = g_hb.cnt;
 		}
 
@@ -558,8 +562,6 @@ irom void user_init()
 
 		/* fetch sensor data, timestamp... */
 		fetch_datapoint();
-
-		g_hb.cnt++;
 
 		/* Setup next sleep cycle */
 		if (g_hb.cnt == MAX_DP_NUM - 1) {
@@ -632,21 +634,24 @@ void worker()
 				 *
 				*/
 				INFO("push the MAX_DP_NUM -1 datapoints\r\n");
-				push_datapoints();
+
+				/* g_hb is filled from rtc mem when cold or warm bootup */
+
+				push_datapoints();		/* push all the MAX_DP_NUM datapoints */
 
 				read_push_flag = 0;
+
+			} else {
+
+				ts = time(NULL);
+				tt = get_temp(NULL);
+				hh = get_humi(NULL);
+				vv = get_vbat(NULL);
+				// need to push the sensor data via http
+				http_upload(tt, hh, vv, g_light, g_co2, ts);
 			}
 
-			ts = time(NULL);
-
-			tt = get_temp(NULL);
-			hh = get_humi(NULL);
-			vv = get_vbat(NULL);
-
-			// need to push the sensor data via http
-			http_upload(tt, hh, vv, g_light, g_co2, ts);
-
-			cnt = 0;
+			cnt = 0;	// Reset the cnt
 		}
 
 		if(param_get_realtime() != 1 && cnt >= 50) {
@@ -660,6 +665,10 @@ void worker()
 			/* init the start timestamp */
 			g_hb.start_ts = time(NULL) + SLEEP_TIME/1000000;
 			INFO("Set the start timestamp: %d\r\n", g_hb.start_ts);
+
+			/* after waitting 50*mqtt_rate seconds, we need to fetch data this time */
+			fetch_datapoint();
+
 			system_rtc_mem_write(RTC_MEM_START, (void *)&g_hb, sizeof(struct hotbuf));
 
 			system_deep_sleep(SLEEP_TIME);
