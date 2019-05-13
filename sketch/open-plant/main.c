@@ -456,16 +456,16 @@ char *get_humi(float *fh)
 void fetch_datapoint()
 {
 	struct datapoint *pdp = &(g_hb.datapoints[g_hb.cnt]);
-	uint32_t ts = time(NULL);
 
-	INFO("fetch datapoint @ time: %d...\r\n", ts);
+	INFO("fetch datapoint...\r\n");
 
 	INFO("vbat = %s\r\n", get_vbat(&(pdp->vbat)));
 	get_temp(&(pdp->temp));
 	get_humi(&(pdp->humi)) ;
 
+#ifdef CONFIG_LIGHT
 	pdp->light = -1;
-	pdp->timestamp = ts;
+#endif
 }
 
 void publish_sensor_data(char *tt, char *hh, char *vbat, int light, int co2)
@@ -483,6 +483,7 @@ void push_datapoints()
 {
 	// for testing only now
 	char *tt, *hh, *vv;
+	uint32_t ts = 0;
 
 	uint8_t len = read_push_flag, i;
 	INFO("push %d datapoint...\r\n", len);
@@ -496,7 +497,9 @@ void push_datapoints()
 		dtostrf(g_hb.datapoints[i].humi, 5, 1, g_humi);
 		hh = strstrip(g_humi);
 
-		http_upload(tt, hh, vv, g_light, g_co2, g_hb.datapoints[i].timestamp);
+		ts = g_hb.start_ts + i * SLEEP_TIME / 1000000;
+
+		http_upload(tt, hh, vv, g_light, g_co2, ts);
 	}
 }
 
@@ -544,8 +547,10 @@ irom void user_init()
 		// show_oled();		// turn off 3s later
 
 		/* range check and resets counter if needed */
-		if(g_hb.cnt < 0 || g_hb.cnt >= MAX_DP_NUM)
+		if(g_hb.cnt < 0 || g_hb.cnt >= MAX_DP_NUM) {
+			INFO("cnt = %d is out of rang, reset it to 0\r\n", g_hb.cnt);
 			g_hb.cnt = 0;
+		}
 
 		mcp342x_init();
 		mcp342x_set_oneshot();
@@ -616,17 +621,7 @@ void worker()
 #endif
 		}
 
-		if(param_get_realtime() != 1 && cnt >= 50) {
-			/* enter deep sleep after cold boot up 50s later */
-			system_rtc_mem_read(RTC_MEM_START, (void *)&test, 4);
-			INFO("Enter deep sleep in woker... flag: 0x%08X\r\n", test);
-
-			cloud_disable_timer();
-			set_deepsleep_wakeup_no_rf();
-			system_deep_sleep(SLEEP_TIME);
-		}
-
-		if (cnt * MQTT_RATE >= HTTP_RATE || cnt == -1) {
+		if (cnt == -1 || cnt * MQTT_RATE >= HTTP_RATE) {
 
 			// cold bootup first time or http_rate interval
 
@@ -652,6 +647,22 @@ void worker()
 			http_upload(tt, hh, vv, g_light, g_co2, ts);
 
 			cnt = 0;
+		}
+
+		if(param_get_realtime() != 1 && cnt >= 50) {
+			/* enter deep sleep after cold boot up 50s later */
+			system_rtc_mem_read(RTC_MEM_START, (void *)&test, 4);
+			INFO("Enter deep sleep in woker... flag: 0x%08X\r\n", test);
+
+			cloud_disable_timer();
+			set_deepsleep_wakeup_no_rf();
+
+			/* init the start timestamp */
+			g_hb.start_ts = time(NULL) + SLEEP_TIME/1000000;
+			INFO("Set the start timestamp: %d\r\n", g_hb.start_ts);
+			system_rtc_mem_write(RTC_MEM_START, (void *)&g_hb, sizeof(struct hotbuf));
+
+			system_deep_sleep(SLEEP_TIME);
 		}
 
 		cnt++;

@@ -33,14 +33,15 @@ struct datapoint {
 	float vbat;
 	float temp;
 	float humi;
+#ifdef CONFIG_LIGHT
 	uint32_t light;
+#endif
 #ifdef CONFIG_CO2_SENSOR
 	float co2;
 #endif
 #ifdef CONFIG_PRESSURE_SENSOR
 	float pressure;
 #endif
-	uint32_t timestamp;
 } __attribute__((aligned(4), packed));
 
 struct hotbuf {
@@ -48,8 +49,10 @@ struct hotbuf {
 	uint16_t realtime;		/* 1: mqtt enable, 0: mqtt disable */
 	uint8_t airkiss_nff_on;
 
-	uint8_t cnt;			/* max = (512-24-8) / sizeof(data_point) */
-	struct datapoint datapoints[MAX_DP_NUM];
+	uint8_t cnt;			/* max = (512-24-12) / sizeof(data_point) */
+
+	uint32_t start_ts;		/* start timestamp */
+	struct datapoint datapoints[MAX_DP_NUM];	/* max is 39 ~ 19 */
 } __attribute__((aligned(4), packed));
 
 #endif
