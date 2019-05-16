@@ -60,6 +60,10 @@ irom void param_init()
 		need_to_save = 1;
 	}
 
+#ifdef TESTING_LOW_POWER
+	g_param.realtime = 0;
+#endif
+
 	if (g_param.airkiss_nff_on == 0xff) {
 		g_param.airkiss_nff_on = 1;
 		need_to_save = 1;

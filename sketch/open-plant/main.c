@@ -312,9 +312,7 @@ void http_upload(char *tt, char *hh, char *vbat, int light, int co2, uint32_t ts
 	                  8 + 8 + 12 + 12);
 
 	if ( URL == NULL ) {
-#ifdef DEBUG
 		INFO("%s: not enough memory\r\n", __func__);
-#endif
 		return;
 	}
 
@@ -334,10 +332,10 @@ void http_upload(char *tt, char *hh, char *vbat, int light, int co2, uint32_t ts
 			   co2,
 	           ts,
 	           sta_mac);
+#ifndef TESTING_LOW_POWER
 	http_post((const char *)URL , "Content-Type:application/json\r\n", "", http_upload_cb);
-#ifdef DEBUG
-	INFO("%s\r\n", (char *)URL);
 #endif
+	INFO("%s\r\n", (char *)URL);
 	os_free( URL );
 }
 
@@ -424,7 +422,11 @@ char *get_vbat(float *fv)
 
 char *get_temp(float *ft)
 {
+#ifndef TESTING_LOW_POWER
 	float temp = sht2x_GetTemperature();
+#else
+	float temp = 22.2;
+#endif
 
 	dtostrf(temp, 5, 1, g_temp);
 
@@ -439,7 +441,11 @@ char *get_temp(float *ft)
 
 char *get_humi(float *fh)
 {
+#ifndef TESTING_LOW_POWER
 	float humi = sht2x_GetHumidity();
+#else
+	float humi = 22;
+#endif
 
 	dtostrf(humi, 5, 1, g_humi);
 
@@ -539,8 +545,9 @@ void push_datapoints()
 
 	body_len = os_strlen(body);
 	body[body_len-1] = ']';
-
+#ifndef TESTING_LOW_POWER
 	http_post((const char *)url , "Content-Type:application/json\r\n", body, http_upload_cb);
+#endif
 	//INFO("%s\r\n", body);
 
 	os_free(url);
@@ -569,7 +576,9 @@ irom void user_init()
 
 		mcp342x_init();
 		mcp342x_set_oneshot();
+#ifndef	TESTING_LOW_POWER
 		sht2x_init();
+#endif
 
 		// need to push the datapoints
 		if (g_hb.cnt == MAX_DP_NUM - 1) {
@@ -600,7 +609,9 @@ irom void user_init()
 
 		mcp342x_init();
 		mcp342x_set_oneshot();
+#ifndef	TESTING_LOW_POWER
 		sht2x_init();
+#endif
 
 		/* fetch sensor data, timestamp... */
 		fetch_datapoint();
