@@ -332,9 +332,7 @@ void http_upload(char *tt, char *hh, char *vbat, int light, int co2, uint32_t ts
 			   co2,
 	           ts,
 	           sta_mac);
-#ifndef TESTING_LOW_POWER
 	http_post((const char *)URL , "Content-Type:application/json\r\n", "", http_upload_cb);
-#endif
 	INFO("%s\r\n", (char *)URL);
 	os_free( URL );
 }
@@ -545,9 +543,7 @@ void push_datapoints()
 
 	body_len = os_strlen(body);
 	body[body_len-1] = ']';
-#ifndef TESTING_LOW_POWER
 	http_post((const char *)url , "Content-Type:application/json\r\n", body, http_upload_cb);
-#endif
 	//INFO("%s\r\n", body);
 
 	os_free(url);
@@ -634,7 +630,7 @@ irom void user_init()
 		/* enter deep sleep */
 		INFO("Enter deep sleep...\r\n");
 		cloud_disable_timer();
-		system_deep_sleep(SLEEP_TIME);
+		system_deep_sleep_instant(SLEEP_TIME);
 	}
 }
 
@@ -707,8 +703,8 @@ void worker()
 			cnt = 0;	// Reset the cnt
 		}
 
-		if(param_get_realtime() != 1 && cnt >= 5) {
-			/* enter deep sleep after cold boot up 5s later */
+		if(param_get_realtime() != 1 && cnt >= 2) {
+			/* enter deep sleep after http post 2s */
 			system_rtc_mem_read(RTC_MEM_START, (void *)&test, 4);
 			INFO("Enter deep sleep in woker... flag: 0x%08X\r\n", test);
 
@@ -724,7 +720,7 @@ void worker()
 
 			system_rtc_mem_write(RTC_MEM_START, (void *)&g_hb, sizeof(struct hotbuf));
 
-			system_deep_sleep(SLEEP_TIME);
+			system_deep_sleep_instant(SLEEP_TIME);
 		}
 
 		cnt++;
