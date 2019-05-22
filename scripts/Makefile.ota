@@ -52,6 +52,7 @@ endif
 # firmware generating tool
 FW_TOOL		?= $(TOOLCHAIN_DIR)/bin/gen_appbin.py
 ESPTOOL_PY	?= $(TOOLCHAIN_DIR)/bin/esptool.py
+DISABLE_RF_PY ?= $(TOOLCHAIN_DIR)/bin/add_low-power_deepsleep_cmd-v2.py
 
 CONFIG_BOOT_ADDR ?= 0x00000
 
@@ -326,6 +327,14 @@ flash: all
 				-ca $(CONFIG_BOOT_ADDR) -cf $(FW_BASE)/$(CONFIG_OTA_BOOTLOADER).bin		\
 				-ca $(user1_addr) -cf $(FW_BASE)/user1.bin
 
+flash-lowpower: all
+	-$(DISABLE_RF_PY) $(FW_BASE)/$(CONFIG_OTA_BOOTLOADER).bin
+	$(vecho) "Upload the bin to flash ..."
+	-$(ESPTOOL) -cd $(CONFIG_BOARD) -cb $(CONFIG_ESPBAUD) -cp $(CONFIG_ESPPORT)			\
+				-ca $(shell printf "0x%x" $$(($(CONFIG_SYSCONF_ADDR)+0x2000))) -cf $(ESPSDK_BASE)/bin/blank.bin		\
+				-ca $(CONFIG_BOOT_ADDR) -cf $(FW_BASE)/$(CONFIG_OTA_BOOTLOADER)_low_power.bin		\
+				-ca $(user1_addr) -cf $(FW_BASE)/user1.bin
+
 user1:
 	$(vecho) "Upload the bin to flash ..."
 	-$(ESPTOOL) -cd $(CONFIG_BOARD) -cb $(CONFIG_ESPBAUD) -cp $(CONFIG_ESPPORT)			\
@@ -347,6 +356,20 @@ produce: all
 				-ca $(CONFIG_RFCAL_ADDR) -cf $(ESPSDK_BASE)/bin/blank.bin				\
 				-ca $(CONFIG_RFINIT_ADDR) -cf $(ESPSDK_BASE)/bin/$(CONFIG_RF_INIT_DATA)	\
 				-ca $(CONFIG_BOOT_ADDR) -cf $(FW_BASE)/$(CONFIG_OTA_BOOTLOADER).bin		\
+				-ca $(user1_addr) -cf $(FW_BASE)/user1.bin
+
+produce-lowpower: all
+	-$(DISABLE_RF_PY) $(FW_BASE)/$(CONFIG_OTA_BOOTLOADER).bin
+	$(vecho) "Upload the bin to flash ..."
+	-$(ESPTOOL) -cd $(CONFIG_BOARD) -cb $(CONFIG_ESPBAUD) -cp $(CONFIG_ESPPORT)			\
+				-ca $(CONFIG_YUNCONF_ADDR) -cf $(ESPSDK_BASE)/bin/blank.bin				\
+				-ca $(shell printf "0x%x" $$(($(CONFIG_YUNCONF_ADDR)+0x1000))) -cf $(ESPSDK_BASE)/bin/blank.bin		\
+				-ca $(CONFIG_SYSCONF_ADDR) -cf $(ESPSDK_BASE)/bin/blank.bin				\
+				-ca $(shell printf "0x%x" $$(($(CONFIG_SYSCONF_ADDR)+0x1000))) -cf $(ESPSDK_BASE)/bin/blank.bin		\
+				-ca $(shell printf "0x%x" $$(($(CONFIG_SYSCONF_ADDR)+0x2000))) -cf $(ESPSDK_BASE)/bin/blank.bin		\
+				-ca $(CONFIG_RFCAL_ADDR) -cf $(ESPSDK_BASE)/bin/blank.bin				\
+				-ca $(CONFIG_RFINIT_ADDR) -cf $(ESPSDK_BASE)/bin/$(CONFIG_RF_INIT_DATA)	\
+				-ca $(CONFIG_BOOT_ADDR) -cf $(FW_BASE)/$(CONFIG_OTA_BOOTLOADER)_low_power.bin		\
 				-ca $(user1_addr) -cf $(FW_BASE)/user1.bin
 
 rfinit:
@@ -419,3 +442,6 @@ erase:
 
 dump:
 	-$(ESPTOOL_PY) --port $(CONFIG_ESPPORT) --baud $(CONFIG_ESPBAUD) read_flash 0x0 $(shell echo $$(($(FLASH_SIZE)*1024))) flash.bin
+
+disable-rf:
+	-$(DISABLE_RF_PY) $(FW_BASE)/$(CONFIG_OTA_BOOTLOADER).bin
