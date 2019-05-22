@@ -131,4 +131,5 @@ void mjyun_mini_ota_start(const char * path);
 bool mjyun_lan_start(void);
 bool mjyun_lan_stop(void);
 
+void cloud_disable_timer();
 #endif /*  __MJYUN_H__ */
