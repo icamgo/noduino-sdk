@@ -22,7 +22,8 @@
 #include "param.h"
 #include "low-power.h"
 
-//#define	TESTING_LOW_POWER		1
+#define	TESTING_LOW_POWER		1
+//#define	USE_MCP342X_MON_VBAT	1
 
 #define	DEBUG			    	1
 #define	CONFIG_CHECK_HOTDATA	1

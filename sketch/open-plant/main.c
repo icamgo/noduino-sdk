@@ -402,10 +402,15 @@ static int g_co2 = -1;
 
 char *get_vbat(float *fv)
 {
+#ifdef USE_MCP342X_MON_VBAT
 	int uv = mcp342x_get_uv();
-
 	float vbat = uv * (99.985 + 219.35) / 99.985 / 1000000.0;
-
+#else
+	int ad = system_adc_read();
+	float delta = 82.0 + (ad - 639.0) * (22.0/172.0);
+	float vbat = ((ad - delta) / 1024.0) * (200.0 + 1009.5) / 200.0;
+	INFO("ad = %d, delta = %d\r\n", ad, (int) delta);
+#endif
 	dtostrf(vbat, 6, 2, g_vbat);
 
 	if(fv != NULL)
@@ -569,9 +574,10 @@ irom void user_init()
 	if (g_hb.bootflag != INIT_MAGIC || param_get_realtime() == 1) {
 
 		INFO("\r\nCold boot up or Need push data or realtime mode. Flag: 0x%08X, cnt: %d\r\n", g_hb.bootflag, g_hb.cnt);
-
+#ifdef USE_MCP342X_MON_VBAT
 		mcp342x_init();
 		mcp342x_set_oneshot();
+#endif
 #ifndef	TESTING_LOW_POWER
 		sht2x_init();
 #endif
@@ -603,8 +609,11 @@ irom void user_init()
 			g_hb.cnt = 0;
 		}
 
+#ifdef USE_MCP342X_MON_VBAT
 		mcp342x_init();
 		mcp342x_set_oneshot();
+#endif
+
 #ifndef	TESTING_LOW_POWER
 		sht2x_init();
 #endif
