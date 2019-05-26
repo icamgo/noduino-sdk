@@ -1,8 +1,7 @@
 Noduino SDK - Hello World
 ===========================================
 
-This simple project shows how to output "Hello World" to the UART0 of
-NodeMCU V1.0 board (using ESP-12E / ESP-12F module).
+This simple project shows how to output "Hello World" to the UART0
 
 It shows how to use the uart0 in Noduino SDK.
 
