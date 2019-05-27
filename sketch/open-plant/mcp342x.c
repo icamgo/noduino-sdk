@@ -24,15 +24,15 @@
  * 16 bit ADC, res = 2
  * 18 bit ADC, res = 3
  */
-static uint8_t res = 3;
-static uint32_t divisor;
+#define	res			3
+#define	divisor		(1 << (11 + 2 * 3))
 
 static uint8_t adc_cfg = (MCP342X_START			\
 						| MCP342X_CHANNEL_1		\
 						| MCP342X_GAIN_X1		\
 						| MCP342X_18_BIT);
 
-irom uint8_t mcp342x_read(int32_t *data)
+uint8_t mcp342x_read(int32_t *data)
 {
    // pointer used to form int32 data
    uint8_t *p = (uint8_t *)data;
@@ -81,7 +81,7 @@ irom uint8_t mcp342x_read(int32_t *data)
    return false;
 }
 
-irom int mcp342x_write(uint8_t d)
+int mcp342x_write(uint8_t d)
 {
 	int error = 0;
 	wire_beginTransmission(MCP342X_ADDRESS);
@@ -91,14 +91,14 @@ irom int mcp342x_write(uint8_t d)
 	return error;
 }
 
-irom int mcp342x_set_cfg(uint8_t cfg)
+int mcp342x_set_cfg(uint8_t cfg)
 {
 	int e;
 	e = mcp342x_write(cfg);
 	return e;
 }
 
-irom void mcp342x_set_oneshot()
+void mcp342x_set_oneshot()
 {
 	adc_cfg &= (~MCP342X_CONTINUOUS);
 }
@@ -108,7 +108,7 @@ irom void mcp342x_set_continuous()
 	adc_cfg |= MCP342X_CONTINUOUS;
 }
 
-irom int mcp342x_get_uv()
+int mcp342x_get_uv()
 {
 	int32_t data;
 
@@ -130,11 +130,10 @@ irom int mcp342x_get_uv()
 	return uv;
 }
 
-irom void mcp342x_init()
+void mcp342x_init()
 {
 	wire_begin();
 
+	mcp342x_set_oneshot();
 	mcp342x_set_cfg(adc_cfg);
-
-	divisor = 1 << (11 + 2 * res);
 }
