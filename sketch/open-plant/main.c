@@ -404,7 +404,8 @@ char *get_vbat(float *fv)
 {
 #ifdef USE_MCP342X_MON_VBAT
 	int uv = mcp342x_get_uv();
-	float vbat = uv * (99.985 + 219.35) / 99.985 / 1000000.0;
+	//float vbat = uv * (99.985 + 219.35) / 99.985 / 1000000.0;
+	float vbat = uv * (200.0 + 1008.5) / 200.0 / 1000000.0;
 #else
 	int ad = system_adc_read();
 	float delta = 82.0 + (ad - 639.0) * (22.0/172.0);
@@ -555,9 +556,38 @@ void push_datapoints()
 	os_free(body);
 }
 
+void dev_pwr_on()
+{
+#ifdef CONFIG_USE_SI2301
+	digitalWrite(0, LOW);
+#else
+	digitalWrite(15, HIGH);
+	// G15 is pull down by system by default
+	// it's not suite for SI2301
+#endif
+}
+
+void dev_pwr_off()
+{
+#ifdef CONFIG_USE_SI2301
+	digitalWrite(0, HIGH);
+#else
+	digitalWrite(15, LOW);
+#endif
+}
+
 // entry function when power on or wakeup from deep sleep
 irom void user_init()
 {
+#ifdef CONFIG_USE_SI2301
+	pinMode(0, OUTPUT);	// ctrl the device power, pull down by default
+#else
+	pinMode(15, OUTPUT);	// ctrl the device power, pull down by default
+#endif
+
+	dev_pwr_on();
+
+	os_delay_us(300);		// mcp342x start-up time
 
 #ifdef DEBUG
 	uart_init(115200, 115200);
@@ -571,16 +601,17 @@ irom void user_init()
 
 	param_init();
 
+#ifdef USE_MCP342X_MON_VBAT
+	mcp342x_init();
+#endif
+#ifndef	TESTING_LOW_POWER
+	sht2x_init();
+#endif
+
+
 	if (g_hb.bootflag != INIT_MAGIC || param_get_realtime() == 1) {
 
 		INFO("\r\nCold boot up or Need push data or realtime mode. Flag: 0x%08X, cnt: %d\r\n", g_hb.bootflag, g_hb.cnt);
-#ifdef USE_MCP342X_MON_VBAT
-		mcp342x_init();
-		mcp342x_set_oneshot();
-#endif
-#ifndef	TESTING_LOW_POWER
-		sht2x_init();
-#endif
 
 		// need to push the datapoints
 		if (g_hb.cnt == MAX_DP_NUM - 1) {
@@ -609,17 +640,11 @@ irom void user_init()
 			g_hb.cnt = 0;
 		}
 
-#ifdef USE_MCP342X_MON_VBAT
-		mcp342x_init();
-		mcp342x_set_oneshot();
-#endif
-
-#ifndef	TESTING_LOW_POWER
-		sht2x_init();
-#endif
 
 		/* fetch sensor data, timestamp... */
 		fetch_datapoint();
+
+		dev_pwr_off();	/* turn off the device power */
 
 		/* Setup next sleep cycle */
 		if (g_hb.cnt == MAX_DP_NUM - 1) {
@@ -714,6 +739,7 @@ void worker()
 
 		if(param_get_realtime() != 1 && cnt >= 2) {
 			/* enter deep sleep after http post 2s */
+
 			system_rtc_mem_read(RTC_MEM_START, (void *)&test, 4);
 			INFO("Enter deep sleep in woker... flag: 0x%08X\r\n", test);
 
@@ -726,6 +752,8 @@ void worker()
 
 			/* after waitting 50*mqtt_rate seconds, we need to fetch data this time */
 			fetch_datapoint();
+
+			dev_pwr_off();	/* turn off the device power */
 
 			system_rtc_mem_write(RTC_MEM_START, (void *)&g_hb, sizeof(struct hotbuf));
 
