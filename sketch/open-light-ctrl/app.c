@@ -81,6 +81,15 @@ irom void app_push_cold_on()
 	mjyun_publish("cold_on", msg);
 }
 
+irom void app_push_pir_on()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", sys_status.pir_on);
+
+	mjyun_publish("pir_on", msg);
+}
+
 irom void app_push_alexa_on()
 {
 	char msg[4];
@@ -191,6 +200,20 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 	if (0 == os_strcmp(event_name, "get_cold_on")) {
 		INFO("RX Get cold_on Request!\r\n");
 		app_push_cold_on();
+	}
+
+	/* {"m":"set_pir_on", "d":1} */
+	if (0 == os_strcmp(event_name, "set_pir_on")) {
+		uint8_t p_on = atoi(event_data);
+		INFO("RX set pir_on %d Request!\r\n", p_on);
+		sys_status.pir_on = p_on;
+		app_param_save();
+		app_push_pir_on();
+	}
+	/* {"m":"get_pir_on", "d":""} */
+	if (0 == os_strcmp(event_name, "get_pir_on")) {
+		INFO("RX Get pir_on Request!\r\n");
+		app_push_pir_on();
 	}
 
 	/* {"m":"set_grad_on", "d":1} */
@@ -582,6 +605,9 @@ irom void app_param_load(void)
 	}
 	if (sys_status.alexa_on == 0xff) {
 		sys_status.alexa_on = 1;
+	}
+	if (sys_status.pir_on == 0xff) {
+		sys_status.pir_on = 1;
 	}
 	if (sys_status.airkiss_nff_on == 0xff) {
 		sys_status.airkiss_nff_on = 1;
