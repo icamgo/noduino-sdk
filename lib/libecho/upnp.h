@@ -27,7 +27,8 @@ typedef enum {
 	WEMO_BULB,
 	WEMO_MOTION,
 	WEMO_MAKER,
-	HUE
+	HUE,
+	TMALL_PLUG
 } dev_type_t;
 
 typedef void (*on_fn_t)(void);

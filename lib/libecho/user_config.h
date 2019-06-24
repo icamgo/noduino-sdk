@@ -23,7 +23,7 @@
 #define	INFO			1
 
 // Output debug message
-//#define	DEBUG			1
+#define	DEBUG			1
 
 #ifdef INFO
 #define UPNP_INFO( format, ... ) os_printf( "UPNP: "format, ## __VA_ARGS__ )

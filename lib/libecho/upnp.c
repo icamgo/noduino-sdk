@@ -61,6 +61,9 @@ char *get_dev_target(dev_type_t tp)
 			return "urn:schemas-upnp-org:device:basic:1";
 			//return "upnp:rootdevice";
 			break;
+		case TMALL_PLUG:
+			return "urn:aligenie:iotdevice:service";
+			break;
 		default:
 			return NULL;
 	}
@@ -199,6 +202,8 @@ void ssdp_process_req()
 				case HUE:
 					x = (char *)os_strstr(p, "urn:schemas-upnp-org:device:");
 					break;
+				case TMALL_PLUG:
+					x = (char *)os_strstr(p, "urn:aligenie:iotdevice:service");
 			}
 			if (NULL != x) {
 				UPNP_INFO("Received request of discovering %s\r\n",
