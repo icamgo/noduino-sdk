@@ -43,7 +43,8 @@ static uint32_t PT100_TABLE[211] = {
 	39048															// 850
 };
 
-uint32_t get_rt(uint32_t uv);
-float pt1000_cal_temp(uint32_t uv);
+uint32_t get_rt(int uv);
 float pt1000_get_temp();
+
+float pt1000_cal_temp(int uv);
 #endif

@@ -63,12 +63,12 @@ float cal_temp(uint32_t Rt)
 	return temp;
 }
 
-uint32_t get_rt(uint32_t uv)
+uint32_t get_rt(int uv)
 {
 	uint32_t rtd = 0;
 
 	if (uv != 0) {
-		rtd = (uint32_t) (10 * 1000.0 * uv / (2489000 - uv));
+		rtd = 10.0 * 1000.0 * uv / (2489000.0 - uv);
 	} else {
 		rtd = 0;
 	}
@@ -79,7 +79,7 @@ uint32_t get_rt(uint32_t uv)
 float pt1000_get_temp()
 {
 	int uv = mcp342x_get_uv();
-	int rt = get_rt(uv);
+	uint32_t rt = get_rt(uv);
 
 	return cal_temp(rt);
 }
