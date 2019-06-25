@@ -6,6 +6,7 @@ SDK_BASE		?= ../..
 OPENCPU_BASE	?= $(SDK_BASE)/arch/opencpu
 TOOLCHAIN_DIR	?= $(SDK_BASE)/toolchain/arm-none-eabi
 
+PNAME := nbiot-demo
 HWVER := LV 
 
 #LD_SCRIPT	= $(CONFIG_LD_SCRIPT)
@@ -65,8 +66,8 @@ OBJS = $(foreach dir,$(SRC_DIRS),$(patsubst %.c,%.o,$(wildcard $(dir)/*.c)))
 all: $(SRC_DIRS)/compile.h $(OBJS)
 	@echo "linking libs"
 	@mkdir -p firmware
-	$(XCC) $(LDFLAGS) $(OBJS) -o firmware/nbiot_m2m_demo.elf
-	$(XOBJCOPY) -O binary firmware/nbiot_m2m_demo.elf firmware/nbiot_m2m_demo.bin
+	$(XCC) $(LDFLAGS) $(OBJS) -o firmware/$(PNAME).elf
+	$(XOBJCOPY) -O binary firmware/$(PNAME).elf firmware/$(PNAME).bin
 	cp $(OPENCPU_BASE)/utils/flash_download.cfg firmware/
 	cp $(OPENCPU_BASE)/utils/mt2625_bootloader.bin firmware/
 
@@ -78,6 +79,13 @@ sinclude .config
 
 $(SRC_DIRS)/compile.h:
 	$(SDK_BASE)/scripts/mkcompile_h $@ $(XCC) $(CONFIG_CPU) $(CONFIG_VERSION) $(CONFIG_HW_VERSION)
+
+fota: all
+	@echo "Generate the FOTA image..."
+	cp $(OPENCPU_BASE)/utils/package.xml firmware/
+	cp firmware/$(PNAME).bin firmware/ROM.bin
+	cp firmware/$(PNAME).elf firmware/ROM.elf
+	$(TOOLCHAIN_DIR)/../bin/7z a -tzip firmware/$(PNAME).zip firmware/ROM.* firmware/package.xml
 	
 clean:
 	@rm -f $(subst /,\,$(OBJS))

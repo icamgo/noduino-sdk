@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<rsfotadesc>
+  <upunit type="image">
+    <blocksize>0x1000</blocksize>
+    <ramsize>0x180000</ramsize>
+    <partition type="update">
+      <baseaddr>0x12000</baseaddr>
+      <range>0x280000</range>
+      <imagefile>ROM.bin</imagefile>
+      <elffile>ROM.elf</elffile>
+    </partition>
+    <partition type="backup">
+      <baseaddr>0x292000</baseaddr>
+      <range>0xD3000</range>
+      <buaddr>0x364000</buaddr>
+    </partition>
+  </upunit>
+</rsfotadesc>
