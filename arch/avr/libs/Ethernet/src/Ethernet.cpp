@@ -28,8 +28,9 @@ DhcpClass* EthernetClass::_dhcp = NULL;
 
 int EthernetClass::begin(uint8_t *mac, unsigned long timeout, unsigned long responseTimeout)
 {
-	static DhcpClass s_dhcp;
-	_dhcp = &s_dhcp;
+	//static DhcpClass s_dhcp;
+	//_dhcp = &s_dhcp;
+	_dhcp = new DhcpClass();
 
 	// Initialise the basic info
 	if (W5100.init() == 0) return 0;
