@@ -4,6 +4,7 @@
 */
 
 #include "m5311_opencpu.h"
+#include "compile.h"
 
 /*
   综合测试函数  
@@ -24,7 +25,7 @@ void test_all_in_one()
 	hal_spi_master_send_and_receive_config_t spi_send_and_receive_config;
 	custom_uart_init();
 	opencpu_printf("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");	
-	opencpu_printf("NodeOcean version 2.0.0 Mon Jun 24 15:51:25 CST 2019 (Jack@mtgaga-surface)\r\n");
+	opencpu_printf("%s\r\n", noduino_banner);
 
 	opencpu_printf(opencpu_fota_version_cb());
 	opencpu_printf("\nHW VERSION:%d\n",get_band_version());

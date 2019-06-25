@@ -4,7 +4,7 @@
 
 SDK_BASE		?= ../..
 OPENCPU_BASE	?= $(SDK_BASE)/arch/opencpu
-TOOLCHAIN_DIR	?= $(SDK_BASE)/toolchain
+TOOLCHAIN_DIR	?= $(SDK_BASE)/toolchain/arm-none-eabi
 
 HWVER := LV 
 
@@ -13,10 +13,10 @@ LD_SCRIPT	:= mt2625_flash_bring_up.ld
 
 LD_SCRIPT	:= $(addprefix -T$(OPENCPU_BASE)/lib/,$(LD_SCRIPT))
 
-XCC := $(TOOLCHAIN_DIR)/arm-none-eabi-4.9-2015q3/bin/arm-none-eabi-gcc
-XAR := $(TOOLCHAIN_DIR)/arm-none-eabi-4.9-2015q3/bin/arm-none-eabi-ar
-XLD := $(TOOLCHAIN_DIR)/arm-none-eabi-4.9-2015q3/bin/arm-none-eabi-ld
-XOBJCOPY := $(TOOLCHAIN_DIR)/arm-none-eabi-4.9-2015q3/bin/arm-none-eabi-objcopy
+XCC := $(TOOLCHAIN_DIR)/bin/arm-none-eabi-gcc
+XAR := $(TOOLCHAIN_DIR)/bin/arm-none-eabi-ar
+XLD := $(TOOLCHAIN_DIR)/bin/arm-none-eabi-ld
+XOBJCOPY := $(TOOLCHAIN_DIR)/bin/arm-none-eabi-objcopy
 
 CFLAGS := -mlittle-endian -mthumb -mcpu=cortex-m4			\
 			-mfpu=fpv4-sp-d16 -mfloat-abi=hard 				\
@@ -62,7 +62,7 @@ SRC_DIRS := .
 
 OBJS = $(foreach dir,$(SRC_DIRS),$(patsubst %.c,%.o,$(wildcard $(dir)/*.c)))
 
-all: $(OBJS)
+all: $(SRC_DIRS)/compile.h $(OBJS)
 	@echo "linking libs"
 	@mkdir -p firmware
 	$(XCC) $(LDFLAGS) $(OBJS) -o firmware/nbiot_m2m_demo.elf
@@ -73,8 +73,14 @@ all: $(OBJS)
 %.o: %.c
 	@echo 'compile $<...'''
 	@$(XCC) $(CFLAGS) $(INCDIR) -c $< -o $@
+
+sinclude .config
+
+$(SRC_DIRS)/compile.h:
+	$(SDK_BASE)/scripts/mkcompile_h $@ $(XCC) $(CONFIG_CPU) $(CONFIG_VERSION) $(CONFIG_HW_VERSION)
 	
 clean:
 	@rm -f $(subst /,\,$(OBJS))
 	@rm -rf firmware
+	@rm -f compile.h
 	@echo clean ends
