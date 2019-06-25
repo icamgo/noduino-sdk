@@ -21,17 +21,18 @@ static bool st = 0;
 
 void do_pir()
 {
-	st = digitalRead(D5);
-	serial_printf("pir =%d\r\n", st);
+	//st = digitalRead(D5);
+	//serial_printf("pir =%d\r\n", st);
+	serial_printf("pir chg\r\n");
 }
 
 void setup()
 {
 	serial_begin(115200);
 
-	pinMode(D5, INPUT);
+	//pinMode(D9, INPUT);
 
-	attachInterrupt(D5, do_pir, CHANGE);
+	attachInterrupt(D9, do_pir, CHANGE);
 
 	serial_printf("%s\r\n", "Testing the pir");
 }
