@@ -34,7 +34,13 @@ void hello_timerfunc(void *arg)
 
 	os_printf("ip.addr = 0x%08X\r\n", ip.addr);
 
-	os_printf("IP = " IPSTR "\r\n", IP2STR(&(ip.addr)));
+	//os_printf("IP = " IPSTR "\r\n", IP2STR(&(ip.addr)));
+	os_printf("IP = " IPSTR "\r\n", IP2STR(&ip));
+
+	if (ip.addr == 0x0100000A) {
+
+		os_printf("Hahahahaha, it's OK\r\n");
+	}
 }
 
 //user_init is the user entry point of the Espressif SDK
