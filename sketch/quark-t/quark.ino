@@ -203,10 +203,8 @@ void setup()
 	pinMode(7, OUTPUT);
 #endif
 
-	// Open serial communications and wait for port to open:
 	Serial.begin(115200);
 
-	// Print a start message
 	INFO_S("%s", "Noduino Quark LoRa Node\n");
 
 // See http://www.nongnu.org/avr-libc/user-manual/using_tools.html
@@ -217,8 +215,9 @@ void setup()
 
 	power_on_dev();		// turn on device power
 
-	pt1000_init();	// initialization of the sensor
+	pt1000_init();		// initialization of the sensor
 
+#if 0
 #ifdef USE_SX1278
 	sx1272.ON();		// power on the module
 
@@ -277,18 +276,27 @@ void setup()
 	// there seem to be some issue with RSSI reading
 	//sx1272._RSSIonSend = false;
 #endif
+#endif
 
-	// Set CRC off
-	//e = sx1272.setCRC_OFF();
+#else
+	sx1272.sx1278_qsetup(CH_00_433);
+
+	sx1272.setNodeAddress(node_addr);
+
+#ifdef ENABLE_CAD
+	sx1272._enableCarrierSense = true;
+#endif
+
+#endif
 
 	INFO_S("%s", "SX1272 successfully configured\n");
-#endif
 }
 
 void qsetup()
 {
 	pt1000_init();	// initialization of the sensor
 
+#if 0
 #ifdef USE_SX1278
 	sx1272.ON();		// power on the module
 
@@ -313,6 +321,13 @@ void qsetup()
 	sx1272._enableCarrierSense = true;
 #endif
 
+#endif
+#endif
+	sx1272.sx1278_qsetup(CH_00_433);
+	sx1272.setNodeAddress(node_addr);
+
+#ifdef ENABLE_CAD
+	sx1272._enableCarrierSense = true;
 #endif
 }
 
