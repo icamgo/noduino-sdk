@@ -74,7 +74,7 @@
 
 ///////////////////////////////////////////////////////////////////
 // CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-unsigned int idlePeriod = 64;	// 64 seconds
+unsigned int idlePeriod = 90;	// 90 seconds
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
@@ -141,8 +141,7 @@ const uint32_t DEFAULT_CHANNEL = CH_00_470;	// 470.0MHz
 unsigned int nCycle = idlePeriod / LOW_POWER_PERIOD;
 #endif
 
-unsigned long nextTransmissionTime = 0L;
-int loraMode = LORAMODE;
+uint32_t next_tx = 0L;
 
 #ifdef WITH_EEPROM
 struct sx1272config {
@@ -243,7 +242,7 @@ void setup()
 
 	// We use the LoRaWAN mode:
 	// BW=125KHz, SF=12, CR=4/5, sync=0x34
-	e = sx1272.setMode(loraMode);
+	e = sx1272.setMode(LORAMODE);
 	INFO_S("%s", "Setting Mode: state ");
 	INFOLN("%d", e);
 
@@ -301,7 +300,7 @@ void qsetup()
 	sx1272.ON();		// power on the module
 
 	// BW=125KHz, SF=12, CR=4/5, sync=0x34
-	sx1272.setMode(loraMode);
+	sx1272.setMode(LORAMODE);
 
 	// Select frequency channel
 	sx1272.setChannel(DEFAULT_CHANNEL);
@@ -341,7 +340,7 @@ void loop(void)
 
 #ifndef LOW_POWER
 	// 600000+random(15,60)*1000
-	if (millis() > nextTransmissionTime) {
+	if (millis() > next_tx) {
 #endif
 
 		temp = pt1000_get_temp();
@@ -487,13 +486,14 @@ void loop(void)
 
 		setup();
 #else
-		INFOLN("%ld", nextTransmissionTime);
+		INFOLN("%ld", next_tx);
 		INFO_S("%s", "Will send next value at\n");
+
 		// use a random part also to avoid collision
-		nextTransmissionTime =
-		    millis() + (unsigned long)idlePeriod * 1000 +
-		    (unsigned long)random(15, 60) * 10;
-		INFOLN("%ld", nextTransmissionTime);
+		next_tx = millis() + (uint32_t)idlePeriod * 1000
+				+ (uint32_t)random(10, 60) * 100;
+
+		INFOLN("%ld", next_tx);
 	}
 #endif
 }
