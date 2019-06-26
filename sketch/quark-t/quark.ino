@@ -279,7 +279,7 @@ void setup()
 #endif
 
 #else
-	sx1272.sx1278_qsetup(CH_00_433);
+	sx1272.sx1278_qsetup(CH_00_433, 11);
 
 	sx1272.setNodeAddress(node_addr);
 
@@ -323,7 +323,7 @@ void qsetup()
 
 #endif
 #endif
-	sx1272.sx1278_qsetup(CH_00_433);
+	sx1272.sx1278_qsetup(CH_00_433, 11);
 	sx1272.setNodeAddress(node_addr);
 
 #ifdef ENABLE_CAD
