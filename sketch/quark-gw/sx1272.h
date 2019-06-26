@@ -28,15 +28,21 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <Arduino.h>
-#include <softspi.h>
+#include <SPI.h>
+
+#ifdef USE_SOFTSPI
+#include "softspi.h"
+#endif
 
 #ifndef inttypes_h
 #include <inttypes.h>
 #endif
 
-#define DEBUG_CAD					1
+//#define DEBUG_CAD					1
 
 #define USE_SOFTSPI					1
+
+#define SX1272_debug_mode 			1
 
 #define W_REQUESTED_ACK
 //#define W_NET_KEY
@@ -62,7 +68,6 @@
 #define SX1276Chip  				1
 #define SX1278Chip  				1
 
-#define SX1272_debug_mode 			1
 //#define SX1272_led_send_receive
 
 #ifdef SX1272_led_send_receive
@@ -412,7 +417,7 @@ class SX1272 {
 	// clears the interruption flags.
 	void clearFlags();
 
-	void sx1278_qsetup(uint32_t freq);
+	void sx1278_qsetup(uint32_t freq, uint8_t dbm);
 
 	uint8_t setLORA();
 	uint8_t setFSK();
