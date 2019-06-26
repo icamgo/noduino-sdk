@@ -30,10 +30,6 @@
 #include <Arduino.h>
 #include <SPI.h>
 
-#ifdef USE_SOFTSPI
-#include "softspi.h"
-#endif
-
 #ifndef inttypes_h
 #include <inttypes.h>
 #endif
@@ -41,6 +37,10 @@
 //#define DEBUG_CAD					1
 
 #define USE_SOFTSPI					1
+
+#ifdef USE_SOFTSPI
+#include "softspi.h"
+#endif
 
 #define SX1272_debug_mode 			1
 

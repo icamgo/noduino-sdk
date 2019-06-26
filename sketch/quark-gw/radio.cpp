@@ -41,7 +41,7 @@ void radio_setup()
 
 	sx1272.setPowerDBM((uint8_t) MAX_DBM);
 #else
-	sx1272.sx1278_qsetup(CH_00_433);
+	sx1272.sx1278_qsetup(CH_00_433, 20);
 #endif
 
 	// Set the node address and print the result
