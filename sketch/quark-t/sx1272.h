@@ -38,7 +38,7 @@
 #include <inttypes.h>
 #endif
 
-#define DEBUG_CAD					1
+//#define DEBUG_CAD					1
 
 //#define USE_SOFTSPI					1
 
@@ -417,7 +417,7 @@ class SX1272 {
 	// clears the interruption flags.
 	void clearFlags();
 
-	void sx1278_qsetup(uint32_t freq);
+	void sx1278_qsetup(uint32_t freq, uint8_t dbm);
 
 	uint8_t setLORA();
 	uint8_t setFSK();

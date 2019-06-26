@@ -147,7 +147,7 @@ void SX1272::reset()
 	delay(500);
 }
 
-void SX1272::sx1278_qsetup(uint32_t freq)
+void SX1272::sx1278_qsetup(uint32_t freq, uint8_t dbm)
 {
 #ifdef USE_SOFTSPI
 	spi_init();
@@ -250,21 +250,40 @@ void SX1272::sx1278_qsetup(uint32_t freq)
 
 	_needPABOOST = true;
 
-	//setPowerDBM(20);
+	if (dbm < 0 || dbm > 20) {
+		dbm = 14;
+	}
+
 	#define REG_PADAC		0x4D
-	writeRegister(REG_PADAC, 0x87);
-	writeRegister(REG_PA_CONFIG, 0xFF);
+	switch (dbm) {
+		case 20:
+			//setPowerDBM(20);
+			writeRegister(REG_PADAC, 0x87);
+			writeRegister(REG_PA_CONFIG, 0xFF);
 
-	//setMaxCurrent(0x0B);	// 100mA
-	/*
-	 * 0x12 -- 150mA
-	 * 0x10 -- 130mA
-	 * 0x0B -- 100mA
-	 * 0x1B -- 240mA
-	*/
-	writeRegister(REG_OCP, 0x1B | 0b00100000);
-
-	_power = 20;
+			//setMaxCurrent(0x0B);	// 100mA
+			/*
+			 * 0x12 -- 150mA
+			 * 0x10 -- 130mA
+			 * 0x0B -- 100mA
+			 * 0x1B -- 240mA
+			 * 0x01 -- 50mA
+			*/
+			writeRegister(REG_OCP, 0x1B | 0b00100000);
+			_power = 20;
+			break;
+		case 17:
+			writeRegister(REG_PADAC, 0x84);
+			writeRegister(REG_PA_CONFIG, 0xFF);
+			writeRegister(REG_OCP, 0x0B | 0b00100000);
+			_power = 17;
+			break;
+		default:
+			writeRegister(REG_PADAC, 0x84);
+			writeRegister(REG_PA_CONFIG, 0xF0 | (dbm-2));
+			writeRegister(REG_OCP, 0x00 | 0b00100000);
+			_power = dbm;
+	}
 }
 
 uint8_t SX1272::ON()
