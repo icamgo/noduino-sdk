@@ -18,6 +18,13 @@
 
 #include "pressure.h"
 
+#define PC10_ADDR		0x28
+#define LEN				2
+
+#define PC10_HIGH		14716
+#define PC10_MID		8181
+#define PC10_LOW		1640
+
 void pc10_init()
 {
 	Wire.begin();
@@ -38,18 +45,39 @@ float get_pressure()
 	float ad = get_adc_uv();
 	return ad;
 #else
+	uint16_t pv = 0;
+	float p;
 
+	pc10_wakeup();
+
+	pv = pc10_read();
+
+	Serial.print("pc10 = ");
+	Serial.println(pv, HEX);
+
+	if (pv >= PC10_LOW && pv < PC10_MID) {
+		p = 8000.0 / (PC10_MID - PC10_LOW) * (pv - PC10_LOW);
+	} else if (pv >= PC10_MID && pv <= PC10_HIGH) {
+		p = 8000.0 / (PC10_HIGH - PC10_MID) * (pv - PC10_MID) + 8000.0;
+	} else {
+		p = -1.0;
+	}
+	return p;
 #endif
 }
 
-#define ADDR	0x28
-#define LEN		2
 uint16_t pc10_read()
 {
 	uint8_t buf[LEN] = {};
 	uint8_t i;
 
-	Wire.requestFrom(ADDR, LEN);
+	Wire.beginTransmission(PC10_ADDR);
+	Wire.write(0x09);
+	Wire.endTransmission();
+
+	delay(1);
+
+	Wire.requestFrom(PC10_ADDR, LEN);
 
 	if (Wire.available() != LEN)
 		return -1;
@@ -59,4 +87,9 @@ uint16_t pc10_read()
 	}
 	
 	return ((buf[0] << 8) & 0x3FFF) | buf[1];
+}
+
+void pc10_wakeup()
+{
+	Wire.requestFrom(PC10_ADDR, 0);
 }

@@ -30,5 +30,6 @@
 void pressure_init();
 float get_pressure();
 uint16_t pc10_read();
+void pc10_wakeup();
 
 #endif

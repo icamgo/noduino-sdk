@@ -346,8 +346,8 @@ void loop(void)
 		pres = get_pressure();
 		vbat = get_vbat();
 
-		INFOLN("%s", "Pressure is ");
-		Serial.println(pc10_read(), HEX);
+		INFO("%s", "Pressure = ");
+		INFOLN("%f", pres);
 
 #ifdef WITH_APPKEY
 		app_key_offset = sizeof(my_appKey);
@@ -364,7 +364,7 @@ void loop(void)
 
 		// this is for testing, uncomment if you just want to test, without a real pressure sensor plugged
 		//strcpy(vbat_s, "noduino");
-		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/T/%s", vbat_s, pres_s);
+		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/P/%s", vbat_s, pres_s);
 
 		INFO_S("%s", "Sending ");
 		INFOLN("%s", (char *)(message + app_key_offset));
