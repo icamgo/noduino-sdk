@@ -39,6 +39,7 @@ void pressure_init()
 #endif
 }
 
+/* return hPa */
 float get_pressure()
 {
 #ifdef USE_MCP342x
