@@ -217,18 +217,6 @@ unsigned long MCP342x::Resolution::getConversionTime(void) const
 
 unsigned long MCP342x::Config::getConversionTime(void) const
 {
-  return Resolution(val).getConversionTime();
-  // switch ((int)getResolution()) {
-  // case 12:
-  //   return 4167; // 240 SPS
-  // case 14:
-  //   return 16667; // 60 SPS
-  // case 16:
-  //   return 66667; // 15 SPS
-  // case 18:
-  //   return 266667; // 3.75 SPS
-  // }
-  // return 0; // Shouldn't happen
+  Resolution res = Resolution(val);
+  return res.getConversionTime();
 }
-
-
