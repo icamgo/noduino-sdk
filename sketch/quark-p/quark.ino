@@ -33,34 +33,13 @@
 #define USE_SX1278		1
 #define LOW_POWER
 
+#define MAX_DBM			11
+#define TXRX_CH			CH_00_433
+
 ///////////////////////////////////////////////////////////////////
 //#define WITH_EEPROM
 //#define WITH_APPKEY
 //#define WITH_ACK
-//#define LOW_POWER_TEST
-///////////////////////////////////////////////////////////////////
-
-// IMPORTANT SETTINGS
-///////////////////////////////////////////////////////////////////
-// please uncomment only 1 choice
-//#define ETSI_EUROPE_REGULATION
-//#define FCC_US_REGULATION
-//#define SENEGAL_REGULATION
-#define LONG_RANG_TESTING
-///////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////
-// please uncomment only 1 choice
-//#define BAND868
-//#define BAND900
-#define BAND433
-//#define BAND470
-///////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////
-// uncomment if the rf output of your radio module use the PABOOST
-// line instead of the RFO line
-#define PABOOST
 ///////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////
@@ -91,38 +70,6 @@ uint8_t message[50];
 
 #ifdef WITH_EEPROM
 #include <EEPROM.h>
-#endif
-
-#ifdef ETSI_EUROPE_REGULATION
-#define MAX_DBM 14
-// previous way for setting output power
-// char powerLevel='M';
-#elif defined SENEGAL_REGULATION
-#define MAX_DBM 10
-// previous way for setting output power
-// 'H' is actually 6dBm, so better to use the new way to set output power
-// char powerLevel='H';
-#elif defined FCC_US_REGULATION
-#define MAX_DBM 14
-#elif defined LONG_RANG_TESTING
-#define MAX_DBM 20
-#endif
-
-#ifdef BAND868
-#ifdef SENEGAL_REGULATION
-const uint32_t DEFAULT_CHANNEL = CH_04_868;
-#else
-const uint32_t DEFAULT_CHANNEL = CH_10_868;
-#endif
-#elif defined BAND900
-//const uint32_t DEFAULT_CHANNEL=CH_05_900;
-// For HongKong, Japan, Malaysia, Singapore, Thailand, Vietnam: 920.36MHz     
-const uint32_t DEFAULT_CHANNEL = CH_08_900;
-#elif defined BAND433
-const uint32_t DEFAULT_CHANNEL = CH_00_433;	// 433.3MHz
-//const uint32_t DEFAULT_CHANNEL = CH_03_433;	// 434.3MHz
-#elif defined BAND470
-const uint32_t DEFAULT_CHANNEL = CH_00_470;	// 470.0MHz
 #endif
 
 #ifdef WITH_ACK
@@ -190,8 +137,6 @@ void power_off_dev()
 
 void setup()
 {
-	int e;
-
 #ifndef USE_SI2301
 	pinMode(6, OUTPUT);
 #else
@@ -202,8 +147,6 @@ void setup()
 
 	INFO_S("%s", "Noduino Quark LoRa Node\n");
 
-// See http://www.nongnu.org/avr-libc/user-manual/using_tools.html
-// for the list of define from the AVR compiler
 #ifdef __AVR_ATmega328P__
 	INFO_S("%s", "ATmega328P detected\n");
 #endif
@@ -212,70 +155,9 @@ void setup()
 
 	pressure_init();		// initialization of the sensor
 
-#if 0
 #ifdef USE_SX1278
-	sx1272.ON();		// power on the module
-
-#ifdef WITH_EEPROM
-	// get config from EEPROM
-	EEPROM.get(0, my_sx1272config);
-
-	// found a valid config?
-	if (my_sx1272config.flag1 == 0x12 && my_sx1272config.flag2 == 0x34) {
-		INFO_S("%s", "Get back previous sx1272 config\n");
-
-		// set sequence number for SX1272 library
-		sx1272._packetNumber = my_sx1272config.seq;
-		INFO_S("%s", "Using packet sequence number of ");
-		INFOLN("%d", sx1272._packetNumber);
-	} else {
-		// otherwise, write config and start over
-		my_sx1272config.flag1 = 0x12;
-		my_sx1272config.flag2 = 0x34;
-		my_sx1272config.seq = sx1272._packetNumber;
-	}
-#endif
-
-	// We use the LoRaWAN mode:
-	// BW=125KHz, SF=12, CR=4/5, sync=0x34
-	e = sx1272.setMode(LORAMODE);
-	INFO_S("%s", "Setting Mode: state ");
-	INFOLN("%d", e);
-
-	// Select frequency channel
-	e = sx1272.setChannel(DEFAULT_CHANNEL);
-	INFO_S("%s", "Setting Channel: state ");
-	INFOLN("%d", e);
-
-	// Select amplifier line; PABOOST or RFO
-#ifdef PABOOST
-	sx1272._needPABOOST = true;
-#endif
-
-	e = sx1272.setPowerDBM((uint8_t) MAX_DBM);
-	INFO_S("%s", "Setting Power: state ");
-	INFOLN("%d", e);
-
-	// Set the node address and print the result
-	e = sx1272.setNodeAddress(node_addr);
-	INFO_S("%s", "Setting node addr: state ");
-	INFOLN("%d", e);
-
-#ifdef ENABLE_CAD
-	// enable carrier sense
-	sx1272._enableCarrierSense = true;
-#endif
-
-#ifdef LOW_POWER
-	// TODO: with low power, when setting the radio module in sleep mode
-	// there seem to be some issue with RSSI reading
-	//sx1272._RSSIonSend = false;
-#endif
-#endif
-
-#else
 	// Set the TX power to 11dBm
-	sx1272.sx1278_qsetup(CH_00_433, 11);
+	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
 
 	sx1272.setNodeAddress(node_addr);
 
@@ -283,47 +165,21 @@ void setup()
 	sx1272._enableCarrierSense = true;
 #endif
 
-#endif
-
 	INFO_S("%s", "SX1272 successfully configured\n");
+#endif
 }
 
 void qsetup()
 {
 	pressure_init();	// initialization of the sensor
 
-#if 0
 #ifdef USE_SX1278
-	sx1272.ON();		// power on the module
-
-	// BW=125KHz, SF=12, CR=4/5, sync=0x34
-	sx1272.setMode(LORAMODE);
-
-	// Select frequency channel
-	sx1272.setChannel(DEFAULT_CHANNEL);
-
-#ifdef PABOOST
-	// Select amplifier line; PABOOST or RFO
-	sx1272._needPABOOST = true;
-#endif
-
-	sx1272.setPowerDBM((uint8_t) MAX_DBM);
-
-	// Set the node address and print the result
-	sx1272.setNodeAddress(node_addr);
-
-#ifdef ENABLE_CAD
-	// enable carrier sense
-	sx1272._enableCarrierSense = true;
-#endif
-
-#endif
-#endif
-	sx1272.sx1278_qsetup(CH_00_433, 11);
+	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
 	sx1272.setNodeAddress(node_addr);
 
 #ifdef ENABLE_CAD
 	sx1272._enableCarrierSense = true;
+#endif
 #endif
 }
 
