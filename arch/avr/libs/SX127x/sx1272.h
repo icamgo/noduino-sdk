@@ -40,8 +40,6 @@
 
 //#define DEBUG_CAD					1
 
-//#define USE_SOFTSPI					1
-
 #define SX1272_debug_mode 			1
 
 #define W_REQUESTED_ACK
