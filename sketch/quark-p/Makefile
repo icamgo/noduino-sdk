@@ -73,7 +73,7 @@ $(LIB_DIR)/SPI/src/SPI.cpp								\
 $(LIB_DIR)/MCP342x/src/MCP342x.cpp						\
 $(LIB_DIR)/Wire/src/Wire.cpp							\
 $(LIB_DIR)/LowPower/LowPower.cpp						\
-./sx1272.cpp											\
+$(LIB_DIR)/SX127x/sx1272.cpp							\
 ./vbat.cpp												\
 ./adc.cpp												\
 ./pressure.cpp
@@ -109,6 +109,7 @@ CINCS += -I  $(LIB_DIR)/SPI/src						\
 			-I $(LIB_DIR)/MCP342x/src				\
 			-I $(LIB_DIR)/Wire/src					\
 			-I $(LIB_DIR)/Wire/src/utility			\
+			-I $(LIB_DIR)/SX127x					\
 			-I .									
 
 CXXINCS += -I  $(LIB_DIR)/SPI/src					\
@@ -116,6 +117,7 @@ CXXINCS += -I  $(LIB_DIR)/SPI/src					\
 			-I $(LIB_DIR)/LowPower					\
 			-I $(LIB_DIR)/MCP342x/src				\
 			-I $(LIB_DIR)/Wire/src					\
+			-I $(LIB_DIR)/SX127x					\
 			-I .									
 
 # Compiler flag to set the C Standard level.
