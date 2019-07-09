@@ -192,7 +192,6 @@ void loop(void)
 	float pres, vbat;
 
 #ifndef LOW_POWER
-	// 600000+random(15,60)*1000
 	if (millis() > next_tx) {
 #endif
 
@@ -342,9 +341,7 @@ void loop(void)
 		INFOLN("%ld", next_tx);
 		INFO_S("%s", "Will send next value at\n");
 
-		// use a random part also to avoid collision
-		next_tx = millis() + (uint32_t)idlePeriod * 1000
-				+ (uint32_t)random(10, 60) * 100;
+		next_tx = millis() + (uint32_t)idlePeriod * 1000;
 
 		INFOLN("%ld", next_tx);
 	}
