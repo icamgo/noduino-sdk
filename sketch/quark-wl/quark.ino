@@ -298,6 +298,41 @@ void push_data()
 #endif
 }
 
+void enter_low_power()
+{
+	int e;
+
+#ifdef USE_SX1278
+	e = sx1272.setSleepMode();
+	if (!e)
+		INFO_S("%s", "Successfully switch LoRa into sleep mode\n");
+	else
+		INFO_S("%s", "Could not switch LoRa into sleep mode\n");
+#endif
+
+	digitalWrite(SX1272_RST, LOW);
+
+	SPI.end();
+	digitalWrite(10, LOW);
+	digitalWrite(11, LOW);
+	digitalWrite(12, LOW);
+	digitalWrite(13, LOW);
+
+	FLUSHOUTPUT
+	delay(50);
+
+	power_off_dev();
+
+	for (int i = 0; i < nCycle; i++) {
+
+		// ATmega328P, ATmega168, ATmega32U4
+		LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+
+		//INFO_S("%s", ".");
+		FLUSHOUTPUT delay(10);
+	}
+}
+
 void push_alarm()
 {
 	pinMode(3, INPUT);
@@ -308,52 +343,21 @@ void push_alarm()
 	qsetup();
 
 	push_data();
+
+	enter_low_power();
 }
 
 void loop(void)
 {
-	int e;
-
 #ifndef LOW_POWER
 	if (millis() > next_tx) {
 #endif
 		push_data();
 
 #ifdef LOW_POWER
+
 		INFO_S("%s", "Switch to power saving mode\n");
-
-#ifdef USE_SX1278
-		e = sx1272.setSleepMode();
-		if (!e)
-			INFO_S("%s", "Successfully switch LoRa into sleep mode\n");
-		else
-			INFO_S("%s", "Could not switch LoRa into sleep mode\n");
-#endif
-
-		//sx1272.reset();
-		//sx1272.OFF();
-
-		digitalWrite(SX1272_RST, LOW);
-
-		SPI.end();
-		digitalWrite(10, LOW);
-		digitalWrite(11, LOW);
-		digitalWrite(12, LOW);
-		digitalWrite(13, LOW);
-
-		FLUSHOUTPUT
-		delay(50);
-
-		power_off_dev();
-
-		for (int i = 0; i < nCycle; i++) {
-
-			// ATmega328P, ATmega168, ATmega32U4
-			LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
-
-			//INFO_S("%s", ".");
-			FLUSHOUTPUT delay(10);
-		}
+		enter_low_power();
 
 		delay(50);
 
