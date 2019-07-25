@@ -53,7 +53,7 @@
 
 ///////////////////////////////////////////////////////////////////
 // CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-unsigned int idlePeriod = 30;	// 1800 seconds
+unsigned int idlePeriod = 3600;	// 3600 seconds
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
@@ -101,6 +101,8 @@ struct sx1272config {
 
 sx1272config my_sx1272config;
 #endif
+
+void push_alarm();
 
 char *ftoa(char *a, double f, int precision)
 {
@@ -152,6 +154,9 @@ void setup()
 	// The interrupt of water leak is through D3
 	pinMode(3, INPUT);
 
+	// attach interrupt in D3, falling is water leak
+	attachInterrupt(1, push_alarm, FALLING);
+
 	Serial.begin(115200);
 
 	INFO_S("%s", "Noduino Quark LoRa Node\n");
@@ -191,110 +196,128 @@ void qsetup()
 #endif
 }
 
-void loop(void)
+void push_data()
 {
 	long startSend;
 	long endSend;
-	uint8_t app_key_offset = 0;
 	int e;
+	uint8_t app_key_offset = 0;
 	float vbat;
 	int wl = 0;
+
+	vbat = get_vbat();
+	wl = digitalRead(3);
+
+#ifdef WITH_APPKEY
+	app_key_offset = sizeof(my_appKey);
+	// set the app key in the payload
+	memcpy(message, my_appKey, app_key_offset);
+#endif
+
+	uint8_t r_size;
+
+	// the recommended format if now \!TC/22.5
+	char vbat_s[10];
+	ftoa(vbat_s, vbat, 2);
+
+	// this is for testing, uncomment if you just want to test, without a real pressure sensor plugged
+	//strcpy(vbat_s, "noduino");
+	r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/WL/%d", vbat_s, wl);
+
+	INFO_S("%s", "Sending ");
+	INFOLN("%s", (char *)(message + app_key_offset));
+
+	INFO_S("%s", "Real payload size is ");
+	INFOLN("%d", r_size);
+
+	int pl = r_size + app_key_offset;
+
+#ifdef ENABLE_CAD
+	sx1272.CarrierSense();
+#endif
+
+	startSend = millis();
+
+#ifdef USE_SX1278
+#ifdef WITH_APPKEY
+	// indicate that we have an appkey
+	sx1272.setPacketType(PKT_TYPE_DATA | PKT_FLAG_DATA_WAPPKEY);
+#else
+	// just a simple data packet
+	sx1272.setPacketType(PKT_TYPE_DATA);
+#endif
+
+	// Send message to the gateway and print the result
+	// with the app key if this feature is enabled
+#ifdef WITH_ACK
+	int n_retry = NB_RETRIES;
+
+	do {
+		e = sx1272.sendPacketTimeoutACK(DEST_ADDR,
+						message, pl);
+
+		if (e == 3)
+			INFO_S("%s", "No ACK");
+
+		n_retry--;
+
+		if (n_retry)
+			INFO_S("%s", "Retry");
+		else
+			INFO_S("%s", "Abort");
+
+	} while (e && n_retry);
+#else
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, pl);
+#endif
+	endSend = millis();
+
+#ifdef WITH_EEPROM
+	// save packet number for next packet in case of reboot
+	my_sx1272config.seq = sx1272._packetNumber;
+	EEPROM.put(0, my_sx1272config);
+#endif
+
+	INFO_S("%s", "LoRa pkt size ");
+	INFOLN("%d", pl);
+
+	INFO_S("%s", "LoRa pkt seq ");
+	INFOLN("%d", sx1272.packet_sent.packnum);
+
+	INFO_S("%s", "LoRa Sent in ");
+	INFOLN("%ld", endSend - startSend);
+
+	INFO_S("%s", "LoRa Sent w/CAD in ");
+	INFOLN("%ld", endSend - sx1272._startDoCad);
+
+	INFO_S("%s", "Packet sent, state ");
+	INFOLN("%d", e);
+
+	INFO_S("%s", "Remaining ToA is ");
+	INFOLN("%d", sx1272.getRemainingToA());
+#endif
+}
+
+void push_alarm()
+{
+	pinMode(3, INPUT);
+
+	//enable the power of LoRa
+	power_on_dev();
+
+	qsetup();
+
+	push_data();
+}
+
+void loop(void)
+{
+	int e;
 
 #ifndef LOW_POWER
 	if (millis() > next_tx) {
 #endif
-
-		vbat = get_vbat();
-		wl = digitalRead(3);
-
-#ifdef WITH_APPKEY
-		app_key_offset = sizeof(my_appKey);
-		// set the app key in the payload
-		memcpy(message, my_appKey, app_key_offset);
-#endif
-
-		uint8_t r_size;
-
-		// the recommended format if now \!TC/22.5
-		char vbat_s[10];
-		ftoa(vbat_s, vbat, 2);
-
-		// this is for testing, uncomment if you just want to test, without a real pressure sensor plugged
-		//strcpy(vbat_s, "noduino");
-		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/WL/%d", vbat_s, wl);
-
-		INFO_S("%s", "Sending ");
-		INFOLN("%s", (char *)(message + app_key_offset));
-
-		INFO_S("%s", "Real payload size is ");
-		INFOLN("%d", r_size);
-
-		int pl = r_size + app_key_offset;
-
-#ifdef ENABLE_CAD
-		sx1272.CarrierSense();
-#endif
-
-		startSend = millis();
-
-#ifdef USE_SX1278
-#ifdef WITH_APPKEY
-		// indicate that we have an appkey
-		sx1272.setPacketType(PKT_TYPE_DATA | PKT_FLAG_DATA_WAPPKEY);
-#else
-		// just a simple data packet
-		sx1272.setPacketType(PKT_TYPE_DATA);
-#endif
-
-		// Send message to the gateway and print the result
-		// with the app key if this feature is enabled
-#ifdef WITH_ACK
-		int n_retry = NB_RETRIES;
-
-		do {
-			e = sx1272.sendPacketTimeoutACK(DEST_ADDR,
-							message, pl);
-
-			if (e == 3)
-				INFO_S("%s", "No ACK");
-
-			n_retry--;
-
-			if (n_retry)
-				INFO_S("%s", "Retry");
-			else
-				INFO_S("%s", "Abort");
-
-		} while (e && n_retry);
-#else
-		e = sx1272.sendPacketTimeout(DEST_ADDR, message, pl);
-#endif
-		endSend = millis();
-
-#ifdef WITH_EEPROM
-		// save packet number for next packet in case of reboot
-		my_sx1272config.seq = sx1272._packetNumber;
-		EEPROM.put(0, my_sx1272config);
-#endif
-
-		INFO_S("%s", "LoRa pkt size ");
-		INFOLN("%d", pl);
-
-		INFO_S("%s", "LoRa pkt seq ");
-		INFOLN("%d", sx1272.packet_sent.packnum);
-
-		INFO_S("%s", "LoRa Sent in ");
-		INFOLN("%ld", endSend - startSend);
-
-		INFO_S("%s", "LoRa Sent w/CAD in ");
-		INFOLN("%ld", endSend - sx1272._startDoCad);
-
-		INFO_S("%s", "Packet sent, state ");
-		INFOLN("%d", e);
-
-		INFO_S("%s", "Remaining ToA is ");
-		INFOLN("%d", sx1272.getRemainingToA());
-#endif
+		push_data();
 
 #ifdef LOW_POWER
 		INFO_S("%s", "Switch to power saving mode\n");
