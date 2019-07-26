@@ -34,7 +34,8 @@
 #endif
 
 #define USE_SX1278		1
-#define DEST_ADDR		2
+
+#define DEST_ADDR		1
 
 #define LOW_POWER
 
@@ -105,6 +106,9 @@ sx1272config my_sx1272config;
 #endif
 
 void push_alarm();
+#ifdef WATER_LEAK
+void push_wl_alarm();
+#endif
 
 char *ftoa(char *a, double f, int precision)
 {
@@ -164,7 +168,7 @@ void setup()
 	pinMode(3, INPUT);
 
 	// attach interrupt in D3, falling is water leak
-	attachInterrupt(1, push_alarm, FALLING);
+	attachInterrupt(1, push_wl_alarm, FALLING);
 #endif
 
 	Serial.begin(115200);
@@ -206,7 +210,7 @@ void qsetup()
 #endif
 }
 
-void push_data()
+void push_data(int wl_flag = 0)
 {
 	long startSend;
 	long endSend;
@@ -240,7 +244,10 @@ void push_data()
 	// this is for testing, uncomment if you just want to test, without a real pressure sensor plugged
 	//strcpy(vbat_s, "noduino");
 #ifdef WATER_LEAK
-	r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/DR/%d/WL/%d", vbat_s, door, wl);
+	if (wl_flag == 1)
+		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/WL/%d", vbat_s, wl);
+	else
+		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/DR/%d", vbat_s, door);
 #else
 	r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/DR/%d", vbat_s, door);
 #endif
@@ -363,10 +370,6 @@ void push_alarm()
 {
 	pinMode(2, INPUT);
 
-#ifdef WATER_LEAK
-	pinMode(3, INPUT);
-#endif
-
 	//enable the power of LoRa
 	power_on_dev();
 
@@ -376,6 +379,22 @@ void push_alarm()
 
 	enter_low_power();
 }
+
+#ifdef WATER_LEAK
+void push_wl_alarm()
+{
+	pinMode(3, INPUT);
+
+	//enable the power of LoRa
+	power_on_dev();
+
+	qsetup();
+
+	push_data(1);
+
+	enter_low_power();
+}
+#endif
 
 void loop(void)
 {
