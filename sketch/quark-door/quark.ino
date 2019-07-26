@@ -25,6 +25,8 @@
 //#define USE_SI2301		1
 #define ENABLE_CAD			1
 
+#define	WATER_LEAK		1
+
 #ifdef USE_SI2301
 #define node_addr		251
 #else
@@ -36,7 +38,7 @@
 
 #define LOW_POWER
 
-#define MAX_DBM			11
+#define MAX_DBM			20
 #define TXRX_CH			CH_00_433
 
 ///////////////////////////////////////////////////////////////////
@@ -157,6 +159,14 @@ void setup()
 	// attach interrupt in D2, falling is door open 
 	attachInterrupt(0, push_alarm, CHANGE);
 
+#ifdef WATER_LEAK
+	// The interrupt of water leak is through D3
+	pinMode(3, INPUT);
+
+	// attach interrupt in D3, falling is water leak
+	attachInterrupt(1, push_alarm, FALLING);
+#endif
+
 	Serial.begin(115200);
 
 	INFO_S("%s", "Noduino Quark LoRa Node\n");
@@ -204,9 +214,16 @@ void push_data()
 	uint8_t app_key_offset = 0;
 	float vbat;
 	int door = 0;
+#ifdef WATER_LEAK
+	int wl = 0;
+#endif
 
 	vbat = get_vbat();
 	door = digitalRead(2);
+
+#ifdef WATER_LEAK
+	wl = digitalRead(3);
+#endif
 
 #ifdef WITH_APPKEY
 	app_key_offset = sizeof(my_appKey);
@@ -222,13 +239,19 @@ void push_data()
 
 	// this is for testing, uncomment if you just want to test, without a real pressure sensor plugged
 	//strcpy(vbat_s, "noduino");
+#ifdef WATER_LEAK
+	r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/DR/%d/WL/%d", vbat_s, door, wl);
+#else
 	r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/DR/%d", vbat_s, door);
+#endif
 
+#ifdef DEBUG
 	INFO_S("%s", "Sending ");
 	INFOLN("%s", (char *)(message + app_key_offset));
 
 	INFO_S("%s", "Real payload size is ");
 	INFOLN("%d", r_size);
+#endif
 
 	int pl = r_size + app_key_offset;
 
@@ -278,6 +301,7 @@ void push_data()
 	EEPROM.put(0, my_sx1272config);
 #endif
 
+#ifdef DEBUG
 	INFO_S("%s", "LoRa pkt size ");
 	INFOLN("%d", pl);
 
@@ -295,6 +319,8 @@ void push_data()
 
 	INFO_S("%s", "Remaining ToA is ");
 	INFOLN("%d", sx1272.getRemainingToA());
+#endif
+
 #endif
 }
 
@@ -335,7 +361,11 @@ void enter_low_power()
 
 void push_alarm()
 {
+	pinMode(2, INPUT);
+
+#ifdef WATER_LEAK
 	pinMode(3, INPUT);
+#endif
 
 	//enable the power of LoRa
 	power_on_dev();
