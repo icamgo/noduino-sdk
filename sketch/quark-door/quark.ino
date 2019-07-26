@@ -152,7 +152,7 @@ void setup()
 #endif
 
 	// The interrupt of door open is through D2
-	pinMode(3, INPUT);
+	pinMode(2, INPUT);
 
 	// attach interrupt in D2, falling is door open 
 	attachInterrupt(0, push_alarm, CHANGE);
