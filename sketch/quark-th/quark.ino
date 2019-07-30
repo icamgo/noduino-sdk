@@ -23,19 +23,17 @@
 #include "sx1272.h"
 #include "vbat.h"
 #include "gps.h"
+#include "sht2x.h"
 
-#define USE_SI2301		1
+//#define USE_SI2301		1
 
-#define ENABLE_GPS			1
-//#define DISABLE_SX1278		1
+//#define ENABLE_GPS			1
+#define ENABLE_SHT2X		1
+#define DISABLE_SX1278		1
 
 #define ENABLE_CAD			1
 
-#ifdef USE_SI2301
-#define node_addr		249
-#else
-#define node_addr		250
-#endif
+#define node_addr				250
 
 #define DEST_ADDR				1
 
@@ -89,7 +87,7 @@ uint8_t my_appKey[4] = { 5, 6, 8, 8 };
 
 ///////////////////////////////////////////////////////////////////
 // IF YOU SEND A LONG STRING, INCREASE THE SIZE OF MESSAGE
-uint8_t message[50];
+uint8_t message[64];
 ///////////////////////////////////////////////////////////////////
 
 #define INFO_S(fmt,param)			Serial.print(F(param))
@@ -244,7 +242,9 @@ void setup()
 
 	power_on_dev();		// turn on device power
 
-	//sht2x_init();		// initialization of the sensor
+#ifdef ENABLE_SHT2X
+	sht2x_init();		// initialization of the sensor
+#endif
 
 #if 0
 #ifndef DISABLE_SX1278
@@ -329,7 +329,9 @@ void setup()
 
 void qsetup()
 {
-	//sht2x_init();	// initialization of the sensor
+#ifdef ENABLE_SHT2X
+	sht2x_init();	// initialization of the sensor
+#endif
 
 #if 0
 #ifndef DISABLE_SX1278
@@ -393,19 +395,21 @@ void loop(void)
 	long endSend;
 	uint8_t app_key_offset = 0;
 	int e;
-	float temp = 0, vbat;
+	float temp = 0, humi = 0, vbat;
 
 #ifndef LOW_POWER
 	if (millis() > next_tx) {
 #endif
 
-		//temp = sht2x_get_temp();
+#ifdef ENABLE_SHT2X
+		temp = sht2x_get_temp();
+		humi = sht2x_get_humi();
+#endif
 		vbat = get_vbat();
 
-		INFO_S("%s", "Temperature is ");
-		INFOLN("%f", temp);
-
+#ifdef ENABLE_GPS
 		get_pos();
+#endif
 
 #ifdef WITH_APPKEY
 		app_key_offset = sizeof(my_appKey);
@@ -416,17 +420,27 @@ void loop(void)
 		uint8_t r_size;
 
 		// the recommended format if now \!TC/22.5
-		char vbat_s[10], temp_s[10], lat_s[12], lon_s[12], alt_s[10];
+		char vbat_s[10], temp_s[10], humi_s[10];
+
 		ftoa(vbat_s, vbat, 2);
 		ftoa(temp_s, temp, 2);
+		ftoa(humi_s, humi, 0);
+
+#ifdef ENABLE_GPS
+		char lat_s[12], lon_s[12], alt_s[10];
+
 		ftoa(lat_s, gps_lat, 4);
 		ftoa(lon_s, gps_lon, 4);
 		ftoa(alt_s, gps_altitude, 0);
 
 		// this is for testing, uncomment if you just want to test, without a real pressure sensor plugged
 		//strcpy(vbat_s, "noduino");
-		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/T/%s/lat/%s/lon/%s/alt/%s",
-					vbat_s, temp_s, lat_s, lon_s, alt_s);
+		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/T/%s/H/%s/lat/%s/lon/%s/alt/%s",
+					vbat_s, temp_s, humi_s, lat_s, lon_s, alt_s);
+#else
+		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/T/%s/H/%s",
+					vbat_s, temp_s, humi_s);
+#endif
 
 		INFO_S("%s", "Sending ");
 		INFOLN("%s", (char *)(message + app_key_offset));
