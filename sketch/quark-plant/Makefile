@@ -77,6 +77,7 @@ $(LIB_DIR)/SX127x/sx1272.cpp							\
 $(LIB_DIR)/SHT2X/sht2x.cpp								\
 $(LIB_DIR)/BMP180/bmp180.cpp							\
 $(LIB_DIR)/TSL2561/tsl2561.cpp							\
+$(LIB_DIR)/MH-Z16/mhz16.cpp								\
 ./gps.cpp											\
 ./vbat.cpp												
 
@@ -114,6 +115,7 @@ CINCS += -I  $(LIB_DIR)/SPI/src						\
 			-I $(LIB_DIR)/SHT2X						\
 			-I $(LIB_DIR)/BMP180					\
 			-I $(LIB_DIR)/TSL2561					\
+			-I $(LIB_DIR)/MH-Z16					\
 			-I .									
 
 CXXINCS += -I  $(LIB_DIR)/SPI/src					\
@@ -124,6 +126,7 @@ CXXINCS += -I  $(LIB_DIR)/SPI/src					\
 			-I $(LIB_DIR)/SHT2X						\
 			-I $(LIB_DIR)/BMP180					\
 			-I $(LIB_DIR)/TSL2561					\
+			-I $(LIB_DIR)/MH-Z16					\
 			-I .									
 
 # Compiler flag to set the C Standard level.
