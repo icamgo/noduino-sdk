@@ -40,7 +40,15 @@
 
 //#define DEBUG_CAD					1
 
-#define SX1272_debug_mode 			1
+#define DEBUG_MODE		 			0
+
+#if DEBUG_MODE >= 1
+#define INFO			Serial.print
+#define INFO_LN			Serial.println
+#else
+#define INFO
+#define INFO_LN
+#endif
 
 #define W_REQUESTED_ACK
 //#define W_NET_KEY
