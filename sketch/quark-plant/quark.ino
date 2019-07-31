@@ -33,20 +33,20 @@
 //#define USE_SI2301		1
 
 //#define ENABLE_GPS			1
-//#define ENABLE_SHT2X		1
-//#define ENABLE_BMP180		1
+#define ENABLE_SHT2X		1
+#define ENABLE_BMP180		1
 #define ENABLE_TSL2561		1
 #define ENABLE_CO2			1
 
-#define DISABLE_SX1278		1
+//#define DISABLE_SX1278		1
 
 #define ENABLE_CAD			1
 
-#define node_addr				250
+#define node_addr				128
 
 #define DEST_ADDR				1
 
-//#define LOW_POWER				1
+#define LOW_POWER				1
 
 ///////////////////////////////////////////////////////////////////
 //#define WITH_EEPROM
@@ -85,7 +85,7 @@
 
 ///////////////////////////////////////////////////////////////////
 // CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-unsigned int idlePeriod = 6;	// 64 seconds
+unsigned int idlePeriod = 90;	// 64 seconds
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
@@ -299,71 +299,6 @@ void setup()
 	mhz16_begin(&Serial);
 #endif
 
-
-#if 0
-#ifndef DISABLE_SX1278
-	sx1272.ON();		// power on the module
-
-#ifdef WITH_EEPROM
-	// get config from EEPROM
-	EEPROM.get(0, my_sx1272config);
-
-	// found a valid config?
-	if (my_sx1272config.flag1 == 0x12 && my_sx1272config.flag2 == 0x34) {
-		INFO_S("%s", "Get back previous sx1272 config\n");
-
-		// set sequence number for SX1272 library
-		sx1272._packetNumber = my_sx1272config.seq;
-		INFO_S("%s", "Using packet sequence number of ");
-		INFOLN("%d", sx1272._packetNumber);
-	} else {
-		// otherwise, write config and start over
-		my_sx1272config.flag1 = 0x12;
-		my_sx1272config.flag2 = 0x34;
-		my_sx1272config.seq = sx1272._packetNumber;
-	}
-#endif
-
-	// We use the LoRaWAN mode:
-	// BW=125KHz, SF=12, CR=4/5, sync=0x34
-	e = sx1272.setMode(LORAMODE);
-	INFO_S("%s", "Setting Mode: state ");
-	INFOLN("%d", e);
-
-	// Select frequency channel
-	e = sx1272.setChannel(DEFAULT_CHANNEL);
-	INFO_S("%s", "Setting Channel: state ");
-	INFOLN("%d", e);
-
-	// Select amplifier line; PABOOST or RFO
-#ifdef PABOOST
-	sx1272._needPABOOST = true;
-#endif
-
-	e = sx1272.setPowerDBM((uint8_t) MAX_DBM);
-	INFO_S("%s", "Setting Power: state ");
-	INFOLN("%d", e);
-
-	// Set the node address and print the result
-	e = sx1272.setNodeAddress(node_addr);
-	INFO_S("%s", "Setting node addr: state ");
-	INFOLN("%d", e);
-
-#ifdef ENABLE_CAD
-	// enable carrier sense
-	sx1272._enableCarrierSense = true;
-#endif
-
-#ifdef LOW_POWER
-	// TODO: with low power, when setting the radio module in sleep mode
-	// there seem to be some issue with RSSI reading
-	//sx1272._RSSIonSend = false;
-#endif
-
-	INFO_S("%s", "SX1272 successfully configured\n");
-#endif
-#else
-
 #ifndef DISABLE_SX1278
 	sx1272.sx1278_qsetup(CH_00_433, 20);
 
@@ -372,8 +307,6 @@ void setup()
 #ifdef ENABLE_CAD
 	sx1272._enableCarrierSense = true;
 #endif
-#endif
-
 #endif
 
 #ifdef ENABLE_GPS
@@ -402,33 +335,6 @@ void qsetup()
 	mhz16_begin(&Serial);
 #endif
 
-#if 0
-#ifndef DISABLE_SX1278
-	sx1272.ON();		// power on the module
-
-	// BW=125KHz, SF=12, CR=4/5, sync=0x34
-	sx1272.setMode(LORAMODE);
-
-	// Select frequency channel
-	sx1272.setChannel(DEFAULT_CHANNEL);
-
-#ifdef PABOOST
-	// Select amplifier line; PABOOST or RFO
-	sx1272._needPABOOST = true;
-#endif
-
-	sx1272.setPowerDBM((uint8_t) MAX_DBM);
-
-	// Set the node address and print the result
-	sx1272.setNodeAddress(node_addr);
-
-#ifdef ENABLE_CAD
-	// enable carrier sense
-	sx1272._enableCarrierSense = true;
-#endif
-#endif
-#endif
-
 #ifndef DISABLE_SX1278
 	sx1272.sx1278_qsetup(CH_00_433, 20);
 	sx1272.setNodeAddress(node_addr);
@@ -443,6 +349,7 @@ void qsetup()
 #endif
 }
 
+#ifdef ENABLE_GPS
 void get_pos()
 {
 	// Get a valid position from the GPS
@@ -457,6 +364,7 @@ void get_pos()
 	if (valid_pos) {
 	}
 }
+#endif
 
 void loop(void)
 {
@@ -675,7 +583,7 @@ void loop(void)
 
 		power_on_dev();
 		delay(100);
-		qsetup();
+		setup();
 #else
 		INFOLN("%ld", next_tx);
 		INFO_S("%s", "Will send next value at\n");
