@@ -26,6 +26,7 @@
 #include "sht2x.h"
 #include "bmp180.h"
 #include "tsl2561.h"
+#include "mhz16.h"
 
 #define DEBUG				1
 
@@ -35,6 +36,7 @@
 //#define ENABLE_SHT2X		1
 //#define ENABLE_BMP180		1
 #define ENABLE_TSL2561		1
+#define ENABLE_CO2			1
 
 #define DISABLE_SX1278		1
 
@@ -265,11 +267,7 @@ void setup()
 #endif
 
 	// Open serial communications and wait for port to open:
-#ifdef ENABLE_GPS
 	Serial.begin(9600);
-#else
-	Serial.begin(115200);
-#endif
 
 	// Print a start message
 	INFO_S("%s", "Noduino Quark LoRa Node\n");
@@ -296,6 +294,11 @@ void setup()
 #ifdef ENABLE_TSL2561
 	setup_tsl2561();
 #endif
+
+#ifdef ENABLE_CO2
+	mhz16_begin(&Serial);
+#endif
+
 
 #if 0
 #ifndef DISABLE_SX1278
@@ -395,6 +398,10 @@ void qsetup()
 	setup_tsl2561();
 #endif
 
+#ifdef ENABLE_CO2
+	mhz16_begin(&Serial);
+#endif
+
 #if 0
 #ifndef DISABLE_SX1278
 	sx1272.ON();		// power on the module
@@ -460,6 +467,7 @@ void loop(void)
 	float temp = 0, humi = 0, vbat;
 	int32_t press = -1;
 	uint32_t lumi = 0;
+	int32_t co2 = 0;
 
 #ifndef LOW_POWER
 	if (millis() > next_tx) {
@@ -477,6 +485,10 @@ void loop(void)
 
 #ifdef ENABLE_TSL2561
 		lumi = tsl2561_get_luminosity(TSL2561_VISIBLE);
+#endif
+
+#ifdef ENABLE_CO2
+		co2 = mhz16_get_co2();
 #endif
 
 		vbat = get_vbat();
@@ -512,8 +524,8 @@ void loop(void)
 		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/T/%s/H/%s/lat/%s/lon/%s/alt/%s",
 					vbat_s, temp_s, humi_s, lat_s, lon_s, alt_s);
 #else
-		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/T/%s/H/%s/P/%ld/L/%ld",
-					vbat_s, temp_s, humi_s, press, lumi);
+		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/T/%s/H/%s/P/%ld/L/%ld/CO2/%ld",
+					vbat_s, temp_s, humi_s, press, lumi, co2);
 #endif
 
 		INFO_S("%s", "Sending ");
