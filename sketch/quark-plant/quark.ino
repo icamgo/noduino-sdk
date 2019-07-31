@@ -27,6 +27,8 @@
 #include "bmp180.h"
 #include "tsl2561.h"
 
+#define DEBUG				1
+
 //#define USE_SI2301		1
 
 //#define ENABLE_GPS			1
@@ -95,10 +97,17 @@ uint8_t my_appKey[4] = { 5, 6, 8, 8 };
 uint8_t message[64];
 ///////////////////////////////////////////////////////////////////
 
+#ifdef DEBUG
 #define INFO_S(fmt,param)			Serial.print(F(param))
 #define INFO(fmt,param)				Serial.print(param)
 #define INFOLN(fmt,param)			Serial.println(param)
 #define FLUSHOUTPUT					Serial.flush();
+#else
+#define INFO_S(fmt,param)
+#define INFO(fmt,param)
+#define INFOLN(fmt,param)
+#define FLUSHOUTPUT
+#endif
 
 #ifdef WITH_EEPROM
 #include <EEPROM.h>
