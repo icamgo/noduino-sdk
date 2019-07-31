@@ -59,7 +59,7 @@ bool bmp180_begin()
 	mc = bmp180_read16(BMP180_CAL_MC);
 	md = bmp180_read16(BMP180_CAL_MD);
 
-#if BMP180_DEBUG == 0
+#ifdef BMP180_DEBUG
 	INFO("ac1 = ");
 	INFOLN(ac1);
 	INFO("ac2 = ");

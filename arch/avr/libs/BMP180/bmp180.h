@@ -26,7 +26,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 
-#define BMP180_DEBUG	0
+//#define BMP180_DEBUG	0
 
 #define INFOLN(param)			Serial.println(param)
 #define INFO(param)				Serial.print(param)
