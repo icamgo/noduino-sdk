@@ -21,9 +21,20 @@
 #define PC10_ADDR		0x28
 #define LEN				2
 
+#define	D15942
+//#define	D15941
+
+#ifdef D15941
 #define PC10_HIGH		14716
 #define PC10_MID		8181
 #define PC10_LOW		1640
+#endif
+
+#ifdef D15942
+#define PC10_HIGH		14724
+#define PC10_MID		8187
+#define PC10_LOW		1642
+#endif
 
 void pc10_init()
 {
@@ -39,7 +50,7 @@ void pressure_init()
 #endif
 }
 
-/* return hPa */
+/* Return hPa(mbar) */
 float get_pressure()
 {
 #ifdef USE_MCP342x

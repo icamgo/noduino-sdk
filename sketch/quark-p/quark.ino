@@ -26,11 +26,12 @@
 //#define USE_SI2301		1
 #define ENABLE_CAD			1
 
-#define node_addr		248
+#define node_addr		247
 
 #define DEST_ADDR		1
 
 #define USE_SX1278		1
+
 #define LOW_POWER
 
 #define MAX_DBM			11
@@ -49,7 +50,7 @@
 
 ///////////////////////////////////////////////////////////////////
 // CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-unsigned int idlePeriod = 90;	// 90 seconds
+uint32_t idlePeriod = 600;	// 600 seconds
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
@@ -81,7 +82,7 @@ uint8_t message[50];
 // you need the LowPower library from RocketScream
 // https://github.com/rocketscream/Low-Power
 #include "LowPower.h"
-unsigned int nCycle = idlePeriod / LOW_POWER_PERIOD;
+uint32_t nCycle = idlePeriod / LOW_POWER_PERIOD;
 #endif
 
 uint32_t next_tx = 0L;
@@ -322,7 +323,7 @@ void loop(void)
 
 		power_off_dev();
 
-		for (int i = 0; i < nCycle; i++) {
+		for (uint32_t i = 0; i < nCycle; i++) {
 
 			// ATmega328P, ATmega168, ATmega32U4
 			LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
