@@ -70,7 +70,7 @@ int32_t mhz16_get_co2()
 		}
 
 		if (millis() - start > 1000) {
-			return false;
+			return -2;
 		}
 		//delay(10);
 	}
@@ -88,10 +88,10 @@ int32_t mhz16_get_co2()
 			temperature = buf[4] - 40;
 			return ppm;
 		} else {
-			return -1;
+			return -3;
 		}
 	} else {
-		return -1;
+		return -4;
 	}
 }
 
