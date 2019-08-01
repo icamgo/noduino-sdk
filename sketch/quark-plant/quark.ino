@@ -48,34 +48,13 @@
 
 #define LOW_POWER				1
 
+#define MAX_DBM			20
+#define TXRX_CH			CH_00_433
+
 ///////////////////////////////////////////////////////////////////
 //#define WITH_EEPROM
 //#define WITH_APPKEY
 //#define WITH_ACK
-//#define LOW_POWER_TEST
-///////////////////////////////////////////////////////////////////
-
-// IMPORTANT SETTINGS
-///////////////////////////////////////////////////////////////////
-// please uncomment only 1 choice
-//#define ETSI_EUROPE_REGULATION
-//#define FCC_US_REGULATION
-//#define SENEGAL_REGULATION
-#define LONG_RANG_TESTING
-///////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////
-// please uncomment only 1 choice
-//#define BAND868
-//#define BAND900
-#define BAND433
-//#define BAND470
-///////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////
-// uncomment if the rf output of your radio module use the PABOOST
-// line instead of the RFO line
-#define PABOOST
 ///////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////
@@ -84,8 +63,8 @@
 //////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////
-// CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-unsigned int idlePeriod = 90;	// 64 seconds
+// THE TIME IN SECONDS BETWEEN 2 TX
+uint32_t idlePeriod = 600;
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
@@ -115,38 +94,6 @@ uint8_t message[64];
 #include <EEPROM.h>
 #endif
 
-#ifdef ETSI_EUROPE_REGULATION
-#define MAX_DBM 14
-// previous way for setting output power
-// char powerLevel='M';
-#elif defined SENEGAL_REGULATION
-#define MAX_DBM 10
-// previous way for setting output power
-// 'H' is actually 6dBm, so better to use the new way to set output power
-// char powerLevel='H';
-#elif defined FCC_US_REGULATION
-#define MAX_DBM 14
-#elif defined LONG_RANG_TESTING
-#define MAX_DBM 20
-#endif
-
-#ifdef BAND868
-#ifdef SENEGAL_REGULATION
-const uint32_t DEFAULT_CHANNEL = CH_04_868;
-#else
-const uint32_t DEFAULT_CHANNEL = CH_10_868;
-#endif
-#elif defined BAND900
-//const uint32_t DEFAULT_CHANNEL=CH_05_900;
-// For HongKong, Japan, Malaysia, Singapore, Thailand, Vietnam: 920.36MHz     
-const uint32_t DEFAULT_CHANNEL = CH_08_900;
-#elif defined BAND433
-const uint32_t DEFAULT_CHANNEL = CH_00_433;	// 433.3MHz
-//const uint32_t DEFAULT_CHANNEL = CH_03_433;	// 434.3MHz
-#elif defined BAND470
-const uint32_t DEFAULT_CHANNEL = CH_00_470;	// 470.0MHz
-#endif
-
 #ifdef WITH_ACK
 #define	NB_RETRIES			2
 #endif
@@ -156,7 +103,7 @@ const uint32_t DEFAULT_CHANNEL = CH_00_470;	// 470.0MHz
 // you need the LowPower library from RocketScream
 // https://github.com/rocketscream/Low-Power
 #include "LowPower.h"
-unsigned int nCycle = idlePeriod / LOW_POWER_PERIOD;
+uint32_t nCycle = idlePeriod / LOW_POWER_PERIOD;
 #endif
 
 unsigned long next_tx = 0L;
@@ -272,12 +219,6 @@ void setup()
 	// Print a start message
 	INFO_S("%s", "Noduino Quark LoRa Node\n");
 
-// See http://www.nongnu.org/avr-libc/user-manual/using_tools.html
-// for the list of define from the AVR compiler
-#ifdef __AVR_ATmega328P__
-	INFO_S("%s", "ATmega328P detected\n");
-#endif
-
 	power_on_dev();		// turn on device power
 
 	Wire.begin();
@@ -300,7 +241,7 @@ void setup()
 #endif
 
 #ifndef DISABLE_SX1278
-	sx1272.sx1278_qsetup(CH_00_433, 20);
+	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
 
 	sx1272.setNodeAddress(node_addr);
 
@@ -336,7 +277,7 @@ void qsetup()
 #endif
 
 #ifndef DISABLE_SX1278
-	sx1272.sx1278_qsetup(CH_00_433, 20);
+	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
 	sx1272.setNodeAddress(node_addr);
 
 #ifdef ENABLE_CAD
@@ -395,10 +336,6 @@ void loop(void)
 		lumi = tsl2561_get_luminosity(TSL2561_VISIBLE);
 #endif
 
-#ifdef ENABLE_CO2
-		co2 = mhz16_get_co2();
-#endif
-
 		vbat = get_vbat();
 
 #ifdef ENABLE_GPS
@@ -419,6 +356,15 @@ void loop(void)
 		ftoa(vbat_s, vbat, 2);
 		ftoa(temp_s, temp, 2);
 		ftoa(humi_s, humi, 0);
+
+#ifdef ENABLE_CO2
+		delay(30000); //delay 30s
+		co2 = mhz16_get_co2();
+		if (co2 < 0) {
+			delay(2000);
+			co2 = mhz16_get_co2();
+		}
+#endif
 
 #ifdef ENABLE_GPS
 		char lat_s[12], lon_s[12], alt_s[10];
@@ -570,12 +516,12 @@ void loop(void)
 
 		power_off_dev();
 
-		for (int i = 0; i < nCycle; i++) {
+		for (uint32_t i = 0; i < nCycle; i++) {
 
 			// ATmega328P, ATmega168, ATmega32U4
 			LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
 
-			//INFO_S("%s", ".");
+			INFO_S("%s", ".");
 			FLUSHOUTPUT delay(10);
 		}
 
@@ -588,7 +534,7 @@ void loop(void)
 		INFOLN("%ld", next_tx);
 		INFO_S("%s", "Will send next value at\n");
 
-		next_tx = millis() + (unsigned long)idlePeriod * 1000;
+		next_tx = millis() + idlePeriod * 1000;
 
 		INFOLN("%ld", next_tx);
 	}
