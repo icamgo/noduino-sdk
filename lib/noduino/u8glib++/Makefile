@@ -12,7 +12,7 @@
 #
 
 ifndef PDIR
-GEN_LIBS = libU8glib.a
+GEN_LIBS = libu8glib++.a
 endif
 
 # noduino sdk base dir
