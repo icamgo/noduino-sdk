@@ -30,7 +30,7 @@ XLD		:= $(TOOLCHAIN_DIR)/xtensa-lx106-elf/bin/xtensa-lx106-elf-g++
 SDK_INCDIR	+= include/noduino
 
 # libraries used in this project
-LIBS		+= noduino u8glib U8glib
+LIBS		+= noduino u8glib u8glib++
 
 # compiler flags using during compilation of source files
 CFLAGS		+= -D__XTENSA__
