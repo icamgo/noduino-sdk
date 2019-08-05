@@ -59,9 +59,46 @@ $(ARDUINO_CORES)/hooks.c 								\
 $(ARDUINO_CORES)/wiring_digital.c 						\
 $(ARDUINO_CORES)/WInterrupts.c 							\
 $(LIB_DIR)/Wire/src/utility/twi.c						\
+$(LIB_DIR)/U8g2/src/clib/u8g2_bitmap.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_box.c						\
+$(LIB_DIR)/U8g2/src/clib/u8g2_buffer.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_circle.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_cleardisplay.c			\
+$(LIB_DIR)/U8g2/src/clib/u8g2_d_memory.c				\
+$(LIB_DIR)/U8g2/src/clib/u8g2_d_setup.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_font.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_fonts.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_hvline.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_input_value.c				\
+$(LIB_DIR)/U8g2/src/clib/u8g2_intersection.c			\
+$(LIB_DIR)/U8g2/src/clib/u8g2_kerning.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_line.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_ll_hvline.c				\
+$(LIB_DIR)/U8g2/src/clib/u8g2_message.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_polygon.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_selection_list.c			\
+$(LIB_DIR)/U8g2/src/clib/u8g2_setup.c					\
+$(LIB_DIR)/U8g2/src/clib/u8log.c						\
+$(LIB_DIR)/U8g2/src/clib/u8log_u8g2.c					\
+$(LIB_DIR)/U8g2/src/clib/u8log_u8x8.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_8x8.c						\
+$(LIB_DIR)/U8g2/src/clib/u8x8_byte.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_cad.c						\
+$(LIB_DIR)/U8g2/src/clib/u8x8_d_ssd1306_128x32.c		\
+$(LIB_DIR)/U8g2/src/clib/u8x8_d_ssd1306_128x64_noname.c	\
+$(LIB_DIR)/U8g2/src/clib/u8x8_debounce.c				\
+$(LIB_DIR)/U8g2/src/clib/u8x8_display.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_gpio.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_input_value.c				\
+$(LIB_DIR)/U8g2/src/clib/u8x8_message.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_selection_list.c			\
+$(LIB_DIR)/U8g2/src/clib/u8x8_setup.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_string.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_u16toa.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_u8toa.c					\
 $(ARDUINO_CORES)/wiring_shift.c
 
-CXX_MODULES = 										\
+CXX_MODULES = 											\
 $(ARDUINO_CORES)/HardwareSerial.cpp 					\
 $(ARDUINO_CORES)/HardwareSerial0.cpp 					\
 $(ARDUINO_CORES)/Print.cpp 								\
@@ -74,6 +111,7 @@ $(LIB_DIR)/MCP342x/src/MCP342x.cpp						\
 $(LIB_DIR)/Wire/src/Wire.cpp							\
 $(LIB_DIR)/LowPower/LowPower.cpp						\
 $(LIB_DIR)/SX127x/sx1272.cpp							\
+$(LIB_DIR)/U8g2/src/U8x8lib.cpp							\
 ./vbat.cpp												\
 ./adc.cpp												\
 ./pressure.cpp
@@ -110,6 +148,8 @@ CINCS += -I  $(LIB_DIR)/SPI/src						\
 			-I $(LIB_DIR)/Wire/src					\
 			-I $(LIB_DIR)/Wire/src/utility			\
 			-I $(LIB_DIR)/SX127x					\
+			-I $(LIB_DIR)/U8g2/src					\
+			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I .									
 
 CXXINCS += -I  $(LIB_DIR)/SPI/src					\
@@ -118,6 +158,8 @@ CXXINCS += -I  $(LIB_DIR)/SPI/src					\
 			-I $(LIB_DIR)/MCP342x/src				\
 			-I $(LIB_DIR)/Wire/src					\
 			-I $(LIB_DIR)/SX127x					\
+			-I $(LIB_DIR)/U8g2/src					\
+			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I .									
 
 # Compiler flag to set the C Standard level.

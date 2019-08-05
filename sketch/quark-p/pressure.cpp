@@ -18,6 +18,8 @@
 
 #include "pressure.h"
 
+//#define USE_MCP342x
+
 #define PC10_ADDR		0x28
 #define LEN				2
 

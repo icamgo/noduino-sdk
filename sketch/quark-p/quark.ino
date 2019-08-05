@@ -22,15 +22,18 @@
 #include "sx1272.h"
 #include "pressure.h"
 #include "vbat.h"
+#include "U8g2lib.h"
 
 //#define USE_SI2301		1
 #define ENABLE_CAD			1
 
-#define node_addr		247
+#define node_addr		246
 
 #define DEST_ADDR		1
 
 #define USE_SX1278		1
+
+//#define ENABLE_SSD1306		1
 
 #define LOW_POWER
 
@@ -99,6 +102,11 @@ struct sx1272config {
 sx1272config my_sx1272config;
 #endif
 
+#ifdef ENABLE_SSD1306
+U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+//U8G2_SSD1306_128X64_NONAME_1_SW_I2C u8g2(U8G2_R0, SCL, SDA, U8X8_PIN_NONE);
+#endif
+
 char *ftoa(char *a, double f, int precision)
 {
 	long p[] =
@@ -136,6 +144,30 @@ void power_off_dev()
 #endif
 }
 
+#ifdef ENABLE_SSD1306
+void draw_press(int32_t p)
+{
+	u8g2.setPowerSave(0);
+
+	//u8g2.clearBuffer();		// clear the internal memory
+
+	u8g2.firstPage();
+	do {
+		u8g2.setFont(u8g2_font_logisoso24_tf);	// choose a suitable font
+		//u8g2.drawStr(0,48,"10123 Pa");		// write something to the internal memory
+		u8g2.setCursor(0, 48);
+		u8g2.print(p);
+		u8g2.print(" Pa");
+	} while (u8g2.nextPage());
+
+	delay(2000);
+
+	u8g2.setPowerSave(1);
+
+	//u8g2.sendBuffer();		// transfer internal memory to the display
+}
+#endif
+
 void setup()
 {
 #ifndef USE_SI2301
@@ -146,15 +178,19 @@ void setup()
 
 	Serial.begin(115200);
 
-	INFO_S("%s", "Noduino Quark LoRa Node\n");
-
-#ifdef __AVR_ATmega328P__
-	INFO_S("%s", "ATmega328P detected\n");
-#endif
+	//INFO_S("%s", "Noduino Quark LoRa Node\n");
 
 	power_on_dev();		// turn on device power
 
-	pressure_init();		// initialization of the sensor
+	pressure_init();	// initialization of the sensor
+
+#ifdef ENABLE_SSD1306
+	float pres = get_pressure();
+
+	u8g2.begin();
+
+	draw_press((int32_t) pres);
+#endif
 
 #ifdef USE_SX1278
 	// Set the TX power to 11dBm
@@ -168,6 +204,7 @@ void setup()
 
 	INFO_S("%s", "SX1272 successfully configured\n");
 #endif
+
 }
 
 void qsetup()
@@ -181,6 +218,10 @@ void qsetup()
 #ifdef ENABLE_CAD
 	sx1272._enableCarrierSense = true;
 #endif
+#endif
+
+#ifdef ENABLE_SSD1306
+	u8g2.begin();
 #endif
 }
 
