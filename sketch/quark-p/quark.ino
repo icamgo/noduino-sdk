@@ -151,13 +151,14 @@ void draw_press(int32_t p)
 
 	//u8g2.clearBuffer();		// clear the internal memory
 
+	u8g2.setFont(u8g2_font_logisoso24_tf);	// choose a suitable font
+
 	u8g2.firstPage();
+
 	do {
-		u8g2.setFont(u8g2_font_logisoso24_tf);	// choose a suitable font
-		//u8g2.drawStr(0,48,"10123 Pa");		// write something to the internal memory
-		u8g2.setCursor(0, 48);
+		u8g2.drawStr(98, 48, "Pa");		// write something to the internal memory
+		u8g2.setCursor(16, 48);
 		u8g2.print(p);
-		u8g2.print(" Pa");
 	} while (u8g2.nextPage());
 
 	delay(2000);
