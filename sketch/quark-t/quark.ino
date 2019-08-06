@@ -26,16 +26,12 @@
 //#define USE_SI2301		1
 #define ENABLE_CAD			1
 
-#ifdef USE_SI2301
-#define node_addr		251
-#else
 #define node_addr		252
-#endif
 
 #define USE_SX1278		1
 #define DEST_ADDR		1
 
-#define LOW_POWER
+#define LOW_POWER		1
 
 #define MAX_DBM			11
 #define TXRX_CH			CH_00_433
@@ -54,7 +50,7 @@
 
 ///////////////////////////////////////////////////////////////////
 // CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-unsigned int idlePeriod = 90;	// 90 seconds
+unsigned int idlePeriod = 180;	// 180 seconds
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
@@ -204,8 +200,11 @@ void loop(void)
 	if (millis() > next_tx) {
 #endif
 
-		temp = pt1000_get_temp();
 		vbat = get_vbat();
+
+		delay(200);
+
+		temp = pt1000_get_temp();
 
 		INFO_S("%s", "Temperature is ");
 		INFOLN("%f", temp);

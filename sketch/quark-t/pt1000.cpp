@@ -17,6 +17,8 @@
 */
 #include "pt1000.h"
 
+#define REF_V		2491000.0
+
 float cal_temp(uint32_t Rt)
 {
 	float temp;
@@ -67,7 +69,7 @@ uint32_t pt1000_get_rt(float uv)
 	uint32_t rtd = 0;
 
 	if (uv != 0) {
-		rtd = 10.0 * 1000.0 * uv / (2491000.0 - uv);
+		rtd = 10.0 * 1000.0 * uv / (REF_V - uv);
 	} else {
 		rtd = 0;
 	}
