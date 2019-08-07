@@ -42,7 +42,7 @@
 
 //#define DEBUG_CAD					1
 
-#define DEBUG_MODE		 			1
+#define DEBUG_MODE		 			0
 
 #if DEBUG_MODE >= 1
 #define INFO			Serial.print
