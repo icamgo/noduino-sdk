@@ -30,19 +30,27 @@
 #include <Arduino.h>
 #include <SPI.h>
 
-#ifndef inttypes_h
-#include <inttypes.h>
-#endif
-
-//#define DEBUG_CAD					1
-
 #define USE_SOFTSPI					1
 
 #ifdef USE_SOFTSPI
 #include "softspi.h"
 #endif
 
-#define SX1272_debug_mode 			1
+#ifndef inttypes_h
+#include <inttypes.h>
+#endif
+
+//#define DEBUG_CAD					1
+
+#define DEBUG_MODE		 			1
+
+#if DEBUG_MODE >= 1
+#define INFO			Serial.print
+#define INFO_LN			Serial.println
+#else
+#define INFO
+#define INFO_LN
+#endif
 
 #define W_REQUESTED_ACK
 //#define W_NET_KEY
