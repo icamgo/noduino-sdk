@@ -23,8 +23,8 @@
 #define PC10_ADDR		0x28
 #define LEN				2
 
-#define	D15942
-//#define	D15941
+//#define	D15942			247
+#define	D15941				248
 
 #ifdef D15941
 #define PC10_HIGH		14716

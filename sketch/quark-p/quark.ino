@@ -27,7 +27,7 @@
 //#define USE_SI2301		1
 #define ENABLE_CAD			1
 
-#define node_addr		246
+#define node_addr		248
 
 #define DEST_ADDR		1
 
