@@ -511,7 +511,8 @@ irom void setup()
 #ifdef DEBUG
 	uart_init(115200, 115200);
 #endif
-	INFO("Current firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
+	INFO("\r\n\r\n\r\n\r\n\r\nNoduino OpenGas Current firmware is user%d.bin\r\n",
+			system_upgrade_userbin_check()+1);
 	INFO("%s", noduino_banner);
 
 	uint32_t warm_boot = 0;
