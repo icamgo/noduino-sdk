@@ -22,10 +22,10 @@
 #include "SX1272.h"
 
 #define MAX_DBM				20
-#define TXRX_CH				CH_00_433		// 433.0MHz
+#define TXRX_CH				CH_00_441		// 433.0MHz
 //#define TXRX_CH				CH_00_470		// 470.0MHz
 
-#define LORA_ADDR		1
+#define LORA_ADDR		2
 #define LORA_MODE		11	//Default LoRa mode BW=125KHz, CR=4/5, SF=12
 
 //#define GW_RELAY
