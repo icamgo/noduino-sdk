@@ -25,15 +25,15 @@
 #include "gps.h"
 #include "sht2x.h"
 
-//#define USE_SI2301		1
+//#define USE_SI2301				1
+//#define node_addr				249
+#define node_addr				250
 
-//#define ENABLE_GPS			1
-#define ENABLE_SHT2X		1
-#define DISABLE_SX1278		1
+#define ENABLE_GPS			1
+//#define ENABLE_SHT2X		1
+//#define DISABLE_SX1278		1
 
 #define ENABLE_CAD			1
-
-#define node_addr				250
 
 #define DEST_ADDR				1
 
@@ -76,7 +76,7 @@
 
 ///////////////////////////////////////////////////////////////////
 // CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-unsigned int idlePeriod = 6;	// 64 seconds
+unsigned int idlePeriod = 6;	// 6 seconds
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
