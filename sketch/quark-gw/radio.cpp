@@ -234,14 +234,16 @@ int radio_available(char *cmd)
 		sx1272._nodeAddress = LORA_ADDR;
 		return 0;
 #else
-		sx1272.getSNR();
+		//sx1272.getSNR();
 		sx1272.getRSSIpacket();
 
-		// src_id,seq,len,SNR,RSSI
+		// src_id,SNR,RSSI
 		sprintf(cmd, "%d,%d,%d,",
 			sx1272.packet_received.src,
 			sx1272._SNR,
 			sx1272._RSSIpacket);
+
+		b = strlen(cmd);
 
 		for (; a < p_len; a++, b++) {
 
