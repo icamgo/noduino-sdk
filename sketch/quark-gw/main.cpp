@@ -22,21 +22,21 @@
 //#include <SPIFlash.h>
 #include <EEPROM.h>
 #include <DES.h>
-//#include <TextFinder.h>
+#include <TextFinder.h>
 
 #include <avr/wdt.h>
 
 #include "radio.h"
 
-//#define		DEBUG_SERVER
+#define		DEBUG_SERVER
 #define		DEBUG
-//#define		DEBUG_EEPROM
-//#define		DEBUG_TOKEN
+#define		DEBUG_EEPROM
+#define		DEBUG_TOKEN
 #define		NETCORE_ROUTER_FIXUP
-#define		NO_DHCP_ROBUST
+//#define		NO_DHCP_ROBUST
 //#define		WITH_FLASH
 
-#define		TRYNUM	5
+#define		TRYNUM	1
 #define		FW_VER	"1.0.0"
 
 byte mac[7];
@@ -51,7 +51,7 @@ IPAddress ip9(10,0,0,254);
 char cos_serv[] = "api.noduino.org";
 EthernetClient client;
 
-//TextFinder finder(client);
+TextFinder finder(client);
 
 //String body = "";
 
@@ -60,7 +60,7 @@ const uint16_t msg_group_len = 2000;
 
 unsigned long last_post_time = 0;
 
-int push_data(uint64_t data, char serv[]);
+int push_data(char *data, char serv[]);
 byte wan_ok();
 #ifdef NO_DHCP_ROBUST
 byte try_static_ip();
@@ -159,7 +159,7 @@ void chip_reset()
 
 void setup() {
 	// disable the watchdog
-	// wdt_disable();
+	wdt_disable();
 
 #ifdef DEBUG
 	Serial.begin(115200);
@@ -168,6 +168,7 @@ void setup() {
 
 	randomSeed(analogRead(14));
 	radio_setup();
+#if 1
 
 #ifdef WITH_FLASH
 	// Pull up pin D5, this is CS signal (active LOW) of SPI flash
@@ -235,6 +236,10 @@ void setup() {
 #ifdef NO_DHCP_ROBUST
 		}
 #endif
+	} else {
+#ifdef DEBUG
+		Serial.println("DHCP is OK");
+#endif
 	}
 
 	// setup ip must be in 8s otherwise chip would be reset
@@ -260,6 +265,8 @@ void setup() {
 #endif
 
 	wdt_reset();
+
+#endif
 }
 
 #ifdef NO_DHCP_ROBUST
@@ -342,7 +349,7 @@ byte try_static_ip()
 byte wan_ok()
 {
 	wdt_off();
-	if (client.connect(cos_serv, 998)) {
+	if (client.connect(cos_serv, 80)) {
 		client.stop();
 		setup_wdt(9);
 		return 1;
@@ -355,20 +362,20 @@ byte wan_ok()
 
 uint64_t old_val = 0;
 
+char pbuf[100];
+
 void loop() {
 
 	int i = 0, e = 1;
 
-	char *buf = (char *)malloc(100);
-
 	int try_num = 0;
 	wdt_off();
 
-	e = radio_available(buf);
+	e = radio_available(pbuf);
 
 	if (e) {
 
-		Serial.println("radio data available");
+		Serial.println("Radio data available");
 
 		// make sure push the data success
 		try_num = 0;
@@ -380,8 +387,8 @@ void loop() {
 		}
 		wdt_reset();
 #endif
-#if 0
-		while (push_data(radio0_new_val, cos_serv) == -1) {
+#if 1
+		while (push_data(pbuf, cos_serv) == -1) {
 			wdt_reset();
 			try_num++;
 #ifdef DEBUG
@@ -399,44 +406,29 @@ void loop() {
 }
 
 
-#if 0
-// this method makes a HTTP connection to the server:
-//int push_data(uint32_t data, IPAddress &serv) {
-int push_data(uint64_t data, char serv[]) {
-
-	if (data != 0) {
-		char data_buf[17];
-		sprintf(data_buf, "%04X", (data>>48) & 0xffff);
-		sprintf(data_buf+4, "%04X", (data>>32) & 0xffff);
-		sprintf(data_buf+8, "%04X", (data>>16) & 0xffff);
-		sprintf(data_buf+12, "%04X", (data) & 0xffff);
-
-		body = "{\"meta\":\"";
-		body += rx_ch;
-		body += ",";
-		body += rx_proto;
-		body += ",";
-		body += rx_delay;
-		body += ",";
-		body += rx_bitlen;
-		//ch, proto, delay, bitlen (,value)
-
-		body += "\",\"value\":\"";
-
-		body += data_buf;
-	} else {
-		body = "{\"value\":\"0";
-	}
-
-	body += "\",\"fwver\":\"";
-	body += FW_VER;
-	body += "\"}";
+#if 1
+/*
+ * Pushed Request:
+ *
+ * POST /dev/quarkx HTTP/1.0
+ * Accept: * / *
+ * mac: 0008DCF46025
+ * Content-Length: 43
+ * Content-Type: text/html
+ * Connection: close
+ *
+ * \!U/3.66/P/3727.87/devid/248/snr/7/rssi/-47
+ *
+ *
+*/
+int push_data(char *pbuf, char serv[]) {
 
 #ifdef	DEBUG
 	Serial.println("Try push data");
 #endif
+
 	// if there's a successful connection:
-	if (!client.connected() && wdt_off() && client.connect(serv, 998)) {
+	if (!client.connected() && wdt_off() && client.connect(serv, 888)) {
 		setup_wdt(9);
 #ifdef	DEBUG
 		Serial.println("Connecting to Cloud ...");
@@ -444,9 +436,10 @@ int push_data(uint64_t data, char serv[]) {
 		gen_token(token, uuid, dkey);
 
 		// Send the HTTP PUT request:
-		client.println("POST /v2/node/state HTTP/1.1");
+		client.println("POST /dev/quarkx HTTP/1.0");
 		client.println("Accept: */ *");
 
+#if 0
 		client.print("nodid: ");
 		for(int i = 0; i < 19; i++)
 			client.printf("%c", uuid[i]);
@@ -456,10 +449,16 @@ int push_data(uint64_t data, char serv[]) {
 		for(int i = 0; i < 24; i++)
 			client.printf("%02X", token[i]);
 		client.println();
+#endif
+
+		client.print("mac: ");
+		for(int i = 0; i < 6; i++)
+			client.printf("%02X", mac[i]);
+		client.println();
 
 		client.print("Content-Length: ");
 		// calculate the length of the sensor reading in bytes:
-		client.println(body.length());
+		client.println(strlen(pbuf));
 
 		// last pieces of the HTTP PUT request:
 		client.println("Content-Type: text/html");
@@ -467,11 +466,12 @@ int push_data(uint64_t data, char serv[]) {
 		client.println();
 
 		// here's the actual content of the PUT request:
-		client.println(body);
+		client.println(pbuf);
 		client.println();
+
 #ifdef DEBUG
 #ifdef DEBUG_SERVER
-		Serial.println(body);
+		Serial.println(pbuf);
 #endif
 		Serial.println("Messages pushed.");
 #endif
