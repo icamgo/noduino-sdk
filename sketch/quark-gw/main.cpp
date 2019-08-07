@@ -428,7 +428,7 @@ int push_data(char *pbuf, char serv[]) {
 #endif
 
 	// if there's a successful connection:
-	if (!client.connected() && wdt_off() && client.connect(serv, 888)) {
+	if (!client.connected() && wdt_off() && client.connect(serv, 80)) {
 		setup_wdt(9);
 #ifdef	DEBUG
 		Serial.println("Connecting to Cloud ...");
@@ -437,7 +437,7 @@ int push_data(char *pbuf, char serv[]) {
 
 		// Send the HTTP PUT request:
 		client.println("POST /dev/quarkx HTTP/1.0");
-		client.println("Accept: */ *");
+		client.println("Accept: */*");
 
 #if 0
 		client.print("nodid: ");
@@ -495,6 +495,13 @@ int push_data(char *pbuf, char serv[]) {
 				setup_wdt(9);
 			#ifdef DEBUG
 				Serial.println("Server Response Failed!");
+				int len = client.available();
+				if (len > 0) {
+					byte buffer[80];
+					if (len > 80) len = 80;
+					client.read(buffer, len);
+					Serial.write(buffer, len);
+				}
 			#endif
 				client.stop();
 				return -1;
