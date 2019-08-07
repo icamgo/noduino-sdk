@@ -237,14 +237,6 @@ int radio_available(char *cmd)
 		//sx1272.getSNR();
 		sx1272.getRSSIpacket();
 
-		// src_id,SNR,RSSI
-		sprintf(cmd, "%d,%d,%d,",
-			sx1272.packet_received.src,
-			sx1272._SNR,
-			sx1272._RSSIpacket);
-
-		b = strlen(cmd);
-
 		for (; a < p_len; a++, b++) {
 
 			if (b < MAX_CMD_LEN)
@@ -252,6 +244,16 @@ int radio_available(char *cmd)
 		}
 
 		cmd[b] = '\0';
+
+		b = strlen(cmd);
+
+		// src_id,SNR,RSSI
+		sprintf(cmd+b, "/devid/%d/snr/%d/rssi/%d",
+			sx1272.packet_received.src,
+			sx1272._SNR,
+			sx1272._RSSIpacket);
+
+
 
 		INFOLN("%s", cmd);
 
