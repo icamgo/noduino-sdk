@@ -5,7 +5,7 @@
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation, either version 3 of the License, or
  *  (at your option) any later version.
-
+ *
  *  This program is distributed in the hope that it will be useful,
  *  but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
@@ -25,24 +25,7 @@ bool optHEX = false;
 
 void radio_setup()
 {
-#if 0
-	sx1272.ON();		// power on the module
-
-	// BW=125KHz, SF=12, CR=4/5, sync=0x34
-	sx1272.setMode(LORA_MODE);
-
-	// Select frequency channel
-	sx1272.setChannel(DEFAULT_CH);
-
-#ifdef PABOOST
-	// Select amplifier line; PABOOST or RFO
-	sx1272._needPABOOST = true;
-#endif
-
-	sx1272.setPowerDBM((uint8_t) MAX_DBM);
-#else
-	sx1272.sx1278_qsetup(CH_00_433, 20);
-#endif
+	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
 
 	// Set the node address and print the result
 	//sx1272.setNodeAddress(LORA_ADDR);
@@ -52,6 +35,8 @@ void radio_setup()
 	sx1272._enableCarrierSense = true;
 	SIFS_cad_number = 6;
 #endif
+
+	INFO_S("%s", "SX1272 successfully configured\n");
 }
 
 #ifdef GW_RELAY
@@ -252,8 +237,6 @@ int radio_available(char *cmd)
 			sx1272.packet_received.src,
 			sx1272._SNR,
 			sx1272._RSSIpacket);
-
-
 
 		INFOLN("%s", cmd);
 

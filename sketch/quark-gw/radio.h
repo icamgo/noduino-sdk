@@ -21,23 +21,15 @@
 #include "Arduino.h"
 #include "SX1272.h"
 
-#define PABOOST
-#define MAX_DBM			20
+#define MAX_DBM				20
+#define TXRX_CH				CH_00_433		// 433.0MHz
+//#define TXRX_CH				CH_00_470		// 470.0MHz
 
 #define LORA_ADDR		1
 #define LORA_MODE		11	//Default LoRa mode BW=125KHz, CR=4/5, SF=12
 
-#define BAND433
-//#define BAND470
-
 //#define GW_RELAY
 //#define RECEIVE_ALL 
-
-#ifdef BAND433
-#define DEFAULT_CH				CH_00_433	// 433.0MHz
-#elif defined BAND470
-#define DEFAULT_CH				CH_00_470	// 470.0MHz
-#endif
 
 #define INFO_S(fmt,param)			Serial.print(F(param))
 #define INFO_HEX(fmt,param)			Serial.print(param,HEX)
