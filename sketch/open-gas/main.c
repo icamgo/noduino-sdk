@@ -142,6 +142,13 @@ irom void mjyun_receive(const char *event_name, const char *event_data)
 		g_ch4 = get_ch4(&uv);
 		publish_sensor_data(g_ch4, (int)uv, (int)(g_param.v0 * 1000.0));
 	}
+	if(os_strncmp(event_data, "cali", 4) == 0)
+	{
+		INFO("clear the boot flag, restart to cold boot up...\r\n");
+		uint32_t warm_boot = 0x0;
+		system_rtc_mem_write(64+20, (void *)&warm_boot, sizeof(warm_boot));
+		system_restart();
+	}
 }
 
 irom char *strstrip(char *s)
