@@ -23,7 +23,7 @@ float get_vbat()
 	int adc = 0;		/* mV */
     adc = opencpu_adc(HAL_ADC_CHANNEL_0);
 	opencpu_printf("ADC = %d\n", adc);
-	return adc * 3.0 / 1000.0;
+	return adc / 1000.0 * (1470.0 / 470.0);
 }
 
 void show_iccid()
@@ -63,17 +63,20 @@ static int char_to_int(unsigned char *s)
 
 void show_rtc_time()
 {
-	unsigned char time_string[50];
-	unsigned char time_build[50] = {0};
-	unsigned char len_mess[4];
-	unsigned char *p1;
-	unsigned char *p2;
+	unsigned char time_string[32];
 
-	memset(time_string, 0, 50);
+	memset(time_string, 0, 32);
 
 	opencpu_rtc_get_time(time_string);
 
+	/* 2019/8/15,12:22:34GMT+8 */
 	opencpu_printf("TIME: %s\n", time_string);
+
+#if 0
+	unsigned char time_build[32] = {0};
+	unsigned char len_mess[4];
+	unsigned char *p1;
+	unsigned char *p2;
 
 	strcpy(time_build, time_string);
 
@@ -86,10 +89,12 @@ void show_rtc_time()
 
 	p2 = strchr(time_string,'+');
 
+	/* 2019-8-15 12:22:34GMT+8 */
 	opencpu_printf("TIME: %s\n",time_string);
 
 	sprintf(p1+1, "%d", char_to_int(&time_build[p1 - time_string + 1]) + char_to_int(&time_build[p2 - time_string + 1]));
 
+	/* 2019-8-15 20 */
 	opencpu_printf("TIME: %s\n", time_string);
 
 	p2  = strchr(time_build,'G');
@@ -97,6 +102,7 @@ void show_rtc_time()
 
 	strcat(time_string, strchr(time_build, ':'));
 	strcat(time_string, "\0");
+#endif
 }
 
 void test_dm()
@@ -115,24 +121,26 @@ void flash_test()
 {
 	unsigned char temp_read[10];
 	unsigned char temp_write[] = "123123";
-	memset(temp_read,0,10);
-	opencpu_flash_erase(0,6);
-	opencpu_flash_write(1,temp_write,strlen(temp_write));
-	opencpu_flash_read(1,temp_read,6);
+
+	memset(temp_read, 0, 10);
+
+	opencpu_flash_erase(0, 6);
+	opencpu_flash_write(1, temp_write, strlen(temp_write));
+	opencpu_flash_read(1, temp_read, 6);
 	opencpu_printf("Read: %s\n",temp_read);
 }
 
-//RTC timer超时回调函数
-void rtc_timer_callback()
+void rtc_timer_cb()
 {
 	opencpu_printf("RTC Timer expires\n");
+	push_data_via_tcp();
 }
 
-void rtc_timer_test()
+void rtc_timer_start()
 {
 	unsigned int handle;
-	//定时5S，到期执行rtc_timer_callback函数，循环执行
-	opencpu_rtc_timer_create(&handle,50, true,rtc_timer_callback);
+	//定时 900S，到期执行 rtc_timer_cb 函数，循环执行
+	opencpu_rtc_timer_create(&handle, 900, true, rtc_timer_cb);
 	opencpu_rtc_timer_start(handle);
 	opencpu_printf("RTC Timer starts\n");
 }
