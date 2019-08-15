@@ -3,6 +3,7 @@ Quark-NB Pressure Sensor
 
 ### Overview
 
+* ADC0: pin38, 10bits, 0.1~1.4V
 
 
 ### Pin Resource
