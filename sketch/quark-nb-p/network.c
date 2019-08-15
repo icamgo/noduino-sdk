@@ -24,7 +24,7 @@ Content-Length: %d\r\n\
 Content-Type: text/html\r\n\
 Connection: close\r\n\r\n%s\r\n"
 
-#define	PKG_FMT		"\!U/%f/P/3727.87/devid/%s/rssi/%d"
+#define	PKG_FMT		"\!U/%.2f/P/3727.87/devid/%s/rssi/%d"
 
 char tx_buf[512];
 char rx_buf[256];
@@ -41,7 +41,7 @@ void push_data_via_tcp()
 	char body[64];
 	char imei[16];
 	int rssi = 0, rxlevel = 0;
-	float vbat = 0;
+	float vbat = 0.0;
 
 	vbat = get_vbat();
 
@@ -83,7 +83,7 @@ void push_data_via_tcp()
 	memset(rx_buf, 0, 256);
 
 	opencpu_printf ("Tcp waiting...\n");
-	data_len = recv(sock_fd, rx_buf, 100, MSG_TRUNC);
+	data_len = recv(sock_fd, rx_buf, 256, MSG_TRUNC);
 	opencpu_printf ("Waiting end\n");
 
 	if(data_len >0) {
@@ -123,12 +123,12 @@ void push_data_via_udp()
 
 	send(sock_fd, (char *)POST_FMT, sizeof(POST_FMT), 0);
 
-	memset(rx_buf, 0, 100);
+	memset(rx_buf, 0, 256);
 	/*data_len = recvfrom(sock_fd, rx_buf,
 					100, MSG_TRUNC | MSG_DONTWAIT, (struct sockaddr*)&from, &fromlen);*/
 	opencpu_printf ("Waiting...\n");
 
-	data_len = recvfrom(sock_fd, rx_buf, 100,
+	data_len = recvfrom(sock_fd, rx_buf, 256,
 					MSG_TRUNC, (struct sockaddr*)&from, &fromlen);
 
 	opencpu_printf("Waiting end\n");				   
