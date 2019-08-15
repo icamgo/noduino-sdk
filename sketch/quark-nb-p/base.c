@@ -22,7 +22,8 @@ float get_vbat()
 {
 	int adc = 0;		/* mV */
     adc = opencpu_adc(HAL_ADC_CHANNEL_0);
-	return adc * 2.0 / 1000.0;
+	opencpu_printf("ADC = %d\n", adc);
+	return adc * 3.0 / 1000.0;
 }
 
 void show_iccid()
