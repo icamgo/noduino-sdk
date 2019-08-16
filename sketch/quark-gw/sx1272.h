@@ -274,6 +274,11 @@
 #define  CH_03_470     0x75B980 	// 470.9MHz
 #endif
 
+#define  CH_00_432     0x6C019C 	// 432.026MHz
+#define  CH_01_432     0x6C11A0		// 432.276MHz
+#define  CH_02_432     0x6C21A4 	// 432.526MHz
+#define  CH_03_432     0x6C31A8 	// 432.776MHz
+
 #define  CH_00_433     0x6C5333 	// 433.3MHz
 #define  CH_01_433     0x6C6666 	// 433.6MHz
 #define  CH_02_433     0x6C7999 	// 433.9MHz
