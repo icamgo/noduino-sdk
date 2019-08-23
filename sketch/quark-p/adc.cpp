@@ -17,6 +17,8 @@
 */
 #include "adc.h"
 
+#ifdef USE_MCP342x
+
 // 0x68 is the default address for all MCP342x devices
 uint8_t address = 0x68;
 MCP342x adc = MCP342x(address);
@@ -83,3 +85,4 @@ float get_adc_uv()
     // uncomment line below to convert reading to microvolts
     return uv;
 }
+#endif
