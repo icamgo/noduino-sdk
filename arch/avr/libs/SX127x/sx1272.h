@@ -292,6 +292,11 @@
 #define  CH_01_450     0x70A000 	// 450.500MHz
 #define  CH_01_450     0x70B000 	// 450.750MHz
 
+#define  CH_00_470     0x758000 	// 470.0MHz
+#define  CH_01_470     0x759338 	// 470.3MHz
+#define  CH_02_470     0x75A65C 	// 470.6MHz
+#define  CH_03_470     0x75B980 	// 470.9MHz
+
 #define  CH_00_144     0x240000 	// 144.000MHz
 #define  CH_01_144     0x241000 	// 144.250MHz
 #define  CH_02_144     0x242000 	// 144.500MHz

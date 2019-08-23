@@ -267,11 +267,6 @@
 #define  CH_10_900     0xE72B85 	// channel 10, central freq     924.68MHz
 #define  CH_11_900     0xE7B5C2 	// channel 11, central freq     926.84MHz
 #define  CH_12_900     0xE4C000 	// default channel 915MHz, the module is configured with it
-
-#define  CH_00_470     0x758000 	// 470.0MHz
-#define  CH_01_470     0x759338 	// 470.3MHz
-#define  CH_02_470     0x75A65C 	// 470.6MHz
-#define  CH_03_470     0x75B980 	// 470.9MHz
 #endif
 
 #define  CH_00_432     0x6C019C 	// 432.026MHz
@@ -293,6 +288,11 @@
 #define  CH_01_450     0x709000 	// 450.250MHz
 #define  CH_01_450     0x70A000 	// 450.500MHz
 #define  CH_01_450     0x70B000 	// 450.750MHz
+
+#define  CH_00_470     0x758000 	// 470.0MHz
+#define  CH_01_470     0x759338 	// 470.3MHz
+#define  CH_02_470     0x75A65C 	// 470.6MHz
+#define  CH_03_470     0x75B980 	// 470.9MHz
 
 #define  CH_00_144     0x240000 	// 144.000MHz
 #define  CH_01_144     0x241000 	// 144.250MHz
