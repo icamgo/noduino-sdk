@@ -189,7 +189,7 @@ void qsetup()
 #endif
 }
 
-void push_data(int wl_flag = 0)
+void push_data(int heart = 0)
 {
 	long startSend;
 	long endSend;
@@ -212,7 +212,10 @@ void push_data(int wl_flag = 0)
 	char vbat_s[10];
 	ftoa(vbat_s, vbat, 2);
 
-	r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/SK/%d", vbat_s, smoke);
+	if(heart == 0)
+		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/SK/%d", vbat_s, smoke);
+	else
+		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/SK/%d/HB/1", vbat_s, smoke);
 
 #ifdef DEBUG
 	INFO_S("%s", "Sending ");
@@ -347,7 +350,7 @@ void loop(void)
 #ifndef LOW_POWER
 	if (millis() > next_tx) {
 #endif
-		push_data();
+		push_data(1);
 
 #ifdef LOW_POWER
 
