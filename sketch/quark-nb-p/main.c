@@ -85,6 +85,12 @@ void quark_main()
 			uart_cmd = 0;
 		}
 
+		if(uart_cmd == 'r')
+		{
+			opencpu_reboot();
+			uart_cmd = 0;
+		}
+
 		if(uart_cmd == 'a')
 		{
 			test_dm();
