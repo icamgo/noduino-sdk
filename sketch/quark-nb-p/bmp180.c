@@ -196,6 +196,20 @@ int bmp180_get_id()
 	}
 }
 
+long bmp180_get_press()
+{
+	if(bmp180_get_id()) {
+		opencpu_printf("no bmp180 found!\n");
+		return -1;
+	}
+
+	bmp180_read_cali();
+
+	bmp180_uncompemstated2true();
+
+	return bmp180.p;
+}
+
 void bmp180_test()
 {
 	int i;

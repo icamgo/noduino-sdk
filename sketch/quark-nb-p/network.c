@@ -24,7 +24,7 @@ Content-Length: %d\r\n\
 Content-Type: text/html\r\n\
 Connection: close\r\n\r\n%s\r\n"
 
-#define	PKG_FMT		"\!U/%.2f/P/3727.87/devid/%s/rssi/%d"
+#define	PKG_FMT		"\!U/%.2f/P/%d/devid/%s/rssi/%d"
 
 char tx_buf[512];
 char rx_buf[256];
@@ -42,8 +42,10 @@ void push_data_via_tcp()
 	char imei[16];
 	int rssi = 0, rxlevel = 0;
 	float vbat = 0.0;
+	long press = 0;
 
 	vbat = get_vbat();
+	press = bmp180_get_press();
 
 	memset(imei, 0, 16);
 	opencpu_get_imei(imei);
@@ -72,7 +74,9 @@ void push_data_via_tcp()
 	}
 
 	memset(body, 0, 64);
-	sprintf(body, PKG_FMT, vbat, imei, rssi);
+	sprintf(body, PKG_FMT, vbat, press, imei, rssi);
+
+	opencpu_printf("%s\r\n", body);
 
 	memset(tx_buf, 0, 512);
 	sprintf(tx_buf, POST_FMT, strlen(body), body);
