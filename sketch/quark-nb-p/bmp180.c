@@ -184,9 +184,10 @@ int bmp180_get_id()
 	unsigned char id[3];
 
 	opencpu_i2c_init();
+	opencpu_i2c_set_freq(HAL_I2C_FREQUENCY_50K);
 
-	memset(id,0,2);
-	opencpu_i2c_write_read(0x77,0xD0,id,1);
+	memset(id, 0, 2);
+	opencpu_i2c_write_read(0x77, 0xD0, id, 1);
 
 	if(id[0] != 0) {
 		opencpu_printf("ID:%d\n",id[0]);

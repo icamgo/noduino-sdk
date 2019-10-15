@@ -18,6 +18,17 @@
 
 #include "quark-nb.h"
 
+#define GKI_LOG_NAME "emmi"
+#define HSL_LOG_NAME "uls"
+
+#define USER_GKI_LOG_PORT SERIAL_PORT_DEV_USB_COM1   //请在这里修改用户GKI log的输出串口，默认为USB COM1
+#define USER_HSL_LOG_PORT SERIAL_PORT_DEV_USB_COM2  //请在这里修改用户HSL log的输出串口，默认为USB COM2
+
+/* 用于选择死机信息处理通道，0：MTK原始通道 1：cm_backtrace通道 */
+unsigned int OC_DEBUG_CHANNEL = 0;
+
+hal_uart_port_t  opencpu_exception_port = HAL_UART_0; //模组发生异常死机时，此变量决定输出死机信息的串口，默认为串口0
+
 float get_vbat()
 {
 	int adc = 0;		/* mV */
@@ -153,6 +164,21 @@ void rtc_timer_start()
 */
 int get_factory_mode(void)
 {
+	opencpu_exception_port = HAL_UART_0;
+	//以下代码是判断模组log口的输出串口号，确保生效的设置和用户的设置一致，防止log口设置错误而干扰用户
+	serial_port_dev_t gki_port = -1;
+	serial_port_dev_t hsl_port = -1;
+
+	opencpu_read_port_config(GKI_LOG_NAME,&gki_port);
+	opencpu_read_port_config(HSL_LOG_NAME,&hsl_port);
+
+	if((gki_port != USER_GKI_LOG_PORT) || (hsl_port != USER_HSL_LOG_PORT)) {
+		//根据读的结果决定是否写
+		opencpu_write_port_config(GKI_LOG_NAME, USER_GKI_LOG_PORT);
+		opencpu_write_port_config(HSL_LOG_NAME, USER_HSL_LOG_PORT);
+		opencpu_reboot();//因为设置是重启生效，所以设置完必须有reboot函数
+	}
+
 	return 1;
 }
 
