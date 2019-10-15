@@ -103,6 +103,12 @@ float get_vbat();
 void show_signal_strength(void);
 void show_iccid();
 
+void gpio_init();
+void sensor_power_on();
+void sensor_power_off();
+
+long bmp180_get_press();
+
 void test_dns(void);
 void test_cmdns_cb(unsigned char *ip);
 

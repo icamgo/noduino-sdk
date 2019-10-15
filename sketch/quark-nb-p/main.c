@@ -39,6 +39,9 @@ void quark_main()
 	opencpu_printf("Update Status:%d\r\n",update_status);
 	opencpu_printf("Run Mode:%d\r\n",get_run_mode());
 
+	gpio_init();
+	opencpu_printf("Init the GPIO0...\r\n");
+
 	//reset to AT mode
 	//opencpu_printf("reset to AT mode...\r\n");
 	//opencpu_at_open();
@@ -91,6 +94,17 @@ void quark_main()
 			uart_cmd = 0;
 		}
 
+		if(uart_cmd == 'o')
+		{
+			sensor_power_on();
+			uart_cmd = 0;
+		}
+		if(uart_cmd == 'f')
+		{
+			sensor_power_off();
+			uart_cmd = 0;
+		}
+
 		if(uart_cmd == 'a')
 		{
 			test_dm();
@@ -131,6 +145,15 @@ void quark_main()
 			opencpu_get_psmparam(&psm_rsp1);
 			opencpu_printf("%d,%s,%s,%s,%s\n",psm_rsp1.mode,psm_rsp1.req_prdc_rau,
 				psm_rsp1.req_gprs_rdy_tmr,psm_rsp1.req_prdc_tau,psm_rsp1.req_act_time);
+			uart_cmd = 0;
+		}
+
+		if(uart_cmd == '8')
+		{
+			sensor_power_on();
+			vTaskDelay(1);
+			bmp180_test();
+			sensor_power_off();
 			uart_cmd = 0;
 		}
 

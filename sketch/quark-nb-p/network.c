@@ -45,7 +45,13 @@ void push_data_via_tcp()
 	long press = 0;
 
 	vbat = get_vbat();
+
+	sensor_power_on();
+	vTaskDelay(1);
+
 	press = bmp180_get_press();
+
+	sensor_power_off();
 
 	memset(imei, 0, 16);
 	opencpu_get_imei(imei);
