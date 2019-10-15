@@ -28,8 +28,16 @@
    用户此时可在串口1输入单字符命令(A~Z,a~z,0~9)以执行相应的功能函数
   </pre>
  3.模组驻网检测方法
+	<pre>
    模组驻网检测只需检测CGACT值即可，如函数opencpu_cgact()返回值为1，则说明已经能够上网：
-   
+   </pre>
+ 4.SDK中可使用的函数接口说明
+	<pre>
+		1.AT手册中已经定义的AT命令，可在ril.h中找到相同定义的，可使用。仅在ril.h中定义而未在AT手册中定义的指令不可使用。
+		2.此手册中定义的函数接口或此手册说明可使用的接口
+		3.C库中不涉及物理硬件的函数接口
+	备注：如有其他未在以上范围，且必要的功能接口，请联系技术支持
+	</pre>
  
  *@{
  */
@@ -51,7 +59,104 @@
  */
 /** @brief 使用此宏在opencpu中打印log信息. */
 #define opencpu_log(fmt,arg...) printf(fmt,##arg)
+/**
+ *  \brief 获取sim卡EID
+ *  
+ *  \param [in] buf 保存EID的buffer指针
+ *  \return 0:成功 -1：失败
+ *  
+ *  \details More details
+ */
+int opencpu_get_eid(unsigned char *buf);
+/**
+ *  \brief 读取log输出的配置
+ *  
+ *  \param [in] func_name "emmi":GKI log. "uls":HSL log
+ *  \param [in] port 保存串口号的指针
+ *  \return Return 空
+ *  
+ *  \details More details
+ */
+void opencpu_read_port_config(unsigned char * func_name,serial_port_dev_t *port);
+/**
+ *  \brief us级延时函数
+ *  
+ *  \param [in] us 延时周期数
+ *  \return Return 空
+ *  
+ *  \details More details
+ */
+void opencpu_delay_us(int us);
+/**
+ *  \brief ms级延时函数
+ *  
+ *  \param [in] ms 延时周期数
+ *  \return Return 空
+ *  
+ *  \details More details
+ */
+void opencpu_delay_ms(int ms);
+/**
+ *  \brief 设置log的输出串口（支持四个物理串口和usb的两个虚拟串口），设置完后重启生效
+ *  
+ *  \param [in] func_name "emmi":GKI log. "uls":HSL log
+ *  \param [in] port 要输出的串口，宏定义见serial_port.h
+ *  \return Return 空
+ *  
+ *  \details 注意：一个串口只能输出一种log
+ */
+void opencpu_write_port_config(unsigned char * func_name,serial_port_dev_t port);
+/**
+ *  \brief 单独对模组当前IMEI和备份IMEI进行写入。写入前先执行CFUN=0
+ *  
+ *  \param [in] type 写入IMEI类型，0：当前IMEI 1：备份IMEI
+ *  \param [in] imei_buf IMEI字符串
+ *  \return Return 空
+ *  
+ *  \details IMEI写入有失败风险，请读出进行检验，确保写入成功
+ */
+void  opencpu_write_imei_custom(int type,unsigned char *imei_buf);
+/**
+ *  \brief cmsysctrl配置函数
+ *  
+ *  \param [in] op 设置引脚设置，0为STATE，1为WAKEUP-OUT
+ *  \param [in] mode 设置模式值，与op共同生效；
+ *  \param [in] net_light_time_ms 仅在op=0且mode=2时有意义，默认80(ms),范围40-65535(ms)，表示非注册状态下高电平持续时间；
+ *  \param [in] net_light_regist_time_ms 仅在op=0且mode=2时有意义，默认80,范围40-65535(ms)，表示注册状态下高电平持续时间；
+ *  \param [in] net_slake_registing_time_ms 仅在op=0且mode=2时有意义，默认800(ms)，范围40-65535(ms)，表示非注册状态下低电平持续时间；
+ *  \param [in] net_slake_regist_time_ms 仅在op=0且mode=2时有意义，默认3000(ms)，范围40-65535(ms)，表示注册状态下低电平持续时间；
+ *  \return 0：成功 -1：失败或者入参非法；
+ *  \更多信息参阅《M5311_AT_Command_Interface_Specification.pdf》中AT+CMSYSCTRL指令说明；
+ *  \
+ */
+int opencpu_set_cmsysctrl(int op, int mode, int net_light_time_ms, int net_light_regist_time_ms, int net_slake_registing_time_ms, int net_slake_regist_time_ms);
 
+/**
+ *  \brief cmsysctrl读函数
+ *  
+ *  \param [in] sys_status status状态
+ *  \param [in] wakeup_out wakeup_out状态
+ *  \param [in] net_light_time_ms 仅在op=0且mode=2时有意义，默认80(ms),范围40-65535(ms)，表示非注册状态下高电平持续时间；
+ *  \param [in] net_light_regist_time_ms 仅在op=0且mode=2时有意义，默认80,范围40-65535(ms)，表示注册状态下高电平持续时间；
+ *  \param [in] net_slake_registing_time_ms 仅在op=0且mode=2时有意义，默认800(ms)，范围40-65535(ms)，表示非注册状态下低电平持续时间；
+ *  \param [in] net_slake_regist_time_ms 仅在op=0且mode=2时有意义，默认3000(ms)，范围40-65535(ms)，表示注册状态下低电平持续时间；
+ *  \return 0：成功 -1：失败
+ *  
+ */
+int opencpu_get_cmsysctrl(int *sys_status, int *wakeup_out, int *net_light_time_ms, int *net_light_regist_time_ms, int *net_slake_registing_time_ms, int *net_slake_regist_time_ms);
+/**
+ *  \brief Brief description
+ *  
+ *  \param [in] sntp_ser NTP服务器域名
+ *  \param [in] sntp_port NTP服务器端口号
+ *  \param [in] set_rtc 是否同步更新RTC，0：不更新，1：更新
+ *  \param [in] timeout 超时时间
+ *  \param [in] user_callback 返回结果的回调函数
+ *  \return 0：成功 -1：失败
+ *  
+ *  \details More details
+ */
+int opencpu_cmntp(unsigned char *sntp_ser,unsigned int sntp_port,unsigned int set_rtc,unsigned int timeout,oc_sntp_callback_t user_callback);
 /**
  *  \brief 模组在浅睡眠或深度睡眠时可以被WAKEUP_IN引脚的低跳变沿唤醒。此函数用来设置被唤醒后的保持时间
  *  
@@ -85,6 +190,15 @@ int get_factory_mode(void);
  *  \details 
  */
 int get_run_mode(void);
+/**
+ *  \brief 获取模组支持的硬件版本号
+ *  
+ *  \param [in] base_ver 保存版本号字符串的指针
+ *  \return Return 空
+ *  
+ *  \details More details
+ */
+void opencpu_get_base_version(unsigned char *base_ver);
 /**
  *  \brief 获取当前固件支持的硬件版本
  *  
@@ -135,7 +249,7 @@ int opencpu_cgact(void);
  *  \param [in] imei_t 要写入的产品imei字符串
  *  \return 0：成功 -1：失败
  *  
- *  \details More details
+ *  \details IMEI写入有失败风险，请读出进行检验，确保写入成功
  */
  int opencpu_write_prod_imei(unsigned char* imei_t);
  /**
@@ -333,9 +447,20 @@ int opencpu_is_boot_from_sleep(void);
 
  * @defgroup DM_FUNCTIONS
  * 
-   多形态终端上报接口
+   多形态终端上报接口，请参照SDK中示例文件使用
  *@{
  */
+
+ /**
+ *  \brief 设置DM上报的模式
+ *  
+ *  \param [in] auto_update true:周期性自动上报，false：手动单次上报
+ *  \return 空
+ *  
+ *  \details More details
+ */
+void opencpu_dm_set_mode(bool auto_update);
+
  /**
  *  \brief DM启动
  *  
@@ -353,6 +478,14 @@ int opencpu_is_boot_from_sleep(void);
  *  \details More details
  */
  bool opencpu_dm_stop(void);
+ /**
+ *  \brief 发起一次DM上报
+ *  
+ *  \return Return true:成功 false:失败
+ *  
+ *  \details 此函数只在手动模式下调用有效
+ */
+ bool opencpu_dm_update(void);
  
    /** @} */ 
 /**
@@ -381,6 +514,28 @@ void opencpu_fota_try_download(void);
  *  \details 下载完成后，即可触发升级，升级会自动关闭所有应用程序，进入升级流程，升级完成后自动重启
  */
 void opencpu_fota_update(void);
+/**
+ *  \brief 设置FOTA上报流程的参数，重启生效
+ *  
+ *  \param [in] first 开机后第一次上报的起始时间，默认40，最小10，单位s
+ *  \param [in] period 第一次上报失败的情况下，重试的间隔周期，默认120，最小120，单位s
+ *  \param [in] count 上报失败的情况下，最多重试多少次，默认10，最小1，单位次
+ *  \return Return 0：设置成功  -1：设置失败
+ *  
+ *  \details More details
+ */
+int opencpu_fota_set_report_param(int first,int period,int count);
+/**
+ *  \brief 获取当前FOTA上报流程的参数
+ *  
+ *  \param [in] first 开机后第一次上报的起始时间，单位s
+ *  \param [in] period 第一次上报失败的情况下，重试的间隔周期，单位s
+ *  \param [in] count 上报失败的情况下，最多重试多少次，单位次
+ *  \return 空
+ *  
+ *  \details More details
+ */
+void opencpu_fota_get_report_param(int * first,int * period,int *count);
 /**
  *  \brief FOTA事件回调函数，当有FOTA事件发生时，SDK自动调用此函数返回结果
  *  
@@ -414,7 +569,7 @@ unsigned long opencpu_fota_version_cb(void);
 
  * @defgroup UART_FUNCTIONS  
  * 
-   本模组一共开放三路UART,UART0、UART1和UART3，缓冲区为1024字节，超出将造成数据丢失。UART代码相关的结构体请参考hal_uart.h
+   本模组一共开放四路UART,接收缓冲区为1024字节，超出将造成数据丢失。发送缓冲区为256字节。UART代码相关的结构体请参考hal_uart.h
  *@{
  */
  /**
@@ -743,7 +898,7 @@ int opencpu_flash_read(uint32_t addr, unsigned char * data,uint32_t len);
 /**
  *  \brief flash擦除函数
  *  
- *  \param [in] addr 要擦除的起始地址
+ *  \param [in] addr 要擦除的起始地址，此地址必须4K字节对齐，否则将返回错误
  *  \param [in] len 要擦除的长度
  *  \return 0：成功 -1：失败
  *  
@@ -858,13 +1013,13 @@ int opencpu_rtc_timer_delete(uint32_t handle);
    /**
 
  * @defgroup ADC_FUNCTIONS  
- *  模组一共提供两路ADC，精度为10位，直接使用即可，不需初始化配置等过程。
+ *  模组一共提供四路ADC，精度为10位，直接使用即可，不需初始化配置等过程。
  *@{
  */
 /**
  *  \brief 
  *  
- *  \param [in] chan ADC通道号，只支持HAL_ADC_CHANNEL_0和HAL_ADC_CHANNEL_1
+ *  \param [in] chan ADC通道号，支持HAL_ADC_CHANNEL_0，HAL_ADC_CHANNEL_1，HAL_ADC_CHANNEL_3，HAL_ADC_CHANNEL_4
  *  \return 电压值
  *  
  */
@@ -875,15 +1030,17 @@ int opencpu_adc(hal_adc_channel_t chan);
    /**
 
  * @defgroup PWM_FUNCTIONS  
- * 模组支持一路PWM，使用引脚GPIO1
+ * 模组支持两路PWM，0和3，具体引脚请参考资源综述文档
  *@{
  */
- /**
+
+/**
  *  \brief 初始化PWM
  *  
+ *  \param [in] channel 通道号，0或3
  *  \param [in] freq 频率
  *  \param [in] ratio 占空比
- *  \return 空
+ *  \return Return 空
  *  
  *  示例：
  *  @code
@@ -892,39 +1049,66 @@ int opencpu_adc(hal_adc_channel_t chan);
    //设置频率   
    #define PWM_FREQ   2000
    //初始化PWM
-   opencpu_pwm_init(PWM_FREQ,DUTY_RATIO);
+   opencpu_pwm_init(3,PWM_FREQ,DUTY_RATIO);
    //开始PWM输出
-   opencpu_pwm_start();
+   opencpu_pwm_start(3);
    vTaskDelay(1000);
    //停止PWM输出
-   opencpu_pwm_stop();	
+   opencpu_pwm_stop(3);	
    //释放PWM
-   opencpu_pwm_deinit();
+   opencpu_pwm_deinit(3);
 
  *  @endcode
+ *  \details More details
  */
-void opencpu_pwm_init(unsigned int freq,unsigned int ratio);
+void opencpu_pwm_init(unsigned int channel,unsigned int freq,unsigned int ratio);
  /**
- *  \brief 启动PMW输出
+ *  \brief 启动PWM输出
  *  
- *  \return 空
+ *  \param [in] channel 通道号，0或3
+ *  \return Return 空
  *  
+ *  \details More details
  */
- void opencpu_pwm_start(void);
- /**
+ void opencpu_pwm_start(unsigned int channel);
+/**
  *  \brief 停止PWM输出
  *  
+ *  \param [in] channel 通道号，0或3
+ *  \return Return 空
+ *  
+ *  \details More details
+ */
+void opencpu_pwm_stop(unsigned int channel);
+/**
+ *  \brief PWM设置占空比
+ *  
+ *  \param [in] channel PWM通道，0或3
+ *  \param [in] ratio 占空比
  *  \return 空
  *  
+ *  \details More details
  */
-void opencpu_pwm_stop(void);
+void opencpu_pwm_set_duty_cycle(unsigned int channel,unsigned int ratio);
+/**
+ *  \brief PWM设置频率
+ *  
+ *  \param [in] channel PWM通道，0或3
+ *  \param [in] freq 频率
+ *  \return 空
+ *  
+ *  \details More details
+ */
+void opencpu_pwm_set_frequency(unsigned int channel,unsigned int freq);
  /**
  *  \brief 关闭PWM
  *  
- *  \return 空
+ *  \param [in] channel 通道号，0或3
+ *  \return Return 空
  *  
+ *  \details More details
  */
- void opencpu_pwm_deinit(void);
+ void opencpu_pwm_deinit(unsigned int channel);
   /** @} */ 
   
    /**
@@ -964,6 +1148,7 @@ void opencpu_pwm_stop(void);
 
     使用完后，调用释放函数：
     opencpu_spi_deinit();
+    如果用户不需要硬件自动控制CS，把CS引脚初始化为GPIO功能即可
 
  *  @endcode
  */
@@ -981,7 +1166,7 @@ void opencpu_spi_deinit(void);
  *  \param [in] send_len 要发送的数据长度
  *  \param [in] read_buf 保存读取数据的地址
  *  \param [in] read_len 要读取的数据长度
- *  \return 0：成功 小于 0：失败
+ *  \return 0：成功 小于0：失败
  *  
  */
 int opencpu_spi_rw(unsigned char *send_buf,int send_len,unsigned char *read_buf,int read_len);
@@ -989,12 +1174,21 @@ int opencpu_spi_rw(unsigned char *send_buf,int send_len,unsigned char *read_buf,
  *  \brief SPI发送
  *  
  *  \param [in] send_buf 要发送的数据指针
- *  \param [in] len 要发送的长度
- *  \return 0：成功 小于 0：失败
+ *  \param [in] len 要发送的长度，最大32
+ *  \return 0：成功 小于0：失败
  *  
  */
 int  opencpu_spi_write(unsigned char *send_buf,int len);
- 
+/**
+ *  \brief spi读取
+ *  
+ *  \param [in] buf 保存读取数据的内存指针
+ *  \param [in] len 要读取的长度，最大32
+ *  \return 0：成功 小于0：失败
+ *  
+ *  \details More details
+ */
+int opencpu_spi_read(unsigned char *buf,int len);
   /** @} */ 
    /**
 
@@ -1022,6 +1216,23 @@ int  opencpu_spi_write(unsigned char *send_buf,int len);
  *  @endcode
  */
 void opencpu_i2c_init(void);
+/**
+ *  \brief 设置I2C速率
+ *  
+ *  \param [in] freq 速率
+ *  \return Return 空
+ *  
+ *  \details I2C设备初始化之后调用即可
+ */
+void opencpu_i2c_set_freq(hal_i2c_frequency_t freq);
+/**
+ *  \brief 获取I2C速率
+ *  
+ *  \return Return 当前速率
+ *  
+ *  \details 默认速率为50kbps
+ */
+hal_i2c_frequency_t  opencpu_i2c_get_freq(void);
 
 /**
  *  \brief i2c向一个器件发送一个字节，然后读取n个字节
@@ -1107,7 +1318,7 @@ void opencpu_i2c_deinit(void);
   @endcode
   10.清除引脚高阻状态
   @code
-  hal_gpio_status_t hal_gpio_set_high_impedance(hal_gpio_pin_t gpio_pin);
+  hal_gpio_status_t hal_gpio_clear_high_impedance(hal_gpio_pin_t gpio_pin);
   @endcode
   11.反转引脚输出状态
   @code

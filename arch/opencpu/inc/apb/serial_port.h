@@ -37,31 +37,13 @@
 
 
 
-
 #include <stdint.h>
 
-#include "hal_uart.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-
-/* define size of internal buffers */
-#define SERIAL_PORT_RECEIVE_BUFFER_SIZE 2048
-#define SERIAL_PORT_SEND_BUFFER_SIZE 2048
-
-/* define name of port setting in NVDM */
-#define PORT_SETTING_GROUP_NAME "port_service"
-#define PORT_SETTING_NAME_PORT_ASSIGN "port_assign"
-#define PORT_SETTING_NAME_PORT_CONFIG "port_config"
-
-/* define max size of user name */
 #define SERIAL_PORT_USER_NAME_SIZE 20
-
-/* define default values for porting devices */
-#define UART_DEFAULT_BAUDRATE HAL_UART_BAUDRATE_115200
-
 /** @defgroup port_service_enum Enums
   * @{
   */
@@ -82,6 +64,8 @@ typedef enum {
     SERIAL_PORT_DEV_USB_COM2,                                   /**< USB2 port in the port service of a device. */
     SERIAL_PORT_DEV_USB_TYPE_END = SERIAL_PORT_DEV_USB_COM2,    /**< The last valid USB port in the port service of a device. */
 
+    SERIAL_PORT_DEV_FAKE,                                       /**< Fake device. */
+
     SERIAL_PORT_DEV_MAX,                                        /**< The maximum number of ports in the port service of a device. */
     SERIAL_PORT_DEV_UNDEFINED = 255,                            /**< The invalid port number in the port service of a device. */
 } serial_port_dev_t;
@@ -93,6 +77,7 @@ typedef enum {
     SERIAL_PORT_TYPE_BEGIN = 0,                                 /**< The first port type in the port service. */
     SERIAL_PORT_TYPE_UART = SERIAL_PORT_TYPE_BEGIN,             /**< UART port type in the port service. */
     SERIAL_PORT_TYPE_USB,                                       /**< USB port type in the port service. */
+    SERIAL_PORT_TYPE_FAKE,
     SERIAL_PORT_TYPE_MAX,                                       /**< The maximum number of port types in the port service. */
 } serial_port_type_t;
 
@@ -119,6 +104,7 @@ typedef enum {
     SERIAL_PORT_EVENT_PORT_CLOSE,
     SERIAL_PORT_EVENT_USB_CONNECTION,           /**< USB connection event. */
     SERIAL_PORT_EVENT_USB_DISCONNECTION,        /**< USB disconnection event. */
+    SERIAL_PORT_EVENT_SAVE_AUTO_BAUD_RATE,
 } serial_port_callback_event_t;
 
 /** @brief
@@ -430,15 +416,17 @@ serial_port_status_t serial_port_config_write_dev_setting(serial_port_dev_t devi
 
 serial_port_handle_t serial_port_return_handle(bool is_valid, serial_port_dev_t device);
 
+serial_port_status_t serial_port_set_device_status(serial_port_dev_t device, bool busy);
+
 /**
   * @}
   */
 
-
+#endif
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif
+
 

@@ -231,10 +231,14 @@ typedef enum {
     RIL_CMD_ID_CSCS,    /**< AT command +CSCS. */
     RIL_CMD_ID_CIMI,    /**< AT command +CIMI. */
     RIL_CMD_ID_CMUX,    /**< AT command +CMUX. */
+#ifndef __RIL_CMD_SET_SLIM_ENABLE__
     RIL_CMD_ID_CR,    /**< AT command +CR. */
+#endif
     RIL_CMD_ID_CEER,    /**< AT command +CEER. */
     RIL_CMD_ID_CNUM,    /**< AT command +CNUM. */
+#ifndef __RIL_CMD_SET_SLIM_ENABLE__
     RIL_CMD_ID_CREG,    /**< AT command +CREG. */
+#endif
     RIL_CMD_ID_COPS,    /**< AT command +COPS. */
     RIL_CMD_ID_CLCK,    /**< AT command +CLCK. */
     RIL_CMD_ID_CPWD,    /**< AT command +CPWD. */
@@ -252,7 +256,9 @@ typedef enum {
     RIL_CMD_ID_CTZR,    /**< AT command +CTZR. */
     RIL_CMD_ID_CGPIAF,    /**< AT command +CGPIAF. */
     RIL_CMD_ID_CPINR,    /**< AT command +CPINR. */
+#ifndef __RIL_CMD_SET_SLIM_ENABLE__
     RIL_CMD_ID_CSUS,    /**< AT command +CSUS. */
+#endif
     RIL_CMD_ID_CESQ,    /**< AT command +CESQ. */
     RIL_CMD_ID_CMEE,    /**< AT command +CMEE. */
     RIL_CMD_ID_CGDCONT,    /**< AT command +CGDCONT. */
@@ -261,7 +267,9 @@ typedef enum {
     RIL_CMD_ID_CGDATA,    /**< AT command +CGDATA. */
     RIL_CMD_ID_CGPADDR,    /**< AT command +CGPADDR. */
     RIL_CMD_ID_CGEREP,    /**< AT command +CGEREP. */
+#ifndef __RIL_CMD_SET_SLIM_ENABLE__
     RIL_CMD_ID_CGREG,    /**< AT command +CGREG. */
+#endif
     RIL_CMD_ID_CEREG,    /**< AT command +CEREG. */
     RIL_CMD_ID_CGCONTRDP,    /**< AT command +CGCONTRDP. */
     RIL_CMD_ID_CGDEL,    /**< AT command +CGDEL. */
@@ -309,6 +317,7 @@ typedef enum {
     /* Commands in technical specification V.250. */
     RIL_CMD_ID_E,    /**< AT command ATE. */
     RIL_CMD_ID_I,    /**< AT command ATI. */
+#ifndef __RIL_CMD_SET_SLIM_ENABLE__
     RIL_CMD_ID_O,    /**< AT command ATO. */
     RIL_CMD_ID_Q,    /**< AT command ATQ. */
     RIL_CMD_ID_S3,    /**< AT command ATS3. */
@@ -322,6 +331,7 @@ typedef enum {
     RIL_CMD_ID_AF,    /**< AT command AT&F. */
     RIL_CMD_ID_GCAP,    /**< AT command +GCAP. */
     RIL_CMD_ID_S25,    /**< AT command ATS25. */
+#endif
 
     /* Unique identifiers for MediaTek proprietary AT commands. */
     RIL_CMD_ID_MLTS,    /**< AT command *MLTS. */
@@ -329,6 +339,7 @@ typedef enum {
     RIL_CMD_ID_MSPN,    /**< AT command *MSPN. */
     RIL_CMD_ID_MUNSOL,    /**< AT command *MUNSOL. */
     RIL_CMD_ID_MGCOUNT,    /**< AT command *MGCOUNT. */
+#ifndef __RIL_CMD_SET_SLIM_ENABLE__
     RIL_CMD_ID_MGSINK,    /**< AT command *MGSINK. */
     RIL_CMD_ID_MCGDEFCONT,    /**< AT command *MCGDEFCONT. */
     RIL_CMD_ID_MGTCSINK,    /**< AT command *MGTCSINK. */
@@ -343,10 +354,12 @@ typedef enum {
     RIL_CMD_ID_MMGRW,    /**< AT command *MMGRW. */
     RIL_CMD_ID_MMGSC_PDU,    /**< AT command *MMGSC if PDU mode. */
     RIL_CMD_ID_MMGSC_TXT,    /**< AT command *MMGSC if TEXT mode. */
+#endif
     RIL_CMD_ID_MUPIN,    /**< AT command *MUPIN. */
     RIL_CMD_ID_MUAPP,    /**< AT command *MUAPP. */
     RIL_CMD_ID_MSST,    /**< AT command *MSST. */
     RIL_CMD_ID_MABORT,    /**< AT command *MABORT. */
+#ifndef __RIL_CMD_SET_SLIM_ENABLE__
     RIL_CMD_ID_MCAL,    /**< AT command *MCAL. */
     RIL_CMD_ID_MNON,    /**< AT command *MNON. */
     RIL_CMD_ID_MOPL,    /**< AT command *MOPL. */
@@ -354,7 +367,9 @@ typedef enum {
     RIL_CMD_ID_MROUTEMMI,    /**< AT command *MROUTEMMI. */
     RIL_CMD_ID_MCEERMODE,    /**< AT command *MCEERMOTE. */
     RIL_CMD_ID_MFTRCFG,    /**< AT command *MFTRCFG. */
+#endif
     RIL_CMD_ID_HVER,    /**< AT command ^HVER. */
+#ifndef __RIL_CMD_SET_SLIM_ENABLE__
     RIL_CMD_ID_MODE,    /**< AT command ^MODE. */
     RIL_CMD_ID_SYSINFO,    /**< AT command ^SYSINFO. */
     RIL_CMD_ID_SYSCONFIG,    /**< AT command ^SYSCONFIG. */
@@ -369,8 +384,10 @@ typedef enum {
     RIL_CMD_ID_MSTCR,    /**< AT command *MSTCR. */
     RIL_CMD_ID_MSTMS,    /**< AT command *MSTMS. */
     RIL_CMD_ID_MSTEV,    /**< AT command *MSTEV. */
+#endif
     RIL_CMD_ID_MICCID,    /**< AT command *MICCID. */
     RIL_CMD_ID_MHOMENW,    /**< AT command *MHOMENW. */
+#ifndef __RIL_CMD_SET_SLIM_ENABLE__
     RIL_CMD_ID_MCSIMLOCK,    /**< AT command *MCSIMLOCK. */
     RIL_CMD_ID_MEMMREEST,    /**< AT command *MEMMREEST. */
     RIL_CMD_ID_MAPNURI,    /**< AT command *MAPNURI. */
@@ -392,6 +409,7 @@ typedef enum {
     RIL_CMD_ID_IDCFREQ,    /**< AT command +IDCFREQ. */
     RIL_CMD_ID_IDCPWRBACKOFF,    /**< AT command +IDCPWRBACKOFF. */
     RIL_CMD_ID_IDCTX2GPS,    /**< AT command +IDCTX2GPS. */
+#endif
     RIL_CMD_ID_MCALDEV,    /**< AT command *MCALDEV. */
     RIL_CMD_ID_MATWAKEUP,    /**< AT command *MATWAKEUP. */
     RIL_CMD_ID_MBAND,    /**< AT command *MBAND. */
@@ -401,6 +419,9 @@ typedef enum {
     RIL_CMD_ID_MDPDNP,    /**< AT command *MDPDNP. */
     RIL_CMD_ID_MEDRXCFG,    /**< AT command *MEDRXCFG. */
     RIL_CMD_ID_MCELLINFO,    /**< AT command *MCELLINFO. */
+    RIL_CMD_ID_MCGSN,    /**< AT command: *MCGSN. */
+    RIL_CMD_ID_MUPDIR,    /**< AT command *MUPDIR. */
+    RIL_CMD_ID_MTC,    /**< AT command: *MTC. */
 
     RIL_CMD_ID_CUSTOM_CMD,
     RIL_CMD_ID_CUSTOM_CMD_URC,
@@ -434,7 +455,9 @@ typedef enum {
     /* Proprietary command specifications. */
     RIL_URC_ID_MLTS,    /**< *MLTS. */
     RIL_URC_ID_MSIMINS,    /**< *MSIMINS. */
+    RIL_URC_ID_MSQN,    /**< *MSQN. */
     RIL_URC_ID_MGCOUNT,    /**< *MGCOUNT. */
+#ifndef __RIL_CMD_SET_SLIM_ENABLE__
     RIL_URC_ID_MSMEXTRAUNSOL,    /**< *MSMEXTRAUNSOL. */
     RIL_URC_ID_MMGI,    /**< *MMGI. */
     RIL_URC_ID_MSMPUKBLKD,    /**< *MSMPUKBLKD. */
@@ -447,10 +470,12 @@ typedef enum {
     RIL_URC_ID_MPLMNURI,    /**< *MPLMNURI. */
     RIL_URC_ID_MPDI,    /**< *MPDI. */
     RIL_URC_ID_IDCFREQ,    /**< +IDCFREQ. */
-    RIL_URC_ID_MSQN,    /**< *MSQN. */
+#endif
     RIL_URC_ID_MATREADY,    /**< *MATREADY. */
     RIL_URC_ID_MATWAKEUP,    /**< *MATWAKEUP. */
     RIL_URC_ID_MDPDNP,    /**< *MDPDNP. */
+    RIL_URC_ID_MUPDIR,    /**< *MUPDIR. */
+    RIL_URC_ID_MUPDI,    /**< *MUPDI. */
 
     RIL_URC_ID_END,    /**< End of the URC event ID enumeration. */
     RIL_URC_ID_INVALID = RIL_URC_ID_END,    /**< Indicates an invalid URC event ID. */
@@ -2435,7 +2460,7 @@ typedef struct {
     int32_t cid; /**< Identifies the PDP context. */
     int32_t additional_exception_reports; /**<  Whether additional exception reports are sent. */
     int32_t uplink_time_unit; /**< The time unit for maximum uplink rate; unrestricted, minutes, hour, day and week. */
-    int32_t maximun_uplink_rate; /**< The unit of maximum uplink rate. */
+    int32_t maximum_uplink_rate; /**< The unit of maximum uplink rate. */
 } ril_APN_rate_control_struct_t;
 /**
  * @brief This defines data structure for AT response of "+CGAPNRC".
@@ -5676,6 +5701,31 @@ typedef struct {
  *             #RIL_STATUS_INVALID_PARAM, invalid sub-parameter.
  */
 extern ril_status_t ril_request_serving_and_neighbor_cell_info(ril_request_mode_t mode,
+        ril_cmd_response_callback_t callback,
+        void *user_data);
+
+
+
+/* AT command: AT*MTC */
+
+/** 
+ * @brief This function sends an AT command "*MTC".
+ * @param[in] mode    AT command mode setting. 
+ * @param[in] NFM_active    Subparameter for this AT command, integer value indicating NFM active mode.
+ * @param[in] start_timer_active    Subparameter for this AT command, integer value indicating to enable/disable start timer.
+ * @param[in] STPar    Subparameter for this AT command, integer value which is the ST time interval in seconds 1 ~ 15360 (default is 60).
+ * @param[in] test_mode    Subparameter for this AT command, integer value indicating the test mode.
+ * @param[in] callback    is a response callback function, including the result code and sub-parameters of AT response data string.
+ * @param[in] user_data    A pointer to the user data.
+ * @return #RIL_STATUS_SUCCESS, the operation completed successfully.
+ *             #RIL_STATUS_FAIL, the operation has failed.
+ *             #RIL_STATUS_INVALID_PARAM, invalid sub-parameter.
+ */
+extern ril_status_t ril_request_test_config(ril_request_mode_t mode,
+        int32_t NFM_active,
+        int32_t start_timer_active,
+        int32_t STPar,
+        int32_t test_mode,
         ril_cmd_response_callback_t callback,
         void *user_data);
 

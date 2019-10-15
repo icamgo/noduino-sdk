@@ -2,6 +2,7 @@
 #define __OPENCPU_H_
 
 #include <stdarg.h>
+#include <math.h>
 #include "lwip/netdb.h"
 #include "lwip/api.h"
 #include "FreeRTOS.h"
@@ -13,14 +14,14 @@
 #include "ril.h"
 #include "hal_pwm.h"
 #include "serial_port.h"
-#include "serial_port.h"
 #include "timers.h"
 #define socklen_t int
 #include "other.h"
 #include "spi.h"
 #include "opencpu_onenet.h"
+#include "opencpu_ct.h"
 
-
+#include <time.h>
 
 
 typedef unsigned short uint16_t;
@@ -36,7 +37,15 @@ typedef  unsigned int  u32;
 typedef void (* ping_request_result_t)(ping_result_type_t type, void* result);
 typedef void (* dns_request_result_t)(unsigned char*);
 
-
+typedef enum {
+    HAL_I2C_FREQUENCY_50K  = 0,          /**<  50kbps. */
+    HAL_I2C_FREQUENCY_100K = 1,          /**<  100kbps. */
+    HAL_I2C_FREQUENCY_200K = 2,          /**<  200kbps. */
+    HAL_I2C_FREQUENCY_300K = 3,          /**<  300kbps. */
+    HAL_I2C_FREQUENCY_400K = 4,          /**<  400kbps. */
+    HAL_I2C_FREQUENCY_1M   = 5,          /**<  1mbps. */
+    HAL_I2C_FREQUENCY_MAX                /**<  The total number of supported I2C frequencies (invalid I2C frequency).*/
+} hal_i2c_frequency_t;
 typedef struct _ping_result
 {
     uint32_t min_time;
@@ -70,7 +79,7 @@ typedef struct {
 #define ATTR_ZIDATA_IN_NONCACHED_RAM_4BYTE_ALIGN  __attribute__ ((__section__(".noncached_zidata"),__aligned__(4)))
 
 
-
+typedef void (*oc_sntp_callback_t)       (unsigned char * info);
 #include "opencpu_api.h"
 
 

@@ -44,7 +44,7 @@ MEMORY
 _stack_end = ORIGIN(TCM) + LENGTH(TCM);    /* end of TCM */
 
 /* Generate a link error if stack don't fit into TCM */
-_stack_size = 0x1000; /* required amount of stack 4KB*/
+_stack_size = 0xFE0; /* required amount of stack 4064B*/
  
 /* stack start */
 _stack_start = _stack_end - _stack_size;
