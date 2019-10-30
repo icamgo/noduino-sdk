@@ -251,7 +251,7 @@ upload: build/main.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
 
 flash: build/main.bin
-	$(ARMDUDE) $(ARMDUDE_FLAGS) $(ARMDUDE_WRITE_MAIN)
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
 
 eeprom: eeprom.bin
 	$(ARMDUDE) $(ARMDUDE_FLAGS) $(ARMDUDE_WRITE_EEPROM)
