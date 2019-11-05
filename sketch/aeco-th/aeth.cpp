@@ -22,9 +22,15 @@
 //#include "vbat.h"
 //#include "U8g2lib.h"
 
-#define ENABLE_CAD			1
+//#define ENABLE_GPS			1
 
-#define node_addr		102
+#ifdef ENABLE_GPS
+#include "gps.h"
+#endif
+
+//#define ENABLE_CAD			1
+
+#define node_addr		105
 
 #define DEST_ADDR		1
 
@@ -49,7 +55,7 @@
 
 ///////////////////////////////////////////////////////////////////
 // CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-uint32_t idlePeriod = 60;	// 60 seconds, 1 min
+uint32_t idlePeriod = 70;	// 70 seconds, 1 min
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
@@ -160,7 +166,12 @@ void setup()
 	// dev power ctrl
 	pinMode(10, OUTPUT);
 
+	Serial.setRouteLoc(1);
+#ifdef ENABLE_GPS
+	Serial.begin(9600);
+#else
 	Serial.begin(115200);
+#endif
 
 	//INFO_S("%s", "Noduino Quark LoRa Node\n");
 
@@ -189,6 +200,9 @@ void setup()
 	INFO_S("%s", "SX1272 successfully configured\n");
 #endif
 
+#ifdef ENABLE_GPS
+	gps_setup();
+#endif
 }
 
 void qsetup()
@@ -207,7 +221,28 @@ void qsetup()
 #ifdef ENABLE_SSD1306
 	u8g2.begin();
 #endif
+
+#ifdef ENABLE_GPS
+	gps_setup();
+#endif
 }
+
+#ifdef ENABLE_GPS
+void get_pos()
+{
+	// Get a valid position from the GPS
+	int valid_pos = 0;
+
+	uint32_t timeout = millis();
+	do {
+		if (Serial.available())
+		valid_pos = gps_decode(Serial.read());
+	} while ((millis() - timeout < 2000) && ! valid_pos) ;
+
+	if (valid_pos) {
+	}
+}
+#endif
 
 void loop(void)
 {
@@ -215,7 +250,7 @@ void loop(void)
 	long endSend;
 	uint8_t app_key_offset = 0;
 	int e;
-	float pres = -1.0, vbat = 3.33;
+	float pres = 0.0, vbat = 3.33;
 
 #ifndef LOW_POWER
 	if (millis() > next_tx) {
@@ -226,6 +261,10 @@ void loop(void)
 
 		INFO("%s", "Pressure = ");
 		INFOLN("%f", pres);
+
+#ifdef ENABLE_GPS
+		get_pos();
+#endif
 
 #ifdef WITH_APPKEY
 		app_key_offset = sizeof(my_appKey);
@@ -240,9 +279,22 @@ void loop(void)
 		ftoa(vbat_s, vbat, 2);
 		ftoa(pres_s, pres, 2);
 
+#ifdef ENABLE_GPS
+		char lat_s[12], lon_s[12], alt_s[10];
+
+		ftoa(lat_s, gps_lat, 4);
+		ftoa(lon_s, gps_lon, 4);
+		ftoa(alt_s, gps_altitude, 0);
+
+		// this is for testing, uncomment if you just want to test, without a real pressure sensor plugged
+		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/P/%s/lat/%s/lon/%s/alt/%s",
+					vbat_s, pres_s, lat_s, lon_s, alt_s);
+#else
+
 		// this is for testing, uncomment if you just want to test, without a real pressure sensor plugged
 		//strcpy(vbat_s, "noduino");
 		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/P/%s", vbat_s, pres_s);
+#endif
 
 		INFO_S("%s", "Sending ");
 		INFOLN("%s", (char *)(message + app_key_offset));

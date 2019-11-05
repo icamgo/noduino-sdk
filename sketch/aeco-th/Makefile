@@ -89,6 +89,7 @@ $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
 ./softspi.cpp											\
+./gps.cpp												\
 ./sx1272.cpp
 
 #$(LIB_DIR)/SPI/src/SPI.cpp							\
