@@ -58,7 +58,6 @@ void HardwareSerial::setRouteLoc(uint8_t route) {
       USART_ROUTE_LOCATION_LOCx = route<<8;
 }
 
-
 #if 0
 void HardwareSerial::initSpiGpio(USART_Mode_TypeDef  spiMode) {
 	
@@ -131,6 +130,8 @@ void HardwareSerial::initSpiGpio(USART_Mode_TypeDef  spiMode) {
 #endif
 
 void HardwareSerial::initSerialGpio(void) {
+
+	CMU_ClockEnable(cmuClock_GPIO, true);
 
 #if  defined(USART0)&& (USE_USART0 >0)
   if (this->instance == USART0) {
@@ -261,8 +262,8 @@ void HardwareSerial::initSerialGpio(void) {
 #endif
 }
 
-void HardwareSerial::begin(USART_Mode_TypeDef  spiMode){
-  if(spiMode & SPI_MODE ){    
+void HardwareSerial::begin(USART_Mode_TypeDef spiMode){
+  if(spiMode & SPI_MODE ){
      if (buf == NULL) {
        buf = (USART_Buf_TypeDef*)malloc(sizeof(USART_Buf_TypeDef));
        buf->instance = this->instance;
@@ -271,11 +272,11 @@ void HardwareSerial::begin(USART_Mode_TypeDef  spiMode){
      initSpiGpio(SPI_MODE);
      initPort();
   } else {
-	 begin(SERIAL_BAUDRATE,SERIAL_8N1); /**/
+	 begin(SERIAL_BAUDRATE, SERIAL_8N1);
   }
 }
 
-void HardwareSerial::begin(const uint32_t baud,uint8_t config ){
+void HardwareSerial::begin(const uint32_t baud,uint8_t config){
   this->baud = baud;
   this->config = config;
   if (buf == NULL) {
@@ -316,8 +317,8 @@ void HardwareSerial::begin(const uint32_t baud,uint8_t config ){
     this->instance->ROUTE |=  USART_ROUTE_TXPEN | USART_ROUTE_RXPEN | USART_ROUTE_LOCATION_LOCx;
   }
   
-  if (buf->mode == UART_TYPE) {
-	  /*add me*/
+  if (buf->mode == LEUART_TYPE) {
+
   }
 }
 
@@ -384,13 +385,13 @@ void HardwareSerial::initPort(void) {
     CMU_ClockEnable(cmuClock_UART1, true);
   }
 #endif
+
 #if defined(LEUART0)&& (USE_LEUART0 >0)
   if (this->instance == (USART_TypeDef *)LEUART0) {
+
     LEUART0_buf = buf;
     LEUART_Reset(LEUART0);
-    /* Enable clock for LEUART0 */
-  /* Enable CORE LE clock in order to access LE modules */
-    CMU_ClockEnable(cmuClock_HFLE, true); // Necessary for accessing LE modules
+
 #if (LESERIAL_BAUDRATE >9600)
     CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_CORELEDIV2); // Set CORELEDIV2 reference clock
 #elif USE_LFBLFXO >0 
@@ -400,8 +401,9 @@ void HardwareSerial::initPort(void) {
 #else
     CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_CORELEDIV2); // Set CORELEDIV2 reference clock
 #endif
+
     CMU_ClockEnable(cmuClock_LEUART0, true);
- //   CMU_ClockDivSet(cmuClock_LEUART0, cmuClkDiv_1); // Don't prescale LEUART clock
+	CMU_ClockDivSet(cmuClock_LEUART0, cmuClkDiv_1); // Don't prescale LEUART clock
 
     LEUART_Init_TypeDef init = LEUART_INIT_DEFAULT;
     init.enable = leuartDisable;
@@ -411,6 +413,7 @@ void HardwareSerial::initPort(void) {
     LEUART0->ROUTE = USART_ROUTE_LOCATION_LOCx | LEUART_ROUTE_RXPEN | LEUART_ROUTE_TXPEN;
   }
 #endif
+
 #if   defined(LEUART1)&& (USE_LEUART1 >0)
   if (this->instance == (USART_TypeDef *)LEUART1) {
     LEUART1_buf = buf;
@@ -733,6 +736,7 @@ void UART_RXCallback(USART_Buf_TypeDef *interruptUART) {
   interruptUART->rxBuffer[interruptUART->rxEnd++] = USART_Rx((UART_TypeDef *)interruptUART->instance);
   interruptUART->rxEnd %= SERIAL_RX_BUFFER_SIZE;
 }
+
 #if defined(UART0) && (USE_UART0 >0)
 void (*uart0_rxCallbBck)(USART_Buf_TypeDef *interruptUART) = UART_RXCallback;
 void (*uart0_txCallbBck)(USART_Buf_TypeDef *interruptUART) = UART_TXCallback;
@@ -752,6 +756,7 @@ void UART0_TX_IRQHandler(void)
 }
 HardwareSerial SerialUART0((USART_TypeDef *)UART0);
 #  endif
+
 #  if defined(UART1) && (USE_UART1 >0)
 void (*uart1_rxCallbBck)(USART_Buf_TypeDef *interruptUART) = UART_RXCallback;
 void (*uart1_txCallbBck)(USART_Buf_TypeDef *interruptUART) = UART_TXCallback;
@@ -772,7 +777,6 @@ void UART1_TX_IRQHandler(void)
 HardwareSerial SerialUART1((USART_TypeDef *)UART1);
 #  endif
 #endif
-
 
 #if (defined(LEUART0)&&(USE_LEUART0 >0))||(defined(LEUART1)&&(USE_LEUART1 >0))
 void LEUART_TXCallback(USART_Buf_TypeDef *interruptUART) {
