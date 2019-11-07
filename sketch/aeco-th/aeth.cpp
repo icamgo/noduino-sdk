@@ -18,6 +18,7 @@
 
 #include "softspi.h"
 #include "sx1272.h"
+#include "vbat.h"
 //#include "pressure.h"
 //#include "vbat.h"
 //#include "U8g2lib.h"
@@ -55,7 +56,7 @@
 
 ///////////////////////////////////////////////////////////////////
 // CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-uint32_t idlePeriod = 70;	// 70 seconds, 1 min
+uint32_t idlePeriod = 30;	// 70 seconds, 1 min
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
@@ -173,7 +174,7 @@ void setup()
 	Serial.begin(115200);
 #endif
 
-	//INFO_S("%s", "Noduino Quark LoRa Node\n");
+	vbat_adc_init();
 
 	power_on_dev();		// turn on device power
 
@@ -250,14 +251,14 @@ void loop(void)
 	long endSend;
 	uint8_t app_key_offset = 0;
 	int e;
-	float pres = 0.0, vbat = 3.33;
+	float pres = 0.0, vbat = 0.0;
 
 #ifndef LOW_POWER
 	if (millis() > next_tx) {
 #endif
 
 		//pres = get_pressure();
-		//vbat = get_vbat();
+		vbat = get_vbat();
 
 		INFO("%s", "Pressure = ");
 		INFOLN("%f", pres);
@@ -421,4 +422,7 @@ void loop(void)
 		INFOLN("%ld", next_tx);
 	}
 #endif
+
+	/* On every wakeup enter EM2 again */
+	//EMU_EnterEM2(true);
 }

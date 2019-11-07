@@ -89,6 +89,7 @@ $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
 ./softspi.cpp											\
+./vbat.cpp												\
 ./gps.cpp												\
 ./sx1272.cpp
 
@@ -125,7 +126,9 @@ CXXINCS		+= -I  $(LIB_DIR)/SPI/src					\
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 	-fdata-sections -nostdlib --param max-inline-insns-single=500 -Dprintf=iprintf
-CFLAGS += -mcpu=$(MCU) -mthumb -MMD
+
+CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD
+
 CFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
 	-DARM_MATH_CM0PLUS -DF_CPU=$(F_CPU) -DUSE_HFRCO		\
 	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 		\
@@ -135,7 +138,7 @@ CXXFLAGS := -g -Os -w -fno-exceptions -std=gnu++14 -fpermissive			\
 	-ffunction-sections -fdata-sections -nostdlib -fno-threadsafe-statics	\
 	--param max-inline-insns-single=500 -fno-rtti -Dprintf=iprintf -MMD 
 
-CXXFLAGS += -mcpu=$(MCU) -mthumb
+CXXFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD
 
 
 CXXFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32			\
