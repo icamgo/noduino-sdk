@@ -87,9 +87,11 @@ $(ARDUINO_CORES)/efm32/HardwareSerial.cpp				\
 $(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
 $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
-$(ARDUINO_CORES)/main.cpp								
-#./softspi.cpp											\
-#./sx1272.cpp
+$(ARDUINO_CORES)/main.cpp								\
+./softi2c.cpp											\
+
+
+#$(LIB_DIR)/SPI/src/SPI.cpp							\
 
 
 CXX_APP = main.cpp
@@ -100,11 +102,21 @@ CXXSRC = $(CXX_MODULES) $(CXX_APP)
 CDEFS = -DF_CPU=$(F_CPU)L -DARDUINO=$(VERSION) -DARDUINO_ARCH_ARM
 CXXDEFS = -DF_CPU=$(F_CPU)L -DARDUINO=$(VERSION) -DARDUINO_ARCH_ARM
 
-CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110  
+CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys		\
+	-I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc			\
+	-I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include							\
+	-I$(LIB_DIR)/WireSoft/src														\
+	-I .																			\
+	-I$(ARDUINO_CORES)/../variants/efm32zg110  
 
-CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110  
+CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys		\
+	-I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc			\
+	-I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include							\
+	-I$(LIB_DIR)/WireSoft/src														\
+	-I .																			\
+	-I$(ARDUINO_CORES)/../variants/efm32zg110  
 
-CINCS		+= -I  $(LIB_DIR)/SPI/src					\
+#CINCS		+= -I  $(LIB_DIR)/SPI/src					\
 			-I $(LIB_DIR)/MCP342x/src				\
 			-I $(LIB_DIR)/Wire/src					\
 			-I $(LIB_DIR)/Wire/src/utility				\
@@ -112,7 +124,7 @@ CINCS		+= -I  $(LIB_DIR)/SPI/src					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I .									
-CXXINCS		+= -I  $(LIB_DIR)/SPI/src					\
+#CXXINCS		+= -I  $(LIB_DIR)/SPI/src					\
 			-I $(LIB_DIR)/MCP342x/src				\
 			-I $(LIB_DIR)/Wire/src					\
 			-I $(LIB_DIR)/SX127x					\
@@ -122,7 +134,9 @@ CXXINCS		+= -I  $(LIB_DIR)/SPI/src					\
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 	-fdata-sections -nostdlib --param max-inline-insns-single=500 -Dprintf=iprintf
-CFLAGS += -mcpu=$(MCU) -mthumb -MMD
+
+CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD
+
 CFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
 	-DARM_MATH_CM0PLUS -DF_CPU=$(F_CPU) -DUSE_HFRCO		\
 	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 		\
@@ -132,12 +146,12 @@ CXXFLAGS := -g -Os -w -fno-exceptions -std=gnu++14 -fpermissive			\
 	-ffunction-sections -fdata-sections -nostdlib -fno-threadsafe-statics	\
 	--param max-inline-insns-single=500 -fno-rtti -Dprintf=iprintf -MMD 
 
-CXXFLAGS += -mcpu=$(MCU) -mthumb
+CXXFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD
 
 
 CXXFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32			\
-	-DARM_MATH_CM0PLUS -DF_CPU=$(F_CPU) -DUSE_HFRCO -DLEUART0			\
-	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC				\
+	-DARM_MATH_CM0PLUS -DF_CPU=$(F_CPU) -DUSE_HFRCO		\
+	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC			\
 	-DARDUINO_ARCH_EFM32 -DMENU_SERIAL=SerialLEUART0 -DARDUINO=$(VERSION) 
 
 ASFLAGS = 
