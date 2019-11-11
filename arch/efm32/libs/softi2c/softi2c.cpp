@@ -28,16 +28,16 @@
 #define i2c_delay(x) do{for(int i=0;i<x;i++) {asm volatile("nop");}}while(0)
 #endif
 
-#define TWI_SDA		11		/* PIN14_PD7 */
-#define TWI_SCL		16		/* PIN21_PF2 */
+static uint8_t _scl = SW_SCL;
+static uint8_t _sda = SW_SDA;
 
-#define SDA_READ()		digitalRead(TWI_SDA)
-#define SCL_READ()		digitalRead(TWI_SCL)
+#define SDA_READ()		digitalRead(_sda)
+#define SCL_READ()		digitalRead(_scl)
 
-#define SDA_LOW()		set_low(TWI_SDA)
-#define SDA_HIGH() 		set_high(TWI_SDA)
-#define SCL_LOW()		set_low(TWI_SCL)
-#define SCL_HIGH()		set_high(TWI_SCL)
+#define SDA_LOW()		set_low(_sda)
+#define SDA_HIGH() 		set_high(_sda)
+#define SCL_LOW()		set_low(_scl)
+#define SCL_HIGH()		set_high(_scl)
 
 static void set_high(uint8_t pin)
 {
@@ -54,11 +54,13 @@ static void set_low(uint8_t pin)
 	interrupts();
 }
 
-
 //////////////////////////////////////////////////////////////
 
-bool i2c_init()
+bool i2c_init(uint8_t scl, uint8_t sda)
 {
+	_scl = scl;
+	_sda = sda;
+
 	SDA_HIGH();
 	SCL_HIGH();
 
@@ -70,8 +72,8 @@ bool i2c_init()
 
 void i2c_deinit(void)
 {
-	pinMode(TWI_SDA, INPUT);
-	pinMode(TWI_SCL, INPUT);
+	pinMode(_sda, INPUT);
+	pinMode(_scl, INPUT);
 }
 
 bool i2c_start(void)
@@ -257,9 +259,9 @@ static uint8_t wire_txBufferIndex = 0;
 static uint8_t wire_txBufferLength = 0;
 static uint8_t wire_transmitting = 0;
 
-void wire_begin()
+void wire_begin(uint8_t scl, uint8_t sda)
 {
-	i2c_init();
+	i2c_init(scl, sda);
 }
 
 void wire_setClock(uint32_t clk)

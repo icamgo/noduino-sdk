@@ -201,6 +201,5 @@ float sht2x_get_temp(void)
 
 uint8_t sht2x_init()
 {
-	wire_begin();
 	return 0;
 }

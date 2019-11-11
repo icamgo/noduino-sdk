@@ -19,7 +19,7 @@
 #ifndef __TWI_H__
 #define __TWI_H__ 
 
-void wire_begin();
+void wire_begin(uint8_t scl, uint8_t sda);
 void wire_setClock(uint32_t clk);
 void wire_beginTransmission(uint8_t addr);
 size_t wire_write(uint8_t data);

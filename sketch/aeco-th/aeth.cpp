@@ -19,7 +19,8 @@
 #include "softspi.h"
 #include "sx1272.h"
 #include "vbat.h"
-//#include "pressure.h"
+#include "softi2c.h"
+#include "sht2x.h"
 //#include "vbat.h"
 //#include "U8g2lib.h"
 
@@ -31,11 +32,12 @@
 
 //#define ENABLE_CAD			1
 
-#define node_addr		105
+#define node_addr				107
 
-#define DEST_ADDR		1
+#define DEST_ADDR				1
 
-#define USE_SX1278		1
+#define ENABLE_SHT2X			1
+#define USE_SX1278				1
 
 //#define ENABLE_SSD1306		1
 //#define LOW_POWER
@@ -56,7 +58,7 @@
 
 ///////////////////////////////////////////////////////////////////
 // CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-uint32_t idlePeriod = 30;	// 70 seconds, 1 min
+uint32_t idlePeriod = 100;	// 70 seconds, 1 min
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
@@ -178,7 +180,10 @@ void setup()
 
 	power_on_dev();		// turn on device power
 
-	//pressure_init();	// initialization of the sensor
+#ifdef ENABLE_SHT2X
+	wire_begin(SW_SCL, SW_SDA);
+	sht2x_init();		// initialization of the sensor
+#endif
 
 #ifdef ENABLE_SSD1306
 	float pres = get_pressure();
@@ -208,7 +213,10 @@ void setup()
 
 void qsetup()
 {
-	//pressure_init();	// initialization of the sensor
+#ifdef ENABLE_SHT2X
+	wire_begin(SW_SCL, SW_SDA);
+	sht2x_init();		// initialization of the sensor
+#endif
 
 #ifdef USE_SX1278
 	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
@@ -251,17 +259,17 @@ void loop(void)
 	long endSend;
 	uint8_t app_key_offset = 0;
 	int e;
-	float pres = 0.0, vbat = 0.0;
+	float temp = 0.0, humi = 0.0, vbat = 0.0;
 
 #ifndef LOW_POWER
 	if (millis() > next_tx) {
 #endif
 
-		//pres = get_pressure();
+#ifdef ENABLE_SHT2X
+		temp = sht2x_get_temp();
+		humi = sht2x_get_humi();
+#endif
 		vbat = get_vbat();
-
-		INFO("%s", "Pressure = ");
-		INFOLN("%f", pres);
 
 #ifdef ENABLE_GPS
 		get_pos();
@@ -276,9 +284,11 @@ void loop(void)
 		uint8_t r_size;
 
 		// the recommended format if now \!TC/22.5
-		char vbat_s[10], pres_s[10];
+		char vbat_s[10], temp_s[10], humi_s[10];
+
 		ftoa(vbat_s, vbat, 2);
-		ftoa(pres_s, pres, 2);
+		ftoa(temp_s, temp, 2);
+		ftoa(humi_s, humi, 0);
 
 #ifdef ENABLE_GPS
 		char lat_s[12], lon_s[12], alt_s[10];
@@ -287,14 +297,12 @@ void loop(void)
 		ftoa(lon_s, gps_lon, 4);
 		ftoa(alt_s, gps_altitude, 0);
 
-		// this is for testing, uncomment if you just want to test, without a real pressure sensor plugged
-		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/P/%s/lat/%s/lon/%s/alt/%s",
-					vbat_s, pres_s, lat_s, lon_s, alt_s);
+		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/T/%s/H/%s/lat/%s/lon/%s/alt/%s",
+					vbat_s, temp_s, humi_s, lat_s, lon_s, alt_s);
 #else
 
-		// this is for testing, uncomment if you just want to test, without a real pressure sensor plugged
-		//strcpy(vbat_s, "noduino");
-		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/P/%s", vbat_s, pres_s);
+		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/T/%s/H/%s",
+					vbat_s, temp_s, humi_s);
 #endif
 
 		INFO_S("%s", "Sending ");
@@ -420,6 +428,9 @@ void loop(void)
 		next_tx = millis() + (uint32_t)idlePeriod * 1000;
 
 		INFOLN("%ld", next_tx);
+
+		//digitalWrite(11, 0);
+		//digitalWrite(16, 0);
 	}
 #endif
 

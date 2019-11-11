@@ -53,15 +53,25 @@ extern const Pin2PortMapArray g_Pin2PortMapArray[] ;
 #define SERIAL_PORT_HARDWARE2		Serial2
 
 
-#define SCL	(PD7)
-#define SDA	(PD6)
+#define SW_SDA			11		/* PIN14_PD7 */
+#define SW_SCL			16		/* PIN21_PF2 */
 
+#define SW_CS			2		/* PIN6 - PB8 - D2 */
+#define SW_MOSI			6		/* PIN3 - PC0 - D6 */
+#define SW_MISO			7		/* PIN4 - PC1 - D7 */
+#define SW_SCK			1		/* PIN5 - PB7 - D1 */
+
+
+#if 0
+#define SCL		(PD7)
+#define SDA		(PD6)
 
 #define SPI_INTERFACES_COUNT 3
 
-#define MOSI	(PC1)	 
-#define MISO	(PC0)	 
-#define SCK	(PB7)	
+#define MOSI	(PC1)
+#define MISO	(PC0)
+#define SCK		(PB7)
+#endif
  
 #ifdef __cplusplus
 extern "C"{

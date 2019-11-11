@@ -144,7 +144,7 @@ void SX1272::reset()
 void SX1272::sx1278_qsetup(uint32_t freq, uint8_t dbm)
 {
 #ifdef USE_SOFTSPI
-	spi_init();
+	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
 #else
 	SPI.begin();
 #endif
@@ -289,7 +289,7 @@ uint8_t SX1272::ON()
 #endif
 
 #ifdef USE_SOFTSPI
-	spi_init();
+	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
 #else
 	//Configure the MISO, MOSI, CS, SPCR.
 	SPI.begin();

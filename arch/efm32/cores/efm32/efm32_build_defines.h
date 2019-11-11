@@ -88,6 +88,7 @@
 
 //devices
 //USB
+#if 0
 #ifndef USE_USBSERIAL
 # ifdef MENU_USB_SERIAL
 #   define USE_USBSERIAL 1
@@ -119,8 +120,10 @@
 #ifndef USE_USBDCONF
 #  define USE_USBDCONF  1
 #endif
+#endif
 
 //USART
+#if 0
 #ifndef USE_USART0
 #define USE_USART0  1
 #endif
@@ -145,13 +148,16 @@
 #ifndef USE_UART1
 #define USE_UART1   1
 #endif
+#endif
 
 #ifndef USE_LEUART0
 #define USE_LEUART0 1
 #endif
 
+#if 0
 #ifndef USE_LEUART1
 #define USE_LEUART1 1
+#endif
 #endif
 
 

@@ -20,10 +20,6 @@
 
 #include "Arduino.h"
 
-#define CS			2		// PIN6 - PB8 - D2	
-#define MOSI		6		// PIN3 - PC0 - D6
-#define MISO		7		// PIN4 - PC1 - D7
-#define SCK			1		// PIN5 - PB7 - D1
 
 void spi_init(uint8_t cs, uint8_t sck, uint8_t mo, uint8_t mi);
 uint8_t spi_read_reg(uint8_t reg);
