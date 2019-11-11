@@ -88,7 +88,9 @@ $(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
 $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
-./softspi.cpp											\
+$(LIB_DIR)/softi2c/softi2c.cpp							\
+$(LIB_DIR)/softspi/softspi.cpp							\
+$(LIB_DIR)/sht2x/sht2x.cpp								\
 ./vbat.cpp												\
 ./gps.cpp												\
 ./sx1272.cpp
@@ -108,18 +110,17 @@ CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I
 
 CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110  
 
-CINCS		+= -I  $(LIB_DIR)/SPI/src					\
-			-I $(LIB_DIR)/MCP342x/src				\
-			-I $(LIB_DIR)/Wire/src					\
-			-I $(LIB_DIR)/Wire/src/utility				\
-			-I $(LIB_DIR)/SX127x					\
+CINCS		+= -I  $(LIB_DIR)/softspi/				\
+			-I $(LIB_DIR)/softi2c/					\
+			-I $(LIB_DIR)/sht2x/					\
+			-I $(LIB_DIR)/sx127x					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I .									
-CXXINCS		+= -I  $(LIB_DIR)/SPI/src					\
-			-I $(LIB_DIR)/MCP342x/src				\
-			-I $(LIB_DIR)/Wire/src					\
-			-I $(LIB_DIR)/SX127x					\
+CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
+			-I $(LIB_DIR)/softi2c/					\
+			-I $(LIB_DIR)/sht2x/					\
+			-I $(LIB_DIR)/sx127x					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I .									

@@ -25,7 +25,7 @@
 #define MISO		7		// PIN4 - PC1 - D7
 #define SCK			1		// PIN5 - PB7 - D1
 
-void spi_init();
+void spi_init(uint8_t cs, uint8_t sck, uint8_t mo, uint8_t mi);
 uint8_t spi_read_reg(uint8_t reg);
 uint8_t spi_write_reg(uint8_t reg, uint8_t val);
 uint8_t spi_read_buf(uint8_t reg, uint8_t *buf, uint8_t len);

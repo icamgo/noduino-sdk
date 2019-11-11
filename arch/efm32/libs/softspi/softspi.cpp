@@ -17,44 +17,54 @@
 */
 #include "softspi.h"
 
-void spi_init()
-{
-	pinMode(CS, OUTPUT);
-	pinMode(SCK, OUTPUT);
-	pinMode(MOSI, OUTPUT);
-	pinMode(MISO, INPUT);
+static uint8_t _cs;
+static uint8_t _sck;
+static uint8_t _mosi;
+static uint8_t _miso;
 
-	//CS = 1;
-	digitalWrite(CS, HIGH);
-	//SCK = 0;
-	digitalWrite(SCK, LOW);
+void spi_init(uint8_t cs, uint8_t sck, uint8_t mo, uint8_t mi)
+{
+	_cs = cs;
+	_sck = sck;
+	_mosi = mo;
+	_miso = mi;
+
+	pinMode(_cs, OUTPUT);
+	pinMode(_sck, OUTPUT);
+	pinMode(_mosi, OUTPUT);
+	pinMode(_miso, INPUT);
+
+	//_cs = 1;
+	digitalWrite(_cs, HIGH);
+	//_sck = 0;
+	digitalWrite(_sck, LOW);
 }
 
 static uint8_t spi_transfer(uint8_t data)
 {
 	uint8_t i;
 	for (i = 0; i < 8; i++) {
-		digitalWrite(MOSI, (data & 0x80));
+		digitalWrite(_mosi, (data & 0x80));
 		data = (data << 1);
-		//SCK = 1;
-		digitalWrite(SCK, HIGH);
-		data |= digitalRead(MISO);
-		//SCK = 0;
-		digitalWrite(SCK, LOW);
+		//_sck = 1;
+		digitalWrite(_sck, HIGH);
+		data |= digitalRead(_miso);
+		//_sck = 0;
+		digitalWrite(_sck, LOW);
 	}
 	return (data);
 }
 
 static void chip_select()
 {
-	//CS = 0;
-	digitalWrite(CS, LOW);
+	//_cs = 0;
+	digitalWrite(_cs, LOW);
 }
 
 static void chip_deselect()
 {
-	//CS = 1;
-	digitalWrite(CS, HIGH);
+	//_cs = 1;
+	digitalWrite(_cs, HIGH);
 }
 ///////////////////////////////////////
 
