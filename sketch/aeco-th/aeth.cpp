@@ -87,7 +87,6 @@ uint8_t message[50];
 
 #ifdef LOW_POWER
 #define	LOW_POWER_PERIOD	8
-#include "LowPower.h"
 uint32_t nCycle = idlePeriod / LOW_POWER_PERIOD;
 #endif
 
@@ -378,9 +377,9 @@ void loop(void)
 		INFOLN("%d", sx1272.getRemainingToA());
 #endif
 
+
 #ifdef LOW_POWER
 		INFO_S("%s", "Switch to power saving mode\n");
-
 #ifdef USE_SX1278
 		e = sx1272.setSleepMode();
 		if (!e)
@@ -394,32 +393,19 @@ void loop(void)
 
 		digitalWrite(SX1272_RST, LOW);
 
-		SPI.end();
-		digitalWrite(10, LOW);
-		digitalWrite(11, LOW);
-		digitalWrite(12, LOW);
-		digitalWrite(13, LOW);
+		spi_end();
 
 		FLUSHOUTPUT
 		delay(50);
 
-		Wire.end();
-		digitalWrite(A4, LOW);	// SDA
-		digitalWrite(A5, LOW);	// SCL
+		wire_end();
 
 		power_off_dev();
-
-		for (uint32_t i = 0; i < nCycle; i++) {
-
-			//LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
-			FLUSHOUTPUT delay(10);
-		}
 
 		delay(50);
 
 		power_on_dev();
 		delay(100);
-
 		setup();
 #else
 		INFOLN("%ld", next_tx);
@@ -434,6 +420,20 @@ void loop(void)
 	}
 #endif
 
+	e = sx1272.setSleepMode();
+	if (!e)
+		INFO_S("%s", "Successfully switch LoRa into sleep mode\n");
+	else
+		INFO_S("%s", "Could not switch LoRa into sleep mode\n");
+
+	digitalWrite(SX1272_RST, LOW);
+
+	spi_end();
+
+	power_off_dev();
+
+	wire_end();
+
 	/* On every wakeup enter EM2 again */
-	//EMU_EnterEM2(true);
+	EMU_EnterEM2(true);
 }

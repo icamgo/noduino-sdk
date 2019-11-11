@@ -27,9 +27,10 @@ uint8_t wire_endTransmission();
 uint8_t wire_requestFrom(uint8_t addr, size_t len);
 int wire_read();
 int wire_available(void);
+void wire_end();
 
-bool i2c_init ();
-void i2c_deinit ();
+bool i2c_init();
+void i2c_deinit();
 bool i2c_start();
 bool i2c_stop();
 void i2c_ack();

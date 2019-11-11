@@ -264,6 +264,11 @@ void wire_begin(uint8_t scl, uint8_t sda)
 	i2c_init(scl, sda);
 }
 
+void wire_end()
+{
+	i2c_deinit();
+}
+
 void wire_setClock(uint32_t clk)
 {
 

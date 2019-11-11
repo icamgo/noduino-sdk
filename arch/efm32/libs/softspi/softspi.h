@@ -22,6 +22,7 @@
 
 
 void spi_init(uint8_t cs, uint8_t sck, uint8_t mo, uint8_t mi);
+void spi_end();
 uint8_t spi_read_reg(uint8_t reg);
 uint8_t spi_write_reg(uint8_t reg, uint8_t val);
 uint8_t spi_read_buf(uint8_t reg, uint8_t *buf, uint8_t len);

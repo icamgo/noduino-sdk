@@ -40,6 +40,14 @@ void spi_init(uint8_t cs, uint8_t sck, uint8_t mo, uint8_t mi)
 	digitalWrite(_sck, LOW);
 }
 
+void spi_end()
+{
+	pinMode(_cs, INPUT);
+	pinMode(_sck, INPUT);
+	pinMode(_mosi, INPUT);
+	pinMode(_miso, INPUT);
+}
+
 static uint8_t spi_transfer(uint8_t data)
 {
 	uint8_t i;
