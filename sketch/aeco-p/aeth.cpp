@@ -22,6 +22,13 @@
 #include "softi2c.h"
 #include "pc10.h"
 //#include "U8g2lib.h"
+#include "rtcdriver.h"
+
+/* Timer used for bringing the system back to EM0. */
+RTCDRV_TimerID_t xTimerForWakeUp;
+
+/* 30s */
+static uint32_t sensor_period = 10;
 
 //#define ENABLE_CAD			1
 
@@ -48,11 +55,6 @@
 #define LORAMODE		11	// BW=125KHz, SF=12, CR=4/5, sync=0x34
 //////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////
-// CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-uint32_t idlePeriod = 100;	// 70 seconds, 1 min
-///////////////////////////////////////////////////////////////////
-
 #ifdef WITH_APPKEY
 // CHANGE HERE THE APPKEY, BUT IF GW CHECKS FOR APPKEY, MUST BE
 // IN THE APPKEY LIST MAINTAINED BY GW.
@@ -77,14 +79,6 @@ uint8_t message[50];
 #define	NB_RETRIES			2
 #endif
 
-#ifdef LOW_POWER
-#define	LOW_POWER_PERIOD	8
-#include "LowPower.h"
-uint32_t nCycle = idlePeriod / LOW_POWER_PERIOD;
-#endif
-
-uint32_t next_tx = 0L;
-
 #ifdef WITH_EEPROM
 struct sx1272config {
 
@@ -96,6 +90,8 @@ struct sx1272config {
 
 sx1272config my_sx1272config;
 #endif
+
+void push_data(float pres);
 
 #ifdef ENABLE_SSD1306
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
@@ -156,19 +152,48 @@ void draw_press(int32_t p)
 }
 #endif
 
+void sensor_check()
+{
+	static float old_pres = 0.0;
+	float pres = 0.0;
+	Ecode_t e;
+
+	INFOLN("%s", "Checking the sensor data...");
+
+	power_on_dev();		// turn on device power
+	pressure_init();	// initialization of the sensor
+
+	pres = get_pressure();
+
+	power_off_dev();
+
+	if (abs(pres - old_pres) > 10.0) {
+
+		push_data(pres);
+
+		old_pres = pres;
+
+	} else {
+
+		//digitalWrite(SX1272_RST, LOW);
+		spi_end();
+		wire_end();
+	}
+
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sensor_period * 1000, sensor_check, NULL);
+	//EMU_EnterEM2(true);
+}
+
+
 void setup()
 {
+	Ecode_t e;
+
 	// dev power ctrl
 	pinMode(10, OUTPUT);
 
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
-
-	vbat_adc_init();
-
-	power_on_dev();		// turn on device power
-
-	pressure_init();	// initialization of the sensor
 
 #ifdef ENABLE_SSD1306
 	float pres = get_pressure();
@@ -178,19 +203,16 @@ void setup()
 	draw_press((int32_t) pres);
 #endif
 
-#ifdef USE_SX1278
-	// Set the TX power to 11dBm
-	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
+	/* Initialize RTC timer. */
+	RTCDRV_Init();
+	RTCDRV_AllocateTimer(&xTimerForWakeUp);
 
-	sx1272.setNodeAddress(node_addr);
+	//INFO("%s", "Clock Freq = ");
+	//INFOLN("%d", CMU_ClockFreqGet(cmuClock_CORE));
 
-#ifdef ENABLE_CAD
-	sx1272._enableCarrierSense = true;
-#endif
+	//sensor_check();
 
-	INFO_S("%s", "SX1272 successfully configured\n");
-#endif
-
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sensor_period * 1000, sensor_check, NULL);
 }
 
 void qsetup()
@@ -199,15 +221,13 @@ void qsetup()
 
 	power_on_dev();		// turn on device power
 
-	pressure_init();	// initialization of the sensor
+	//pressure_init();	// initialization of the sensor
 
-#ifdef USE_SX1278
 	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
 	sx1272.setNodeAddress(node_addr);
 
 #ifdef ENABLE_CAD
 	sx1272._enableCarrierSense = true;
-#endif
 #endif
 
 #ifdef ENABLE_SSD1306
@@ -215,163 +235,107 @@ void qsetup()
 #endif
 }
 
-void loop(void)
+void push_data(float pres)
 {
 	long startSend;
 	long endSend;
+
+	float vbat = 0.0;
+
 	uint8_t app_key_offset = 0;
 	int e;
-	float pres = 0.0, vbat = 0.0;
 
-#ifndef LOW_POWER
-	if (millis() > next_tx) {
-#endif
+	qsetup();
 
-		vbat = get_vbat();
-		pres = get_pressure();
+	vbat = get_vbat();
+	// pres = get_pressure();
 
 #ifdef WITH_APPKEY
-		app_key_offset = sizeof(my_appKey);
-		// set the app key in the payload
-		memcpy(message, my_appKey, app_key_offset);
+	app_key_offset = sizeof(my_appKey);
+	// set the app key in the payload
+	memcpy(message, my_appKey, app_key_offset);
 #endif
 
-		uint8_t r_size;
+	uint8_t r_size;
 
-		// the recommended format if now \!TC/22.5
-		char vbat_s[10], pres_s[10];
-		ftoa(vbat_s, vbat, 2);
-		ftoa(pres_s, pres, 2);
+	// the recommended format if now \!TC/22.5
+	char vbat_s[10], pres_s[10];
+	ftoa(vbat_s, vbat, 2);
+	ftoa(pres_s, pres, 2);
 
-		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/P/%s", vbat_s, pres_s);
+	r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/P/%s", vbat_s, pres_s);
 
-		INFO_S("%s", "Sending ");
-		INFOLN("%s", (char *)(message + app_key_offset));
+	INFO_S("%s", "Sending ");
+	INFOLN("%s", (char *)(message + app_key_offset));
 
-		INFO_S("%s", "Real payload size is ");
-		INFOLN("%d", r_size);
+	INFO_S("%s", "Real payload size is ");
+	INFOLN("%d", r_size);
 
-		int pl = r_size + app_key_offset;
+	int pl = r_size + app_key_offset;
 
 #ifdef ENABLE_CAD
-		sx1272.CarrierSense();
+	sx1272.CarrierSense();
 #endif
 
-		startSend = millis();
+	startSend = millis();
 
-#ifdef USE_SX1278
 #ifdef WITH_APPKEY
-		// indicate that we have an appkey
-		sx1272.setPacketType(PKT_TYPE_DATA | PKT_FLAG_DATA_WAPPKEY);
+	// indicate that we have an appkey
+	sx1272.setPacketType(PKT_TYPE_DATA | PKT_FLAG_DATA_WAPPKEY);
 #else
-		// just a simple data packet
-		sx1272.setPacketType(PKT_TYPE_DATA);
+	// just a simple data packet
+	sx1272.setPacketType(PKT_TYPE_DATA);
 #endif
 
-		// Send message to the gateway and print the result
-		// with the app key if this feature is enabled
+	// Send message to the gateway and print the result
+	// with the app key if this feature is enabled
 #ifdef WITH_ACK
-		int n_retry = NB_RETRIES;
+	int n_retry = NB_RETRIES;
 
-		do {
-			e = sx1272.sendPacketTimeoutACK(DEST_ADDR,
-							message, pl);
+	do {
+		e = sx1272.sendPacketTimeoutACK(DEST_ADDR,
+						message, pl);
 
-			if (e == 3)
-				INFO_S("%s", "No ACK");
+		if (e == 3)
+			INFO_S("%s", "No ACK");
 
-			n_retry--;
+		n_retry--;
 
-			if (n_retry)
-				INFO_S("%s", "Retry");
-			else
-				INFO_S("%s", "Abort");
+		if (n_retry)
+			INFO_S("%s", "Retry");
+		else
+			INFO_S("%s", "Abort");
 
-		} while (e && n_retry);
+	} while (e && n_retry);
 #else
-		e = sx1272.sendPacketTimeout(DEST_ADDR, message, pl);
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, pl);
 #endif
-		endSend = millis();
+	endSend = millis();
 
 #ifdef WITH_EEPROM
-		// save packet number for next packet in case of reboot
-		my_sx1272config.seq = sx1272._packetNumber;
-		EEPROM.put(0, my_sx1272config);
+	// save packet number for next packet in case of reboot
+	my_sx1272config.seq = sx1272._packetNumber;
+	EEPROM.put(0, my_sx1272config);
 #endif
 
-		INFO_S("%s", "LoRa pkt size ");
-		INFOLN("%d", pl);
+	INFO_S("%s", "LoRa pkt size ");
+	INFOLN("%d", pl);
 
-		INFO_S("%s", "LoRa pkt seq ");
-		INFOLN("%d", sx1272.packet_sent.packnum);
+	INFO_S("%s", "LoRa pkt seq ");
+	INFOLN("%d", sx1272.packet_sent.packnum);
 
-		INFO_S("%s", "LoRa Sent in ");
-		INFOLN("%ld", endSend - startSend);
+	INFO_S("%s", "LoRa Sent in ");
+	INFOLN("%ld", endSend - startSend);
 
-		INFO_S("%s", "LoRa Sent w/CAD in ");
-		INFOLN("%ld", endSend - sx1272._startDoCad);
+	INFO_S("%s", "LoRa Sent w/CAD in ");
+	INFOLN("%ld", endSend - sx1272._startDoCad);
 
-		INFO_S("%s", "Packet sent, state ");
-		INFOLN("%d", e);
+	INFO_S("%s", "Packet sent, state ");
+	INFOLN("%d", e);
 
-		INFO_S("%s", "Remaining ToA is ");
-		INFOLN("%d", sx1272.getRemainingToA());
-#endif
+	INFO_S("%s", "Remaining ToA is ");
+	INFOLN("%d", sx1272.getRemainingToA());
 
-#ifdef LOW_POWER
-		INFO_S("%s", "Switch to power saving mode\n");
-
-#ifdef USE_SX1278
-		e = sx1272.setSleepMode();
-		if (!e)
-			INFO_S("%s", "Successfully switch LoRa into sleep mode\n");
-		else
-			INFO_S("%s", "Could not switch LoRa into sleep mode\n");
-#endif
-
-		//sx1272.reset();
-		//sx1272.OFF();
-
-		digitalWrite(SX1272_RST, LOW);
-
-		SPI.end();
-		digitalWrite(10, LOW);
-		digitalWrite(11, LOW);
-		digitalWrite(12, LOW);
-		digitalWrite(13, LOW);
-
-		FLUSHOUTPUT
-		delay(50);
-
-		Wire.end();
-		digitalWrite(A4, LOW);	// SDA
-		digitalWrite(A5, LOW);	// SCL
-
-		power_off_dev();
-
-		for (uint32_t i = 0; i < nCycle; i++) {
-
-			//LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
-			FLUSHOUTPUT delay(10);
-		}
-
-		delay(50);
-
-		power_on_dev();
-		delay(100);
-
-		setup();
-#else
-		INFOLN("%ld", next_tx);
-		INFO_S("%s", "Will send next value at\n");
-
-		next_tx = millis() + (uint32_t)idlePeriod * 1000;
-
-		INFOLN("%ld", next_tx);
-	}
-#endif
-
-#if 0
 	e = sx1272.setSleepMode();
 	if (!e)
 		INFO_S("%s", "Successfully switch LoRa into sleep mode\n");
@@ -385,8 +349,14 @@ void loop(void)
 	power_off_dev();
 
 	wire_end();
+}
 
-	/* On every wakeup enter EM2 again */
-	EMU_EnterEM2(true);
-#endif
+void loop()
+{
+	//INFO("%s", "Clock Freq = ");
+	//INFOLN("%d", CMU_ClockFreqGet(cmuClock_CORE));
+
+	INFOLN("%s", "Something is wrong, you can not go here...");
+
+	delay(5000);
 }
