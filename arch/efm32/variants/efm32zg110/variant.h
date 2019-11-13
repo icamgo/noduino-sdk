@@ -10,8 +10,8 @@
  *
  */ 
 
-#ifndef _VARIANT_EFM32DIP_H_
-#define _VARIANT_EFM32DIP_H_
+#ifndef __VARIANT_EFM32ZG110__
+#define __VARIANT_EFM32ZG110__
 
 #ifndef LED_BUILTIN
 #define BOARD_NR_LED		1
@@ -43,7 +43,7 @@ extern const Pin2PortMapArray g_Pin2PortMapArray[] ;
 }
 #endif
 
-#define SERIAL_PORT_MONITOR		Serial
+#define SERIAL_PORT_MONITOR			Serial
 #define SERIAL_PORT_USBVIRTUAL		SerialUSB
 #define SERIAL_PORT_HARDWARE_OPEN	Serial1
 #define SERIAL_PORT_HARDWARE_OPEN1	Serial2

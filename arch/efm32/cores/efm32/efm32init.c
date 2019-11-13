@@ -20,7 +20,6 @@
 #include "efm32.h"
 
 void yield(void);
-void ClockUpdate(void);
 void RTC_Trigger(uint32_t msec, void(*funcPointer)(void));
 uint16_t CRC_calc(uint8_t *start, uint8_t *end);
 
@@ -50,15 +49,6 @@ void Fatal_Handler(void)
 //    errorFlash(ERR_HardFault);
 }
 
-/**************************************************************************//**
- * @brief	Callback function for RTC
- *****************************************************************************/
-volatile uint32_t Seconds;
-void ClockUpdate(void)
-{
-	++Seconds;
-}
-
 extern  void SystemClock_Config(void);
 void init(void)
 {
@@ -66,7 +56,8 @@ void init(void)
 
     SystemClock_Config(); 	
 
-	if (SysTick_Config(SystemCoreClockGet() / 1000)){ //
+	/* 1/1000 seconds */
+	if (SysTick_Config(SystemCoreClockGet() / 1000)){
 	     Fatal_Handler();             // never return;
 	}
 	CMU_ClockEnable(cmuClock_GPIO, true);
