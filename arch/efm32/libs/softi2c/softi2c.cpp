@@ -16,20 +16,7 @@
  * Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "Arduino.h"
-
-#if	1
-#define I2C_DELAY			5		/* us delay */
-#define I2C_MAXWAIT			800
-#define i2c_delay(x)		delayMicroseconds(x)
-#else
-#define I2C_DELAY			43		/* 5 tick */
-#define I2C_MAXWAIT			700
-#define i2c_delay(x) do{for(int i=0;i<x;i++) {asm volatile("nop");}}while(0)
-#endif
-
-static uint8_t _scl = SW_SCL;
-static uint8_t _sda = SW_SDA;
+#include "softi2c.h"
 
 #define SDA_READ()		digitalRead(_sda)
 #define SCL_READ()		digitalRead(_scl)
@@ -38,6 +25,9 @@ static uint8_t _sda = SW_SDA;
 #define SDA_HIGH() 		set_high(_sda)
 #define SCL_LOW()		set_low(_scl)
 #define SCL_HIGH()		set_high(_scl)
+
+static uint8_t _scl = SW_SCL;
+static uint8_t _sda = SW_SDA;
 
 static void set_high(uint8_t pin)
 {
@@ -82,7 +72,7 @@ bool i2c_start(void)
 	SDA_HIGH();
 
 	if (SDA_READ() == 0) {
-		Serial.println("twi write start sda read false");
+		INFO("twi write start sda read false");
 		return false;
 	}
 
@@ -179,20 +169,20 @@ i2c_writeTo(uint8_t addr, uint8_t *buf, unsigned int len,
 {
 	unsigned int i;
 	if (!i2c_start()) {
-		Serial.println("I2C: bus busy");
+		INFO("I2C: bus busy");
 		return 4;
 	}
 	if (!i2c_write_byte(((addr << 1) | 0) & 0xFF)) {
 		if (sendStop)
 			i2c_stop();
-		Serial.println("I2C: received NACK on transmit of addr");
+		INFO("I2C: received NACK on transmit of addr");
 		return 2;
 	}
 	for (i = 0; i < len; i++) {
 		if (!i2c_write_byte(buf[i])) {
 			if (sendStop)
 				i2c_stop();
-			Serial.println("I2C: received NACK on transmit of data");
+			INFO("I2C: received NACK on transmit of data");
 			return 3;
 		}
 	}
@@ -215,7 +205,7 @@ i2c_readFrom(uint8_t addr, uint8_t *buf, unsigned int len,
 	unsigned int i;
 
 	if (!i2c_start()) {
-		Serial.println("I2C: bus busy");
+		INFO("I2C: bus busy");
 		return 4;
 	}
 
@@ -224,7 +214,7 @@ i2c_readFrom(uint8_t addr, uint8_t *buf, unsigned int len,
 		if (sendStop)
 			i2c_stop();
 
-		Serial.println("I2C: received NACK on transmit of addr");
+		INFO("I2C: received NACK on transmit of addr");
 		return 2;
 	}
 

@@ -19,6 +19,26 @@
 #ifndef __TWI_H__
 #define __TWI_H__ 
 
+#include "Arduino.h"
+
+//#define	DEBUG				1
+
+#ifdef DEBUG
+#define	INFO(x)				Serial.println(x)
+#else
+#define	INFO(x)
+#endif
+
+#if	0
+#define I2C_DELAY			5		/* us delay */
+#define I2C_MAXWAIT			800
+#define i2c_delay(x)		delayMicroseconds(x)
+#else
+#define I2C_DELAY			140		/* 14MHz, 1Tick = 1/14 us, 1us */
+#define I2C_MAXWAIT			800
+#define i2c_delay(x) do{for(int i=0;i<x;i++) {asm volatile("nop");}}while(0)
+#endif
+
 void wire_begin(uint8_t scl, uint8_t sda);
 void wire_setClock(uint32_t clk);
 void wire_beginTransmission(uint8_t addr);
