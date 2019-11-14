@@ -14,7 +14,7 @@
 #  3. Type "make flash" to upload your program into your board
 #
 
-TARGET		= aeth.cpp
+TARGET		= main.cpp
 
 SDK_BASE	?= ../..
 ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
