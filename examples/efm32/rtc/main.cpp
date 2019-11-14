@@ -8,78 +8,78 @@ RTCDRV_TimerID_t id;
 
 static void disableHFClocks(void)
 {
- // Disable High Frequency Peripheral Clocks
-  CMU_ClockEnable(cmuClock_HFPER, false);
+	// Disable High Frequency Peripheral Clocks
+	CMU_ClockEnable(cmuClock_HFPER, false);
 #if defined( CMU_HFPERCLKEN0_USART0 )
-  CMU_ClockEnable(cmuClock_USART0, false);
+	CMU_ClockEnable(cmuClock_USART0, false);
 #endif
-  CMU_ClockEnable(cmuClock_USART1, false);
-  CMU_ClockEnable(cmuClock_TIMER0, false);
-  CMU_ClockEnable(cmuClock_TIMER1, false);
+	CMU_ClockEnable(cmuClock_USART1, false);
+	CMU_ClockEnable(cmuClock_TIMER0, false);
+	CMU_ClockEnable(cmuClock_TIMER1, false);
 #if defined( CMU_HFPERCLKEN0_TIMER2 )
-  CMU_ClockEnable(cmuClock_TIMER2, false);
+	CMU_ClockEnable(cmuClock_TIMER2, false);
 #endif
-  CMU_ClockEnable(cmuClock_ACMP0, false);
-  CMU_ClockEnable(cmuClock_PRS, false);
-  CMU_ClockEnable(cmuClock_IDAC0, false);
-  CMU_ClockEnable(cmuClock_GPIO, false);
-  CMU_ClockEnable(cmuClock_VCMP, false);
-  CMU_ClockEnable(cmuClock_ADC0, false);
-  CMU_ClockEnable(cmuClock_I2C0, false);
+	CMU_ClockEnable(cmuClock_ACMP0, false);
+	CMU_ClockEnable(cmuClock_PRS, false);
+	CMU_ClockEnable(cmuClock_IDAC0, false);
+	CMU_ClockEnable(cmuClock_GPIO, false);
+	CMU_ClockEnable(cmuClock_VCMP, false);
+	CMU_ClockEnable(cmuClock_ADC0, false);
+	CMU_ClockEnable(cmuClock_I2C0, false);
 
-  // Disable High Frequency Core/Bus Clocks
-  CMU_ClockEnable(cmuClock_AES, false);
-  CMU_ClockEnable(cmuClock_DMA, false);
-  CMU_ClockEnable(cmuClock_HFLE, false);
+	// Disable High Frequency Core/Bus Clocks
+	CMU_ClockEnable(cmuClock_AES, false);
+	CMU_ClockEnable(cmuClock_DMA, false);
+	CMU_ClockEnable(cmuClock_HFLE, false);
 #if defined( CMU_HFCORECLKEN0_USB )
-  CMU_ClockEnable(cmuClock_USB, false);
+	CMU_ClockEnable(cmuClock_USB, false);
 #endif
 #if defined( CMU_HFCORECLKEN0_USBC )
-  // Disable USBC clock by choosing unused oscillator (LFXO)
-  CMU_ClockEnable(cmuClock_USBC, true);
-  CMU_OscillatorEnable(cmuOsc_LFRCO, true, true);
-  CMU_ClockSelectSet(cmuClock_USBC, cmuSelect_LFRCO);
-  CMU_ClockEnable(cmuClock_USBC, false);
+	// Disable USBC clock by choosing unused oscillator (LFXO)
+	CMU_ClockEnable(cmuClock_USBC, true);
+	CMU_OscillatorEnable(cmuOsc_LFRCO, true, true);
+	CMU_ClockSelectSet(cmuClock_USBC, cmuSelect_LFRCO);
+	CMU_ClockEnable(cmuClock_USBC, false);
 #endif
 }
 
 static void disableLFClocks(void)
 {
-    // Enable LFXO for Low Frequency Clock Disables
-    CMU_OscillatorEnable(cmuOsc_LFRCO, true, true);
+	// Enable LFXO for Low Frequency Clock Disables
+	CMU_OscillatorEnable(cmuOsc_LFRCO, true, true);
 
 	// Disable Low Frequency A Peripheral Clocks
 	// Note: LFA clock must be sourced before modifying peripheral clock enables
-    CMU_ClockSelectSet(cmuClock_LFA, cmuSelect_LFRCO);
-    CMU_ClockEnable(cmuClock_RTC, false);
-    CMU_ClockEnable(cmuClock_PCNT0, false);
-    CMU_ClockSelectSet(cmuClock_LFA, cmuSelect_Disabled);
+	CMU_ClockSelectSet(cmuClock_LFA, cmuSelect_LFRCO);
+	CMU_ClockEnable(cmuClock_RTC, false);
+	CMU_ClockEnable(cmuClock_PCNT0, false);
+	CMU_ClockSelectSet(cmuClock_LFA, cmuSelect_Disabled);
 
 	// Disable Low Frequency B Peripheral Clocks
 	// Note: LFB clock must be sourced before modifying peripheral clock enables
-    CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFRCO);
-    CMU_ClockEnable(cmuClock_LEUART0, false);
-    CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_Disabled);
+	CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFRCO);
+	CMU_ClockEnable(cmuClock_LEUART0, false);
+	CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_Disabled);
 
 #if defined( _CMU_LFCCLKEN0_MASK )
 	// Disable Low Frequency C Peripheral Clocks
 	// Note: LFC clock must be sourced before modifying peripheral clock enables
-    CMU_ClockSelectSet(cmuClock_LFC, cmuSelect_LFRCO);
-    CMU_ClockEnable(cmuClock_USBLE, false);
-    CMU_ClockSelectSet(cmuClock_LFC, cmuSelect_Disabled);
+	CMU_ClockSelectSet(cmuClock_LFC, cmuSelect_LFRCO);
+	CMU_ClockEnable(cmuClock_USBLE, false);
+	CMU_ClockSelectSet(cmuClock_LFC, cmuSelect_Disabled);
 #endif
 
-    // Disable Low Frequency Oscillator
-    CMU_OscillatorEnable(cmuOsc_LFXO, false, true);
+	// Disable Low Frequency Oscillator
+	CMU_OscillatorEnable(cmuOsc_LFXO, false, true);
 }
 
 static void disableClocks(void)
 {
-    // Disable High Frequency Clocks
-    disableHFClocks();
+	// Disable High Frequency Clocks
+	disableHFClocks();
 
-    // Disable Low Frequency Clocks
-    disableLFClocks();
+	// Disable Low Frequency Clocks
+	disableLFClocks();
 }
 
 void em_EM2_LfrcoRTC(void)
@@ -115,8 +115,8 @@ void em_EM2_LfrcoRTC(void)
 
 void myCallback(RTCDRV_TimerID_t id, void *user)
 {
-	(void) id;
-	(void) user;
+	(void)id;
+	(void)user;
 
 	Serial.println("Check sensor data....");
 
