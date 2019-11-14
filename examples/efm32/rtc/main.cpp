@@ -77,7 +77,7 @@ static void disableClocks(void)
 {
     // Disable High Frequency Clocks
     disableHFClocks();
-    
+
     // Disable Low Frequency Clocks
     disableLFClocks();
 }
@@ -118,7 +118,7 @@ void myCallback(RTCDRV_TimerID_t id, void *user)
 	(void) id;
 	(void) user;
 
-	Serial.println("Check sensor data....");	
+	Serial.println("Check sensor data....");
 
 	// Restart timer
 	RTCDRV_StartTimer(id, rtcdrvTimerTypeOneshot, 6000, myCallback, NULL);
@@ -150,9 +150,9 @@ void setup()
 
 void loop()
 {
-	Serial.println("Check sensor data xxx....");	
-	
-	delay(2000);
+	Serial.println("Check sensor data .... @loop()");
+
+	delay(5);
 
 	EMU_EnterEM2(true);
 }
