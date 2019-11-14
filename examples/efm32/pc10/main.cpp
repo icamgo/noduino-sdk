@@ -67,5 +67,5 @@ void loop()
 	Serial.print(pres_s);
 	Serial.println(" mBar");
 
-	delay(20000);
+	delay(5000);
 }

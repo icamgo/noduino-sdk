@@ -81,13 +81,13 @@ $(ARDUINO_CORES)/Stream.cpp 							\
 $(ARDUINO_CORES)/WMath.cpp 								\
 $(ARDUINO_CORES)/WString.cpp 							\
 $(ARDUINO_CORES)/efm32/HardwareSerial.cpp				\
-$(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
 $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/pc10/pc10.cpp
 
+#$(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
 
 CXX_APP = main.cpp
 MODULES = $(C_MODULES) $(CXX_MODULES)
