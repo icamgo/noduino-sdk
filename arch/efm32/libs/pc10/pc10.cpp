@@ -47,11 +47,11 @@ void pressure_init()
 float get_pressure()
 {
 	uint16_t pv = 0;
-	float p;
+	float p = 0.0;
 
 	pc10_wakeup();
 
-	delay(11);
+	i2c_delay(14*1000*11);		/* delay 11ms */
 
 	pv = pc10_read();
 
@@ -77,7 +77,7 @@ uint16_t pc10_read()
 	wire_write(0x09);
 	wire_endTransmission();
 
-	delay(1);
+	i2c_delay(14*1000);			/* delay 1ms */
 
 	wire_requestFrom(PC10_ADDR, LEN);
 
