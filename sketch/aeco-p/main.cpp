@@ -23,12 +23,20 @@
 #include "pc10.h"
 //#include "U8g2lib.h"
 #include "rtcdriver.h"
+#include "math.h"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-/* 30s */
-static uint32_t sensor_period = 10;
+/* 20s */
+static uint32_t sensor_period = 90;
+
+#define	TX_TESTING				1
+
+//float pres = 0.0;
+
+volatile uint8_t need_push = 0;
+
 
 //#define ENABLE_CAD			1
 
@@ -36,10 +44,7 @@ static uint32_t sensor_period = 10;
 
 #define DEST_ADDR		1
 
-#define USE_SX1278		1
-
 //#define ENABLE_SSD1306		1
-//#define LOW_POWER
 
 #define MAX_DBM			20
 #define TXRX_CH			CH_00_470
@@ -66,10 +71,10 @@ uint8_t my_appKey[4] = { 5, 6, 8, 8 };
 uint8_t message[50];
 ///////////////////////////////////////////////////////////////////
 
+
 #define INFO_S(fmt,param)			Serial.print(F(param))
-#define INFO(fmt,param)				Serial.print(param)
-#define INFOLN(fmt,param)			Serial.println(param)
-#define FLUSHOUTPUT					Serial.flush();
+#define INFO(param)					Serial.print(param)
+#define INFOLN(param)				Serial.println(param)
 
 #ifdef WITH_EEPROM
 #include <EEPROM.h>
@@ -91,7 +96,7 @@ struct sx1272config {
 sx1272config my_sx1272config;
 #endif
 
-void push_data(float pres);
+void push_data();
 
 #ifdef ENABLE_SSD1306
 U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
@@ -152,48 +157,66 @@ void draw_press(int32_t p)
 }
 #endif
 
-void sensor_check()
+void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
-	static float old_pres = 0.0;
-	float pres = 0.0;
-	Ecode_t e;
+	(void)id;
+	(void)user;
 
-	INFOLN("%s", "Checking the sensor data...");
+	static float old_pres = 0.0;
+
+	RTCDRV_StopTimer(xTimerForWakeUp);
+
+	Serial.println("Checking...");
 
 	power_on_dev();		// turn on device power
+
 	pressure_init();	// initialization of the sensor
 
-	pres = get_pressure();
+	float pres = get_pressure();
 
 	power_off_dev();
 
-	if (abs(pres - old_pres) > 10.0) {
-
-		push_data(pres);
+#ifdef TX_TESTING
+	need_push = 0x5a;
+#else
+	if (fabsf(pres - old_pres) > 10.0) {
 
 		old_pres = pres;
 
-	} else {
+		need_push = 0x5a;
 
-		//digitalWrite(SX1272_RST, LOW);
-		spi_end();
-		wire_end();
 	}
+#endif
 
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sensor_period * 1000, sensor_check, NULL);
-	//EMU_EnterEM2(true);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sensor_period * 1000, check_sensor, NULL);
 }
 
+void trig_check_sensor()
+{
+	noInterrupts();
+
+	need_push = 0x5a;
+
+	interrupts();
+}
 
 void setup()
 {
 	Ecode_t e;
 
+#if 0
+	/* Initialize EM23 with default parameters */
+	EMU_EM23Init_TypeDef em23Init = EMU_EM23INIT_DEFAULT;
+	EMU_EM23Init(&em23Init);
+#endif
+
 	// dev power ctrl
 	pinMode(10, OUTPUT);
 
-	Serial.setRouteLoc(1);
-	Serial.begin(115200);
+	power_off_dev();
+
+	pinMode(0, INPUT);
+	attachInterrupt(0, trig_check_sensor, FALLING);
 
 #ifdef ENABLE_SSD1306
 	float pres = get_pressure();
@@ -207,12 +230,10 @@ void setup()
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
 
-	//INFO("%s", "Clock Freq = ");
-	//INFOLN("%d", CMU_ClockFreqGet(cmuClock_CORE));
+	Serial.setRouteLoc(1);
+	Serial.begin(115200);
 
-	//sensor_check();
-
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sensor_period * 1000, sensor_check, NULL);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sensor_period * 1000, check_sensor, NULL);
 }
 
 void qsetup()
@@ -220,8 +241,6 @@ void qsetup()
 	vbat_adc_init();
 
 	power_on_dev();		// turn on device power
-
-	//pressure_init();	// initialization of the sensor
 
 	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
 	sx1272.setNodeAddress(node_addr);
@@ -235,20 +254,24 @@ void qsetup()
 #endif
 }
 
-void push_data(float pres)
+void push_data()
 {
 	long startSend;
 	long endSend;
 
-	float vbat = 0.0;
+	float vbat = 0.0, press = 0.0;
+
+	uint8_t r_size;
 
 	uint8_t app_key_offset = 0;
 	int e;
 
 	qsetup();
 
+	pressure_init();
+	press = get_pressure();
+
 	vbat = get_vbat();
-	// pres = get_pressure();
 
 #ifdef WITH_APPKEY
 	app_key_offset = sizeof(my_appKey);
@@ -256,20 +279,17 @@ void push_data(float pres)
 	memcpy(message, my_appKey, app_key_offset);
 #endif
 
-	uint8_t r_size;
-
-	// the recommended format if now \!TC/22.5
 	char vbat_s[10], pres_s[10];
 	ftoa(vbat_s, vbat, 2);
-	ftoa(pres_s, pres, 2);
+	ftoa(pres_s, press, 2);
 
 	r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/P/%s", vbat_s, pres_s);
 
-	INFO_S("%s", "Sending ");
-	INFOLN("%s", (char *)(message + app_key_offset));
+	INFO("Sending ");
+	INFOLN((char *)(message + app_key_offset));
 
-	INFO_S("%s", "Real payload size is ");
-	INFOLN("%d", r_size);
+	INFO("Real payload size is ");
+	INFOLN(r_size);
 
 	int pl = r_size + app_key_offset;
 
@@ -297,14 +317,14 @@ void push_data(float pres)
 						message, pl);
 
 		if (e == 3)
-			INFO_S("%s", "No ACK");
+			INFO("No ACK");
 
 		n_retry--;
 
 		if (n_retry)
-			INFO_S("%s", "Retry");
+			INFO("Retry");
 		else
-			INFO_S("%s", "Abort");
+			INFO("Abort");
 
 	} while (e && n_retry);
 #else
@@ -318,29 +338,23 @@ void push_data(float pres)
 	EEPROM.put(0, my_sx1272config);
 #endif
 
-	INFO_S("%s", "LoRa pkt size ");
-	INFOLN("%d", pl);
+	INFO("LoRa pkt size ");
+	INFOLN(pl);
 
-	INFO_S("%s", "LoRa pkt seq ");
-	INFOLN("%d", sx1272.packet_sent.packnum);
+	INFO("LoRa Sent in ");
+	INFOLN(endSend - startSend);
 
-	INFO_S("%s", "LoRa Sent in ");
-	INFOLN("%ld", endSend - startSend);
+	INFO("LoRa Sent w/CAD in ");
+	INFOLN(endSend - sx1272._startDoCad);
 
-	INFO_S("%s", "LoRa Sent w/CAD in ");
-	INFOLN("%ld", endSend - sx1272._startDoCad);
-
-	INFO_S("%s", "Packet sent, state ");
-	INFOLN("%d", e);
-
-	INFO_S("%s", "Remaining ToA is ");
-	INFOLN("%d", sx1272.getRemainingToA());
+	INFO("Packet sent, state ");
+	INFOLN(e);
 
 	e = sx1272.setSleepMode();
 	if (!e)
-		INFO_S("%s", "Successfully switch LoRa into sleep mode\n");
+		INFO("Successfully switch into sleep mode");
 	else
-		INFO_S("%s", "Could not switch LoRa into sleep mode\n");
+		INFO("Could not switch into sleep mode");
 
 	digitalWrite(SX1272_RST, LOW);
 
@@ -353,10 +367,24 @@ void push_data(float pres)
 
 void loop()
 {
-	//INFO("%s", "Clock Freq = ");
-	//INFOLN("%d", CMU_ClockFreqGet(cmuClock_CORE));
+	INFO("Clock Freq = ");
+	INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
 
-	INFOLN("%s", "Something is wrong, you can not go here...");
+	//INFOLN("Feed the watchdog");
 
-	delay(5000);
+	if (0x5a == need_push) {
+		push_data();
+
+		need_push = 0;
+	}
+
+	delay(50);
+
+	power_off_dev();
+	digitalWrite(SX1272_RST, LOW);
+
+	spi_end();
+	wire_end();
+
+	EMU_EnterEM2(true);
 }
