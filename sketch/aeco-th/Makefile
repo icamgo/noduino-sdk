@@ -14,7 +14,7 @@
 #  3. Type "make flash" to upload your program into your board
 #
 
-TARGET		= aeth.cpp
+TARGET		= main.cpp
 
 SDK_BASE	?= ../..
 ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
@@ -23,7 +23,8 @@ ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
 MCU = cortex-m0plus
-F_CPU = 16000000
+#F_CPU = 7000000
+F_CPU = 14000000
 
 VERSION=187
 
@@ -71,7 +72,8 @@ $(ARDUINO_CORES)/efm32/efm32pwm.c						\
 $(ARDUINO_CORES)/efm32/efm32init.c						\
 $(ARDUINO_CORES)/efm32/efm32gpio.c						\
 $(ARDUINO_CORES)/efm32/core_callback.c					\
-$(ARDUINO_CORES)/avr/dtostrf.c
+$(ARDUINO_CORES)/avr/dtostrf.c							\
+$(LIB_DIR)/rtcdrv/rtcdriver.c
 
 #$(ARDUINO_CORES)/efm32/efm32dac.c						\
 
@@ -84,7 +86,6 @@ $(ARDUINO_CORES)/Stream.cpp 							\
 $(ARDUINO_CORES)/WMath.cpp 								\
 $(ARDUINO_CORES)/WString.cpp 							\
 $(ARDUINO_CORES)/efm32/HardwareSerial.cpp				\
-$(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
 $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
@@ -92,10 +93,10 @@ $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/softspi/softspi.cpp							\
 $(LIB_DIR)/sht2x/sht2x.cpp								\
 ./vbat.cpp												\
-./gps.cpp												\
-./sx1272.cpp
+../aeco-th/sx1272.cpp
 
 #$(LIB_DIR)/SPI/src/SPI.cpp							\
+$(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
 
 
 CXX_APP = main.cpp
@@ -116,14 +117,16 @@ CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/sx127x					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
-			-I .									
+			-I $(LIB_DIR)/rtcdrv					\
+			-I .
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/sht2x/					\
 			-I $(LIB_DIR)/sx127x					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
-			-I .									
+			-I $(LIB_DIR)/rtcdrv					\
+			-I . -I ../aeco-th
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 	-fdata-sections -nostdlib --param max-inline-insns-single=500 -Dprintf=iprintf
@@ -131,8 +134,12 @@ CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD
 
 CFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
-	-DARM_MATH_CM0PLUS -DF_CPU=$(F_CPU) -DUSE_HFRCO		\
-	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 		\
+	-DARM_MATH_CM0PLUS 													\
+	-DF_CPU=$(F_CPU)													\
+	-DUSE_HFRCO															\
+	-DUSE_LEUART0														\
+	-DEMDRV_RTCDRV_USE_LFRCO											\
+	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 			\
 	-DARDUINO_ARCH_EFM32 -DMENU_SERIAL=SerialLEUART0 -DARDUINO=$(VERSION) 
 
 CXXFLAGS := -g -Os -w -fno-exceptions -std=gnu++14 -fpermissive			\
