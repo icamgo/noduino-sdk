@@ -75,5 +75,5 @@ float get_vbat()
 
 	vv = ADC_DataSingleGet(ADC0);
 	
-	return vv / 1000.0;
+	return vv / 1000.0 - 0.17;
 }
