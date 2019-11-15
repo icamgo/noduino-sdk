@@ -18,6 +18,11 @@
 
 #include "SX1272.h"
 
+#include "softi2c.h"
+
+//#define	sx_delay(x)			i2c_delay(14*1000*x)
+#define	sx_delay(x)				delay(x)
+
 // based on SIFS=3CAD
 uint8_t sx1272_SIFS_value[11] = { 0, 183, 94, 44, 47, 23, 24, 12, 12, 7, 4 };
 uint8_t sx1272_CAD_value[11] = { 0, 62, 31, 16, 16, 8, 9, 5, 3, 1, 1 };
@@ -136,9 +141,9 @@ void SX1272::RxChainCalibration()
 void SX1272::reset()
 {
 	digitalWrite(SX1272_RST, LOW);
-	delay(200);
+	sx_delay(200);
 	digitalWrite(SX1272_RST, HIGH);
-	delay(500);
+	sx_delay(500);
 }
 
 void SX1272::sx1278_qsetup(uint32_t freq, uint8_t dbm)
@@ -480,13 +485,13 @@ uint8_t SX1272::setLORA()
 		writeRegister(REG_OP_MODE, FSK_SLEEP_MODE);		// Sleep mode (mandatory to set LoRa mode)
 		writeRegister(REG_OP_MODE, LORA_SLEEP_MODE);	// LoRa sleep mode
 		writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);
-		delay(50 + retry * 10);
+		sx_delay(50 + retry * 10);
 
 		st0 = readRegister(REG_OP_MODE);
 
 		retry++;
 
-		delay(200);
+		sx_delay(200);
 	} while (st0 != LORA_STANDBY_MODE && retry < 8);
 
 	if (st0 == LORA_STANDBY_MODE) {
@@ -529,7 +534,7 @@ uint8_t SX1272::setFSK()
 	config1 = config1 & B00111111;
 	writeRegister(REG_SYNC_CONFIG, config1);
 
-	delay(100);
+	sx_delay(100);
 
 	st0 = readRegister(REG_OP_MODE);	// Reading config mode
 	if (st0 == FSK_STANDBY_MODE) {	// FSK mode
@@ -599,7 +604,7 @@ uint8_t SX1272::getMode()
 	INFO_LN(F(" ##"));
 #endif
 
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -989,7 +994,7 @@ int8_t SX1272::setMode(uint8_t mode)
 
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -1531,7 +1536,7 @@ uint8_t SX1272::setSF(uint8_t spr)
 		// here we write the new SF
 		writeRegister(REG_MODEM_CONFIG2, config2);	// Update config2
 
-		delay(100);
+		sx_delay(100);
 
 		byte configAgc;
 		uint8_t theLDRBit;
@@ -1609,7 +1614,7 @@ uint8_t SX1272::setSF(uint8_t spr)
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Go back to previous status
 
-	delay(100);
+	sx_delay(100);
 
 	if (isSF(spr)) {
 		// Checking available value for _spreadingFactor
@@ -1801,7 +1806,7 @@ int8_t SX1272::setBW(uint16_t band)
 
 	writeRegister(REG_MODEM_CONFIG1, config1);
 
-	delay(100);
+	sx_delay(100);
 
 	config1 = (readRegister(REG_MODEM_CONFIG1));
 
@@ -1889,7 +1894,7 @@ int8_t SX1272::setBW(uint16_t band)
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);
 
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -2021,7 +2026,7 @@ int8_t SX1272::setCR(uint8_t cod)
 	}
 	writeRegister(REG_MODEM_CONFIG1, config1);	// Update config1
 
-	delay(100);
+	sx_delay(100);
 
 	config1 = readRegister(REG_MODEM_CONFIG1);
 
@@ -2070,7 +2075,7 @@ int8_t SX1272::setCR(uint8_t cod)
 	}
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -2207,7 +2212,7 @@ int8_t SX1272::setChannel(uint32_t ch)
 
 	_stoptime = millis();
 
-	delay(100);
+	sx_delay(100);
 
 	// storing MSB in freq channel value
 	freq3 = (readRegister(REG_FRF_MSB));
@@ -2234,7 +2239,7 @@ int8_t SX1272::setChannel(uint32_t ch)
 
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -2380,7 +2385,7 @@ int8_t SX1272::setPower(char p)
 
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -2437,7 +2442,7 @@ int8_t SX1272::setPowerNum(uint8_t pow)
 
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -2526,7 +2531,7 @@ uint8_t SX1272::setPreambleLength(uint16_t l)
 
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -2599,7 +2604,7 @@ int8_t SX1272::setPacketLength(uint8_t l)
 	// comment by C. Pham
 	// this delay is included in the send delay overhead
 	// TODO: do we really need this delay?
-	delay(250);
+	sx_delay(250);
 	return state;
 }
 
@@ -3036,7 +3041,7 @@ uint8_t SX1272::setACK()
 			return SX1272_ERROR_TOA;
 		}
 	}
-	// delay(1000);
+	// sx_delay(1000);
 
 	clearFlags();		// Initializing flags
 
@@ -3099,7 +3104,7 @@ uint8_t SX1272::setACK()
 
 		// comment by C. Pham
 		// TODO: do we really need this delay?
-		delay(500);
+		sx_delay(500);
 	}
 	return state;
 }
@@ -3340,7 +3345,7 @@ boolean SX1272::availableData(uint16_t wait)
 			// adding this small delay decreases the CPU load of the lora_gateway process to 4~5% instead of nearly 100%
 			// suggested by rertini (https://github.com/CongducPham/LowCostLoRaGw/issues/211)
 			// tests have shown no side effects
-			delay(1);
+			sx_delay(1);
 #endif
 		}
 
@@ -4713,7 +4718,7 @@ void SX1272::CarrierSense()
 						INFO(F(" CAD = "));
 						INFO_LN(sx1272_CAD_value[_loraMode] * w);
 
-						delay(sx1272_CAD_value
+						sx_delay(sx1272_CAD_value
 						      [_loraMode] * w);
 
 						// check for free channel (SIFS/DIFS) once again
@@ -4740,7 +4745,7 @@ void SX1272::CarrierSense()
 					INFO(F(" DIFS=3SIFS= "));
 					INFO_LN(sx1272_SIFS_value[_loraMode] * 3 * w);
 
-					delay(sx1272_SIFS_value[_loraMode] * 3 * w);
+					sx_delay(sx1272_SIFS_value[_loraMode] * 3 * w);
 
 					INFO(F("--> retry\n"));
 				}
@@ -4760,7 +4765,7 @@ void SX1272::CarrierSense()
 						INFO(F("--> RSSI "));
 						INFO_LN(_RSSI);
 						rssi_retry_count--;
-						delay(1);
+						sx_delay(1);
 					} while (_RSSI > -90 && rssi_retry_count);
 				} else
 					INFO(F("--> RSSI error\n"));
@@ -4826,7 +4831,7 @@ int8_t SX1272::setSyncWord(uint8_t sw)
 
 	writeRegister(REG_SYNC_WORD, sw);
 
-	delay(100);
+	sx_delay(100);
 
 	config1 = readRegister(REG_SYNC_WORD);
 
@@ -4848,7 +4853,7 @@ int8_t SX1272::setSyncWord(uint8_t sw)
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);
 
-	delay(100);
+	sx_delay(100);
 
 	return state;
 }
@@ -4862,10 +4867,10 @@ int8_t SX1272::setSleepMode()
 	writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);
 
 	// inserted to avoid REG_OP_MODE stay = 0x40 (no sleep mode)
-	delay(100);
+	sx_delay(100);
 	writeRegister(REG_OP_MODE, LORA_SLEEP_MODE);	// LoRa sleep mode
 
-	//delay(50);
+	//sx_delay(50);
 
 	value = readRegister(REG_OP_MODE);
 
@@ -4971,7 +4976,7 @@ int8_t SX1272::setPowerDBM(uint8_t dbm)
 
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
