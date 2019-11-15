@@ -114,6 +114,17 @@ class ADC {
       return rtn;
     }
 
+	float readVbat(void) {
+      int ref = getReference();
+      int res = getResolution();
+      reference(adcRef1V25);   /*must be 1.25V*/
+      resolution(adcRes12Bit); /*must be 12bit*/
+      int rtn = analogReadChannel(adcSingleInpVDDDiv3, false);
+      reference(ref);     /*resave*/
+      resolution((ADC_Res_TypeDef)res);
+      return rtn / 1000.0;
+	}
+
     float temperatureCelsius(void) {
       int temp = readTemp();
       return  convertToCelsius(temp);
