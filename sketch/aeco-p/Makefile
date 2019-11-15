@@ -42,8 +42,25 @@ TOOLCHAIN_DIR = /usr/share/arduino
 	endif
 endif
 
+V ?= $(VERBOSE)
+ifeq ("$(V)","1")
+Q :=
+vecho := @true
+else
+Q := @
+vecho := @echo
+endif
+
 #OPENOCD_CFG	:= $(ARDUINO_BOARD)/efm32zg-openocd.cfg
 OPENOCD_CFG = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
+
+OPENOCD_USER_DATA = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
+
+OPENOCD_DUMP_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; flash probe 0; flash read_bank 0 flash.bin; reset; shutdown"
+
+OPENOCD_DUMP_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image user.bin 0x0FE00000 0x400; reset; shutdown"
+
+OPENOCD_GET_UUID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image uuid.bin 0x0FE081F0 0x8; reset; shutdown"
 
 
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
@@ -86,7 +103,6 @@ $(ARDUINO_CORES)/Stream.cpp 							\
 $(ARDUINO_CORES)/WMath.cpp 								\
 $(ARDUINO_CORES)/WString.cpp 							\
 $(ARDUINO_CORES)/efm32/HardwareSerial.cpp				\
-$(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
 $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
@@ -97,6 +113,7 @@ $(LIB_DIR)/pc10/pc10.cpp								\
 ../aeco-th/sx1272.cpp
 
 #$(LIB_DIR)/SPI/src/SPI.cpp							\
+$(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
 
 
 CXX_APP = main.cpp
@@ -261,14 +278,26 @@ coff: build/main.elf
 
 
 upload: build/main.bin
-	#$(OPENOCD) -f interface/stlink.cfg -f aet1-openocd.cfg
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
 
 flash: build/main.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
 
+dump:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_DUMP_MAIN)
+	-$(Q) echo "The whole 32KB flash is dumped into flash.bin"
+
+dumpuser:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_DUMP_USER)
+	-$(Q) echo "Dump the 1KB user data into usr.bin
+
 eeprom: eeprom.bin
-	$(ARMDUDE) $(ARMDUDE_FLAGS) $(ARMDUDE_WRITE_EEPROM)
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
+
+getuuid:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GET_UUID)
+	-$(Q) echo "The MCU UUID is got into uuid.bin. The MCU UUID is:"
+	-$(Q) xxd -g1 uuid.bin | cut -d ' ' -f2-10
 
 
 clean:
