@@ -23,6 +23,14 @@
 
 #include <Arduino.h>
 
+//#define	DEBUG				1
+
+#ifdef DEBUG
+#define	INFO(x)				Serial.println(x)
+#else
+#define	INFO(x)
+#endif
+
 #define	SHT2X_ADDR			0x40
 
 #define	T_HOLD_CMD			0xE3

@@ -29,14 +29,14 @@
 static uint8_t _scl = SW_SCL;
 static uint8_t _sda = SW_SDA;
 
-static void set_high(uint8_t pin)
+static inline void set_high(uint8_t pin)
 {
 	noInterrupts();
 	pinMode(pin, INPUT_PULLUP);
 	interrupts();
 }
 
-static void set_low(uint8_t pin)
+static inline void set_low(uint8_t pin)
 {
 	noInterrupts();
 	digitalWrite(pin, LOW);
@@ -46,7 +46,7 @@ static void set_low(uint8_t pin)
 
 //////////////////////////////////////////////////////////////
 
-bool i2c_init(uint8_t scl, uint8_t sda)
+bool inline i2c_init(uint8_t scl, uint8_t sda)
 {
 	_scl = scl;
 	_sda = sda;
@@ -60,13 +60,13 @@ bool i2c_init(uint8_t scl, uint8_t sda)
 	return true;
 }
 
-void i2c_deinit(void)
+void inline i2c_deinit(void)
 {
 	pinMode(_sda, INPUT);
 	pinMode(_scl, INPUT);
 }
 
-bool i2c_start(void)
+bool inline i2c_start(void)
 {
 	SCL_HIGH();
 	SDA_HIGH();
@@ -82,7 +82,7 @@ bool i2c_start(void)
 	return true;
 }
 
-bool i2c_stop(void)
+bool inline i2c_stop(void)
 {
 	unsigned int i = 0;
 	SCL_LOW();
@@ -99,7 +99,7 @@ bool i2c_stop(void)
 	return true;
 }
 
-static bool i2c_write_bit(bool bit)
+static inline bool i2c_write_bit(bool bit)
 {
 	unsigned int i = 0;
 
@@ -120,7 +120,7 @@ static bool i2c_write_bit(bool bit)
 	return true;
 }
 
-static bool i2c_read_bit()
+static inline bool i2c_read_bit()
 {
 	unsigned int i = 0;
 

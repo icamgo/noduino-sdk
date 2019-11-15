@@ -143,7 +143,7 @@ static uint16_t sht2x_read_sensor(uint8_t command)
 		count++;
 		sht2x_delay(1);
 		if (count > 1000) {
-			Serial.println("SHT2x: wire request(read) timeout!");
+			INFO("SHT2x: wire request(read) timeout!");
 			return 1;
 		}
 	}
@@ -155,7 +155,7 @@ static uint16_t sht2x_read_sensor(uint8_t command)
 	checksum = wire_read();
 
 	if (check_crc(result, checksum) != 0) {
-		Serial.println("SHT2x: crc error!");
+		INFO("SHT2x: crc error!");
 		return 2;	//Error out
 	}
 
