@@ -29,6 +29,8 @@
  */
 #define SHIFTED_DIVISOR 0x988000	//This is the 0x0131 polynomial shifted to farthest left of three bytes
 
+#define	sht2x_delay(x)		i2c_delay(14*1000*x)
+
 static uint8_t check_crc(uint16_t message_from_sensor,
 			 uint8_t check_value_from_sensor)
 {
@@ -64,7 +66,7 @@ int sht2x_read_reg(void)
 	wire_write(READ_USER_REG);
 	wire_endTransmission();
 
-	delay(85);
+	sht2x_delay(85);
 
 	//Read result
 	if (wire_requestFrom(SHT2X_ADDR, 1) < 1) {
@@ -87,7 +89,7 @@ uint8_t sht2x_write_reg(uint8_t val)
 	wire_write(val);
 	ret = wire_endTransmission();
 
-	delay(85);
+	sht2x_delay(85);
 	return ret;
 }
 
@@ -100,7 +102,7 @@ uint8_t sht2x_reset(void)
 	wire_write(SOFT_RESET);
 	ret = wire_endTransmission();
 
-	delay(15);
+	sht2x_delay(15);
 	return ret;
 }
 
@@ -132,14 +134,14 @@ static uint16_t sht2x_read_sensor(uint8_t command)
 	wire_write(command);				//send the pointer location
 	ret = wire_endTransmission();		//end
 
-	delay(85);
+	sht2x_delay(85);
 
 	wire_requestFrom(SHT2X_ADDR, 3);
 
 	int count = 0;
 	while (wire_available() < 3) {
 		count++;
-		delay(1);
+		sht2x_delay(1);
 		if (count > 1000) {
 			Serial.println("SHT2x: wire request(read) timeout!");
 			return 1;
@@ -172,7 +174,7 @@ float sht2x_get_humi(void)
 
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
 		sht2x_reset();
-		delay(15);
+		sht2x_delay(15);
 		sd = sht2x_read_sensor(RH_NO_HOLD_CMD);
 		cnt++;
 	}
@@ -191,7 +193,7 @@ float sht2x_get_temp(void)
 
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
 		sht2x_reset();
-		delay(15);
+		sht2x_delay(15);
 		sd = sht2x_read_sensor(T_NO_HOLD_CMD);
 		cnt++;
 	}
