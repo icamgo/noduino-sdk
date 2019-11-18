@@ -42,7 +42,7 @@
 
 //#define DEBUG_CAD					1
 
-#define DEBUG_MODE		 			0
+#define DEBUG_MODE		 			1
 
 #if DEBUG_MODE >= 1
 #define INFO			Serial.print
@@ -294,6 +294,9 @@
 #define  CH_02_470     0x75A65C 	// 470.6MHz
 #define  CH_03_470     0x75B980 	// 470.9MHz
 
+#define  CH_00_472     0x760000 	// 472.0MHz
+#define  CH_01_472     0x762000 	// 472.5MHz
+
 #define  CH_00_144     0x240000 	// 144.000MHz
 #define  CH_01_144     0x241000 	// 144.250MHz
 #define  CH_02_144     0x242000 	// 144.500MHz
@@ -441,6 +444,7 @@ class SX1272 {
 	void clearFlags();
 
 	void sx1278_qsetup(uint32_t freq, uint8_t dbm);
+	void setup_v0(uint32_t freq, uint8_t dbm);
 
 	uint8_t setLORA();
 	uint8_t setFSK();

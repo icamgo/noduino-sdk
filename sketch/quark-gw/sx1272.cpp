@@ -147,6 +147,76 @@ void SX1272::reset()
 	delay(500);
 }
 
+void SX1272::setup_v0(uint32_t freq, uint8_t dbm)
+{
+#ifdef USE_SOFTSPI
+	spi_init();
+#else
+	SPI.begin();
+#endif
+
+	reset();
+
+	_board = SX1276Chip;
+
+	RxChainCalibration();
+
+	setLORA();
+
+	getPreambleLength();
+
+	randomSeed(millis());	//init random generator
+
+	// 500KHz, 4/6, Explicit Header
+	//writeRegister(REG_MODEM_CONFIG1, 0x94);
+	writeRegister(REG_MODEM_CONFIG1, (BW_500 << 4 | CR_6 << 1));
+	_bandwidth = BW_500;
+	_codingRate = CR_6;
+	_header = HEADER_ON;
+
+	// SF = 10, TxContin single pkt, CRC On, Rx Timeout msb - 0x0
+	//writeRegister(REG_MODEM_CONFIG2, 0xA4);
+	writeRegister(REG_MODEM_CONFIG2, (SF_10 << 4 | CRC_ON << 2));
+	_spreadingFactor = SF_10;
+	_CRC = CRC_ON;
+
+	// set the AgcAutoOn in bit 2 of REG_MODEM_CONFIG3
+	writeRegister(REG_MODEM_CONFIG3, 0x0C);
+
+	// LoRa detection Optimize: 0x03 --> SF7 to SF12
+	writeRegister(REG_DETECT_OPTIMIZE, 0x03);
+
+	// LoRa detection threshold: 0x0A --> SF7 to SF12
+	writeRegister(REG_DETECTION_THRESHOLD, 0x0A);
+
+	//setSyncWord(0x34);
+	writeRegister(REG_SYNC_WORD, 0x12);
+
+	// Select frequency channel
+	//setChannel(CH_01_472);
+	writeRegister(REG_FRF_MSB, (freq >> 16) & 0xFF);
+	writeRegister(REG_FRF_MID, (freq >> 8) & 0xFF);
+	writeRegister(REG_FRF_LSB, freq & 0xFF);
+	_channel = freq;
+
+	_needPABOOST = true;
+
+	// set Power 20dBm
+	#define REG_PADAC		0x4D
+	writeRegister(REG_PADAC, 0x87);
+	writeRegister(REG_PA_CONFIG, 0xFF);
+
+	/*
+	 * 0x12 -- 150mA
+	 * 0x10 -- 130mA
+	 * 0x0B -- 100mA
+	 * 0x1B -- 240mA
+	 * 0x01 -- 50mA
+	*/
+	writeRegister(REG_OCP, 0x1B | 0b00100000);
+	_power = 20;
+}
+
 void SX1272::sx1278_qsetup(uint32_t freq, uint8_t dbm)
 {
 #ifdef USE_SOFTSPI

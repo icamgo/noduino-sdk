@@ -25,7 +25,11 @@ bool optHEX = false;
 
 void radio_setup()
 {
+#ifdef CONFIG_V0
+	sx1272.setup_v0(TXRX_CH, MAX_DBM);
+#else
 	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
+#endif
 
 	// Set the node address and print the result
 	//sx1272.setNodeAddress(LORA_ADDR);
