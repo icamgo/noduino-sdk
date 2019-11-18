@@ -30,7 +30,8 @@ VERSION=187
 
 ifeq ($(OS),Windows_NT)
 TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/arm-none-eabi-2017q4/bin
-OPENOCD = $(SDK_BASE)/toolchain/openocd/bin/openocd
+#OPENOCD = $(SDK_BASE)/toolchain/openocd/bin/openocd
+OPENOCD = $(SDK_BASE)/toolchain/openocd-nt/bin/openocd
 PORT = COM7
 else
 TOOLCHAIN_DIR = /usr/share/arduino
@@ -289,7 +290,7 @@ dump:
 
 dumpuser:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_DUMP_USER)
-	-$(Q) echo "Dump the 1KB user data into usr.bin
+	-$(Q) echo "Dump the 1KB user data into user.bin"
 
 eeprom: eeprom.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
@@ -297,7 +298,10 @@ eeprom: eeprom.bin
 getuuid:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GET_UUID)
 	-$(Q) echo "The MCU UUID is got into uuid.bin. The MCU UUID is:"
-	-$(Q) xxd -g1 uuid.bin | cut -d ' ' -f2-10
+	-$(Q) xxd -g1 uuid.bin | cut -d ' ' -f2-10 | tr -d [:space:] | tr [:lower:] [:upper:]
+
+getid:
+	-$(Q) xxd -g1 uuid.bin | cut -d ' ' -f2-10 | tr -d [:space:] | tr [:lower:] [:upper:]
 
 
 clean:
