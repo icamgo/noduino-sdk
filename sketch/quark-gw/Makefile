@@ -14,7 +14,7 @@
 #  3. Type "make flash" to upload your program into your board
 #
 
-TARGET = main.cpp
+TARGET = t2-print.cpp
 
 SDK_BASE		?= ../..
 
@@ -24,7 +24,7 @@ LIB_DIR = ./lib
 
 ifeq ($(OS),Windows_NT)
 TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/avr-gcc
-PORT = COM7
+PORT = COM4
 else
 TOOLCHAIN_DIR = /usr/share/arduino
 	ifeq ($(UNAME_S),Linux)
@@ -150,7 +150,7 @@ CWARN = -w #suppress all warnings
 ####CTUNING = -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 CTUNING = -ffunction-sections -fdata-sections
 CXXTUNING = -fno-exceptions -ffunction-sections -fdata-sections
-CEXTRA = -MMD -DUSB_PID=null -DUSB_VID=null -DARDUINO=165
+CEXTRA = -MMD -DUSB_PID=null -DUSB_VID=null -DARDUINO=165 -u,vfprintf
 
 CFLAGS = $(CDEBUG) -O$(OPT) $(CWARN) $(CTUNING) $(CDEFS) $(CINCS) $(CSTANDARD) $(CEXTRA)
 CXXFLAGS = $(CDEBUG) -O$(OPT) $(CWARN) $(CXXTUNING) $(CDEFS) $(CINCS) $(CEXTRA)
