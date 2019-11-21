@@ -30,7 +30,14 @@
 #include <Arduino.h>
 #include <SPI.h>
 
+#define CONFIG_V0					1
 #define USE_SOFTSPI					1
+
+//#define DEBUG_CAD					1
+#define DEBUG_MODE		 			0
+#define W_REQUESTED_ACK
+//#define W_NET_KEY
+//#define W_INITIALIZATION
 
 #ifdef USE_SOFTSPI
 #include "softspi.h"
@@ -40,10 +47,6 @@
 #include <inttypes.h>
 #endif
 
-//#define DEBUG_CAD					1
-
-#define DEBUG_MODE		 			1
-
 #if DEBUG_MODE >= 1
 #define INFO			Serial.print
 #define INFO_LN			Serial.println
@@ -51,10 +54,6 @@
 #define INFO
 #define INFO_LN
 #endif
-
-#define W_REQUESTED_ACK
-//#define W_NET_KEY
-//#define W_INITIALIZATION
 
 #define SX1272_WRST
 
@@ -371,8 +370,18 @@ const uint8_t CRC_OFF = 0;
 const uint8_t LORA = 1;
 const uint8_t FSK = 0;
 const uint8_t BROADCAST_0 = 0x00;
+
+#ifdef CONFIG_V0
+const uint8_t MAX_LENGTH = 128;
+const uint8_t MAX_PAYLOAD = 124;
+#else
 const uint8_t MAX_LENGTH = 255;
 const uint8_t MAX_PAYLOAD = 251;
+#endif
+
+const uint16_t MAX_TIMEOUT = 10000;	//10000 msec = 10.0 sec
+const uint16_t MAX_WAIT = 12000;	//12000 msec = 12.0 sec
+
 const uint8_t MAX_LENGTH_FSK = 64;
 const uint8_t MAX_PAYLOAD_FSK = 60;
 //modified by C. Pham, 7 instead of 5 because we added a type field which should be PKT_TYPE_ACK and the SNR
@@ -391,8 +400,6 @@ const uint8_t OFFSET_PAYLOADLENGTH = 4;
 const uint8_t OFFSET_RSSI = 139;
 const uint8_t NOISE_FIGURE = 6.0;
 const uint8_t NOISE_ABSOLUTE_ZERO = 174.0;
-const uint16_t MAX_TIMEOUT = 10000;	//10000 msec = 10.0 sec
-const uint16_t MAX_WAIT = 12000;	//12000 msec = 12.0 sec
 const uint8_t MAX_RETRIES = 5;
 const uint8_t CORRECT_PACKET = 0;
 const uint8_t INCORRECT_PACKET = 1;

@@ -25,8 +25,8 @@
 #include "SX1272.h"
 
 // based on SIFS=3CAD
-uint8_t sx1272_SIFS_value[11] = { 0, 183, 94, 44, 47, 23, 24, 12, 12, 7, 4 };
-uint8_t sx1272_CAD_value[11] = { 0, 62, 31, 16, 16, 8, 9, 5, 3, 1, 1 };
+uint8_t sx1272_SIFS_value[] = { 0, 183, 94, 44, 47, 23, 24, 12, 12, 7, 4, 4, 4 };
+uint8_t  sx1272_CAD_value[] = { 0, 62, 31, 16, 16, 8, 9, 5, 3, 1, 1, 1, 1 };
 
 //#define LIMIT_TOA
 // 0.1% for testing
@@ -786,6 +786,16 @@ int8_t SX1272::setMode(uint8_t mode)
 		INFO_LN(_syncWord, HEX);
 		break;
 
+	case 12:
+		setCR(CR_6);	// CR = 4/6
+		setSF(SF_10);	// SF = 10
+		setBW(BW_500);	// BW = 500 KHz
+
+		setSyncWord(0x12);
+		INFO(F("** Using sync word of 0x"));
+		INFO_LN(_syncWord, HEX);
+		break;
+
 	default:
 		state = -1;	// The indicated mode doesn't exist
 	};
@@ -1039,6 +1049,21 @@ int8_t SX1272::setMode(uint8_t mode)
 				config2 = readRegister(REG_MODEM_CONFIG2);
 
 				if ((config2 >> 4) == SF_12) {
+					state = 0;
+				}
+			}
+			break;
+
+		case 12:
+			// mode 12: BW = 500 KHz, CR = 4/6, SF = 10.
+			if ((config1 >> 1) == 0x45)
+				state = 0;
+
+			if (state == 0) {
+				state = 1;
+				config2 = readRegister(REG_MODEM_CONFIG2);
+
+				if ((config2 >> 4) == SF_10) {
 					state = 0;
 				}
 			}
