@@ -18,36 +18,25 @@
 
 #include "SX1272.h"
 
-#define PABOOST
-
-//#define BAND470
-#define BAND433
-
-#ifndef MAX_DBM
-#define MAX_DBM		20
-#endif
-
-//#define SHOW_FREEMEMORY
 //#define GW_RELAY
 //#define RECEIVE_ALL 
 
 // use the dynamic ACK feature of our modified SX1272 lib
 #define GW_AUTO_ACK
 
-#ifdef BAND433
-const uint32_t DEFAULT_CHANNEL = CH_00_433;	// 433.3MHz
-//const uint32_t DEFAULT_CHANNEL = CH_03_433;	// 434.3MHz
-#elif defined BAND470
-const uint32_t DEFAULT_CHANNEL = CH_00_470;	// 470.0MHz
-#endif
+#ifdef CONFIG_V0
+bool optHEX = true;
 
+uint8_t loraMode = 12;
+#else
+bool optHEX = false;
 
 // Default LoRa mode BW=125KHz, CR=4/5, SF=12
 uint8_t loraMode = 11;
 
 // Gateway address: 1
-#define LORA_ADDR	1
-uint8_t loraAddr = LORA_ADDR;
+uint8_t loraAddr = 1;
+#endif
 
 // be careful, max command length is 60 characters
 #define MAX_CMD_LENGTH 100
@@ -56,7 +45,6 @@ char cmd[MAX_CMD_LENGTH] = "***";
 // number of retries to unlock remote configuration feature
 boolean withAck = false;
 
-bool radioON = true;
 bool RSSIonSend = true;
 
 int status_counter = 0;
@@ -68,8 +56,6 @@ uint8_t send_cad_number = 3;
 uint8_t SIFS_value[11] = { 0, 183, 94, 44, 47, 23, 24, 12, 12, 7, 4 };
 uint8_t CAD_value[11] = { 0, 62, 31, 16, 16, 8, 9, 5, 3, 1, 1 };
 
-bool optHEX = false;
-
 #define INFO_S(fmt,param)			Serial.print(F(param))
 #define INFO_HEX(fmt,param)			Serial.print(param,HEX)
 #define INFO(fmt,param)				Serial.print(param)
@@ -78,30 +64,15 @@ bool optHEX = false;
 
 void radio_setup()
 {
-#if 0
-	sx1272.ON();		// power on the module
 
-	// BW=125KHz, SF=12, CR=4/5, sync=0x34
-	sx1272.setMode(loraMode);
-
-	// Select frequency channel
-	sx1272.setChannel(DEFAULT_CHANNEL);
-
-#ifdef PABOOST
-	// Select amplifier line; PABOOST or RFO
-	sx1272._needPABOOST = true;
-#endif
-
-	sx1272.setPowerDBM((uint8_t) MAX_DBM);
+#ifdef CONFIG_V0
+	sx1272.setup_v0(CH_01_472, 20);
 #else
-	sx1272.sx1278_qsetup(CH_00_433);
-#endif
-
-	// Set the node address and print the result
-	//sx1272.setNodeAddress(loraAddr);
+	sx1272.sx1278_qsetup(CH_00_470, 20);
 	sx1272._nodeAddress = loraAddr;
 
 	sx1272._enableCarrierSense = true;
+#endif
 
 	if (loraMode > 7)
 		SIFS_cad_number = 6;
@@ -234,7 +205,7 @@ int CarrierSense(bool onlyOnce = false)
 void loop(void)
 {
 	int i = 0, e;
-
+	
 	e = 1;
 
 	if (status_counter == 60 || status_counter == 0) {
@@ -313,18 +284,20 @@ void loop(void)
 		sx1272._nodeAddress = loraAddr;
 #else
 		//sx1272.getSNR();
-		sx1272.getRSSIpacket();
+		//sx1272.getRSSIpacket();
 
+#ifndef CONFIG_V0
 		// provide a short output for external program to have information about the received packet
 		// src_id,seq,len,SNR,RSSI
 		sprintf(cmd, "%d,%d,%d,%d,",
+			sx1272.packet_received.src,
 			sx1272.packet_received.dst,
 			sx1272.packet_received.type,
-			sx1272.packet_received.src,
 			sx1272.packet_received.packnum);
-		INFOLN("%s", cmd);
+		INFO("%s", cmd);
+#endif
 
-		sprintf(cmd, "%d,%d,%d\n", tmp_length, sx1272._SNR, sx1272._RSSIpacket);
+		sprintf(cmd, "%d,%d,%d", tmp_length, sx1272._RSSIpacket, sx1272._SNR);
 		INFOLN("%s", cmd);
 
 		for (; a < tmp_length; a++, b++) {
@@ -345,7 +318,7 @@ void loop(void)
 		// strlen(cmd) will be correct as only the payload is copied
 		cmd[b] = '\0';
 
-		INFOLN("%d", " ");
+		INFOLN("%d", "$");
 #endif
 	}
 }
