@@ -158,6 +158,7 @@ void SX1272::setup_v0(uint32_t freq, uint8_t dbm)
 	reset();
 
 	_board = SX1276Chip;
+	_rawFormat = true;
 
 	RxChainCalibration();
 
