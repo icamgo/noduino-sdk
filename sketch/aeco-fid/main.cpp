@@ -116,11 +116,11 @@ void setup()
 	Serial.begin(115200);
 
 	// turn on the device power
-	//pinMode(6, OUTPUT);
-	//digitalWrite(6, HIGH);
+	pinMode(6, OUTPUT);
+	digitalWrite(6, HIGH);
 
-	pinMode(7, OUTPUT);
-	digitalWrite(7, LOW);
+	//pinMode(7, OUTPUT);
+	//digitalWrite(7, LOW);
 
 	radio_setup();
 }
