@@ -30,6 +30,16 @@
 #include <Arduino.h>
 #include <SPI.h>
 
+/* define these macro in Makefile */
+//#define CONFIG_V0					1
+//#define USE_SOFTSPI				1
+//#define DEBUG_CAD					1
+
+#define DEBUG_MODE		 			0
+#define W_REQUESTED_ACK
+//#define W_NET_KEY
+//#define W_INITIALIZATION
+
 #ifdef USE_SOFTSPI
 #include "softspi.h"
 #endif
@@ -38,10 +48,6 @@
 #include <inttypes.h>
 #endif
 
-//#define DEBUG_CAD					1
-
-#define DEBUG_MODE		 			0
-
 #if DEBUG_MODE >= 1
 #define INFO			Serial.print
 #define INFO_LN			Serial.println
@@ -49,10 +55,6 @@
 #define INFO
 #define INFO_LN
 #endif
-
-#define W_REQUESTED_ACK
-//#define W_NET_KEY
-//#define W_INITIALIZATION
 
 #define SX1272_WRST
 
@@ -265,11 +267,6 @@
 #define  CH_10_900     0xE72B85 	// channel 10, central freq     924.68MHz
 #define  CH_11_900     0xE7B5C2 	// channel 11, central freq     926.84MHz
 #define  CH_12_900     0xE4C000 	// default channel 915MHz, the module is configured with it
-
-#define  CH_00_470     0x758000 	// 470.0MHz
-#define  CH_01_470     0x759338 	// 470.3MHz
-#define  CH_02_470     0x75A65C 	// 470.6MHz
-#define  CH_03_470     0x75B980 	// 470.9MHz
 #endif
 
 #define  CH_00_432     0x6C019C 	// 432.026MHz
@@ -296,6 +293,9 @@
 #define  CH_01_470     0x759338 	// 470.3MHz
 #define  CH_02_470     0x75A65C 	// 470.6MHz
 #define  CH_03_470     0x75B980 	// 470.9MHz
+
+#define  CH_00_472     0x760000 	// 472.0MHz
+#define  CH_01_472     0x762000 	// 472.5MHz
 
 #define  CH_00_144     0x240000 	// 144.000MHz
 #define  CH_01_144     0x241000 	// 144.250MHz
@@ -371,8 +371,18 @@ const uint8_t CRC_OFF = 0;
 const uint8_t LORA = 1;
 const uint8_t FSK = 0;
 const uint8_t BROADCAST_0 = 0x00;
+
+#ifdef CONFIG_V0
+const uint8_t MAX_LENGTH = 128;
+const uint8_t MAX_PAYLOAD = 124;
+#else
 const uint8_t MAX_LENGTH = 255;
 const uint8_t MAX_PAYLOAD = 251;
+#endif
+
+const uint16_t MAX_TIMEOUT = 1000;	//10000 msec = 10.0 sec
+const uint16_t MAX_WAIT = 1200;	//12000 msec = 12.0 sec
+
 const uint8_t MAX_LENGTH_FSK = 64;
 const uint8_t MAX_PAYLOAD_FSK = 60;
 //modified by C. Pham, 7 instead of 5 because we added a type field which should be PKT_TYPE_ACK and the SNR
@@ -391,8 +401,6 @@ const uint8_t OFFSET_PAYLOADLENGTH = 4;
 const uint8_t OFFSET_RSSI = 139;
 const uint8_t NOISE_FIGURE = 6.0;
 const uint8_t NOISE_ABSOLUTE_ZERO = 174.0;
-const uint16_t MAX_TIMEOUT = 10000;	//10000 msec = 10.0 sec
-const uint16_t MAX_WAIT = 12000;	//12000 msec = 12.0 sec
 const uint8_t MAX_RETRIES = 5;
 const uint8_t CORRECT_PACKET = 0;
 const uint8_t INCORRECT_PACKET = 1;
@@ -444,6 +452,7 @@ class SX1272 {
 	void clearFlags();
 
 	void sx1278_qsetup(uint32_t freq, uint8_t dbm);
+	void setup_v0(uint32_t freq, uint8_t dbm);
 
 	uint8_t setLORA();
 	uint8_t setFSK();
