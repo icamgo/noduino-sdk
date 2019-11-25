@@ -19,10 +19,10 @@
 #include "SX1272.h"
 
 //#define GW_RELAY
-//#define RECEIVE_ALL 
+//#define RECEIVE_ALL
 
 // use the dynamic ACK feature of our modified SX1272 lib
-#define GW_AUTO_ACK
+//#define GW_AUTO_ACK
 
 #ifdef CONFIG_V0
 bool optHEX = true;
@@ -215,7 +215,7 @@ void loop(void)
 
 	// check if we received data from the receiving LoRa module
 #ifdef RECEIVE_ALL
-	e = sx1272.receiveAll(MAX_TIMEOUT);
+	e = sx1272.receiveAll(500);
 #else
 #ifdef GW_AUTO_ACK
 
@@ -250,9 +250,9 @@ void loop(void)
 	// OBSOLETE normally we always use GW_AUTO_ACK
 	// Receive message
 	if (withAck)
-		e = sx1272.receivePacketTimeoutACK(MAX_TIMEOUT);
+		e = sx1272.receivePacketTimeoutACK(300);
 	else
-		e = sx1272.receivePacketTimeout(MAX_TIMEOUT);
+		e = sx1272.receivePacketTimeout(200);
 
 #endif // gw_auto_ack
 #endif // receive_all
