@@ -1428,6 +1428,7 @@ uint8_t SX1272::setCRC_OFF()
 			INFO_LN(F("## CRC has been desactivated ##"));
 #endif
 		}
+#ifdef ENABLE_FSK
 	} else {		// FSK mode
 		config1 = readRegister(REG_PACKET_CONFIG1);	// Save config1 to modify only the CRC bit
 		config1 = config1 & B11101111;	// clears bit 4 from config1 = CRC_OFF
@@ -1441,6 +1442,7 @@ uint8_t SX1272::setCRC_OFF()
 			INFO_LN(F("## CRC has been desactivated ##"));
 #endif
 		}
+#endif
 	}
 	if (state != 0) {
 		state = 1;
@@ -3282,11 +3284,13 @@ uint8_t SX1272::receive()
 #if (DEBUG_MODE > 1)
 		INFO_LN(F("## Receiving LoRa mode activated with success ##"));
 #endif
+#ifdef ENABLE_FSK
 	} else {		// FSK mode
 		state = setPacketLength();
 		writeRegister(REG_OP_MODE, FSK_RX_MODE);	// FSK mode - Rx
 #if (DEBUG_MODE > 1)
 		INFO_LN(F("## Receiving FSK mode activated with success ##"));
+#endif
 #endif
 	}
 	return state;
@@ -3478,12 +3482,7 @@ boolean SX1272::availableData(uint16_t wait)
 			// tests have shown no side effects
 			delay(1);
 #endif
-			// Condition to avoid an overflow (DO NOT REMOVE)
-			//if( millis() < previous )
-			//{
-			//    previous = millis();
-			//}
-		}		// end while (millis)
+		}
 
 		if (bitRead(value, 4) == 1) {	// header received
 			_starttime = millis();
@@ -3510,11 +3509,6 @@ boolean SX1272::availableData(uint16_t wait)
 				yield();
 #endif
 				header = readRegister(REG_FIFO_RX_BYTE_ADDR);
-				// Condition to avoid an overflow (DO NOT REMOVE)
-				//if( millis() < previous )
-				//{
-				//    previous = millis();
-				//}
 			}
 
 			if (header != 0) {	// Reading first byte of the received packet
@@ -3535,18 +3529,14 @@ boolean SX1272::availableData(uint16_t wait)
 			INFO_LN(F("** The timeout has expired **"));
 #endif
 		}
+#ifdef ENABLE_FSK
 	} else {		// FSK mode
 		value = readRegister(REG_IRQ_FLAGS2);
 		// Wait to Payload Ready interrupt
 		//while( (bitRead(value, 2) == 0) && (millis() - previous < wait) )
 		while ((bitRead(value, 2) == 0) && (millis() < exitTime)) {
 			value = readRegister(REG_IRQ_FLAGS2);
-			// Condition to avoid an overflow (DO NOT REMOVE)
-			//if( millis() < previous )
-			//{
-			//    previous = millis();
-			//}
-		}		// end while (millis)
+		}
 
 		if (bitRead(value, 2) == 1)	{
 			_hreceived = true;
@@ -3562,6 +3552,7 @@ boolean SX1272::availableData(uint16_t wait)
 			INFO_LN(F("The timeout has expired"));
 #endif
 		}
+#endif //enable_FSK
 	}
 	// We use _hreceived because we need to ensure that _destination value is correctly
 	// updated and is not the _destination value from the previously packet
@@ -3669,12 +3660,7 @@ int8_t SX1272::getPacket(uint16_t wait)
 		//while( (bitRead(value, 6) == 0) && (millis() - previous < (unsigned long)wait) )
 		while ((bitRead(value, 6) == 0) && (millis() < exitTime)) {
 			value = readRegister(REG_IRQ_FLAGS);
-			// Condition to avoid an overflow (DO NOT REMOVE)
-			//if( millis() < previous )
-			//{
-			//    previous = millis();
-			//}
-		}		// end while (millis)
+		}
 
 		// modified by C. Pham
 		// RxDone
@@ -3719,12 +3705,7 @@ int8_t SX1272::getPacket(uint16_t wait)
 		//while( (bitRead(value, 2) == 0) && (millis() - previous < wait) )
 		while ((bitRead(value, 2) == 0) && (millis() < exitTime)) {
 			value = readRegister(REG_IRQ_FLAGS2);
-			// Condition to avoid an overflow (DO NOT REMOVE)
-			//if( millis() < previous )
-			//{
-			//    previous = millis();
-			//}
-		}		// end while (millis)
+		}
 
 		if (bitRead(value, 2) == 1) {	// packet received
 			if (bitRead(value, 1) == 1) {	// CRC correct
@@ -4182,6 +4163,7 @@ uint8_t SX1272::sendWithTimeout(uint16_t wait)
 			//}
 		}
 		state = 1;
+#ifdef ENABLE_FSK
 	} else {		// FSK mode
 		writeRegister(REG_OP_MODE, FSK_TX_MODE);	// FSK mode - Tx
 
@@ -4197,6 +4179,7 @@ uint8_t SX1272::sendWithTimeout(uint16_t wait)
 			//}
 		}
 		state = 1;
+#endif
 	}
 
 #ifdef SX1272_led_send_receive
