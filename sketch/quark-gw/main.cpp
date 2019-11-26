@@ -380,7 +380,7 @@ void loop() {
 
 	if (e) {
 
-		Serial.println("Radio data available");
+		//Serial.println("Radio data available");
 
 		// make sure push the data success
 		try_num = 0;
@@ -429,14 +429,14 @@ void loop() {
 int push_data(char *pbuf, char serv[]) {
 
 #ifdef	DEBUG
-	Serial.println("Try push data");
+	//Serial.println("Try push data");
 #endif
 
 	// if there's a successful connection:
 	if (!client.connected() && wdt_off() && client.connect(serv, 80)) {
 		setup_wdt(9);
 #ifdef	DEBUG
-		Serial.println("Connecting to Cloud ...");
+		//Serial.println("Connecting to Cloud ...");
 #endif
 
 		// Send the HTTP PUT request
@@ -484,7 +484,7 @@ int push_data(char *pbuf, char serv[]) {
 #ifdef DEBUG_SERVER
 		Serial.println(pbuf);
 #endif
-		Serial.println("Messages pushed.");
+		//Serial.println("Messages pushed.");
 #endif
 		// note the time that the connection was made or attempted:
 		last_post_time = millis();
