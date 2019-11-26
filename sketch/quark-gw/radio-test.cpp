@@ -1,4 +1,4 @@
-/* 
+/*
  *  Copyright (c) 2019 - 2029 MaiKe Labs
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -19,24 +19,26 @@
 #include "SX1272.h"
 
 //#define GW_RELAY
-//#define RECEIVE_ALL
-
-// use the dynamic ACK feature of our modified SX1272 lib
-//#define GW_AUTO_ACK
 
 #ifdef CONFIG_V0
+
+//#define RECEIVE_ALL
+//#define	RX_TIME				500
+#define GW_AUTO_ACK
+#define	RX_TIME				MAX_TIMEOUT
 bool optHEX = true;
-
 uint8_t loraMode = 12;
+
 #else
+
+#define GW_AUTO_ACK
+#define	RX_TIME				MAX_TIMEOUT
 bool optHEX = false;
+uint8_t loraMode = 11;	// BW=125KHz, CR=4/5, SF=12
 
-// Default LoRa mode BW=125KHz, CR=4/5, SF=12
-uint8_t loraMode = 11;
-
-// Gateway address: 1
-uint8_t loraAddr = 1;
 #endif
+
+uint8_t loraAddr = 1;	// GW address
 
 // be careful, max command length is 60 characters
 #define MAX_CMD_LENGTH 100
@@ -48,6 +50,7 @@ boolean withAck = false;
 bool RSSIonSend = true;
 
 int status_counter = 0;
+
 unsigned long startDoCad, endDoCad;
 bool extendedIFS = true;
 uint8_t SIFS_cad_number;
@@ -109,7 +112,7 @@ int CarrierSense(bool onlyOnce = false)
 		do {
 			do {
 
-				// check for free channel (SIFS/DIFS)        
+				// check for free channel (SIFS/DIFS)
 				startDoCad = millis();
 				e = sx1272.doCAD(send_cad_number);
 				endDoCad = millis();
@@ -202,6 +205,128 @@ int CarrierSense(bool onlyOnce = false)
 	return 0;
 }
 
+#ifdef CONFIG_V0
+char goid_buf[21];
+char go_vbat[6];
+char go_temp[10];
+
+char *uint64_to_str(uint64_t n)
+{
+	char *dest;
+	dest = goid_buf;
+
+	dest += 20;
+	*dest-- = 0;
+	while (n) {
+		*dest-- = (n % 10) + '0';
+		n /= 10;
+	}
+	return dest + 1;
+}
+
+char *decode_goid(uint8_t *pkt)
+{
+	int a = 0, b = 0;
+
+	uint64_t goid = 0UL;
+
+	for (a = 3; a < 11; a++, b++) {
+
+		*(((uint8_t *)&goid) + 7 - b) = pkt[a];
+	}
+
+	return uint64_to_str(goid);
+}
+
+/* only support .0001 */
+char *ftoa(char *a, float f, int preci)
+{
+	long p[] =
+	    {0, 10, 100, 1000, 10000};
+
+	char *ret = a;
+
+	long ipart = (long)f;
+
+	//INFOLN("%d", ipart);
+
+	itoa(ipart, a, 10);		//int16, -32,768 ~ 32,767
+
+	while (*a != '\0')
+		a++;
+
+	*a++ = '.';
+
+	long fpart = abs(f * p[preci] - ipart * p[preci]);
+
+	//INFOLN("%d", fpart);
+
+	if (fpart > 0) {
+		if (fpart < p[preci]/10) {
+			*a++ = '0';
+		}
+		if (fpart < p[preci]/100) {
+			*a++ = '0';
+		}
+		if (fpart < p[preci]/1000) {
+			*a++ = '0';
+		}
+	}
+
+	itoa(fpart, a, 10);
+	return ret;
+}
+
+char *decode_vbat(uint8_t *pkt)
+{
+	uint16_t vbat = 0;
+
+	switch(pkt[2]) {
+		case 0x31:
+		case 0x32:
+		case 0x33:
+			vbat = pkt[13] << 8 | pkt[14];
+			break;
+	}
+
+	ftoa(go_vbat, (float)(vbat / 1000.0), 3);
+}
+
+char *decode_temp(uint8_t *pkt)
+{
+	int16_t temp = 0;
+
+	temp = ((pkt[11] << 8) & 0x7F) | pkt[12];
+
+	if (pkt[11] & 0x80)
+		temp = temp * -1;
+
+	ftoa(go_temp, (float)(temp / 10.0), 1);
+}
+
+uint8_t decode_cmd(uint8_t *pkt)
+{
+	uint8_t cmd = 0;
+
+	switch(pkt[2]) {
+
+		case 0x33:
+			cmd = pkt[15];
+			break;
+		default:
+			cmd = 255;
+			break;
+	}
+
+	return cmd;
+}
+
+uint8_t decode_ver(uint8_t *pkt)
+{
+	return pkt[2];
+}
+#endif
+
 void loop(void)
 {
 	int i = 0, e;
@@ -215,11 +340,11 @@ void loop(void)
 
 	// check if we received data from the receiving LoRa module
 #ifdef RECEIVE_ALL
-	e = sx1272.receiveAll(500);
+	e = sx1272.receiveAll(RX_TIME);
 #else
 #ifdef GW_AUTO_ACK
 
-	e = sx1272.receivePacketTimeout(MAX_TIMEOUT);
+	e = sx1272.receivePacketTimeout(RX_TIME);
 
 	status_counter++;
 
@@ -250,9 +375,9 @@ void loop(void)
 	// OBSOLETE normally we always use GW_AUTO_ACK
 	// Receive message
 	if (withAck)
-		e = sx1272.receivePacketTimeoutACK(300);
+		e = sx1272.receivePacketTimeoutACK(RX_TIME);
 	else
-		e = sx1272.receivePacketTimeout(200);
+		e = sx1272.receivePacketTimeout(RX_TIME);
 
 #endif // gw_auto_ack
 #endif // receive_all
@@ -260,9 +385,9 @@ void loop(void)
 	if (!e) {
 
 		int a = 0, b = 0;
-		uint8_t tmp_length;
+		uint8_t p_len;
 
-		tmp_length = sx1272.getPayloadLength();
+		p_len = sx1272.getPayloadLength();
 
 #ifdef GW_RELAY
 		// here we resend the received data to the next gateway
@@ -275,7 +400,7 @@ void loop(void)
 
 		e = sx1272.sendPacketTimeout(1,
 						 sx1272.packet_received.
-						 data, tmp_length, 10000);
+						 data, p_len, 10000);
 
 		INFO_S("%s", "Packet re-sent, state ");
 		INFOLN("%d", e);
@@ -283,24 +408,13 @@ void loop(void)
 		// set back the gateway address
 		sx1272._nodeAddress = loraAddr;
 #else
-		//sx1272.getSNR();
-		//sx1272.getRSSIpacket();
+		sx1272.getRSSIpacket();
 
-#ifndef CONFIG_V0
-		// provide a short output for external program to have information about the received packet
-		// src_id,seq,len,SNR,RSSI
-		sprintf(cmd, "%d,%d,%d,%d,",
-			sx1272.packet_received.src,
-			sx1272.packet_received.dst,
-			sx1272.packet_received.type,
-			sx1272.packet_received.packnum);
-		INFO("%s", cmd);
-#endif
-
-		sprintf(cmd, "%d,%d,%d", tmp_length, sx1272._RSSIpacket, sx1272._SNR);
+		sprintf(cmd, "%d,%d,%d", p_len, sx1272._RSSIpacket, sx1272._SNR);
 		INFOLN("%s", cmd);
 
-		for (; a < tmp_length; a++, b++) {
+#ifdef CONFIG_V0
+		for (; a < p_len; a++, b++) {
 
 			if (optHEX) {
 				if ((uint8_t) sx1272.packet_received.data[a] < 16)
@@ -310,15 +424,37 @@ void loop(void)
 				INFO_S("%s", " ");
 			} else
 				INFO("%c", (char)sx1272.packet_received.data[a]);
-
-			if (b < MAX_CMD_LENGTH)
-				cmd[b] = (char)sx1272.packet_received.data[a];
 		}
 
-		// strlen(cmd) will be correct as only the payload is copied
+		INFOLN("%d", "$");
+
+		sprintf(cmd, "/devid/%s/U/%s/T/%s/cmd/%d/ver/%d/rssi/%d/snr/%d",
+			decode_goid(sx1272.packet_received.data),
+			decode_vbat(sx1272.packet_received.data),
+			decode_temp(sx1272.packet_received.data),
+			decode_cmd(sx1272.packet_received.data),
+			decode_ver(sx1272.packet_received.data),
+			sx1272._RSSIpacket,
+			sx1272._SNR);
+#else
+		for (; a < p_len; a++, b++) {
+
+			cmd[b] = (char)sx1272.packet_received.data[a];
+		}
+
 		cmd[b] = '\0';
 
-		INFOLN("%d", "$");
+		b = strlen(cmd);
+
+		// src_id,SNR,RSSI
+		sprintf(cmd+b, "/devid/%d/snr/%d/rssi/%d",
+			sx1272.packet_received.src,
+			sx1272._SNR,
+			sx1272._RSSIpacket);
+
+#endif
+
+		INFOLN("%s", cmd);
 #endif
 	}
 }
