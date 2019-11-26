@@ -30,7 +30,6 @@
 #include <Arduino.h>
 #include <SPI.h>
 
-#define CONFIG_V0					1
 #define USE_SOFTSPI					1
 
 //#define DEBUG_CAD					1
@@ -374,13 +373,15 @@ const uint8_t BROADCAST_0 = 0x00;
 #ifdef CONFIG_V0
 const uint8_t MAX_LENGTH = 128;
 const uint8_t MAX_PAYLOAD = 124;
+const uint16_t MAX_TIMEOUT = 800;	// 800 msec = 0.8 sec
+const uint16_t MAX_WAIT = 810;		// 810 msec = 0.81 sec
 #else
 const uint8_t MAX_LENGTH = 255;
 const uint8_t MAX_PAYLOAD = 251;
+const uint16_t MAX_TIMEOUT = 10000;	// 10 sec
+const uint16_t MAX_WAIT = 12000;	// 12 sec
 #endif
 
-const uint16_t MAX_TIMEOUT = 800;	// 200 msec = 0.2 sec
-const uint16_t MAX_WAIT = 810;		// 210 msec = 0.21 sec
 
 const uint8_t MAX_LENGTH_FSK = 64;
 const uint8_t MAX_PAYLOAD_FSK = 60;
