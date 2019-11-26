@@ -15,10 +15,13 @@
 
 void setup() {
 
+	pinMode(8, OUTPUT);
+	digitalWrite(8, HIGH);
+
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
 
-	adc.reference(INTERNAL2V5); /* setup ADC reference INTERNAL1V25/INTERNAL2V5/INTERNAL3V3*/
+	adc.reference(INTERNAL3V3); /* setup ADC reference INTERNAL1V25/INTERNAL2V5/INTERNAL3V3*/
 }
 
 void loop() {
@@ -27,5 +30,4 @@ void loop() {
 	Serial.println(adc.read(A6, A7));
 
 	delay(2000);  // wait for 2 seconds
-
 }
