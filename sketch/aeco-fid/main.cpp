@@ -23,10 +23,13 @@
 
 //#define DEBUG			1
 
-//#define RECEIVE_ALL 
+#define RECEIVE_ALL
+
+//#define RX_TIME			MAX_TIMEOUT
+#define RX_TIME			300
 
 // use the dynamic ACK feature of our modified SX1272 lib
-#define GW_AUTO_ACK
+//#define GW_AUTO_ACK
 
 #ifdef CONFIG_V0
 uint8_t loraMode = 12;
@@ -116,11 +119,11 @@ void setup()
 	Serial.begin(115200);
 
 	// turn on the device power
-	pinMode(6, OUTPUT);
-	digitalWrite(6, HIGH);
+	//pinMode(6, OUTPUT);
+	//digitalWrite(6, HIGH);
 
-	//pinMode(7, OUTPUT);
-	//digitalWrite(7, LOW);
+	pinMode(7, OUTPUT);
+	digitalWrite(7, LOW);
 
 	radio_setup();
 }
@@ -157,11 +160,11 @@ void loop(void)
 
 	// check if we received data from the receiving LoRa module
 #ifdef RECEIVE_ALL
-	e = sx1272.receiveAll(MAX_TIMEOUT);
+	e = sx1272.receiveAll(RX_TIME);
 #else
 #ifdef GW_AUTO_ACK
 
-	e = sx1272.receivePacketTimeout(MAX_TIMEOUT);
+	e = sx1272.receivePacketTimeout(RX_TIME);
 
 	status_counter++;
 
@@ -192,9 +195,9 @@ void loop(void)
 	// OBSOLETE normally we always use GW_AUTO_ACK
 	// Receive message
 	if (withAck)
-		e = sx1272.receivePacketTimeoutACK(MAX_TIMEOUT);
+		e = sx1272.receivePacketTimeoutACK(RX_TIME);
 	else
-		e = sx1272.receivePacketTimeout(MAX_TIMEOUT);
+		e = sx1272.receivePacketTimeout(RX_TIME);
 
 #endif // gw_auto_ack
 #endif // receive_all
