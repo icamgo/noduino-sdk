@@ -1,4 +1,4 @@
-/* 
+/*
  *  Copyright (c) 2019 - 2029 MaiKe Labs
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -20,8 +20,6 @@
 
 // be careful, max command length is 60 characters
 #define MAX_CMD_LEN			100
-
-bool optHEX = false;
 
 void radio_setup()
 {
@@ -72,7 +70,7 @@ int CarrierSense(bool onlyOnce = false)
 		do {
 			do {
 
-				// check for free channel (SIFS/DIFS)        
+				// check for free channel (SIFS/DIFS)
 				startDoCad = millis();
 				e = sx1272.doCAD(send_cad_number);
 				endDoCad = millis();
@@ -166,13 +164,138 @@ int CarrierSense(bool onlyOnce = false)
 }
 #endif
 
+#ifdef CONFIG_V0
+char goid_buf[21];
+char go_vbat[6];
+char go_temp[10];
+
+char *uint64_to_str(uint64_t n)
+{
+	char *dest;
+	dest = goid_buf;
+
+	dest += 20;
+	*dest-- = 0;
+	while (n) {
+		*dest-- = (n % 10) + '0';
+		n /= 10;
+	}
+	return dest + 1;
+}
+
+char *decode_goid(uint8_t *pkt)
+{
+	int a = 0, b = 0;
+
+	uint64_t goid = 0UL;
+
+	for (a = 3; a < 11; a++, b++) {
+
+		*(((uint8_t *)&goid) + 7 - b) = pkt[a];
+	}
+
+	return uint64_to_str(goid);
+}
+
+/* only support .0001 */
+char *ftoa(char *a, float f, int preci)
+{
+	long p[] =
+	    {0, 10, 100, 1000, 10000};
+
+	char *ret = a;
+
+	long ipart = (long)f;
+
+	//INFOLN("%d", ipart);
+
+	itoa(ipart, a, 10);		//int16, -32,768 ~ 32,767
+
+	while (*a != '\0')
+		a++;
+
+	*a++ = '.';
+
+	long fpart = abs(f * p[preci] - ipart * p[preci]);
+
+	//INFOLN("%d", fpart);
+
+	if (fpart > 0) {
+		if (fpart < p[preci]/10) {
+			*a++ = '0';
+		}
+		if (fpart < p[preci]/100) {
+			*a++ = '0';
+		}
+		if (fpart < p[preci]/1000) {
+			*a++ = '0';
+		}
+	}
+
+	itoa(fpart, a, 10);
+	return ret;
+}
+
+char *decode_vbat(uint8_t *pkt)
+{
+	uint16_t vbat = 0;
+
+	switch(pkt[2]) {
+		case 0x31:
+		case 0x32:
+		case 0x33:
+			vbat = pkt[13] << 8 | pkt[14];
+			break;
+	}
+
+	ftoa(go_vbat, (float)(vbat / 1000.0), 3);
+}
+
+char *decode_temp(uint8_t *pkt)
+{
+	int16_t temp = 0;
+
+	temp = ((pkt[11] << 8) & 0x7F) | pkt[12];
+
+	if (pkt[11] & 0x80)
+		temp = temp * -1;
+
+	ftoa(go_temp, (float)(temp / 10.0), 1);
+}
+
+uint8_t decode_cmd(uint8_t *pkt)
+{
+	uint8_t cmd = 0;
+
+	switch(pkt[2]) {
+
+		case 0x33:
+			cmd = pkt[15];
+			break;
+		default:
+			cmd = 255;
+			break;
+	}
+
+	return cmd;
+}
+
+uint8_t decode_ver(uint8_t *pkt)
+{
+	return pkt[2];
+}
+#endif
+
 int radio_available(char *cmd)
 {
 	int i = 0, e = 1;
 
 	INFO_S("%s", "^$Low-level gw status ON\n");
 
-	e = sx1272.receivePacketTimeout(MAX_TIMEOUT);
+#ifdef RECEIVE_ALL
+	e = sx1272.receiveAll(RX_TIME);
+#else
+	e = sx1272.receivePacketTimeout(RX_TIME);
 
 	if (e != 0 && e != 3) {
 		// e = 1 or e = 2 or e > 3
@@ -190,11 +313,7 @@ int radio_available(char *cmd)
 			e = 1;
 		}
 	}
-
-	if (!e && sx1272._requestACK_indicator) {
-		INFO_S("%s", "^$ACK requested by ");
-		INFOLN("%d", sx1272.packet_received.src);
-	}
+#endif
 
 	if (!e) {
 
@@ -221,10 +340,18 @@ int radio_available(char *cmd)
 
 		// set back the gateway address
 		sx1272._nodeAddress = LORA_ADDR;
-		return 0;
 #else
-		//sx1272.getSNR();
-		sx1272.getRSSIpacket();
+
+#ifdef CONFIG_V0
+		sprintf(cmd, "devid/%s/U/%s/T/%s/cmd/%d/ver/%d/rssi/%d/snr/%d",
+			decode_goid(sx1272.packet_received.data),
+			decode_vbat(sx1272.packet_received.data),
+			decode_temp(sx1272.packet_received.data),
+			decode_cmd(sx1272.packet_received.data),
+			decode_ver(sx1272.packet_received.data),
+			sx1272._RSSIpacket,
+			sx1272._SNR);
+#else
 
 		for (; a < p_len; a++, b++) {
 
@@ -241,12 +368,14 @@ int radio_available(char *cmd)
 			sx1272.packet_received.src,
 			sx1272._SNR,
 			sx1272._RSSIpacket);
-
-		INFOLN("%s", cmd);
-
-		return 1;
 #endif
+		INFOLN("%s", cmd);
+#endif
+		INFOLN("%s", "pkt rx");
+		return 1;
 	} else {
+
+		INFOLN("%s", "no pkt rx");
 		return 0;
 	}
 }

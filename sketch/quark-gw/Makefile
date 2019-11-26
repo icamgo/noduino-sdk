@@ -14,13 +14,16 @@
 #  3. Type "make flash" to upload your program into your board
 #
 
-TARGET = t2-print.cpp
+#TARGET = radio-test.cpp
+TARGET = main.cpp
 
 SDK_BASE		?= ../..
 
 ARDUINO_CORES = ./cores
 LIB_DIR = ./lib
 
+CDEFS := -DCONFIG_V0
+CXXDEFS := -DCONFIG_V0
 
 ifeq ($(OS),Windows_NT)
 TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/avr-gcc
@@ -111,8 +114,8 @@ DEBUG =
 OPT = s
 
 # Place -D or -U options here
-CDEFS = -DF_CPU=$(F_CPU)L -DARDUINO=$(VERSION) -DARDUINO_ARCH_AVR
-CXXDEFS = -DF_CPU=$(F_CPU)L -DARDUINO=$(VERSION) -DARDUINO_ARCH_AVR
+CDEFS += -DF_CPU=$(F_CPU)L -DARDUINO=$(VERSION) -DARDUINO_ARCH_AVR
+CXXDEFS += -DF_CPU=$(F_CPU)L -DARDUINO=$(VERSION) -DARDUINO_ARCH_AVR
 
 # Place -I options here
 CINCS = -I $(ARDUINO_CORES)

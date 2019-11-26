@@ -48,7 +48,12 @@ IPAddress ip(192,168,1,3);
 IPAddress gw_ip5(10,0,0,2);
 IPAddress ip9(10,0,0,254);
 
+#ifdef CONFIG_V0
+char cos_serv[] = "192.168.1.97";
+#else
 char cos_serv[] = "api.noduino.org";
+#endif
+
 EthernetClient client;
 
 TextFinder finder(client);
@@ -433,10 +438,16 @@ int push_data(char *pbuf, char serv[]) {
 #ifdef	DEBUG
 		Serial.println("Connecting to Cloud ...");
 #endif
+
+		// Send the HTTP PUT request
+#ifdef CONFIG_V0
+		client.println("POST /dev/t2x HTTP/1.0");
+#else
 		gen_token(token, uuid, dkey);
 
-		// Send the HTTP PUT request:
 		client.println("POST /dev/quarkx HTTP/1.0");
+#endif
+
 		client.println("Accept: */*");
 
 #if 0

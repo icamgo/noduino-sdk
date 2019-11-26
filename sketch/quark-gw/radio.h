@@ -21,21 +21,47 @@
 #include "Arduino.h"
 #include "SX1272.h"
 
-#define MAX_DBM				20
-#define TXRX_CH				CH_00_441		// 433.0MHz
-//#define TXRX_CH				CH_00_470		// 470.0MHz
+//#define DEBUG
 
-#define LORA_ADDR		2
-#define LORA_MODE		11	//Default LoRa mode BW=125KHz, CR=4/5, SF=12
+#define MAX_DBM				20
+
+#ifdef CONFIG_V0
+
+//#define RECEIVE_ALL
+#define	RX_TIME				MAX_TIMEOUT
+
+#define TXRX_CH				CH_01_472
+#define LORA_MODE			12
+
+#else
+
+#define TXRX_CH				CH_00_470		// 470.0MHz
+#define LORA_MODE			11
+#define	RX_TIME				10000			// 10000ms
+
+#endif
+
+#define LORA_ADDR			1
 
 //#define GW_RELAY
-//#define RECEIVE_ALL 
+//#define RECEIVE_ALL
+
+#ifdef DEBUG
 
 #define INFO_S(fmt,param)			Serial.print(F(param))
 #define INFO_HEX(fmt,param)			Serial.print(param,HEX)
 #define INFO(fmt,param)				Serial.print(param)
 #define INFOLN(fmt,param)			Serial.println(param)
 #define FLUSHOUTPUT					Serial.flush();
+
+#else
+
+#define INFO_S(fmt,param)
+#define INFO(fmt,param)
+#define INFOLN(fmt,param)
+#define FLUSHOUTPUT
+
+#endif
 
 void radio_setup();
 int radio_available(char *cmd);
