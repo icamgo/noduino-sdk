@@ -28,6 +28,10 @@ void loop() {
 
 	Serial.print("ADC differential ch6 ch7 read:");
 	Serial.println(adc.read(A6, A7));
+	Serial.print("ADC6 = ");
+	Serial.println(adc.read(A6));
+	Serial.print("ADC7 = ");
+	Serial.println(adc.read(A7));
 
 	delay(2000);  // wait for 2 seconds
 }
