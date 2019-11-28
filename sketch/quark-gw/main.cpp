@@ -389,6 +389,7 @@ void loop() {
 #ifdef DEBUG
 			Serial.println("wan is offline");
 #endif
+			chip_reset();
 		}
 		wdt_reset();
 #endif
