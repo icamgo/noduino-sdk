@@ -30,8 +30,6 @@
 #include <Arduino.h>
 #include <SPI.h>
 
-#define USE_SOFTSPI					1
-
 //#define DEBUG_CAD					1
 #define DEBUG_MODE		 			0
 #define W_REQUESTED_ACK

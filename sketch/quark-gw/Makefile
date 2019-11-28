@@ -22,8 +22,8 @@ SDK_BASE		?= ../..
 ARDUINO_CORES = ./cores
 LIB_DIR = ./lib
 
-CDEFS := -DCONFIG_V0
-CXXDEFS := -DCONFIG_V0
+CDEFS := -DCONFIG_V0 -DUSE_SOFTSPI
+CXXDEFS := -DCONFIG_V0 -DUSE_SOFTSPI
 
 ifeq ($(OS),Windows_NT)
 TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/avr-gcc
