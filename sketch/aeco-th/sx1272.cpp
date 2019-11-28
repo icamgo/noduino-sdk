@@ -146,6 +146,76 @@ void SX1272::reset()
 	sx_delay(500);
 }
 
+void SX1272::setup_v0(uint32_t freq, uint8_t dbm)
+{
+#ifdef USE_SOFTSPI
+	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
+#else
+	SPI.begin();
+#endif
+
+	reset();
+
+	_board = SX1276Chip;
+	_rawFormat = true;
+
+	RxChainCalibration();
+
+	setLORA();
+
+	getPreambleLength();
+
+	randomSeed(millis());	//init random generator
+
+	// 500KHz, 4/6, Explicit Header
+	//writeRegister(REG_MODEM_CONFIG1, 0x94);
+	writeRegister(REG_MODEM_CONFIG1, (BW_500 << 4 | CR_6 << 1));
+	_bandwidth = BW_500;
+	_codingRate = CR_6;
+	_header = HEADER_ON;
+
+	// SF = 10, TxContin single pkt, CRC On, Rx Timeout msb - 0x0
+	//writeRegister(REG_MODEM_CONFIG2, 0xA4);
+	writeRegister(REG_MODEM_CONFIG2, (SF_10 << 4 | CRC_ON << 2));
+	_spreadingFactor = SF_10;
+	_CRC = CRC_ON;
+
+	// set the AgcAutoOn in bit 2 of REG_MODEM_CONFIG3
+	writeRegister(REG_MODEM_CONFIG3, 0x0C);
+
+	// LoRa detection Optimize: 0x03 --> SF7 to SF12
+	writeRegister(REG_DETECT_OPTIMIZE, 0x03);
+
+	// LoRa detection threshold: 0x0A --> SF7 to SF12
+	writeRegister(REG_DETECTION_THRESHOLD, 0x0A);
+
+	writeRegister(REG_SYNC_WORD, 0x12);
+
+	// Select frequency channel
+	//setChannel(CH_01_472);
+	writeRegister(REG_FRF_MSB, (freq >> 16) & 0xFF);
+	writeRegister(REG_FRF_MID, (freq >> 8) & 0xFF);
+	writeRegister(REG_FRF_LSB, freq & 0xFF);
+	_channel = freq;
+
+	_needPABOOST = true;
+
+	// set Power 20dBm
+	#define REG_PADAC		0x4D
+	writeRegister(REG_PADAC, 0x87);
+	writeRegister(REG_PA_CONFIG, 0xFF);
+
+	/*
+	 * 0x12 -- 150mA
+	 * 0x10 -- 130mA
+	 * 0x0B -- 100mA
+	 * 0x1B -- 240mA
+	 * 0x01 -- 50mA
+	*/
+	writeRegister(REG_OCP, 0x1B | 0b00100000);
+	_power = 20;
+}
+
 void SX1272::sx1278_qsetup(uint32_t freq, uint8_t dbm)
 {
 #ifdef USE_SOFTSPI
@@ -710,6 +780,16 @@ int8_t SX1272::setMode(uint8_t mode)
 		INFO_LN(_syncWord, HEX);
 		break;
 
+	case 12:
+		setCR(CR_6);	// CR = 4/6
+		setSF(SF_10);	// SF = 10
+		setBW(BW_500);	// BW = 500 KHz
+
+		setSyncWord(0x12);
+		INFO(F("** Using sync word of 0x"));
+		INFO_LN(_syncWord, HEX);
+		break;
+
 	default:
 		state = -1;	// The indicated mode doesn't exist
 	};
@@ -963,6 +1043,21 @@ int8_t SX1272::setMode(uint8_t mode)
 				config2 = readRegister(REG_MODEM_CONFIG2);
 
 				if ((config2 >> 4) == SF_12) {
+					state = 0;
+				}
+			}
+			break;
+
+		case 12:
+			// mode 12: BW = 500 KHz, CR = 4/6, SF = 10.
+			if ((config1 >> 1) == 0x45)
+				state = 0;
+
+			if (state == 0) {
+				state = 1;
+				config2 = readRegister(REG_MODEM_CONFIG2);
+
+				if ((config2 >> 4) == SF_10) {
 					state = 0;
 				}
 			}
@@ -1323,6 +1418,7 @@ uint8_t SX1272::setCRC_OFF()
 			INFO_LN(F("## CRC has been desactivated ##"));
 #endif
 		}
+#ifdef ENABLE_FSK
 	} else {		// FSK mode
 		config1 = readRegister(REG_PACKET_CONFIG1);	// Save config1 to modify only the CRC bit
 		config1 = config1 & 0B11101111;	// clears bit 4 from config1 = CRC_OFF
@@ -1336,6 +1432,7 @@ uint8_t SX1272::setCRC_OFF()
 			INFO_LN(F("## CRC has been desactivated ##"));
 #endif
 		}
+#endif
 	}
 	if (state != 0) {
 		state = 1;
@@ -3153,11 +3250,13 @@ uint8_t SX1272::receive()
 #if (DEBUG_MODE > 1)
 		INFO_LN(F("## Receiving LoRa mode activated with success ##"));
 #endif
+#ifdef ENABLE_FSK
 	} else {		// FSK mode
 		state = setPacketLength();
 		writeRegister(REG_OP_MODE, FSK_RX_MODE);	// FSK mode - Rx
 #if (DEBUG_MODE > 1)
 		INFO_LN(F("## Receiving FSK mode activated with success ##"));
+#endif
 #endif
 	}
 	return state;
@@ -3396,6 +3495,7 @@ boolean SX1272::availableData(uint16_t wait)
 			INFO_LN(F("** The timeout has expired **"));
 #endif
 		}
+#ifdef ENABLE_FSK
 	} else {
 		// FSK mode
 		value = readRegister(REG_IRQ_FLAGS2);
@@ -3419,6 +3519,7 @@ boolean SX1272::availableData(uint16_t wait)
 			INFO_LN(F("The timeout has expired"));
 #endif
 		}
+#endif
 	}
 
 	// We use _hreceived because we need to ensure that _destination value is correctly
@@ -4026,6 +4127,7 @@ uint8_t SX1272::sendWithTimeout(uint16_t wait)
 			//}
 		}
 		state = 1;
+#ifdef ENABLE_FSK
 	} else {		// FSK mode
 		writeRegister(REG_OP_MODE, FSK_TX_MODE);	// FSK mode - Tx
 
@@ -4041,6 +4143,7 @@ uint8_t SX1272::sendWithTimeout(uint16_t wait)
 			//}
 		}
 		state = 1;
+#endif
 	}
 
 #ifdef SX1272_led_send_receive
