@@ -28,21 +28,17 @@
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-/* 20s */
-static uint32_t sensor_period = 90;
+static uint32_t sample_period = 20;		/* 20s */
 
 #define	TX_TESTING				1
 
-//float pres = 0.0;
+static uint8_t need_push = 0;
 
-volatile uint8_t need_push = 0;
+#define ENABLE_CAD				1
 
+#define node_addr				110
 
-//#define ENABLE_CAD			1
-
-#define node_addr		106
-
-#define DEST_ADDR		1
+#define DEST_ADDR				1
 
 //#define ENABLE_SSD1306		1
 
@@ -50,15 +46,9 @@ volatile uint8_t need_push = 0;
 #define TXRX_CH			CH_00_470
 
 ///////////////////////////////////////////////////////////////////
-//#define WITH_EEPROM
 //#define WITH_APPKEY
 //#define WITH_ACK
 ///////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////
-// CHANGE HERE THE LORA MODE
-#define LORAMODE		11	// BW=125KHz, SF=12, CR=4/5, sync=0x34
-//////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
 // CHANGE HERE THE APPKEY, BUT IF GW CHECKS FOR APPKEY, MUST BE
@@ -66,34 +56,14 @@ volatile uint8_t need_push = 0;
 uint8_t my_appKey[4] = { 5, 6, 8, 8 };
 #endif
 
-///////////////////////////////////////////////////////////////////
-// IF YOU SEND A LONG STRING, INCREASE THE SIZE OF MESSAGE
 uint8_t message[50];
-///////////////////////////////////////////////////////////////////
-
 
 #define INFO_S(fmt,param)			Serial.print(F(param))
 #define INFO(param)					Serial.print(param)
 #define INFOLN(param)				Serial.println(param)
 
-#ifdef WITH_EEPROM
-#include <EEPROM.h>
-#endif
-
 #ifdef WITH_ACK
 #define	NB_RETRIES			2
-#endif
-
-#ifdef WITH_EEPROM
-struct sx1272config {
-
-	uint8_t flag1;
-	uint8_t flag2;
-	uint8_t seq;
-	// can add other fields such as LoRa mode,...
-};
-
-sx1272config my_sx1272config;
 #endif
 
 void push_data();
@@ -166,20 +136,20 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
-	Serial.println("Checking...");
+	//Serial.println("Checking...");
 
-	power_on_dev();		// turn on device power
+	//power_on_dev();		// turn on device power
 
 	pressure_init();	// initialization of the sensor
 
 	float pres = get_pressure();
 
-	power_off_dev();
+	//power_off_dev();
 
 #ifdef TX_TESTING
 	need_push = 0x5a;
 #else
-	if (fabsf(pres - old_pres) > 10.0) {
+	if (fabsf(pres - old_pres) > 3.0) {
 
 		old_pres = pres;
 
@@ -188,7 +158,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	}
 #endif
 
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sensor_period * 1000, check_sensor, NULL);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
 }
 
 void trig_check_sensor()
@@ -233,7 +203,7 @@ void setup()
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
 
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sensor_period * 1000, check_sensor, NULL);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
 }
 
 void qsetup()
@@ -332,12 +302,6 @@ void push_data()
 #endif
 	endSend = millis();
 
-#ifdef WITH_EEPROM
-	// save packet number for next packet in case of reboot
-	my_sx1272config.seq = sx1272._packetNumber;
-	EEPROM.put(0, my_sx1272config);
-#endif
-
 	INFO("LoRa pkt size ");
 	INFOLN(pl);
 
@@ -367,8 +331,8 @@ void push_data()
 
 void loop()
 {
-	INFO("Clock Freq = ");
-	INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
+	//INFO("Clock Freq = ");
+	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
 
 	//INFOLN("Feed the watchdog");
 
