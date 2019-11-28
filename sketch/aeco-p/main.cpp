@@ -224,7 +224,6 @@ void push_data()
 
 	uint8_t r_size;
 
-	uint8_t app_key_offset = 0;
 	int e;
 
 	qsetup();
@@ -276,7 +275,8 @@ void push_data()
 
 	} while (e && n_retry);
 #else
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size);
+	// 10ms max tx time
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, 10);
 #endif
 	endSend = millis();
 
