@@ -22,6 +22,9 @@ ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 #ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
+#CDEFS := -DCONFIG_V0 -DUSE_SOFTSPI
+CDEFS = -DUSE_SOFTSPI
+
 MCU = cortex-m0plus
 #F_CPU = 7000000
 F_CPU = 14000000
@@ -110,9 +113,10 @@ $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/softspi/softspi.cpp							\
 $(LIB_DIR)/pc10/pc10.cpp								\
-./vbat.cpp												\
-../aeco-th/sx1272.cpp
+$(LIB_DIR)/sx127x/sx1272.cpp							\
+./vbat.cpp
 
+#../aeco-th/sx1272.cpp
 #$(LIB_DIR)/SPI/src/SPI.cpp							\
 $(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
 
@@ -122,35 +126,33 @@ MODULES = $(C_MODULES) $(CXX_MODULES)
 SRC = $(C_MODULES)
 CXXSRC = $(CXX_MODULES) $(CXX_APP)
 
-CDEFS = -DF_CPU=$(F_CPU)L -DARDUINO=$(VERSION) -DARDUINO_ARCH_ARM
-CXXDEFS = -DF_CPU=$(F_CPU)L -DARDUINO=$(VERSION) -DARDUINO_ARCH_ARM
-
 CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110  
 
 CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110  
 
 CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
-			-I $(LIB_DIR)/pc10/					\
-			-I $(LIB_DIR)/sx127x					\
+			-I $(LIB_DIR)/pc10/						\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
+			-I $(LIB_DIR)/sx127x					\
 			-I .									
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
-			-I $(LIB_DIR)/pc10/					\
-			-I $(LIB_DIR)/sx127x					\
+			-I $(LIB_DIR)/pc10/						\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
-			-I . -I ../aeco-th							
+			-I $(LIB_DIR)/sx127x					\
+			-I .
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 	-fdata-sections -nostdlib --param max-inline-insns-single=500 -Dprintf=iprintf
 
-CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD
+CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mfp16-format=ieee -mthumb -MMD
 
+CFLAGS += $(CDEFS)
 CFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
 	-DARM_MATH_CM0PLUS 													\
 	-DF_CPU=$(F_CPU)													\
@@ -164,9 +166,10 @@ CXXFLAGS := -g -Os -w -fno-exceptions -std=gnu++14 -fpermissive			\
 	-ffunction-sections -fdata-sections -nostdlib -fno-threadsafe-statics	\
 	--param max-inline-insns-single=500 -fno-rtti -Dprintf=iprintf -MMD 
 
-CXXFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD
+CXXFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mfp16-format=ieee -mthumb -MMD
 
 
+CXXFLAGS += $(CDEFS)
 CXXFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32			\
 	-DARM_MATH_CM0PLUS -DF_CPU=$(F_CPU) -DUSE_HFRCO		\
 	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC			\
@@ -180,10 +183,6 @@ LDFLAGS := -mcpu=$(MCU) -mthumb -Os -Wl,--cref					\
 	-u _write -u _exit -u kill -u _getpid 
 
 LDFLAGS += "-T$(ARDUINO_BOARD)/ld/efm32zg110f32.ld"
-
-#"-Wl,-Map,$(build_dir)/Blink.ino.map"
-#"-L$(build_dir)"
-#"$(build_dir)/sketch/Blink.ino.cpp.o" "$(build_dir)/core/variant.c.o" "$(build_dir)/core/variant.cpp.o" "$(build_dir)/core/core.a"
 
 
 OBJ = $(SRC:.c=.o) $(CXXSRC:.cpp=.o) $(ASRC:.S=.o)
