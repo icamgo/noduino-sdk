@@ -45,16 +45,7 @@ static uint8_t need_push = 0;
 #define MAX_DBM			20
 #define TXRX_CH			CH_00_470
 
-///////////////////////////////////////////////////////////////////
-//#define WITH_APPKEY
 //#define WITH_ACK
-///////////////////////////////////////////////////////////////////
-
-#ifdef WITH_APPKEY
-// CHANGE HERE THE APPKEY, BUT IF GW CHECKS FOR APPKEY, MUST BE
-// IN THE APPKEY LIST MAINTAINED BY GW.
-uint8_t my_appKey[4] = { 5, 6, 8, 8 };
-#endif
 
 uint8_t message[50];
 
@@ -243,25 +234,17 @@ void push_data()
 
 	vbat = get_vbat();
 
-#ifdef WITH_APPKEY
-	app_key_offset = sizeof(my_appKey);
-	// set the app key in the payload
-	memcpy(message, my_appKey, app_key_offset);
-#endif
-
 	char vbat_s[10], pres_s[10];
 	ftoa(vbat_s, vbat, 2);
 	ftoa(pres_s, press, 2);
 
-	r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/P/%s", vbat_s, pres_s);
+	r_size = sprintf((char *)message, "\\!U/%s/P/%s", vbat_s, pres_s);
 
 	INFO("Sending ");
-	INFOLN((char *)(message + app_key_offset));
+	INFOLN((char *)message);
 
 	INFO("Real payload size is ");
 	INFOLN(r_size);
-
-	int pl = r_size + app_key_offset;
 
 #ifdef ENABLE_CAD
 	sx1272.CarrierSense();
@@ -269,13 +252,8 @@ void push_data()
 
 	startSend = millis();
 
-#ifdef WITH_APPKEY
-	// indicate that we have an appkey
-	sx1272.setPacketType(PKT_TYPE_DATA | PKT_FLAG_DATA_WAPPKEY);
-#else
 	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
-#endif
 
 	// Send message to the gateway and print the result
 	// with the app key if this feature is enabled
@@ -284,7 +262,7 @@ void push_data()
 
 	do {
 		e = sx1272.sendPacketTimeoutACK(DEST_ADDR,
-						message, pl);
+						message, r_size);
 
 		if (e == 3)
 			INFO("No ACK");
@@ -298,12 +276,12 @@ void push_data()
 
 	} while (e && n_retry);
 #else
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, pl);
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size);
 #endif
 	endSend = millis();
 
 	INFO("LoRa pkt size ");
-	INFOLN(pl);
+	INFOLN(r_size);
 
 	INFO("LoRa Sent in ");
 	INFOLN(endSend - startSend);
