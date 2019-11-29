@@ -22,6 +22,7 @@
 #include "softi2c.h"
 #include "pc10.h"
 //#include "U8g2lib.h"
+
 #include "rtcdriver.h"
 #include "math.h"
 
@@ -37,21 +38,43 @@ static uint8_t need_push = 0;
 #define ENABLE_CAD				1
 
 #define node_addr				110
-
 #define DEST_ADDR				1
+#define	TX_TIME					1600		// 1000ms
+
+#ifdef CONFIG_V0
+#define TXRX_CH				CH_01_472
+#define LORA_MODE			12
+#else
+#define TXRX_CH				CH_00_470
+#define LORA_MODE			11
+#endif
+
+#define MAX_DBM					20
 
 //#define ENABLE_SSD1306		1
 
-#define MAX_DBM			20
-#define TXRX_CH			CH_00_470
-
 //#define WITH_ACK
+
+#define	DEBUG					1
 
 uint8_t message[50];
 
-#define INFO_S(fmt,param)			Serial.print(F(param))
-#define INFO(param)					Serial.print(param)
-#define INFOLN(param)				Serial.println(param)
+#ifdef DEBUG
+
+#define INFO_S(param)			Serial.print(F(param))
+#define INFO_HEX(param)			Serial.print(param,HEX)
+#define INFO(param)				Serial.print(param)
+#define INFOLN(param)			Serial.println(param)
+#define FLUSHOUTPUT					Serial.flush();
+
+#else
+
+#define INFO_S(param)
+#define INFO(param)
+#define INFOLN(param)
+#define FLUSHOUTPUT
+
+#endif
 
 #ifdef WITH_ACK
 #define	NB_RETRIES			2
@@ -203,8 +226,13 @@ void qsetup()
 
 	power_on_dev();		// turn on device power
 
+#ifdef CONFIG_V0
+	sx1272.setup_v0(TXRX_CH, MAX_DBM);
+#else
 	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
-	sx1272.setNodeAddress(node_addr);
+#endif
+
+	sx1272._nodeAddress = node_addr;
 
 #ifdef ENABLE_CAD
 	sx1272._enableCarrierSense = true;
@@ -214,6 +242,128 @@ void qsetup()
 	u8g2.begin();
 #endif
 }
+
+#ifdef CONFIG_V0
+char goid_buf[21];
+char go_vbat[6];
+char go_temp[10];
+
+char *uint64_to_str(uint64_t n)
+{
+	char *dest;
+	dest = goid_buf;
+
+	dest += 20;
+	*dest-- = 0;
+	while (n) {
+		*dest-- = (n % 10) + '0';
+		n /= 10;
+	}
+	return dest + 1;
+}
+
+char *decode_goid(uint8_t *pkt)
+{
+	int a = 0, b = 0;
+
+	uint64_t goid = 0UL;
+
+	for (a = 3; a < 11; a++, b++) {
+
+		*(((uint8_t *)&goid) + 7 - b) = pkt[a];
+	}
+
+	return uint64_to_str(goid);
+}
+
+/* only support .0001 */
+char *ftoa(char *a, float f, int preci)
+{
+	long p[] =
+	    {0, 10, 100, 1000, 10000};
+
+	char *ret = a;
+
+	long ipart = (long)f;
+
+	//INFOLN("%d", ipart);
+
+	itoa(ipart, a, 10);		//int16, -32,768 ~ 32,767
+
+	while (*a != '\0')
+		a++;
+
+	*a++ = '.';
+
+	long fpart = abs(f * p[preci] - ipart * p[preci]);
+
+	//INFOLN("%d", fpart);
+
+	if (fpart > 0) {
+		if (fpart < p[preci]/10) {
+			*a++ = '0';
+		}
+		if (fpart < p[preci]/100) {
+			*a++ = '0';
+		}
+		if (fpart < p[preci]/1000) {
+			*a++ = '0';
+		}
+	}
+
+	itoa(fpart, a, 10);
+	return ret;
+}
+
+char *decode_vbat(uint8_t *pkt)
+{
+	uint16_t vbat = 0;
+
+	switch(pkt[2]) {
+		case 0x31:
+		case 0x32:
+		case 0x33:
+			vbat = pkt[13] << 8 | pkt[14];
+			break;
+	}
+
+	ftoa(go_vbat, (float)(vbat / 1000.0), 3);
+}
+
+char *decode_temp(uint8_t *pkt)
+{
+	int16_t temp = 0;
+
+	temp = ((pkt[11] << 8) & 0x7F) | pkt[12];
+
+	if (pkt[11] & 0x80)
+		temp = temp * -1;
+
+	ftoa(go_temp, (float)(temp / 10.0), 1);
+}
+
+uint8_t decode_cmd(uint8_t *pkt)
+{
+	uint8_t cmd = 0;
+
+	switch(pkt[2]) {
+
+		case 0x33:
+			cmd = pkt[15];
+			break;
+		default:
+			cmd = 255;
+			break;
+	}
+
+	return cmd;
+}
+
+uint8_t decode_ver(uint8_t *pkt)
+{
+	return pkt[2];
+}
+#endif
 
 void push_data()
 {
@@ -276,7 +426,7 @@ void push_data()
 	} while (e && n_retry);
 #else
 	// 10ms max tx time
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, 10);
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
 #endif
 	endSend = millis();
 
