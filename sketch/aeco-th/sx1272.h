@@ -363,11 +363,11 @@ const uint16_t MAX_WAIT = 810;		// 810 msec = 0.81 sec
 const uint8_t MAX_LENGTH = 255;
 const uint8_t MAX_PAYLOAD = 251;
 
-const uint16_t MAX_TIMEOUT = 90;	// 90 msec
-const uint16_t MAX_WAIT = 100;		// 100 msec
+//const uint16_t MAX_TIMEOUT = 90;	// 90 msec
+//const uint16_t MAX_WAIT = 100;		// 100 msec
 
-//const uint16_t MAX_TIMEOUT = 10000;	// 10 sec
-//const uint16_t MAX_WAIT = 12000;		// 12 sec
+const uint16_t MAX_TIMEOUT = 10000;	// 10 sec
+const uint16_t MAX_WAIT = 12000;		// 12 sec
 #endif
 
 const uint8_t MAX_RETRIES = 5;
