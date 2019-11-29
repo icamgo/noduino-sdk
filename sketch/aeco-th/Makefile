@@ -22,6 +22,9 @@ ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 #ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
+#CDEFS := -DCONFIG_V0 -DUSE_SOFTSPI
+CDEFS = -DUSE_SOFTSPI
+
 MCU = cortex-m0plus
 #F_CPU = 7000000
 F_CPU = 14000000
@@ -30,7 +33,8 @@ VERSION=187
 
 ifeq ($(OS),Windows_NT)
 TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/arm-none-eabi-2017q4/bin
-OPENOCD = $(SDK_BASE)/toolchain/openocd/bin/openocd
+#OPENOCD = $(SDK_BASE)/toolchain/openocd/bin/openocd
+OPENOCD = $(SDK_BASE)/toolchain/openocd-nt/bin/openocd
 PORT = COM7
 else
 TOOLCHAIN_DIR = /usr/share/arduino
@@ -42,8 +46,25 @@ TOOLCHAIN_DIR = /usr/share/arduino
 	endif
 endif
 
+V ?= $(VERBOSE)
+ifeq ("$(V)","1")
+Q :=
+vecho := @true
+else
+Q := @
+vecho := @echo
+endif
+
 #OPENOCD_CFG	:= $(ARDUINO_BOARD)/efm32zg-openocd.cfg
 OPENOCD_CFG = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
+
+OPENOCD_USER_DATA = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
+
+OPENOCD_DUMP_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; flash probe 0; flash read_bank 0 flash.bin; reset; shutdown"
+
+OPENOCD_DUMP_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image user.bin 0x0FE00000 0x400; reset; shutdown"
+
+OPENOCD_GET_UUID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image uuid.bin 0x0FE081F0 0x8; reset; shutdown"
 
 
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
@@ -92,9 +113,10 @@ $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/softspi/softspi.cpp							\
 $(LIB_DIR)/sht2x/sht2x.cpp								\
-./vbat.cpp												\
-../aeco-th/sx1272.cpp
+$(LIB_DIR)/sx127x/sx1272.cpp							\
+./vbat.cpp
 
+#../aeco-th/sx1272.cpp
 #$(LIB_DIR)/SPI/src/SPI.cpp							\
 $(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
 
@@ -104,35 +126,33 @@ MODULES = $(C_MODULES) $(CXX_MODULES)
 SRC = $(C_MODULES)
 CXXSRC = $(CXX_MODULES) $(CXX_APP)
 
-CDEFS = -DF_CPU=$(F_CPU)L -DARDUINO=$(VERSION) -DARDUINO_ARCH_ARM
-CXXDEFS = -DF_CPU=$(F_CPU)L -DARDUINO=$(VERSION) -DARDUINO_ARCH_ARM
+CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110
 
-CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110  
-
-CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110  
+CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110
 
 CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/sht2x/					\
-			-I $(LIB_DIR)/sx127x					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
+			-I $(LIB_DIR)/sx127x					\
 			-I .
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/sht2x/					\
-			-I $(LIB_DIR)/sx127x					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
-			-I . -I ../aeco-th
+			-I $(LIB_DIR)/sx127x					\
+			-I .
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 	-fdata-sections -nostdlib --param max-inline-insns-single=500 -Dprintf=iprintf
 
-CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD
+CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mfp16-format=ieee -mthumb -MMD
 
+CFLAGS += $(CDEFS)
 CFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
 	-DARM_MATH_CM0PLUS 													\
 	-DF_CPU=$(F_CPU)													\
@@ -140,32 +160,29 @@ CFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
 	-DUSE_LEUART0														\
 	-DEMDRV_RTCDRV_USE_LFRCO											\
 	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 			\
-	-DARDUINO_ARCH_EFM32 -DMENU_SERIAL=SerialLEUART0 -DARDUINO=$(VERSION) 
+	-DARDUINO_ARCH_EFM32 -DMENU_SERIAL=SerialLEUART0 -DARDUINO=$(VERSION)
 
 CXXFLAGS := -g -Os -w -fno-exceptions -std=gnu++14 -fpermissive			\
 	-ffunction-sections -fdata-sections -nostdlib -fno-threadsafe-statics	\
-	--param max-inline-insns-single=500 -fno-rtti -Dprintf=iprintf -MMD 
+	--param max-inline-insns-single=500 -fno-rtti -Dprintf=iprintf -MMD
 
-CXXFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD
+CXXFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mfp16-format=ieee -mthumb -MMD
 
 
+CXXFLAGS += $(CDEFS)
 CXXFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32			\
 	-DARM_MATH_CM0PLUS -DF_CPU=$(F_CPU) -DUSE_HFRCO		\
 	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC			\
-	-DARDUINO_ARCH_EFM32 -DMENU_SERIAL=SerialLEUART0 -DARDUINO=$(VERSION) 
+	-DARDUINO_ARCH_EFM32 -DMENU_SERIAL=SerialLEUART0 -DARDUINO=$(VERSION)
 
-ASFLAGS = 
+ASFLAGS =
 LDFLAGS := -mcpu=$(MCU) -mthumb -Os -Wl,--cref					\
 	-Wl,--check-sections -Wl,--gc-sections -Wl,--entry=Reset_Handler	\
 	-Wl,--unresolved-symbols=report-all -Wl,--warn-common -Wl,--start-group	\
 	-u _sbrk -u link -u _close -u _fstat -u _isatty -u _lseek -u _read	\
-	-u _write -u _exit -u kill -u _getpid 
+	-u _write -u _exit -u kill -u _getpid
 
 LDFLAGS += "-T$(ARDUINO_BOARD)/ld/efm32zg110f32.ld"
-
-#"-Wl,-Map,$(build_dir)/Blink.ino.map"
-#"-L$(build_dir)"
-#"$(build_dir)/sketch/Blink.ino.cpp.o" "$(build_dir)/core/variant.c.o" "$(build_dir)/core/variant.cpp.o" "$(build_dir)/core/core.a"
 
 
 OBJ = $(SRC:.c=.o) $(CXXSRC:.cpp=.o) $(ASRC:.S=.o)
@@ -180,7 +197,7 @@ all: build_files rebuild build sizeafter
 
 build: elf hex bin
 
-build/main.cpp.o: 
+build/main.cpp.o:
 	test -d build || mkdir build
 	echo '#include "Arduino.h"' > build/main.cpp
 	cat $(TARGET) >> build/main.cpp
@@ -261,14 +278,29 @@ coff: build/main.elf
 
 
 upload: build/main.bin
-	#$(OPENOCD) -f interface/stlink.cfg -f aet1-openocd.cfg
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
 
 flash: build/main.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
 
+dump:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_DUMP_MAIN)
+	-$(Q) echo "The whole 32KB flash is dumped into flash.bin"
+
+dumpuser:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_DUMP_USER)
+	-$(Q) echo "Dump the 1KB user data into user.bin"
+
 eeprom: eeprom.bin
-	$(ARMDUDE) $(ARMDUDE_FLAGS) $(ARMDUDE_WRITE_EEPROM)
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
+
+getuuid:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GET_UUID)
+	-$(Q) echo "The MCU UUID is got into uuid.bin. The MCU UUID is:"
+	-$(Q) xxd -g1 uuid.bin | cut -d ' ' -f2-10 | tr -d [:space:] | tr [:lower:] [:upper:]
+
+getid:
+	-$(Q) xxd -g1 uuid.bin | cut -d ' ' -f2-10 | tr -d [:space:] | tr [:lower:] [:upper:]
 
 
 clean:

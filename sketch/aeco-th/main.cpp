@@ -36,11 +36,12 @@ static uint32_t sensor_period = 10;
 
 static uint32_t need_push = 0;
 
-//#define ENABLE_CAD			1
+#define ENABLE_CAD			1
 
 #define node_addr		107
 
 #define DEST_ADDR		1
+#define	TX_TIME					1800		// 1000ms
 
 //#define ENABLE_SSD1306		1
 
@@ -290,7 +291,7 @@ void push_data()
 
 	} while (e && n_retry);
 #else
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size);
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
 #endif
 	endSend = millis();
 
