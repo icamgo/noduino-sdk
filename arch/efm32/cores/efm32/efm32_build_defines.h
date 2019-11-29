@@ -66,6 +66,7 @@
 #define USE_CORECALLBACK 0
 #endif
 
+#if 0
 #ifndef USE_AVREMULATION
 #define USE_AVREMULATION 1
 #endif
@@ -88,7 +89,6 @@
 
 //devices
 //USB
-#if 0
 #ifndef USE_USBSERIAL
 # ifdef MENU_USB_SERIAL
 #   define USE_USBSERIAL 1
