@@ -40,18 +40,6 @@
 #  define SERIAL_BAUDRATE	115200
 #endif
 
-#ifndef LESERIAL_BAUDRATE
-# if (USE_LFBLFXO >0)||(USE_LFBLFRCO > 0)
-#   if (SERIAL_BAUDRATE >9600)
-#      define LESERIAL_BAUDRATE 9600   /*use LFXO or LFRCO lesart <=9600*/
-#   else
-#      define LESERIAL_BAUDRATE SERIAL_BAUDRATE
-#   endif
-# else
-#  define LESERIAL_BAUDRATE SERIAL_BAUDRATE
-# endif
-#endif
-
 #ifndef SPI_BAUDRATE
 #define SPI_BAUDRATE            1000000
 #endif

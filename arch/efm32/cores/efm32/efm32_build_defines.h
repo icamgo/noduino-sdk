@@ -160,7 +160,7 @@
 #endif
 #endif
 
-
+#if 0
 //SPI
 #ifndef USE_SPI1
 #define USE_SPI1 1
@@ -201,6 +201,7 @@
 
 #ifndef USE_I2C4
 #define USE_I2C4 1
+#endif
 #endif
 
 /***************  HAL_Conf default end  ******************/

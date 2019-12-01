@@ -392,15 +392,21 @@ void HardwareSerial::initPort(void) {
     LEUART0_buf = buf;
     LEUART_Reset(LEUART0);
 
-#if (LESERIAL_BAUDRATE >9600)
-    CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_CORELEDIV2); // Set CORELEDIV2 reference clock
-#elif USE_LFBLFXO >0 
-    CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFXO);       // Set LFXO reference clock baud <=9600
+    /* Enable clock for LEUART0 */
+    CMU_ClockEnable(cmuClock_HFLE, true); // Necessary for accessing LE modules
+
+	if (this->baud > 9600) {
+		// Set CORELEDIV2 reference clock
+		CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_CORELEDIV2);
+	} else {
+#if USE_LFBLFXO >0
+		// use LFXO 32.768KHz as the clock source of LFB
+		CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFXO);
 #elif USE_LFBLFRCO > 0
-    CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFRCO);      // Set LFRCO reference clock baud <=9600
-#else
-    CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_CORELEDIV2); // Set CORELEDIV2 reference clock
+		// use LFRCO 32.768KHz as the clock source of LFB
+		CMU_ClockSelectSet(cmuClock_LFB, cmuSelect_LFRCO);
 #endif
+	}
 
     CMU_ClockEnable(cmuClock_LEUART0, true);
 	CMU_ClockDivSet(cmuClock_LEUART0, cmuClkDiv_1); // Don't prescale LEUART clock
