@@ -22,8 +22,8 @@ ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 #ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
-#CDEFS := -DCONFIG_V0 -DUSE_SOFTSPI
-CDEFS = -DUSE_SOFTSPI
+#DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
+DEFS = -DUSE_SOFTSPI
 
 MCU = cortex-m0plus
 #F_CPU = 7000000
@@ -152,15 +152,16 @@ CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 
 CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mfp16-format=ieee -mthumb -MMD
 
-CFLAGS += $(CDEFS)
-CFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
+DEFS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
 	-DARM_MATH_CM0PLUS 													\
 	-DF_CPU=$(F_CPU)													\
 	-DUSE_HFRCO															\
-	-DUSE_LEUART0														\
+	-DUSE_LEUART0=1														\
+	-DUSE_LFBLFRCO=1													\
+	-DMENU_SERIAL=SerialLEUART0 										\
 	-DEMDRV_RTCDRV_USE_LFRCO											\
 	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 			\
-	-DARDUINO_ARCH_EFM32 -DMENU_SERIAL=SerialLEUART0 -DARDUINO=$(VERSION)
+	-DARDUINO_ARCH_EFM32 -DARDUINO=$(VERSION) 
 
 CXXFLAGS := -g -Os -w -fno-exceptions -std=gnu++14 -fpermissive			\
 	-ffunction-sections -fdata-sections -nostdlib -fno-threadsafe-statics	\
@@ -190,8 +191,8 @@ OBJ_MODULES = $(C_MODULES:.c=.o) $(CXX_MODULES:.cpp=.o)
 
 LST = $(ASRC:.S=.lst) $(CXXSRC:.cpp=.lst) $(SRC:.c=.lst)
 
-ALL_CFLAGS = $(CFLAGS) $(CINCS)
-ALL_CXXFLAGS = $(CXXFLAGS) $(CXXINCS)
+ALL_CFLAGS = $(CFLAGS) $(DEFS) $(CINCS)
+ALL_CXXFLAGS = $(CXXFLAGS) $(DEFS) $(CXXINCS)
 
 all: build_files rebuild build sizeafter
 
