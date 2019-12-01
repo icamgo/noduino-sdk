@@ -118,7 +118,7 @@ CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I . -I ../aeco-th							
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
-	-fdata-sections -nostdlib --param max-inline-insns-single=500 -Dprintf=iprintf
+	-fdata-sections -nostdlib --param max-inline-insns-single=500 #-Dprintf=iprintf
 
 CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD
 
