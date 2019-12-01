@@ -36,7 +36,7 @@
 #include "em_dma.h"
 #include "em_cmu.h"
 #include "aes_cbc_128_dma.h"
-//#include "dmactrl.h"
+#include "dmactrl.h"
 
 /* The channel numbers can be changed, but the order must be the same */
 #define DMA_CH_WRITEPREVDATA   0
