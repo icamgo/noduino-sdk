@@ -21,7 +21,11 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "U8g2lib.h"
+
 #define	DEBUG					1
+
+#define ENABLE_SSD1306			1
 
 // use the dynamic ACK feature of our modified SX1272 lib
 //#define GW_AUTO_ACK
@@ -81,6 +85,10 @@ uint8_t CAD_value[11] = { 0, 62, 31, 16, 16, 8, 9, 5, 3, 1, 1 };
 #define INFOLN(fmt,param)
 #define FLUSHOUTPUT	
 
+#endif
+
+#ifdef ENABLE_SSD1306
+U8G2_SSD1306_128X32_UNIVISION_1_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
 #endif
 
 void radio_setup()
@@ -223,6 +231,33 @@ uint8_t decode_ver(uint8_t *pkt)
 }
 #endif
 
+#ifdef ENABLE_SSD1306
+void draw_press(int32_t p)
+{
+	u8g2.setPowerSave(0);
+
+	//u8g2.clearBuffer();		// clear the internal memory
+
+	//u8g2.setFont(u8g2_font_logisoso16_tf);	// choose a suitable font
+	//u8g2.setFont(u8g2_font_sirclive_tn);
+	u8g2.setFont(u8g2_font_sirclivethebold_tr);
+
+	u8g2.firstPage();
+
+	do {
+		u8g2.drawStr(98, 26, "Pa");		// write something to the internal memory
+		u8g2.setCursor(16, 26);
+		u8g2.print(p);
+	} while (u8g2.nextPage());
+
+	delay(2000);
+
+	//u8g2.setPowerSave(1);
+
+	//u8g2.sendBuffer();		// transfer internal memory to the display
+}
+#endif
+
 void setup()
 {
 	int e;
@@ -232,13 +267,23 @@ void setup()
 	Serial.begin(115200);
 
 	// turn on the device power
-	//pinMode(6, OUTPUT);
-	//digitalWrite(6, HIGH);
-
+#ifdef ENABLE_SSD1306
+	// open-plant use the D6 to ctrl dev pwr
+	pinMode(6, OUTPUT);
+	digitalWrite(6, HIGH);
+#else
+	// quark v1.0 use the D7
 	pinMode(7, OUTPUT);
 	digitalWrite(7, LOW);
+#endif
 
 	radio_setup();
+
+#ifdef ENABLE_SSD1306
+	u8g2.begin();
+
+	draw_press(1024);
+#endif
 }
 
 void loop(void)
