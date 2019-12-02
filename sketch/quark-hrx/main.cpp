@@ -63,6 +63,15 @@ int status_counter = 0;
 
 char frame_buf[2][24];
 
+/*
+ * Output Mode:
+ *
+ *   0x0: rx all messages
+ *   0x1: only rx the tagged message
+ *   0x2: only rx trigged message
+*/
+int omode = 0;
+
 #ifdef DEBUG
 
 #define INFO_S(fmt,param)			Serial.print(F(param))
@@ -220,7 +229,7 @@ uint8_t decode_ver(uint8_t *pkt)
 #endif
 
 #ifdef ENABLE_SSD1306
-void show_frame(int l)
+void show_frame(int l, int mode)
 {
 	u8g2.setPowerSave(0);
 
@@ -241,12 +250,27 @@ void show_frame(int l)
 		u8g2.setCursor(2, 32);
 		u8g2.print(frame_buf[1]);
 
-		u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
-
-		if (l == 0) {
-			u8g2.drawGlyph(120, 12, 81);
-		} else if (l == 1) {
-			u8g2.drawGlyph(120, 30, 81);
+		if (0 == mode) {
+			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
+			if (l == 0) {
+				u8g2.drawGlyph(120, 12, 81);
+			} else if (l == 1) {
+				u8g2.drawGlyph(120, 30, 81);
+			}
+		} else if (1 == mode) {
+			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
+			if (l == 0) {
+				u8g2.drawGlyph(120, 12, 65);
+			} else if (l == 1) {
+				u8g2.drawGlyph(120, 30, 65);
+			}
+		} else if (2 == mode) {
+			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
+			if (l == 0) {
+				u8g2.drawGlyph(120, 12, 70);
+			} else if (l == 1) {
+				u8g2.drawGlyph(120, 30, 70);
+			}
 		}
 
 	} while (u8g2.nextPage());
@@ -342,11 +366,6 @@ void loop(void)
 
 	if (!e) {
 
-		int a = 0, b = 0;
-		uint8_t p_len;
-
-		p_len = sx1272.getPayloadLength();
-
 		sx1272.getRSSIpacket();
 
 #ifdef CONFIG_V0
@@ -364,21 +383,52 @@ void loop(void)
 		INFOLN("%d", "$");
 		*/
 
-		sprintf(cmd, "%s/U/%s/T/%s/c/%d/v/%d/rssi/%d",
-			decode_goid(sx1272.packet_received.data),
-			decode_vbat(sx1272.packet_received.data),
-			decode_temp(sx1272.packet_received.data),
-			decode_cmd(sx1272.packet_received.data),
-			decode_ver(sx1272.packet_received.data),
-			sx1272._RSSIpacket);
+		uint8_t *p = sx1272.packet_received.data;
+
+		if (0x0 == omode) {
+			// show all message
+			sprintf(cmd, "%s/U/%s/T/%s/c/%d/v/%d/rssi/%d",
+				decode_goid(sx1272.packet_received.data),
+				decode_vbat(sx1272.packet_received.data),
+				decode_temp(sx1272.packet_received.data),
+				decode_cmd(sx1272.packet_received.data),
+				decode_ver(sx1272.packet_received.data),
+				sx1272._RSSIpacket);
+
+		} else if (0x1 == omode) {
+			// only show tagged message
+			if (p[2] == 0x33 && p[15] == 0x03) {
+				sprintf(cmd, "%s/U/%s/T/%s/rssi/%d",
+					decode_goid(sx1272.packet_received.data),
+					decode_vbat(sx1272.packet_received.data),
+					decode_temp(sx1272.packet_received.data),
+					sx1272._RSSIpacket);
+
+			}
+		} else if (0x2 == omode) {
+			// only show trigged message
+			if (p[0] == 0x55 && p[1] == 0xaa) {
+				sprintf(cmd, "%s/U/%s/T/%s/rssi/%d",
+					decode_goid(sx1272.packet_received.data),
+					decode_vbat(sx1272.packet_received.data),
+					decode_temp(sx1272.packet_received.data),
+					sx1272._RSSIpacket);
+
+			}
+		}
 
 		sprintf(frame_buf[c % 2], "%s %4d",
 			decode_goid(sx1272.packet_received.data),
 			sx1272._RSSIpacket);
 
-		show_frame(c % 2);
+		show_frame(c % 2, omode);
 		c++;
 #else
+		int a = 0, b = 0;
+		uint8_t p_len;
+
+		p_len = sx1272.getPayloadLength();
+
 		for (; a < p_len; a++, b++) {
 
 			cmd[b] = (char)sx1272.packet_received.data[a];
