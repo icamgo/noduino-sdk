@@ -59,16 +59,9 @@ char cmd[MAX_CMD_LENGTH];
 // number of retries to unlock remote configuration feature
 bool withAck = false;
 
-bool RSSIonSend = true;
-
 int status_counter = 0;
-unsigned long startDoCad, endDoCad;
-bool extendedIFS = true;
-uint8_t SIFS_cad_number;
-// set to 0 to disable carrier sense based on CAD
-uint8_t send_cad_number = 3;
-uint8_t SIFS_value[11] = { 0, 183, 94, 44, 47, 23, 24, 12, 12, 7, 4 };
-uint8_t CAD_value[11] = { 0, 62, 31, 16, 16, 8, 9, 5, 3, 1, 1 };
+
+char frame_buf[2][24];
 
 #ifdef DEBUG
 
@@ -102,11 +95,6 @@ void radio_setup()
 
 	sx1272._enableCarrierSense = true;
 #endif
-
-	if (loraMode > 7)
-		SIFS_cad_number = 6;
-	else
-		SIFS_cad_number = 3;
 }
 
 #ifdef CONFIG_V0
@@ -232,25 +220,38 @@ uint8_t decode_ver(uint8_t *pkt)
 #endif
 
 #ifdef ENABLE_SSD1306
-void draw_press(int32_t p)
+void show_frame(int l)
 {
 	u8g2.setPowerSave(0);
 
 	//u8g2.clearBuffer();		// clear the internal memory
 
 	//u8g2.setFont(u8g2_font_logisoso16_tf);	// choose a suitable font
-	//u8g2.setFont(u8g2_font_sirclive_tn);
-	u8g2.setFont(u8g2_font_sirclivethebold_tr);
+	//u8g2.setFont(u8g2_font_sirclivethebold_tr);
 
 	u8g2.firstPage();
 
 	do {
-		u8g2.drawStr(98, 26, "Pa");		// write something to the internal memory
-		u8g2.setCursor(16, 26);
-		u8g2.print(p);
+		//u8g2.drawStr(98, 26, "Pa");		// write something to the internal memory
+		u8g2.setFont(u8g2_font_freedoomr10_tu);
+
+		u8g2.setCursor(2, 15);
+		u8g2.print(frame_buf[0]);
+
+		u8g2.setCursor(2, 32);
+		u8g2.print(frame_buf[1]);
+
+		u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
+
+		if (l == 0) {
+			u8g2.drawGlyph(120, 12, 81);
+		} else if (l == 1) {
+			u8g2.drawGlyph(120, 30, 81);
+		}
+
 	} while (u8g2.nextPage());
 
-	delay(2000);
+	//delay(2000);
 
 	//u8g2.setPowerSave(1);
 
@@ -281,16 +282,13 @@ void setup()
 
 #ifdef ENABLE_SSD1306
 	u8g2.begin();
-
-	draw_press(1024);
 #endif
 }
 
 void loop(void)
 {
-	int i = 0, e;
-	
-	e = 1;
+	int e = 1;
+	static int c = 0;
 
 	if (status_counter == 60 || status_counter == 0) {
 		//INFO_S("%s", "^$Low-level gw status ON\n");
@@ -373,6 +371,13 @@ void loop(void)
 			decode_cmd(sx1272.packet_received.data),
 			decode_ver(sx1272.packet_received.data),
 			sx1272._RSSIpacket);
+
+		sprintf(frame_buf[c % 2], "%s %4d",
+			decode_goid(sx1272.packet_received.data),
+			sx1272._RSSIpacket);
+
+		show_frame(c % 2);
+		c++;
 #else
 		for (; a < p_len; a++, b++) {
 
