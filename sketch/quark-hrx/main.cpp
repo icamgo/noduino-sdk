@@ -265,11 +265,11 @@ void show_frame(int l, int mode)
 				u8g2.drawGlyph(120, 30, 65);
 			}
 		} else if (2 == mode) {
-			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
+			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
 			if (l == 0) {
-				u8g2.drawGlyph(120, 12, 70);
+				u8g2.drawGlyph(120, 12, 64);
 			} else if (l == 1) {
-				u8g2.drawGlyph(120, 30, 70);
+				u8g2.drawGlyph(120, 30, 64);
 			}
 		}
 
@@ -283,11 +283,24 @@ void show_frame(int l, int mode)
 }
 #endif
 
+void change_omode()
+{
+	omode++;
+	omode %= 3;
+	INFOLN("%d", omode);
+}
+
 void setup()
 {
 	int e;
 
 	randomSeed(analogRead(14));
+
+	// The interrupt of water leak is through D2
+	pinMode(2, INPUT_PULLUP);
+
+	// attach interrupt in D2
+	attachInterrupt(0, change_omode, LOW);
 
 	Serial.begin(115200);
 
@@ -395,6 +408,12 @@ void loop(void)
 				decode_ver(sx1272.packet_received.data),
 				sx1272._RSSIpacket);
 
+				sprintf(frame_buf[c % 2], "%s %4d",
+					decode_goid(sx1272.packet_received.data),
+					sx1272._RSSIpacket);
+
+				show_frame(c % 2, omode);
+				c++;
 		} else if (0x1 == omode) {
 			// only show tagged message
 			if (p[2] == 0x33 && p[15] == 0x03) {
@@ -404,6 +423,12 @@ void loop(void)
 					decode_temp(sx1272.packet_received.data),
 					sx1272._RSSIpacket);
 
+				sprintf(frame_buf[c % 2], "%s %4d",
+					decode_goid(sx1272.packet_received.data),
+					sx1272._RSSIpacket);
+
+				show_frame(c % 2, omode);
+				c++;
 			}
 		} else if (0x2 == omode) {
 			// only show trigged message
@@ -414,15 +439,15 @@ void loop(void)
 					decode_temp(sx1272.packet_received.data),
 					sx1272._RSSIpacket);
 
+				sprintf(frame_buf[c % 2], "%s %4d",
+					decode_goid(sx1272.packet_received.data),
+					sx1272._RSSIpacket);
+
+				show_frame(c % 2, omode);
+				c++;
 			}
 		}
 
-		sprintf(frame_buf[c % 2], "%s %4d",
-			decode_goid(sx1272.packet_received.data),
-			sx1272._RSSIpacket);
-
-		show_frame(c % 2, omode);
-		c++;
 #else
 		int a = 0, b = 0;
 		uint8_t p_len;
