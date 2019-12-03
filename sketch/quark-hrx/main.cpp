@@ -24,7 +24,7 @@
 #include "U8g2lib.h"
 
 #define	DEBUG					1
-#define DEBUG_HEX_PKT			1
+//#define DEBUG_HEX_PKT			1
 
 #define ENABLE_SSD1306			1
 
@@ -109,14 +109,14 @@ void radio_setup()
 }
 
 #ifdef CONFIG_V0
-char goid_buf[21];
-char go_vbat[6];
-char go_temp[10];
+char dev_id[24];
+char dev_vbat[6];
+char dev_type[8];
+char dev_data[10];
 
 char *uint64_to_str(uint64_t n)
 {
-	char *dest;
-	dest = goid_buf;
+	char *dest = dev_id;
 
 	dest += 20;
 	*dest-- = 0;
@@ -124,21 +124,24 @@ char *uint64_to_str(uint64_t n)
 		*dest-- = (n % 10) + '0';
 		n /= 10;
 	}
+
+	strcpy(dev_id, dest+1);
+
 	return dest + 1;
 }
 
-char *decode_goid(uint8_t *pkt)
+char *decode_devid(uint8_t *pkt)
 {
 	int a = 0, b = 0;
 
-	uint64_t goid = 0UL;
+	uint64_t devid = 0UL;
 
 	for (a = 3; a < 11; a++, b++) {
 
-		*(((uint8_t *)&goid) + 7 - b) = pkt[a];
+		*(((uint8_t *)&devid) + 7 - b) = pkt[a];
 	}
 
-	return uint64_to_str(goid);
+	return uint64_to_str(devid);
 }
 
 /* only support .0001 */
@@ -192,19 +195,94 @@ char *decode_vbat(uint8_t *pkt)
 			break;
 	}
 
-	ftoa(go_vbat, (float)(vbat / 1000.0), 2);
+	ftoa(dev_vbat, (float)(vbat / 1000.0), 3);
+	return dev_vbat;
 }
 
-char *decode_temp(uint8_t *pkt)
+// after decode_devid()
+char *decode_sensor_type()
 {
-	int16_t temp = 0;
+	if (dev_id[3] == '0') {
+		switch(dev_id[4]) {
+			case '0':
+				strcpy(dev_type, "GoT1000");
+				break;
+			case '1':
+				strcpy(dev_type, "GoP");
+				break;
+			case '2':
+				strcpy(dev_type, "T2");
+				break;
+			case '3':
+				strcpy(dev_type, "T2P");
+				break;
+			case '4':
+				strcpy(dev_type, "GoT100");
+				break;
+			case '6':
+				strcpy(dev_type, "GoWKF");
+				break;
+			case '7':
+				strcpy(dev_type, "T2p");
+				break;
+			case '8':
+				strcpy(dev_type, "T2th");
+				break;
+			case '9':
+				strcpy(dev_type, "T2m");
+				break;
+		}
+	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
 
-	temp = ((pkt[11] << 8) & 0x7F) | pkt[12];
+		strcpy(dev_type, "T2v");
+
+	} else if (dev_id[3] == '1' && dev_id[4] == '0') {
+
+		strcpy(dev_type, "GoMaste");
+
+	} else if (dev_id[3] == '1' && dev_id[4] == '1') {
+
+		strcpy(dev_type, "MBus");
+
+	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
+
+		strcpy(dev_type, "GoCC");
+
+	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
+
+		strcpy(dev_type, "GoCC");
+	}
+	return dev_type;
+}
+
+char *decode_sensor_data(uint8_t *pkt)
+{
+	int16_t data = 0;
+	float dd  = 0;
+
+	data = ((pkt[11] << 8) & 0x7F) | pkt[12];
 
 	if (pkt[11] & 0x80)
-		temp = temp * -1;
+		data = data * -1;
 
-	ftoa(go_temp, (float)(temp / 10.0), 1);
+	if (dev_id[3] == '0' && (dev_id[4] == '2' || dev_id[4] == '0' || dev_id[4] == '4')) {
+		// Temperature
+		dd = (float)(data / 10.0);
+		ftoa(dev_data, dd, 1);
+
+	} else if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3' || dev_id[4] == '7')) {
+		// Pressure
+		dd = (float)(data / 100.0);
+		ftoa(dev_data, dd, 2);
+
+	} else if (dev_id[3] == '0' && dev_id[4] == '9') {
+		// Moving Sensor
+
+	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
+		// Vibration Sensor
+
+	}
+	return dev_data;
 }
 
 uint8_t decode_cmd(uint8_t *pkt)
@@ -493,16 +571,19 @@ void loop(void)
 
 		if (0x0 == omode) {
 			// show all message
-			sprintf(cmd, "%s/U/%s/T/%s/c/%d/v/%d/rssi/%d",
-				decode_goid(sx1272.packet_received.data),
+			decode_devid(sx1272.packet_received.data);
+
+			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
+				dev_id,
 				decode_vbat(sx1272.packet_received.data),
-				decode_temp(sx1272.packet_received.data),
+				decode_sensor_type(),
+				decode_sensor_data(sx1272.packet_received.data),
 				decode_cmd(sx1272.packet_received.data),
 				decode_ver(sx1272.packet_received.data),
 				sx1272._RSSIpacket);
 
 				sprintf(frame_buf[c % 2], "%s %4d",
-					decode_goid(sx1272.packet_received.data),
+					dev_id,
 					sx1272._RSSIpacket);
 
 				show_frame(c % 2, omode);
@@ -512,14 +593,18 @@ void loop(void)
 		} else if (0x1 == omode) {
 			// only show tagged message
 			if (p[0] == 0x55 && p[1] == 0xaa) {
-				sprintf(cmd, "%s/U/%s/T/%s/rssi/%d",
-					decode_goid(sx1272.packet_received.data),
+
+				decode_devid(sx1272.packet_received.data);
+
+				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
+					dev_id,
 					decode_vbat(sx1272.packet_received.data),
-					decode_temp(sx1272.packet_received.data),
+					decode_sensor_type(),
+					decode_sensor_data(sx1272.packet_received.data),
 					sx1272._RSSIpacket);
 
 				sprintf(frame_buf[c % 2], "%s %4d",
-					decode_goid(sx1272.packet_received.data),
+					dev_id,
 					sx1272._RSSIpacket);
 
 				show_frame(c % 2, omode);
@@ -530,14 +615,18 @@ void loop(void)
 		} else if (0x2 == omode) {
 			// only show trigged message
 			if (p[2] == 0x33 && p[15] == 0x03) {
-				sprintf(cmd, "%s/U/%s/T/%s/rssi/%d",
-					decode_goid(sx1272.packet_received.data),
+
+				decode_devid(sx1272.packet_received.data);
+
+				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
+					dev_id,
 					decode_vbat(sx1272.packet_received.data),
-					decode_temp(sx1272.packet_received.data),
+					decode_sensor_type(),
+					decode_sensor_data(sx1272.packet_received.data),
 					sx1272._RSSIpacket);
 
 				sprintf(frame_buf[c % 2], "%s %4d",
-					decode_goid(sx1272.packet_received.data),
+					dev_id,
 					sx1272._RSSIpacket);
 
 				show_frame(c % 2, omode);
