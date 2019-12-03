@@ -22,8 +22,8 @@ ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 #ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
-#DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
-DEFS = -DUSE_SOFTSPI
+DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
+#DEFS = -DUSE_SOFTSPI
 
 MCU = cortex-m0plus
 #F_CPU = 7000000

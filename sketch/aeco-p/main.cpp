@@ -31,7 +31,7 @@ RTCDRV_TimerID_t xTimerForWakeUp;
 
 static uint32_t sample_period = 20;		/* 20s */
 
-#define	TX_TESTING				1
+//#define	TX_TESTING				1
 
 static uint8_t need_push = 0;
 
@@ -57,7 +57,13 @@ static uint8_t need_push = 0;
 
 #define	DEBUG					1
 
-uint8_t message[50];
+#ifdef CONFIG_V0
+uint8_t message[32] = { 0x48, 0x4F, 0x33 };
+uint8_t tx_cause = 0;
+uint16_t tx_count = 0;
+#else
+uint8_t message[32];
+#endif
 
 #ifdef DEBUG
 
@@ -162,13 +168,16 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 #ifdef TX_TESTING
 	need_push = 0x5a;
+	tx_cause = 2;
 #else
 	if (fabsf(pres - old_pres) > 3.0) {
 
 		old_pres = pres;
 
 		need_push = 0x5a;
-
+#ifdef CONFIG_V0
+		tx_cause = 1;
+#endif
 	}
 #endif
 
@@ -180,6 +189,9 @@ void trig_check_sensor()
 	noInterrupts();
 
 	need_push = 0x5a;
+#ifdef CONFIG_V0
+	tx_cause = 3;
+#endif
 
 	interrupts();
 }
@@ -230,9 +242,8 @@ void qsetup()
 	sx1272.setup_v0(TXRX_CH, MAX_DBM);
 #else
 	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
-#endif
-
 	sx1272._nodeAddress = node_addr;
+#endif
 
 #ifdef ENABLE_CAD
 	sx1272._enableCarrierSense = true;
@@ -244,124 +255,21 @@ void qsetup()
 }
 
 #ifdef CONFIG_V0
-char goid_buf[21];
-char go_vbat[6];
-char go_temp[10];
-
-char *uint64_to_str(uint64_t n)
+uint64_t get_devid()
 {
-	char *dest;
-	dest = goid_buf;
+	return 11903480001ULL;
+	//return 11907480001ULL;	// T2p
+}
 
-	dest += 20;
-	*dest-- = 0;
-	while (n) {
-		*dest-- = (n % 10) + '0';
-		n /= 10;
+uint16_t get_crc(uint8_t *pp, int len)
+{
+	int i;
+	uint16_t hh = 0;
+
+	for (i = 0; i < len; i++) {
+		hh += pp[i];
 	}
-	return dest + 1;
-}
-
-char *decode_goid(uint8_t *pkt)
-{
-	int a = 0, b = 0;
-
-	uint64_t goid = 0UL;
-
-	for (a = 3; a < 11; a++, b++) {
-
-		*(((uint8_t *)&goid) + 7 - b) = pkt[a];
-	}
-
-	return uint64_to_str(goid);
-}
-
-/* only support .0001 */
-char *ftoa(char *a, float f, int preci)
-{
-	long p[] =
-	    {0, 10, 100, 1000, 10000};
-
-	char *ret = a;
-
-	long ipart = (long)f;
-
-	//INFOLN("%d", ipart);
-
-	itoa(ipart, a, 10);		//int16, -32,768 ~ 32,767
-
-	while (*a != '\0')
-		a++;
-
-	*a++ = '.';
-
-	long fpart = abs(f * p[preci] - ipart * p[preci]);
-
-	//INFOLN("%d", fpart);
-
-	if (fpart > 0) {
-		if (fpart < p[preci]/10) {
-			*a++ = '0';
-		}
-		if (fpart < p[preci]/100) {
-			*a++ = '0';
-		}
-		if (fpart < p[preci]/1000) {
-			*a++ = '0';
-		}
-	}
-
-	itoa(fpart, a, 10);
-	return ret;
-}
-
-char *decode_vbat(uint8_t *pkt)
-{
-	uint16_t vbat = 0;
-
-	switch(pkt[2]) {
-		case 0x31:
-		case 0x32:
-		case 0x33:
-			vbat = pkt[13] << 8 | pkt[14];
-			break;
-	}
-
-	ftoa(go_vbat, (float)(vbat / 1000.0), 3);
-}
-
-char *decode_temp(uint8_t *pkt)
-{
-	int16_t temp = 0;
-
-	temp = ((pkt[11] << 8) & 0x7F) | pkt[12];
-
-	if (pkt[11] & 0x80)
-		temp = temp * -1;
-
-	ftoa(go_temp, (float)(temp / 10.0), 1);
-}
-
-uint8_t decode_cmd(uint8_t *pkt)
-{
-	uint8_t cmd = 0;
-
-	switch(pkt[2]) {
-
-		case 0x33:
-			cmd = pkt[15];
-			break;
-		default:
-			cmd = 255;
-			break;
-	}
-
-	return cmd;
-}
-
-uint8_t decode_ver(uint8_t *pkt)
-{
-	return pkt[2];
+	return hh;
 }
 #endif
 
@@ -379,10 +287,44 @@ void push_data()
 	qsetup();
 
 	pressure_init();
-	press = get_pressure();
+	press = get_pressure();		// hPa (mbar)
 
 	vbat = get_vbat();
 
+#ifdef CONFIG_V0
+	uint8_t *pkt = message;
+	uint64_t devid = get_devid();
+
+	uint8_t *p = (uint8_t *) &devid;
+
+	// set devid
+	int i = 0;
+	for(i = 0; i < 8; i++) {
+		pkt[3+i] = p[7-i];
+	}
+
+	// press/1000.0 = bar (0.1MPa), then x 100 for packet
+	press /= 10.0;
+	press = roundf(press);
+	uint16_t ui16 = (uint16_t)press;
+	p = (uint8_t *) &ui16;
+
+	pkt[11] = p[1]; pkt[12] = p[0];
+
+	ui16 = vbat * 1000;
+	pkt[13] = p[1]; pkt[14] = p[0];
+
+	pkt[15] = tx_cause;
+
+	p = (uint8_t *) &tx_count;
+	tx_count++;
+	pkt[16] = p[1]; pkt[17] = p[0];
+
+	ui16 = get_crc(pkt, 18);
+	p = (uint8_t *) &ui16;
+	pkt[18] = p[1]; pkt[19] = p[0];
+
+#else
 	char vbat_s[10], pres_s[10];
 	ftoa(vbat_s, vbat, 2);
 	ftoa(pres_s, press, 2);
@@ -394,6 +336,7 @@ void push_data()
 
 	INFO("Real payload size is ");
 	INFOLN(r_size);
+#endif
 
 #ifdef ENABLE_CAD
 	sx1272.CarrierSense();
@@ -401,6 +344,9 @@ void push_data()
 
 	startSend = millis();
 
+#ifdef CONFIG_V0
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 20, TX_TIME);
+#else
 	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
 
@@ -428,6 +374,8 @@ void push_data()
 	// 10ms max tx time
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
 #endif
+#endif
+
 	endSend = millis();
 
 	INFO("LoRa pkt size ");
@@ -459,8 +407,8 @@ void push_data()
 
 void loop()
 {
-	//INFO("Clock Freq = ");
-	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
+	INFO("Clock Freq = ");
+	INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
 
 	//INFOLN("Feed the watchdog");
 
