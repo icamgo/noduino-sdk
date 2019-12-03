@@ -313,7 +313,7 @@ void show_mode(int mode)
 			u8g2.print("RX ALL MSG");
 
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
-			u8g2.drawGlyph(112, 24, 81);
+			u8g2.drawGlyph(112, 23, 81);
 		} else if (1 == mode) {
 			// Bell icon. notice the message tagged for testing
 			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
@@ -321,7 +321,7 @@ void show_mode(int mode)
 			u8g2.print("RX ABC MSG");
 
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
-			u8g2.drawGlyph(112, 24, 65);
+			u8g2.drawGlyph(112, 23, 65);
 		} else if (2 == mode) {
 			// cycle icon. notice the message trigged by magnet
 			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
@@ -329,7 +329,7 @@ void show_mode(int mode)
 			u8g2.print("RX TRIG MSG");
 
 			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
-			u8g2.drawGlyph(112, 24, 64);
+			u8g2.drawGlyph(112, 23, 64);
 		}
 	} while (u8g2.nextPage());
 }
