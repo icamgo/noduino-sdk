@@ -24,6 +24,7 @@
 #include "U8g2lib.h"
 
 #define	DEBUG					1
+#define DEBUG_HEX_PKT			1
 
 #define ENABLE_SSD1306			1
 
@@ -471,7 +472,11 @@ void loop(void)
 
 #ifdef CONFIG_V0
 		INFOLN("%s", "");
-		/*
+
+#ifdef DEBUG_HEX_PKT
+		int a = 0, b = 0;
+		uint8_t p_len = sx1272.getPayloadLength();
+
 		for (; a < p_len; a++, b++) {
 
 			if ((uint8_t) sx1272.packet_received.data[a] < 16)
@@ -482,7 +487,7 @@ void loop(void)
 		}
 
 		INFOLN("%d", "$");
-		*/
+#endif
 
 		uint8_t *p = sx1272.packet_received.data;
 
