@@ -86,7 +86,7 @@ int old_omode = 0;
 #define INFO_S(fmt,param)
 #define INFO(fmt,param)
 #define INFOLN(fmt,param)
-#define FLUSHOUTPUT	
+#define FLUSHOUTPUT
 
 #endif
 
@@ -286,6 +286,19 @@ void show_frame(int l, int mode)
 	//u8g2.sendBuffer();		// transfer internal memory to the display
 }
 
+void show_logo()
+{
+	u8g2.setPowerSave(0);
+
+	u8g2.firstPage();
+
+	do {
+		u8g2.setFont(u8g2_font_profont29_tr);	// choose a suitable font
+		u8g2.setCursor(4, 26);
+		u8g2.print("AutoHeat");
+	} while (u8g2.nextPage());
+}
+
 void show_mode(int mode)
 {
 	u8g2.setPowerSave(0);
@@ -296,27 +309,27 @@ void show_mode(int mode)
 		if (0 == mode) {
 			// Lora icon. notice rx all message
 			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
-			u8g2.setCursor(8, 26);
+			u8g2.setCursor(10, 28);
 			u8g2.print("RX ALL MSG");
 
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
-			u8g2.drawGlyph(120, 24, 81);
+			u8g2.drawGlyph(116, 24, 81);
 		} else if (1 == mode) {
 			// Bell icon. notice the message tagged for testing
 			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
-			u8g2.setCursor(8, 26);
+			u8g2.setCursor(10, 28);
 			u8g2.print("RX ABC MSG");
 
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
-			u8g2.drawGlyph(120, 24, 65);
+			u8g2.drawGlyph(116, 24, 65);
 		} else if (2 == mode) {
 			// cycle icon. notice the message trigged by magnet
 			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
-			u8g2.setCursor(8, 26);
+			u8g2.setCursor(10, 28);
 			u8g2.print("RX TRIG MSG");
 
 			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
-			u8g2.drawGlyph(120, 24, 64);
+			u8g2.drawGlyph(116, 24, 64);
 		}
 	} while (u8g2.nextPage());
 }
@@ -383,6 +396,8 @@ void setup()
 	u8g2.begin();
 #endif
 
+	show_logo();
+	delay(800);
 	show_mode(omode);
 }
 
@@ -392,8 +407,12 @@ void loop(void)
 	static int c = 0;
 
 	if (omode != old_omode) {
+		// show mode and clean buffer
 		show_mode(omode);
 		old_omode = omode;
+
+		frame_buf[0][0] = '\0';
+		frame_buf[1][0] = '\0';
 	}
 
 	if (status_counter == 60 || status_counter == 0) {
