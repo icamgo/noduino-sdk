@@ -71,6 +71,7 @@ char frame_buf[2][24];
  *   0x2: only rx trigged message
 */
 int omode = 0;
+int old_omode = 0;
 
 #ifdef DEBUG
 
@@ -251,6 +252,7 @@ void show_frame(int l, int mode)
 		u8g2.print(frame_buf[1]);
 
 		if (0 == mode) {
+			// Lora icon. notice rx all message
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
 			if (l == 0) {
 				u8g2.drawGlyph(120, 12, 81);
@@ -258,6 +260,7 @@ void show_frame(int l, int mode)
 				u8g2.drawGlyph(120, 30, 81);
 			}
 		} else if (1 == mode) {
+			// Bell icon. notice the message tagged for testing
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
 			if (l == 0) {
 				u8g2.drawGlyph(120, 12, 65);
@@ -265,6 +268,7 @@ void show_frame(int l, int mode)
 				u8g2.drawGlyph(120, 30, 65);
 			}
 		} else if (2 == mode) {
+			// cycle icon. notice the message trigged by magnet
 			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
 			if (l == 0) {
 				u8g2.drawGlyph(120, 12, 64);
@@ -281,26 +285,84 @@ void show_frame(int l, int mode)
 
 	//u8g2.sendBuffer();		// transfer internal memory to the display
 }
+
+void show_mode(int mode)
+{
+	u8g2.setPowerSave(0);
+
+	u8g2.firstPage();
+
+	do {
+		if (0 == mode) {
+			// Lora icon. notice rx all message
+			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
+			u8g2.setCursor(8, 26);
+			u8g2.print("RX ALL MSG");
+
+			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
+			u8g2.drawGlyph(120, 24, 81);
+		} else if (1 == mode) {
+			// Bell icon. notice the message tagged for testing
+			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
+			u8g2.setCursor(8, 26);
+			u8g2.print("RX ABC MSG");
+
+			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
+			u8g2.drawGlyph(120, 24, 65);
+		} else if (2 == mode) {
+			// cycle icon. notice the message trigged by magnet
+			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
+			u8g2.setCursor(8, 26);
+			u8g2.print("RX TRIG MSG");
+
+			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
+			u8g2.drawGlyph(120, 24, 64);
+		}
+	} while (u8g2.nextPage());
+}
 #endif
 
 void change_omode()
 {
 	omode++;
 	omode %= 3;
+	INFO("%s", "omode: ");
 	INFOLN("%d", omode);
+}
+
+void beep(int c, int ontime)
+{
+	switch (c) {
+		case 3:
+			digitalWrite(7, HIGH);
+			delay(ontime);
+			digitalWrite(7, LOW);
+			delay(40);
+		case 2:
+			digitalWrite(7, HIGH);
+			delay(ontime);
+			digitalWrite(7, LOW);
+			delay(40);
+		case 1:
+			digitalWrite(7, HIGH);
+			delay(ontime);
+			digitalWrite(7, LOW);
+	}
 }
 
 void setup()
 {
 	int e;
 
-	randomSeed(analogRead(14));
-
-	// The interrupt of water leak is through D2
+	// Key connected to D2
 	pinMode(2, INPUT_PULLUP);
 
 	// attach interrupt in D2
-	attachInterrupt(0, change_omode, LOW);
+	attachInterrupt(0, change_omode, FALLING);
+
+	// beep
+	pinMode(7, OUTPUT);
+	digitalWrite(7, LOW);
 
 	Serial.begin(115200);
 
@@ -320,12 +382,19 @@ void setup()
 #ifdef ENABLE_SSD1306
 	u8g2.begin();
 #endif
+
+	show_mode(omode);
 }
 
 void loop(void)
 {
 	int e = 1;
 	static int c = 0;
+
+	if (omode != old_omode) {
+		show_mode(omode);
+		old_omode = omode;
+	}
 
 	if (status_counter == 60 || status_counter == 0) {
 		//INFO_S("%s", "^$Low-level gw status ON\n");
@@ -414,24 +483,10 @@ void loop(void)
 
 				show_frame(c % 2, omode);
 				c++;
+
+				INFOLN("%s", cmd);
 		} else if (0x1 == omode) {
 			// only show tagged message
-			if (p[2] == 0x33 && p[15] == 0x03) {
-				sprintf(cmd, "%s/U/%s/T/%s/rssi/%d",
-					decode_goid(sx1272.packet_received.data),
-					decode_vbat(sx1272.packet_received.data),
-					decode_temp(sx1272.packet_received.data),
-					sx1272._RSSIpacket);
-
-				sprintf(frame_buf[c % 2], "%s %4d",
-					decode_goid(sx1272.packet_received.data),
-					sx1272._RSSIpacket);
-
-				show_frame(c % 2, omode);
-				c++;
-			}
-		} else if (0x2 == omode) {
-			// only show trigged message
 			if (p[0] == 0x55 && p[1] == 0xaa) {
 				sprintf(cmd, "%s/U/%s/T/%s/rssi/%d",
 					decode_goid(sx1272.packet_received.data),
@@ -445,6 +500,26 @@ void loop(void)
 
 				show_frame(c % 2, omode);
 				c++;
+
+				INFOLN("%s", cmd);
+			}
+		} else if (0x2 == omode) {
+			// only show trigged message
+			if (p[2] == 0x33 && p[15] == 0x03) {
+				sprintf(cmd, "%s/U/%s/T/%s/rssi/%d",
+					decode_goid(sx1272.packet_received.data),
+					decode_vbat(sx1272.packet_received.data),
+					decode_temp(sx1272.packet_received.data),
+					sx1272._RSSIpacket);
+
+				sprintf(frame_buf[c % 2], "%s %4d",
+					decode_goid(sx1272.packet_received.data),
+					sx1272._RSSIpacket);
+
+				show_frame(c % 2, omode);
+				c++;
+
+				INFOLN("%s", cmd);
 			}
 		}
 
@@ -469,7 +544,7 @@ void loop(void)
 			sx1272._RSSIpacket,
 			sx1272._SNR);
 
-#endif
 		INFOLN("%s", cmd);
+#endif
 	}
 }
