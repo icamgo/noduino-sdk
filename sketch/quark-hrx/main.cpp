@@ -505,10 +505,14 @@ void loop(void)
 	if (digitalRead(2) == 0) {
 		// x 200ms
 		key_time++;
+	} else {
+		key_time = 0;
 	}
 
-	if (key_time > 20) {
+	if (key_time > 12) {
+
 		key_time = 0;
+
 		INFOLN("%s", "Key long time pressed, enter deep sleep...");
 		delay(300);
 
@@ -517,18 +521,17 @@ void loop(void)
 		digitalWrite(SX1272_RST, LOW);
 
 		SPI.end();
+		digitalWrite(10, LOW);
+		digitalWrite(11, LOW);
+		digitalWrite(12, LOW);
+		digitalWrite(13, LOW);
 
-		digitalWrite(6, LOW);		// dev power off
+		// dev power off
+		digitalWrite(6, LOW);
 
 		LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
 
-		digitalWrite(6, HIGH);		// dev power on
-
-		show_logo();
-		delay(1800);
-		show_mode(omode);
-
-		radio_setup();
+		setup();
 	}
 
 	if (status_counter == 60 || status_counter == 0) {

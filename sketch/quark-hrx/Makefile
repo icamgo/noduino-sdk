@@ -112,6 +112,7 @@ $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/SPI/src/SPI.cpp								\
 $(LIB_DIR)/Wire/src/Wire.cpp							\
 $(LIB_DIR)/SX127x/sx1272.cpp							\
+$(LIB_DIR)/LowPower/LowPower.cpp						\
 $(LIB_DIR)/U8g2/src/U8x8lib.cpp							\
 
 CXX_APP = main.cpp
