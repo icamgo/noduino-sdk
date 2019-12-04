@@ -422,6 +422,7 @@ void change_omode()
 	INFOLN("%d", omode);
 }
 
+// 10 ms, [20, 100]
 void beep(int c, int ontime)
 {
 	switch (c) {
@@ -592,7 +593,7 @@ void loop(void)
 				INFOLN("%s", cmd);
 		} else if (0x1 == omode) {
 			// only show tagged message
-			if (p[0] == 0x55 && p[1] == 0xaa) {
+			if (p[0] == 0x55) {
 
 				decode_devid(sx1272.packet_received.data);
 
@@ -609,6 +610,8 @@ void loop(void)
 
 				show_frame(c % 2, omode);
 				c++;
+
+				beep(p[1], 150 + sx1272._RSSIpacket);
 
 				INFOLN("%s", cmd);
 			}
