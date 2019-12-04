@@ -24,6 +24,8 @@
 #include "U8g2lib.h"
 #include "logo.h"
 
+#include "LowPower.h"
+
 #define	DEBUG					1
 //#define DEBUG_HEX_PKT			1
 
@@ -74,6 +76,8 @@ char frame_buf[2][24];
 */
 int omode = 0;
 int old_omode = 0;
+
+int key_time = 0;
 
 #ifdef DEBUG
 
@@ -453,7 +457,7 @@ void setup()
 	pinMode(2, INPUT_PULLUP);
 
 	// attach interrupt in D2
-	attachInterrupt(0, change_omode, LOW);
+	attachInterrupt(0, change_omode, FALLING);
 
 	// beep
 	pinMode(7, OUTPUT);
@@ -496,6 +500,35 @@ void loop(void)
 
 		frame_buf[0][0] = '\0';
 		frame_buf[1][0] = '\0';
+	}
+
+	if (digitalRead(2) == 0) {
+		// x 200ms
+		key_time++;
+	}
+
+	if (key_time > 20) {
+		key_time = 0;
+		INFOLN("%s", "Key long time pressed, enter deep sleep...");
+		delay(300);
+
+		u8g2.setPowerSave(1);
+		sx1272.setSleepMode();
+		digitalWrite(SX1272_RST, LOW);
+
+		SPI.end();
+
+		digitalWrite(6, LOW);		// dev power off
+
+		LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
+
+		digitalWrite(6, HIGH);		// dev power on
+
+		show_logo();
+		delay(1800);
+		show_mode(omode);
+
+		radio_setup();
 	}
 
 	if (status_counter == 60 || status_counter == 0) {
