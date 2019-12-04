@@ -22,6 +22,7 @@
 #include <stdint.h>
 
 #include "U8g2lib.h"
+#include "logo.h"
 
 #define	DEBUG					1
 //#define DEBUG_HEX_PKT			1
@@ -372,9 +373,10 @@ void show_logo()
 	u8g2.firstPage();
 
 	do {
-		u8g2.setFont(u8g2_font_profont29_tr);	// choose a suitable font
-		u8g2.setCursor(4, 26);
-		u8g2.print("AutoHeat");
+		//u8g2.setFont(u8g2_font_profont29_tr);	// choose a suitable font
+		//u8g2.setCursor(4, 26);
+		//u8g2.print("AutoHeat");
+		u8g2.drawXBM(1, 4, logo_width, logo_height, logo_xbm);
 	} while (u8g2.nextPage());
 }
 
@@ -451,13 +453,11 @@ void setup()
 	pinMode(2, INPUT_PULLUP);
 
 	// attach interrupt in D2
-	attachInterrupt(0, change_omode, FALLING);
+	attachInterrupt(0, change_omode, LOW);
 
 	// beep
 	pinMode(7, OUTPUT);
 	digitalWrite(7, LOW);
-
-	Serial.begin(115200);
 
 	// turn on the device power
 #ifdef ENABLE_SSD1306
@@ -470,15 +470,18 @@ void setup()
 	digitalWrite(7, LOW);
 #endif
 
-	radio_setup();
-
 #ifdef ENABLE_SSD1306
 	u8g2.begin();
 #endif
 
+	delay(2);
 	show_logo();
-	delay(800);
+	delay(1800);
 	show_mode(omode);
+
+	Serial.begin(115200);
+
+	radio_setup();
 }
 
 void loop(void)
