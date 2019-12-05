@@ -24,24 +24,25 @@
 //#include "U8g2lib.h"
 #include "rtcdriver.h"
 #include "math.h"
+#include "em_wdog.h"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
 /* 20s */
-static uint32_t sensor_period = 10;
+static uint32_t sensor_period = 60;
 
 #define	TX_TESTING				1
 #define ENABLE_SHT2X			1
 
 static uint32_t need_push = 0;
 
-#define ENABLE_CAD			1
+#define ENABLE_CAD				1
 
-#define node_addr		107
+#define node_addr				107
 
-#define DEST_ADDR		1
-#define	TX_TIME					1800		// 1000ms
+#define DEST_ADDR				1
+#define	TX_TIME					2100		// 1800ms
 
 //#define ENABLE_SSD1306		1
 
@@ -130,10 +131,11 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	static float old_temp = 0.0, old_humi = 0.0;
 	float temp = 0.0, humi = 0.0;
 
+	WDOG_Feed();
+
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
 	//INFOLN("Checking...");
-
 	//power_on_dev();		// turn on device power
 
 #ifdef ENABLE_SHT2X
@@ -179,6 +181,12 @@ void setup()
 	EMU_EM23Init_TypeDef em23Init = EMU_EM23INIT_DEFAULT;
 	EMU_EM23Init(&em23Init);
 #endif
+	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
+
+	/* Watchdog setup - Use defaults, excepts for these : */
+	wInit.em2Run = true;
+	wInit.em3Run = true;
+	wInit.perSel = wdogPeriod_128k;	/* 32k 1kHz periods should give 128 seconds */
 
 	// dev power ctrl
 	pinMode(10, OUTPUT);
@@ -200,10 +208,19 @@ void setup()
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
 
+#ifdef DEBUG
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
+#endif
 
 	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sensor_period * 1000, check_sensor, NULL);
+
+	/* Start watchdog */
+	WDOG_Init(&wInit);
+
+	/* bootup tx */
+	//tx_cause = 0;
+	need_push = 0x5a;
 }
 
 void qsetup()
