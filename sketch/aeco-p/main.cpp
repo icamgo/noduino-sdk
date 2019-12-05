@@ -25,6 +25,7 @@
 
 #include "rtcdriver.h"
 #include "math.h"
+#include "em_wdog.h"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -55,7 +56,7 @@ static uint8_t need_push = 0;
 
 //#define WITH_ACK
 
-#define	DEBUG					1
+//#define	DEBUG					1
 
 #ifdef CONFIG_V0
 uint8_t message[32] = { 0x48, 0x4F, 0x33 };
@@ -154,6 +155,8 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	static float old_pres = 0.0;
 
+	WDOG_Feed();
+
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
 	//Serial.println("Checking...");
@@ -206,6 +209,13 @@ void setup()
 	EMU_EM23Init(&em23Init);
 #endif
 
+	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
+
+	/* Watchdog setup - Use defaults, excepts for these : */
+	wInit.em2Run = true;
+	wInit.em3Run = true;
+	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 256 seconds */
+
 	// dev power ctrl
 	pinMode(10, OUTPUT);
 
@@ -230,6 +240,13 @@ void setup()
 	Serial.begin(115200);
 
 	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
+
+	/* Start watchdog */
+	WDOG_Init(&wInit);
+
+	/* bootup tx */
+	tx_cause = 0;
+	need_push = 0x5a;
 }
 
 void qsetup()
@@ -258,7 +275,7 @@ void qsetup()
 uint64_t get_devid()
 {
 	return 11903480001ULL;
-	//return 11907480001ULL;	// T2p
+	//return 11907480002ULL;	// T2p
 }
 
 uint16_t get_crc(uint8_t *pp, int len)
