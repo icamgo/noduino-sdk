@@ -29,20 +29,19 @@
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 15;		/* 20s */
+static uint32_t sample_period = 20;		/* 20s */
 
 #define	TX_TESTING				1
 
 // 1, 2, 3 <----> A, B, C
-#define DEV_ID					2
+#define DEV_ID					4
 
 static uint8_t need_push = 0;
 
 #define ENABLE_CAD				1
 
-#define node_addr				110
 #define DEST_ADDR				1
-#define	TX_TIME					3600		// 1000ms
+#define	TX_TIME					5600		// 1000ms
 
 #ifdef CONFIG_V0
 #define TXRX_CH				CH_01_472
@@ -50,15 +49,15 @@ static uint8_t need_push = 0;
 #else
 #define TXRX_CH				CH_00_470
 #define LORA_MODE			11
+#define node_addr				110
 #endif
 
 #define MAX_DBM					20
 
 //#define ENABLE_SSD1306		1
-
 //#define WITH_ACK
 
-#define	DEBUG					1
+//#define	DEBUG					1
 
 #ifdef CONFIG_V0
 uint8_t message[32] = { 0x48, 0x4F, 0x33 };
@@ -156,6 +155,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	(void)user;
 
 	static float old_pres = 0.0;
+	float pres = 0.0;
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
@@ -165,7 +165,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	//pressure_init();	// initialization of the sensor
 	//float pres = get_pressure();
-	float pres = 0.0;
 
 	//power_off_dev();
 
@@ -183,8 +182,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 #endif
 	}
 #endif
-
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
 }
 
 void trig_check_sensor()
@@ -229,10 +226,14 @@ void setup()
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
 
+#ifdef DEBUG
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
+#endif
 
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
+	/* bootup tx */
+	tx_cause = 0;
+	need_push = 0x5a;
 }
 
 void qsetup()
@@ -425,13 +426,17 @@ void loop()
 		need_push = 0;
 	}
 
-	delay(50);
-
 	power_off_dev();
 	digitalWrite(SX1272_RST, LOW);
 
 	spi_end();
 	wire_end();
+
+	/*
+	 * Enable rtc timer before enter deep sleep
+	 * Stop rtc timer after enter check_sensor_data()
+	 */
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
 
 	EMU_EnterEM2(true);
 }
