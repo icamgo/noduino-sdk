@@ -62,7 +62,7 @@ static uint8_t need_push = 0;
 //#define	DEBUG					1
 
 #ifdef CONFIG_V0
-uint8_t message[32] = { 0x48, 0x4F, 0x33 };
+uint8_t message[32] = { 0x47, 0x4F, 0x33 };
 uint8_t tx_cause = 0;
 uint16_t tx_count = 0;
 #else
@@ -302,8 +302,8 @@ void push_data()
 	pkt[15] = tx_cause;
 
 	p = (uint8_t *) &tx_count;
-	tx_count++;
 	pkt[16] = p[1]; pkt[17] = p[0];
+	tx_count++;
 
 	ui16 = get_crc(pkt, 18);
 	p = (uint8_t *) &ui16;
@@ -330,7 +330,7 @@ void push_data()
 	startSend = millis();
 
 #ifdef CONFIG_V0
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 20, TX_TIME);
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
 #else
 	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
