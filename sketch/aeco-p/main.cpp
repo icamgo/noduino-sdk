@@ -32,27 +32,30 @@ RTCDRV_TimerID_t xTimerForWakeUp;
 
 static uint32_t sample_period = 20;		/* 20s */
 
+static uint32_t sample_count = 0;
+#define		HEARTBEAT_TIME			7200
+
 //#define	TX_TESTING				1
 
 static uint8_t need_push = 0;
 
 #define ENABLE_CAD				1
 
-#define node_addr				110
+#define	TX_TIME					5000		// 5000ms
 #define DEST_ADDR				1
-#define	TX_TIME					1600		// 1000ms
 
 #ifdef CONFIG_V0
 #define TXRX_CH				CH_01_472
 #define LORA_MODE			12
 #else
+#define node_addr				110
+
 #define TXRX_CH				CH_00_470
 #define LORA_MODE			11
 #endif
 
 #define MAX_DBM					20
 
-//#define ENABLE_SSD1306		1
 
 //#define WITH_ACK
 
@@ -89,11 +92,6 @@ uint8_t message[32];
 
 void push_data();
 
-#ifdef ENABLE_SSD1306
-U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
-//U8G2_SSD1306_128X64_NONAME_1_SW_I2C u8g2(U8G2_R0, SCL, SDA, U8X8_PIN_NONE);
-#endif
-
 char *ftoa(char *a, double f, int precision)
 {
 	long p[] =
@@ -123,31 +121,6 @@ void power_off_dev()
 	digitalWrite(10, LOW);
 }
 
-#ifdef ENABLE_SSD1306
-void draw_press(int32_t p)
-{
-	u8g2.setPowerSave(0);
-
-	//u8g2.clearBuffer();		// clear the internal memory
-
-	u8g2.setFont(u8g2_font_logisoso24_tf);	// choose a suitable font
-
-	u8g2.firstPage();
-
-	do {
-		u8g2.drawStr(98, 48, "Pa");		// write something to the internal memory
-		u8g2.setCursor(16, 48);
-		u8g2.print(p);
-	} while (u8g2.nextPage());
-
-	delay(2000);
-
-	u8g2.setPowerSave(1);
-
-	//u8g2.sendBuffer();		// transfer internal memory to the display
-}
-#endif
-
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
 	(void)id;
@@ -158,6 +131,14 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	WDOG_Feed();
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
+
+	sample_count++;
+
+	if (sample_count >= HEARTBEAT_TIME/20) {
+		need_push = 0x5a;
+		tx_cause = 2;
+		sample_count = 0;
+	}
 
 	//Serial.println("Checking...");
 
@@ -173,7 +154,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	need_push = 0x5a;
 	tx_cause = 2;
 #else
-	if (fabsf(pres - old_pres) > 3.0) {
+	if (fabsf(pres - old_pres) > 50.0) {
 
 		old_pres = pres;
 
@@ -183,8 +164,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 #endif
 	}
 #endif
-
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
 }
 
 void trig_check_sensor()
@@ -224,22 +203,14 @@ void setup()
 	pinMode(0, INPUT);
 	attachInterrupt(0, trig_check_sensor, FALLING);
 
-#ifdef ENABLE_SSD1306
-	float pres = get_pressure();
-
-	u8g2.begin();
-
-	draw_press((int32_t) pres);
-#endif
-
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
 
+#ifdef DEBUG
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
-
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
+#endif
 
 	/* Start watchdog */
 	WDOG_Init(&wInit);
@@ -266,9 +237,6 @@ void qsetup()
 	sx1272._enableCarrierSense = true;
 #endif
 
-#ifdef ENABLE_SSD1306
-	u8g2.begin();
-#endif
 }
 
 #ifdef CONFIG_V0
@@ -435,13 +403,17 @@ void loop()
 		need_push = 0;
 	}
 
-	delay(50);
-
 	power_off_dev();
 	digitalWrite(SX1272_RST, LOW);
 
 	spi_end();
 	wire_end();
+
+	/*
+	 * Enable rtc timer before enter deep sleep
+	 * Stop rtc timer after enter check_sensor_data()
+	 */
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
 
 	EMU_EnterEM2(true);
 }
