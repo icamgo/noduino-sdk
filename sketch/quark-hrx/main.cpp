@@ -476,12 +476,12 @@ void setup()
 
 #ifdef ENABLE_SSD1306
 	u8g2.begin();
-#endif
 
 	delay(2);
 	show_logo();
 	delay(1800);
 	show_mode(omode);
+#endif
 
 	Serial.begin(115200);
 
@@ -493,6 +493,7 @@ void loop(void)
 	int e = 1;
 	static int c = 0;
 
+#ifdef ENABLE_SSD1306
 	if (omode != old_omode) {
 		// show mode and clean buffer
 		show_mode(omode);
@@ -501,6 +502,7 @@ void loop(void)
 		frame_buf[0][0] = '\0';
 		frame_buf[1][0] = '\0';
 	}
+#endif
 
 	if (digitalRead(2) == 0) {
 		// x 200ms
@@ -516,7 +518,9 @@ void loop(void)
 		INFOLN("%s", "Key long time pressed, enter deep sleep...");
 		delay(300);
 
+#ifdef ENABLE_SSD1306
 		u8g2.setPowerSave(1);
+#endif
 		sx1272.setSleepMode();
 		digitalWrite(SX1272_RST, LOW);
 
@@ -622,12 +626,14 @@ void loop(void)
 				decode_ver(sx1272.packet_received.data),
 				sx1272._RSSIpacket);
 
+#ifdef ENABLE_SSD1306
 				sprintf(frame_buf[c % 2], "%s %4d",
 					dev_id,
 					sx1272._RSSIpacket);
 
 				show_frame(c % 2, omode);
 				c++;
+#endif
 
 				INFOLN("%s", cmd);
 		} else if (0x1 == omode) {
@@ -643,12 +649,14 @@ void loop(void)
 					decode_sensor_data(sx1272.packet_received.data),
 					sx1272._RSSIpacket);
 
+#ifdef ENABLE_SSD1306
 				sprintf(frame_buf[c % 2], "%s %4d",
 					dev_id,
 					sx1272._RSSIpacket);
 
 				show_frame(c % 2, omode);
 				c++;
+#endif
 
 				beep(p[1], 150 + sx1272._RSSIpacket);
 
@@ -667,12 +675,14 @@ void loop(void)
 					decode_sensor_data(sx1272.packet_received.data),
 					sx1272._RSSIpacket);
 
+#ifdef ENABLE_SSD1306
 				sprintf(frame_buf[c % 2], "%s %4d",
 					dev_id,
 					sx1272._RSSIpacket);
 
 				show_frame(c % 2, omode);
 				c++;
+#endif
 
 				INFOLN("%s", cmd);
 			}
