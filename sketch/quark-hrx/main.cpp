@@ -74,8 +74,8 @@ char frame_buf[2][24];
  *   0x1: only rx the tagged message
  *   0x2: only rx trigged message
 */
-int omode = 0;
-int old_omode = 0;
+int omode = 1;
+int old_omode = 1;
 
 int key_time = 0;
 
@@ -115,7 +115,7 @@ void radio_setup()
 
 #ifdef CONFIG_V0
 char dev_id[24];
-char dev_vbat[6];
+char dev_vbat[6] = "00000";
 char dev_type[8];
 char dev_data[10];
 
@@ -310,6 +310,24 @@ uint8_t decode_cmd(uint8_t *pkt)
 uint8_t decode_ver(uint8_t *pkt)
 {
 	return pkt[2];
+}
+
+char did2abc(uint8_t did)
+{
+	switch(did) {
+
+		case 1:
+			return 'A';
+			break;
+		case 2:
+			return 'B';
+			break;
+		case 3:
+			return 'C';
+			break;
+		default:
+			return 'X';
+	}
 }
 #endif
 
@@ -650,9 +668,10 @@ void loop(void)
 					sx1272._RSSIpacket);
 
 #ifdef ENABLE_SSD1306
-				sprintf(frame_buf[c % 2], "%s %4d",
-					dev_id,
-					sx1272._RSSIpacket);
+				sprintf(frame_buf[c % 2], " %c  %4d %s",
+					did2abc(p[1]),
+					sx1272._RSSIpacket,
+					decode_vbat(sx1272.packet_received.data));
 
 				show_frame(c % 2, omode);
 				c++;
