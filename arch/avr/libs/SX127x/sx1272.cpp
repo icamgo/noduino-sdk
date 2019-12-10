@@ -2727,7 +2727,7 @@ int8_t SX1272::setPacketLength(uint8_t l)
 	// comment by C. Pham
 	// this delay is included in the send delay overhead
 	// TODO: do we really need this delay?
-	delay(250);
+	delay(100);
 	return state;
 }
 
