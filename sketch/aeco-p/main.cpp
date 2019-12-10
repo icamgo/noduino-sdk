@@ -27,6 +27,9 @@
 #include "math.h"
 #include "em_wdog.h"
 
+
+//#define	DEBUG					1
+
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
@@ -35,18 +38,27 @@ static uint32_t sample_period = 20;		/* 20s */
 static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			7200
 
+static float old_pres = 0.0;
+static float cur_pres = 0.0;
+
 //#define	TX_TESTING				1
 
 static uint8_t need_push = 0;
 
 #define ENABLE_CAD				1
 
-#define	TX_TIME					5000		// 5000ms
+#define	TX_TIME					3500		// 5000ms
 #define DEST_ADDR				1
 
 #ifdef CONFIG_V0
 #define TXRX_CH				CH_01_472
 #define LORA_MODE			12
+
+#define	RESET_TX			0
+#define	DELTA_TX			1
+#define	TIMER_TX			2
+#define	KEY_TX				3
+
 #else
 #define node_addr				110
 
@@ -59,11 +71,9 @@ static uint8_t need_push = 0;
 
 //#define WITH_ACK
 
-//#define	DEBUG					1
-
 #ifdef CONFIG_V0
 uint8_t message[32] = { 0x47, 0x4F, 0x33 };
-uint8_t tx_cause = 0;
+uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 #else
 uint8_t message[32];
@@ -126,8 +136,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	(void)id;
 	(void)user;
 
-	static float old_pres = 0.0;
-
 	WDOG_Feed();
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
@@ -136,7 +144,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	if (sample_count >= HEARTBEAT_TIME/20) {
 		need_push = 0x5a;
-		tx_cause = 2;
+		tx_cause = TIMER_TX;
 		sample_count = 0;
 	}
 
@@ -146,21 +154,19 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	pressure_init();	// initialization of the sensor
 
-	float pres = get_pressure();
+	cur_pres = get_pressure();
 
 	//power_off_dev();
 
 #ifdef TX_TESTING
 	need_push = 0x5a;
-	tx_cause = 2;
+	tx_cause = TIMER_TX;
 #else
-	if (fabsf(pres - old_pres) > 50.0) {
-
-		old_pres = pres;
+	if (fabsf(cur_pres - old_pres) > 50.0) {
 
 		need_push = 0x5a;
 #ifdef CONFIG_V0
-		tx_cause = 1;
+		tx_cause = DELTA_TX;
 #endif
 	}
 #endif
@@ -172,7 +178,7 @@ void trig_check_sensor()
 
 	need_push = 0x5a;
 #ifdef CONFIG_V0
-	tx_cause = 3;
+	tx_cause = KEY_TX;
 #endif
 
 	interrupts();
@@ -216,7 +222,7 @@ void setup()
 	WDOG_Init(&wInit);
 
 	/* bootup tx */
-	tx_cause = 0;
+	tx_cause = RESET_TX;
 	need_push = 0x5a;
 }
 
@@ -242,7 +248,7 @@ void qsetup()
 #ifdef CONFIG_V0
 uint64_t get_devid()
 {
-	return 11903480001ULL;
+	return 11903480003ULL;
 	//return 11907480002ULL;	// T2p
 }
 
@@ -263,7 +269,7 @@ void push_data()
 	long startSend;
 	long endSend;
 
-	float vbat = 0.0, press = 0.0;
+	float vbat = 0.0;
 
 	uint8_t r_size;
 
@@ -271,8 +277,10 @@ void push_data()
 
 	qsetup();
 
-	pressure_init();
-	press = get_pressure();		// hPa (mbar)
+	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
+		pressure_init();
+		cur_pres = get_pressure();		// hPa (mbar)
+	}
 
 	vbat = get_vbat();
 
@@ -289,9 +297,9 @@ void push_data()
 	}
 
 	// press/1000.0 = bar (0.1MPa), then x 100 for packet
-	press /= 10.0;
-	press = roundf(press);
-	uint16_t ui16 = (uint16_t)press;
+	cur_pres /= 10.0;
+	cur_pres = roundf(cur_pres);
+	uint16_t ui16 = (uint16_t)cur_pres;
 	p = (uint8_t *) &ui16;
 
 	pkt[11] = p[1]; pkt[12] = p[0];
@@ -312,7 +320,7 @@ void push_data()
 #else
 	char vbat_s[10], pres_s[10];
 	ftoa(vbat_s, vbat, 2);
-	ftoa(pres_s, press, 2);
+	ftoa(pres_s, cur_pres, 2);
 
 	r_size = sprintf((char *)message, "\\!U/%s/P/%s", vbat_s, pres_s);
 
@@ -360,6 +368,11 @@ void push_data()
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
 #endif
 #endif
+
+	if (!e) {
+		// send message succesful, update the old_pres
+		old_pres = cur_pres;
+	}
 
 	endSend = millis();
 
