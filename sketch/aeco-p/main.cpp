@@ -248,7 +248,14 @@ void qsetup()
 #ifdef CONFIG_V0
 uint64_t get_devid()
 {
-	return 11903480003ULL;
+	uint64_t *p;
+
+	p = (uint64_t *)0x0FE00008;
+
+	return *p;
+
+	//return 11903480003ULL;
+
 	//return 11907480002ULL;	// T2p
 }
 
