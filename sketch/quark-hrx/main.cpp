@@ -413,7 +413,7 @@ void show_mode(int mode)
 			// Lora icon. notice rx all message
 			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
 			u8g2.setCursor(12, 26);
-			u8g2.print("RX ALL MSG");
+			u8g2.print(" T2 - ALL ");
 
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
 			u8g2.drawGlyph(112, 23, 81);
@@ -421,7 +421,7 @@ void show_mode(int mode)
 			// Bell icon. notice the message tagged for testing
 			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
 			u8g2.setCursor(12, 26);
-			u8g2.print("RX ABC MSG");
+			u8g2.print(" T3 - ABC ");
 
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
 			u8g2.drawGlyph(112, 23, 65);
@@ -429,7 +429,7 @@ void show_mode(int mode)
 			// cycle icon. notice the message trigged by magnet
 			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
 			u8g2.setCursor(12, 26);
-			u8g2.print("RX TRIG MSG");
+			u8g2.print(" T2 - KEY ");
 
 			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
 			u8g2.drawGlyph(112, 23, 64);
@@ -556,11 +556,13 @@ void loop(void)
 		setup();
 	}
 
+#if DEBUG > 1
 	if (status_counter == 60 || status_counter == 0) {
 		//INFO_S("%s", "^$Low-level gw status ON\n");
 		INFO_S("%s", ".");
 		status_counter = 0;
 	}
+#endif
 
 	// check if we received data from the receiving LoRa module
 #ifdef RECEIVE_ALL
@@ -572,13 +574,17 @@ void loop(void)
 
 	if (e != 0 && e != 3) {
 		// e = 1 or e = 2 or e > 3
+#if DEBUG > 1
 		INFO_S("%s", "^$Receive error ");
 		INFOLN("%d", e);
+#endif
 
 		if (e == 2) {
 			// Power OFF the module
 			sx1272.reset();
+#if DEBUG > 1
 			INFO_S("%s", "^$Resetting radio module\n");
+#endif
 
 			radio_setup();
 
@@ -593,7 +599,10 @@ void loop(void)
 		sx1272.getRSSIpacket();
 
 #ifdef CONFIG_V0
+
+#if DEBUG > 1
 		INFOLN("%s", "");
+#endif
 
 #ifdef DEBUG_HEX_PKT
 		int a = 0, b = 0;
@@ -650,7 +659,7 @@ void loop(void)
 					sx1272._RSSIpacket);
 
 #ifdef ENABLE_SSD1306
-				sprintf(frame_buf[c % 2], " %c  %4d %s",
+				sprintf(frame_buf[c % 2], " %c  %4d  %s",
 					did2abc(p[1]),
 					sx1272._RSSIpacket,
 					decode_vbat(sx1272.packet_received.data));
