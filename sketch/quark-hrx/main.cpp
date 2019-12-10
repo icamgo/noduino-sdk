@@ -566,45 +566,27 @@ void loop(void)
 #ifdef RECEIVE_ALL
 	e = sx1272.receiveAll(RX_TIME);
 #else
-#ifdef GW_AUTO_ACK
-
 	e = sx1272.receivePacketTimeout(RX_TIME);
 
 	status_counter++;
 
 	if (e != 0 && e != 3) {
+		// e = 1 or e = 2 or e > 3
 		INFO_S("%s", "^$Receive error ");
 		INFOLN("%d", e);
 
 		if (e == 2) {
 			// Power OFF the module
-			sx1272.OFF();
+			sx1272.reset();
 			INFO_S("%s", "^$Resetting radio module\n");
 
 			radio_setup();
 
 			// to start over
-			status_counter = 0;
 			e = 1;
 		}
-		FLUSHOUTPUT;
 	}
-
-	if (!e && sx1272._requestACK_indicator) {
-		INFO_S("%s", "^$ACK requested by ");
-		INFOLN("%d", sx1272.packet_received.src);
-		FLUSHOUTPUT;
-	}
-#else
-	// OBSOLETE normally we always use GW_AUTO_ACK
-	// Receive message
-	if (withAck)
-		e = sx1272.receivePacketTimeoutACK(RX_TIME);
-	else
-		e = sx1272.receivePacketTimeout(RX_TIME);
-
-#endif // gw_auto_ack
-#endif // receive_all
+#endif
 
 	if (!e) {
 
