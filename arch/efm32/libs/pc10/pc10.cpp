@@ -23,8 +23,18 @@
 #define LEN				2
 
 //#define	D15942			247
-//#define	D15941				248
-#define	D15941				101
+#define	D15941				248
+
+//#define	D2485			1004
+//#define	D2477			1003
+//#define	D2429			1002
+//#define	D2421			1001
+
+#ifdef D2429
+#define PC10_HIGH		14716
+#define PC10_MID		8197
+#define PC10_LOW		1941
+#endif
 
 #ifdef D15941
 #define PC10_HIGH		14716
@@ -43,7 +53,6 @@ void pressure_init()
 	wire_begin(SW_SCL, SW_SDA);
 }
 
-/* Return hPa(mbar) */
 float get_pressure()
 {
 	uint16_t pv = 0;
@@ -63,8 +72,13 @@ float get_pressure()
 	} else if (pv >= PC10_MID && pv <= PC10_HIGH) {
 		p = 8000.0 / (PC10_HIGH - PC10_MID) * (pv - PC10_MID) + 8000.0;
 	} else {
-		p = -1.0;
+		p = -1000.0;
 	}
+	// The unit of p is hPa(mbar)
+
+	// p/1000.0 = bar (0.1MPa)
+	p /= 1000.0;
+
 	return p;
 }
 
