@@ -300,6 +300,7 @@ flash: build/main.bin
 
 user: .u.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
+	@rm -f .u.bin
 
 dumpflash:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_DUMP_MAIN)
