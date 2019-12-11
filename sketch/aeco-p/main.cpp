@@ -47,7 +47,7 @@ static uint8_t need_push = 0;
 
 #define ENABLE_CAD				1
 
-#define	TX_TIME					3500		// 5000ms
+#define	TX_TIME					1800		// 1800ms
 #define DEST_ADDR				1
 
 #ifdef CONFIG_V0
@@ -162,7 +162,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	need_push = 0x5a;
 	tx_cause = TIMER_TX;
 #else
-	if (fabsf(cur_pres - old_pres) > 50.0) {
+	if (fabsf(cur_pres - old_pres) > 0.05) {
 
 		need_push = 0x5a;
 #ifdef CONFIG_V0
@@ -199,7 +199,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 256 seconds */
+	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 
 	// dev power ctrl
 	pinMode(10, OUTPUT);
@@ -248,13 +248,15 @@ void qsetup()
 #ifdef CONFIG_V0
 uint64_t get_devid()
 {
+#if 1
 	uint64_t *p;
 
 	p = (uint64_t *)0x0FE00008;
 
 	return *p;
-
-	//return 11903480003ULL;
+#else
+	return 11903500001ULL;
+#endif
 
 	//return 11907480002ULL;	// T2p
 }
@@ -303,10 +305,7 @@ void push_data()
 		pkt[3+i] = p[7-i];
 	}
 
-	// press/1000.0 = bar (0.1MPa), then x 100 for packet
-	cur_pres /= 10.0;
-	cur_pres = roundf(cur_pres);
-	uint16_t ui16 = (uint16_t)cur_pres;
+	int16_t ui16 = (int16_t)(cur_pres * 100);
 	p = (uint8_t *) &ui16;
 
 	pkt[11] = p[1]; pkt[12] = p[0];
@@ -406,8 +405,6 @@ void push_data()
 	spi_end();
 
 	power_off_dev();
-
-	wire_end();
 }
 
 void loop()
@@ -427,13 +424,14 @@ void loop()
 	digitalWrite(SX1272_RST, LOW);
 
 	spi_end();
-	wire_end();
 
 	/*
 	 * Enable rtc timer before enter deep sleep
 	 * Stop rtc timer after enter check_sensor_data()
 	 */
 	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
+
+	wire_end();
 
 	EMU_EnterEM2(true);
 }
