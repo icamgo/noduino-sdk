@@ -55,16 +55,18 @@ Q := @
 vecho := @echo
 endif
 
-#OPENOCD_CFG	:= $(ARDUINO_BOARD)/efm32zg-openocd.cfg
-OPENOCD_CFG = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
+OPENOCD_FLASH = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
+OPENOCD_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
 
-OPENOCD_USER_DATA = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
+OPENOCD_ERASE_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; flash banks; reset init; reset halt; wait_halt; flash erase_sector 0 0 31; reset run; shutdown"
+#OPENOCD_ERASE_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; flash banks; reset init; reset halt; wait_halt; flash erase_sector 1 0 0; reset run; shutdown"
+OPENOCD_ERASE_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; reset run; shutdown"
 
 OPENOCD_DUMP_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; flash probe 0; flash read_bank 0 flash.bin; reset; shutdown"
-
 OPENOCD_DUMP_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image user.bin 0x0FE00000 0x400; reset; shutdown"
 
-OPENOCD_GET_UUID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image uuid.bin 0x0FE081F0 0x8; reset; shutdown"
+OPENOCD_GET_DID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image did.bin 0x0FE00008 0x8; reset; shutdown"
+OPENOCD_GET_UUID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image did.bin 0x0FE081F0 0x8; reset; shutdown"
 
 
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
@@ -270,14 +272,36 @@ coff: build/main.elf
 	$(NM) -n $< > $@
 ############################################################
 
+#id_h := $(shell printf "%016X" 11903500002 | fold -w2 | tac | tr -d "\n")
+#id_l := $$(($(rand)%10000))
+
+rand := $(shell echo $$RANDOM)
+id_b := 11903500000
+
+id = $$(($(id_b)+$(rand)%10000))
+#id = 11903507540
+
+hex_id = $$(printf "%016X" $(id) | fold -w2 | tac | tr -d "\n")
+id_ok = $$(cat idused | grep $(id))
+
+DID=$$(xxd -g8 -p did.bin | fold -w2 | tac | tr -d "\n")
+
+.u.bin:
+	-$(Q) echo $(id)
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> idused; \
+		echo "Generating the u.bin ..."; cp user.bin .u.bin;				  \
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; fi
 
 upload: build/main.bin
-	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
 
 flash: build/main.bin
-	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
 
-dump:
+user: .u.bin
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
+
+dumpflash:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_DUMP_MAIN)
 	-$(Q) echo "The whole 32KB flash is dumped into flash.bin"
 
@@ -285,13 +309,30 @@ dumpuser:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_DUMP_USER)
 	-$(Q) echo "Dump the 1KB user data into user.bin"
 
-eeprom: eeprom.bin
-	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
+erase:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_ERASE_MAIN)
+	-$(Q) echo "Erase the 32KB main data"
+
+eraseflash:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_ERASE_MAIN)
+	-$(Q) echo "Erase the 32KB main data"
+
+eraseuser:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_ERASE_USER)
+	-$(Q) echo "Erase the 1KB user data @0x0FE0_0000"
+
+getdid:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GET_DID)
+	@echo ""
+	@printf "The DevID is: %ld" 0x$(DID);
+	@rm -f did.bin
 
 getuuid:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GET_UUID)
-	-$(Q) echo "The MCU UUID is got into uuid.bin. The MCU UUID is:"
-	-$(Q) xxd -g1 uuid.bin | cut -d ' ' -f2-10 | tr -d [:space:] | tr [:lower:] [:upper:]
+	@echo ""
+	@printf "The UUID is: %ld\r\n" 0x$(DID);
+	@echo $(DID) | tr [:lower:] [:upper:] 
+	@rm -f did.bin
 
 getid:
 	-$(Q) xxd -g1 uuid.bin | cut -d ' ' -f2-10 | tr -d [:space:] | tr [:lower:] [:upper:]
