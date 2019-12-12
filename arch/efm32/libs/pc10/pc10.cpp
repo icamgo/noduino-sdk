@@ -22,13 +22,21 @@
 #define PC10_ADDR		0x28
 #define LEN				2
 
+//#define	D2429			1
+#define	GENERAL1912			1
 //#define	D15942			247
-#define	D15941				248
+//#define	D15941			248
 
 //#define	D2485			1004
 //#define	D2477			1003
 //#define	D2429			1002
 //#define	D2421			1001
+
+#ifdef GENERAL1912
+#define PC10_HIGH		14744
+#define PC10_MID		8191
+#define PC10_LOW		1628
+#endif
 
 #ifdef D2429
 #define PC10_HIGH		14716
@@ -60,23 +68,23 @@ float get_pressure()
 
 	pc10_wakeup();
 
-	i2c_delay(14*1000*11);		/* delay 11ms */
+	i2c_delay(15*1000);		/* delay 11ms */
 
 	pv = pc10_read();
 
 	//Serial.print("pc10 = ");
 	//Serial.println(pv, HEX);
 
-	if (pv >= PC10_LOW && pv < PC10_MID) {
+	if (pv > 1500 && pv < PC10_MID) {
 		p = 8000.0 / (PC10_MID - PC10_LOW) * (pv - PC10_LOW);
-	} else if (pv >= PC10_MID && pv <= PC10_HIGH) {
+	} else if (pv >= PC10_MID) {
 		p = 8000.0 / (PC10_HIGH - PC10_MID) * (pv - PC10_MID) + 8000.0;
 	} else {
 		p = -1000.0;
 	}
 	// The unit of p is hPa(mbar)
-
 	// p/1000.0 = bar (0.1MPa)
+
 	p /= 1000.0;
 
 	return p;
@@ -91,7 +99,7 @@ uint16_t pc10_read()
 	wire_write(0x09);
 	wire_endTransmission();
 
-	i2c_delay(14*1000);			/* delay 1ms */
+	i2c_delay(2*1000);			/* delay 1.6ms */
 
 	wire_requestFrom(PC10_ADDR, LEN);
 
