@@ -16,6 +16,8 @@
 
 TARGET		= main.cpp
 
+id_base := 11903500000
+
 SDK_BASE	?= ../..
 ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
 ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
@@ -55,6 +57,8 @@ Q := @
 vecho := @echo
 endif
 
+OPENOCD_FW = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; shutdown"
+
 OPENOCD_FLASH = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
 OPENOCD_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
 
@@ -65,9 +69,10 @@ OPENOCD_ERASE_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; i
 OPENOCD_DUMP_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; flash probe 0; flash read_bank 0 flash.bin; reset; shutdown"
 OPENOCD_DUMP_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image user.bin 0x0FE00000 0x400; reset; shutdown"
 
-OPENOCD_GET_DID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image did.bin 0x0FE00008 0x8; reset; shutdown"
-OPENOCD_GET_UUID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image did.bin 0x0FE081F0 0x8; reset; shutdown"
+OPENOCD_GET_DID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image .did.bin 0x0FE00008 0x8; reset; shutdown"
+OPENOCD_GET_UUID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image .uuid.bin 0x0FE081F0 0x8; reset; shutdown"
 
+OPENOCD_GO = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
 
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
 CXX	:= $(TOOLCHAIN_DIR)/arm-none-eabi-g++
@@ -128,9 +133,9 @@ MODULES = $(C_MODULES) $(CXX_MODULES)
 SRC = $(C_MODULES)
 CXXSRC = $(CXX_MODULES) $(CXX_APP)
 
-CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110  
+CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
 
-CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110  
+CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
 
 CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
@@ -163,20 +168,20 @@ DEFS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
 	-DMENU_SERIAL=SerialLEUART0 										\
 	-DEMDRV_RTCDRV_USE_LFRCO											\
 	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 			\
-	-DARDUINO_ARCH_EFM32 -DARDUINO=$(VERSION) 
+	-DARDUINO_ARCH_EFM32 -DARDUINO=$(VERSION)
 
 CXXFLAGS := -g -Os -w -fno-exceptions -std=gnu++14 -fpermissive			\
 	-ffunction-sections -fdata-sections -nostdlib -fno-threadsafe-statics	\
-	--param max-inline-insns-single=500 -fno-rtti -Dprintf=iprintf -MMD 
+	--param max-inline-insns-single=500 -fno-rtti -Dprintf=iprintf -MMD
 
 CXXFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mfp16-format=ieee -mthumb -MMD
 
-ASFLAGS = 
+ASFLAGS =
 LDFLAGS := -mcpu=$(MCU) -mthumb -Os -Wl,--cref					\
 	-Wl,--check-sections -Wl,--gc-sections -Wl,--entry=Reset_Handler	\
 	-Wl,--unresolved-symbols=report-all -Wl,--warn-common -Wl,--start-group	\
 	-u _sbrk -u link -u _close -u _fstat -u _isatty -u _lseek -u _read	\
-	-u _write -u _exit -u kill -u _getpid 
+	-u _write -u _exit -u kill -u _getpid
 
 LDFLAGS += "-T$(ARDUINO_BOARD)/ld/efm32zg110f32.ld"
 
@@ -193,7 +198,7 @@ all: build_files rebuild build sizeafter
 
 build: elf hex bin
 
-build/main.cpp.o: 
+build/main.cpp.o:
 	test -d build || mkdir build
 	echo '#include "Arduino.h"' > build/main.cpp
 	cat $(TARGET) >> build/main.cpp
@@ -270,27 +275,57 @@ coff: build/main.elf
 
 .elf.sym:
 	$(NM) -n $< > $@
-############################################################
 
-#id_h := $(shell printf "%016X" 11903500002 | fold -w2 | tac | tr -d "\n")
+############################################################
 #id_l := $$(($(rand)%10000))
 
 rand := $(shell echo $$RANDOM)
-id_b := 11903500000
 
-id = $$(($(id_b)+$(rand)%10000))
-#id = 11903507540
+ifndef id
+id = $$(($(id_base)+$(rand)%10000))
+
+id_ok = $$(cat .idused | grep $(id))
+endif
 
 hex_id = $$(printf "%016X" $(id) | fold -w2 | tac | tr -d "\n")
-id_ok = $$(cat idused | grep $(id))
 
-DID=$$(xxd -g8 -p did.bin | fold -w2 | tac | tr -d "\n")
+DID=$$(xxd -g8 -p .did.bin | fold -w2 | tac | tr -d "\n")
+UUID=$$(xxd -g8 -p .uuid.bin | fold -w2 | tac | tr -d "\n")
+UBINID=$$(xxd -g8 -s8 -l8 -p .u.bin | fold -w2 | tac | tr -d "\n")
+
+ifndef fw
+fw := build/main.bin
+endif
+
+# make produce (write firmware main.bin into main flash, set a random devid and log it)
+# make produce fw=xxx.bin (write firmware xxx.bin into main flash, set a random devid and log it)
+produce: $(fw)
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FW)
+	-$(Q) echo "Generating the random DevID: $(id)"
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
+		echo "Generating the u.bin ..."; cp user.bin .u.bin;				  \
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
+	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
+	@rm -f .u.bin
+
+# same as produce
+# make go (write firmware main.bin into main flash, set a random devid and log it)
+# make go fw=xxx.bin (write firmware xxx.bin into main flash, set a random devid and log it)
+go: $(fw)
+	-$(Q) echo "Generating the random DevID: $(id)"
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
+		echo "Generating the u.bin ..."; cp user.bin .u.bin;				  \
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
+	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GO)
+	@rm -f .u.bin
 
 .u.bin:
 	-$(Q) echo $(id)
-	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> idused; \
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
 		echo "Generating the u.bin ..."; cp user.bin .u.bin;				  \
-		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; fi
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 
 upload: build/main.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
@@ -299,6 +334,7 @@ flash: build/main.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
 
 user: .u.bin
+	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
 	@rm -f .u.bin
 
@@ -322,22 +358,44 @@ eraseuser:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_ERASE_USER)
 	-$(Q) echo "Erase the 1KB user data @0x0FE0_0000"
 
-getdid:
+getid:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GET_DID)
 	@echo ""
 	@printf "The DevID is: %ld" 0x$(DID);
-	@rm -f did.bin
+	@rm -f .did.bin
+
+# same as getid
+getdid:
+	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GET_DID)
+	@echo ""
+	@printf "The DevID is: %ld" 0x$(DID);
+	@rm -f .did.bin
 
 getuuid:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GET_UUID)
 	@echo ""
-	@printf "The UUID is: %ld\r\n" 0x$(DID);
-	@echo $(DID) | tr [:lower:] [:upper:] 
-	@rm -f did.bin
+	@printf "The UUID is: %ld\r\n" 0x$(UUID);
+	@echo $(UUID) | tr [:lower:] [:upper:]
+	@rm -f .uuid.bin
 
-getid:
-	-$(Q) xxd -g1 uuid.bin | cut -d ' ' -f2-10 | tr -d [:space:] | tr [:lower:] [:upper:]
+# make setid (set random id, do not log it)
+# make setid id=xxx (set id=xxx, do not log it)
+setid:
+	@printf "Current used DevID is: %ld (0x%016X)\r\n" $(id) $(id);
+	@echo "Generating the u.bin ..."; cp -f user.bin .u.bin;				  \
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
+	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
+	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
+	@rm -f .u.bin
 
+# same as setid
+setdid:
+	@printf "Current used DevID is: %ld (0x%016X)\r\n" $(id) $(id);
+	@echo "Generating the u.bin ..."; cp -f user.bin .u.bin;				  \
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
+	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
+	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
+	@rm -f .u.bin
 
 clean:
 	$(RM) build/main.hex build/main.eep build/main.cof build/main.elf \
