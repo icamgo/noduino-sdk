@@ -60,6 +60,6 @@ void init(void)
 	if (SysTick_Config(SystemCoreClockGet() / 1000)){
 	     Fatal_Handler();             // never return;
 	}
+
 	CMU_ClockEnable(cmuClock_GPIO, true);
 }
-

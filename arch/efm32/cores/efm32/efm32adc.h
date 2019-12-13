@@ -117,12 +117,12 @@ class ADC {
 	float readVbat(void) {
       int ref = getReference();
       int res = getResolution();
-      reference(adcRef1V25);   /*must be 1.25V*/
-      resolution(adcRes12Bit); /*must be 12bit*/
+      reference(adcRef2V5);
+      resolution(adcRes12Bit);
       int rtn = analogReadChannel(adcSingleInpVDDDiv3, false);
       reference(ref);     /*resave*/
       resolution((ADC_Res_TypeDef)res);
-      return rtn / 1000.0;
+      return (2.5 * rtn * 3.0 / 4096.0);
 	}
 
     float temperatureCelsius(void) {
