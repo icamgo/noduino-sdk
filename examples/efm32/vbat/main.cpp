@@ -100,11 +100,11 @@ void loop()
 	Serial.print("Read Vbat: ");
 
 	float temp = adc.readVbat();
-	Serial.print(temp);
+	Serial.print(temp, 3);
 	Serial.println(" V");
 
 	Serial.print("get_vbat(): ");
-	Serial.print(get_vbat());
+	Serial.print(get_vbat(), 3);
 	Serial.println(" V");
 
 	delay(5000);
