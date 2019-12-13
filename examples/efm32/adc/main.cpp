@@ -21,7 +21,7 @@ void setup() {
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
 
-	adc.reference(INTERNAL3V3); /* setup ADC reference INTERNAL1V25/INTERNAL2V5/INTERNAL3V3*/
+	adc.reference(adcRefVDD);
 }
 
 void loop() {
@@ -32,6 +32,8 @@ void loop() {
 	Serial.println(adc.read(A6));
 	Serial.print("ADC7 = ");
 	Serial.println(adc.read(A7));
+	Serial.print("Vbat = ");
+	Serial.println(adc.readVbat(), 3);
 
 	delay(2000);  // wait for 2 seconds
 }
