@@ -2,16 +2,10 @@
 # Copyright (c) 2019 MaiKe Labs
 #
 # This makefile allows you to build sketches from the command line
-# without the Arduino environment (or Java).
 #
-#  1. Set the line containing "MCU" to match your board's processor.
-#     Older one's are atmega8 based, newer ones like Arduino Mini, Bluetooth
-#     or Diecimila have the atmega168.  If you're using a LilyPad Arduino,
-#     change F_CPU to 8000000.
+#  1. Type "make" to compile/verify your program.
 #
-#  2. Type "make" to compile/verify your program.
-#
-#  3. Type "make flash" to upload your program into your board
+#  2. Type "make flash" to upload your program into your board
 #
 
 TARGET		= main.cpp
@@ -30,8 +24,7 @@ VERSION=187
 
 ifeq ($(OS),Windows_NT)
 TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/arm-none-eabi-2017q4/bin
-#OPENOCD = $(SDK_BASE)/toolchain/openocd/bin/openocd
-OPENOCD = $(SDK_BASE)/toolchain/openocd-nt/bin/openocd
+OPENOCD = $(SDK_BASE)/toolchain/openocd/bin/openocd
 PORT = COM7
 else
 TOOLCHAIN_DIR = /usr/share/arduino
@@ -43,26 +36,8 @@ TOOLCHAIN_DIR = /usr/share/arduino
 	endif
 endif
 
-V ?= $(VERBOSE)
-ifeq ("$(V)","1")
-Q :=
-vecho := @true
-else
-Q := @
-vecho := @echo
-endif
-
-#OPENOCD_CFG	:= $(ARDUINO_BOARD)/efm32zg-openocd.cfg
 OPENOCD_CFG = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
-
-OPENOCD_USER_DATA = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
-
-OPENOCD_DUMP_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; flash probe 0; flash read_bank 0 flash.bin; reset; shutdown"
-
-OPENOCD_DUMP_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image user.bin 0x0FE00000 0x400; reset; shutdown"
-
-OPENOCD_GET_UUID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image uuid.bin 0x0FE081F0 0x8; reset; shutdown"
-
+OPENOCD_RESET = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset; shutdown"
 
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
 CXX	:= $(TOOLCHAIN_DIR)/arm-none-eabi-g++
@@ -90,7 +65,8 @@ $(ARDUINO_CORES)/efm32/efm32pwm.c						\
 $(ARDUINO_CORES)/efm32/efm32init.c						\
 $(ARDUINO_CORES)/efm32/efm32gpio.c						\
 $(ARDUINO_CORES)/efm32/core_callback.c					\
-$(ARDUINO_CORES)/avr/dtostrf.c
+$(ARDUINO_CORES)/avr/dtostrf.c							\
+$(LIB_DIR)/rtcdrv/rtcdriver.c
 
 #$(ARDUINO_CORES)/efm32/efm32dac.c						\
 
@@ -105,11 +81,7 @@ $(ARDUINO_CORES)/WString.cpp 							\
 $(ARDUINO_CORES)/efm32/HardwareSerial.cpp				\
 $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
-$(ARDUINO_CORES)/main.cpp								\
-
-#$(LIB_DIR)/SPI/src/SPI.cpp							\
-$(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
-
+$(ARDUINO_CORES)/main.cpp
 
 CXX_APP = main.cpp
 MODULES = $(C_MODULES) $(CXX_MODULES)
@@ -143,28 +115,25 @@ CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 	-fdata-sections -nostdlib --param max-inline-insns-single=500 -Dprintf=iprintf
 
-CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mfp16-format=ieee -mthumb -MMD
+CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD -mfp16-format=ieee
 
-CFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
+DEFS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
 	-DARM_MATH_CM0PLUS 													\
 	-DF_CPU=$(F_CPU)													\
 	-DUSE_HFRCO															\
-	-DUSE_LEUART0														\
+	-DUSE_LEUART0=1														\
+	-DUSE_LFBLFRCO=1													\
 	-DEMDRV_RTCDRV_USE_LFRCO											\
 	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 			\
 	-DARDUINO_ARCH_EFM32 -DMENU_SERIAL=SerialLEUART0 -DARDUINO=$(VERSION) 
+
+
 
 CXXFLAGS := -g -Os -w -fno-exceptions -std=gnu++14 -fpermissive			\
 	-ffunction-sections -fdata-sections -nostdlib -fno-threadsafe-statics	\
 	--param max-inline-insns-single=500 -fno-rtti -Dprintf=iprintf -MMD 
 
-CXXFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mfp16-format=ieee -mthumb -MMD
-
-
-CXXFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32			\
-	-DARM_MATH_CM0PLUS -DF_CPU=$(F_CPU) -DUSE_HFRCO		\
-	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC			\
-	-DARDUINO_ARCH_EFM32 -DMENU_SERIAL=SerialLEUART0 -DARDUINO=$(VERSION) 
+CXXFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD -mfp16-format=ieee
 
 ASFLAGS = 
 LDFLAGS := -mcpu=$(MCU) -mthumb -Os -Wl,--cref					\
@@ -185,8 +154,8 @@ OBJ_MODULES = $(C_MODULES:.c=.o) $(CXX_MODULES:.cpp=.o)
 
 LST = $(ASRC:.S=.lst) $(CXXSRC:.cpp=.lst) $(SRC:.c=.lst)
 
-ALL_CFLAGS = $(CFLAGS) $(CINCS)
-ALL_CXXFLAGS = $(CXXFLAGS) $(CXXINCS)
+ALL_CFLAGS = $(CFLAGS) $(DEFS) $(CINCS)
+ALL_CXXFLAGS = $(CXXFLAGS) $(DEFS) $(CXXINCS)
 
 all: build_files rebuild build sizeafter
 
@@ -278,25 +247,8 @@ upload: build/main.bin
 flash: build/main.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
 
-dump:
-	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_DUMP_MAIN)
-	-$(Q) echo "The whole 32KB flash is dumped into flash.bin"
-
-dumpuser:
-	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_DUMP_USER)
-	-$(Q) echo "Dump the 1KB user data into user.bin"
-
-eeprom: eeprom.bin
-	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
-
-getuuid:
-	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GET_UUID)
-	-$(Q) echo "The MCU UUID is got into uuid.bin. The MCU UUID is:"
-	-$(Q) xxd -g1 uuid.bin | cut -d ' ' -f2-10 | tr -d [:space:] | tr [:lower:] [:upper:]
-
-getid:
-	-$(Q) xxd -g1 uuid.bin | cut -d ' ' -f2-10 | tr -d [:space:] | tr [:lower:] [:upper:]
-
+reset:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_RESET)
 
 clean:
 	$(RM) build/main.hex build/main.eep build/main.cof build/main.elf \

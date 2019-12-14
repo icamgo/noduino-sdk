@@ -36,9 +36,8 @@ TOOLCHAIN_DIR = /usr/share/arduino
 	endif
 endif
 
-#OPENOCD_CFG	:= $(ARDUINO_BOARD)/efm32zg-openocd.cfg
 OPENOCD_CFG = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
-
+OPENOCD_RESET = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset; shutdown"
 
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
 CXX	:= $(TOOLCHAIN_DIR)/arm-none-eabi-g++
@@ -82,13 +81,7 @@ $(ARDUINO_CORES)/WString.cpp 							\
 $(ARDUINO_CORES)/efm32/HardwareSerial.cpp				\
 $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
-$(LIB_DIR)/softi2c/softi2c.cpp							\
-$(LIB_DIR)/pc10/pc10.cpp								\
 $(ARDUINO_CORES)/main.cpp
-
-#$(LIB_DIR)/SPI/src/SPI.cpp							\
-#$(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
-
 
 CXX_APP = main.cpp
 MODULES = $(C_MODULES) $(CXX_MODULES)
@@ -124,26 +117,23 @@ CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 
 CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD
 
-CFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
+DEFS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
 	-DARM_MATH_CM0PLUS 													\
 	-DF_CPU=$(F_CPU)													\
 	-DUSE_HFRCO															\
-	-DUSE_LEUART0														\
+	-DUSE_LEUART0=1														\
+	-DUSE_LFBLFRCO=1													\
 	-DEMDRV_RTCDRV_USE_LFRCO											\
 	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 			\
 	-DARDUINO_ARCH_EFM32 -DMENU_SERIAL=SerialLEUART0 -DARDUINO=$(VERSION) 
+
+
 
 CXXFLAGS := -g -Os -w -fno-exceptions -std=gnu++14 -fpermissive			\
 	-ffunction-sections -fdata-sections -nostdlib -fno-threadsafe-statics	\
 	--param max-inline-insns-single=500 -fno-rtti -Dprintf=iprintf -MMD 
 
 CXXFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mthumb -MMD
-
-
-CXXFLAGS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32			\
-	-DARM_MATH_CM0PLUS -DF_CPU=$(F_CPU) -DUSE_HFRCO		\
-	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC			\
-	-DARDUINO_ARCH_EFM32 -DMENU_SERIAL=SerialLEUART0 -DARDUINO=$(VERSION) 
 
 ASFLAGS = 
 LDFLAGS := -mcpu=$(MCU) -mthumb -Os -Wl,--cref					\
@@ -164,8 +154,8 @@ OBJ_MODULES = $(C_MODULES:.c=.o) $(CXX_MODULES:.cpp=.o)
 
 LST = $(ASRC:.S=.lst) $(CXXSRC:.cpp=.lst) $(SRC:.c=.lst)
 
-ALL_CFLAGS = $(CFLAGS) $(CINCS)
-ALL_CXXFLAGS = $(CXXFLAGS) $(CXXINCS)
+ALL_CFLAGS = $(CFLAGS) $(DEFS) $(CINCS)
+ALL_CXXFLAGS = $(CXXFLAGS) $(DEFS) $(CXXINCS)
 
 all: build_files rebuild build sizeafter
 
@@ -252,15 +242,13 @@ coff: build/main.elf
 
 
 upload: build/main.bin
-	#$(OPENOCD) -f interface/stlink.cfg -f aet1-openocd.cfg
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
 
 flash: build/main.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
 
-eeprom: eeprom.bin
-	$(ARMDUDE) $(ARMDUDE_FLAGS) $(ARMDUDE_WRITE_EEPROM)
-
+reset:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_RESET)
 
 clean:
 	$(RM) build/main.hex build/main.eep build/main.cof build/main.elf \

@@ -117,7 +117,7 @@ CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/tempdrv					\
-			-I . -I ../aeco-th							
+			-I .
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 	-fdata-sections -nostdlib --param max-inline-insns-single=500 #-Dprintf=iprintf
