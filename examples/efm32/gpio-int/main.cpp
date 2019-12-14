@@ -22,13 +22,40 @@
 
 #include "Arduino.h"
 
-int c = 0;
+int c = -1;
 
-void handle_int()
+void handle_d0_int()
 {
-	c++;
+	c = 0;
+	// D0(PA0/P1) int
+}
 
-	Serial.println("Interrupt happen...");
+void handle_d11_int()
+{
+	// PT02
+	c = 11;
+	// D11(PD7/P14) int
+}
+
+void handle_d16_int()
+{
+	// RES
+	c = 16;
+	// D16(PF02/P21) int
+}
+
+void handle_d12_int()
+{
+	// SDA
+	c = 12;
+	// D12(PE12/P23) int
+}
+
+void handle_d13_int()
+{
+	// SCL
+	c = 13;
+	// D13(PE13/P24) int
 }
 
 void setup()
@@ -37,7 +64,19 @@ void setup()
 	Serial.begin(115200);
 
 	pinMode(0, INPUT);
-	attachInterrupt(0, handle_int, FALLING);
+	attachInterrupt(0, handle_d0_int, FALLING);
+
+	pinMode(11, INPUT);
+	attachInterrupt(11, handle_d11_int, FALLING);
+
+	pinMode(16, INPUT);
+	attachInterrupt(16, handle_d16_int, FALLING);
+
+	pinMode(12, INPUT);
+	attachInterrupt(12, handle_d12_int, FALLING);
+
+	pinMode(13, INPUT);
+	attachInterrupt(13, handle_d13_int, FALLING);
 
 	Serial.println("Interrupt testing start...");
 }
@@ -47,5 +86,5 @@ void loop()
 	Serial.print("Main loooop, c = ");
 	Serial.println(c);
 
-	delay(5000);
+	delay(2000);
 }

@@ -38,6 +38,7 @@ endif
 
 #OPENOCD_CFG	:= $(ARDUINO_BOARD)/efm32zg-openocd.cfg
 OPENOCD_CFG = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
+OPENOCD_RESET = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset; shutdown"
 
 
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
@@ -67,7 +68,7 @@ $(ARDUINO_CORES)/efm32/efm32init.c						\
 $(ARDUINO_CORES)/efm32/efm32gpio.c						\
 $(ARDUINO_CORES)/efm32/core_callback.c					\
 $(ARDUINO_CORES)/avr/dtostrf.c							\
-$(LIB_DIR)/rtcdrv/rtcdriver.c
+
 
 #$(ARDUINO_CORES)/efm32/efm32dac.c						\
 
@@ -80,12 +81,12 @@ $(ARDUINO_CORES)/Stream.cpp 							\
 $(ARDUINO_CORES)/WMath.cpp 								\
 $(ARDUINO_CORES)/WString.cpp 							\
 $(ARDUINO_CORES)/efm32/HardwareSerial.cpp				\
-$(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
 $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp
 
 #$(LIB_DIR)/SPI/src/SPI.cpp							\
+#$(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
 
 
 CXX_APP = main.cpp
@@ -106,7 +107,7 @@ CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/sx127x					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
-			-I $(LIB_DIR)/rtcdrv					\
+			-I $(LIB_DIR)/tempdrv					\
 			-I .									
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
@@ -114,7 +115,7 @@ CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/sx127x					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
-			-I $(LIB_DIR)/rtcdrv					\
+			-I $(LIB_DIR)/tempdrv					\
 			-I . -I ../aeco-th							
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
@@ -255,6 +256,9 @@ upload: build/main.bin
 
 flash: build/main.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_CFG)
+
+reset:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_RESET)
 
 eeprom: eeprom.bin
 	$(ARMDUDE) $(ARMDUDE_FLAGS) $(ARMDUDE_WRITE_EEPROM)
