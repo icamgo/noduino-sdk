@@ -73,26 +73,26 @@ extern const Pin2PortMapArray g_Pin2PortMapArray[]=
     {gpioPortD, GPIO_PIN_7, _ADC_SINGLECTRL_INPUTSEL_CH7,TIMER1,0x41},  /* D09/PD7,ADC0_CH7 LETIM0_OUT1 #0 I2C0_SCL #1*/
 #else
     {gpioPortC, GPIO_PIN_14, NO_ADC,                     NO_PWM,NO_PWM},  /* D08/PC14,ACMP1_CH6,TIM0_CDTI1 #1/3/TIM1_CC1 #0/PCNT0_S1IN #0*/
-    {gpioPortC, GPIO_PIN_15, NO_ADC,                     NO_PWM,NO_PWM},  /* D08/PC15,ACMP1_CH7,TIM0_CDTI2 #1/3/TIM1_CC2 #0/DBG_SWO #1*/
-    {gpioPortD, GPIO_PIN_6, _ADC_SINGLECTRL_INPUTSEL_CH6,NO_PWM,NO_PWM},  /* D09/PD6,ADC0_CH6 LETIM0_OUT0 #0 I2C0_SDA #1,*/
-    {gpioPortD, GPIO_PIN_7, _ADC_SINGLECTRL_INPUTSEL_CH7,NO_PWM,NO_PWM},  /* D09/PD7,ADC0_CH7 LETIM0_OUT1 #0 I2C0_SCL #1*/
+    {gpioPortC, GPIO_PIN_15, NO_ADC,                     NO_PWM,NO_PWM},  /* D09/PC15,ACMP1_CH7,TIM0_CDTI2 #1/3/TIM1_CC2 #0/DBG_SWO #1*/
+    {gpioPortD, GPIO_PIN_6, _ADC_SINGLECTRL_INPUTSEL_CH6,NO_PWM,NO_PWM},  /* D10/PD6,ADC0_CH6 LETIM0_OUT0 #0 I2C0_SDA #1,*/
+    {gpioPortD, GPIO_PIN_7, _ADC_SINGLECTRL_INPUTSEL_CH7,NO_PWM,NO_PWM},  /* D11/PD7,ADC0_CH7 LETIM0_OUT1 #0 I2C0_SCL #1*/
 #endif
 
 #if USE_TIMER1_PWM>0    
-    {gpioPortE, GPIO_PIN_12, NO_ADC,                     TIMER1,0x12},    /* D10/PE12,TIM1_CC2 #1 US0_CLK #0 */
+    {gpioPortE, GPIO_PIN_12, NO_ADC,                     TIMER1,0x12},    /* D12/PE12,TIM1_CC2 #1 US0_CLK #0 */
 #else
-    {gpioPortE, GPIO_PIN_12, NO_ADC,                     NO_PWM,NO_PWM},  /* D10/PE12,TIM1_CC2 #1 US0_CLK #0 BO*/
+    {gpioPortE, GPIO_PIN_12, NO_ADC,                     NO_PWM,NO_PWM},  /* D12/PE12,TIM1_CC2 #1 US0_CLK #0 BO*/
 #endif
-    {gpioPortE, GPIO_PIN_13, NO_ADC,                     NO_PWM,NO_PWM},  /* D11/PE13,ACMP0_O  #0 US0_CS #0 */
+    {gpioPortE, GPIO_PIN_13, NO_ADC,                     NO_PWM,NO_PWM},  /* D13/PE13,ACMP0_O  #0 US0_CS #0 */
 
 #if USE_TIMER1_PWM>0    
-    {gpioPortF, GPIO_PIN_0,  NO_ADC,                     TIMER0,0x50  },  /* D12/PF0,TIM0_CC0 #5 DBG_SWCLK #0 */
-    {gpioPortF, GPIO_PIN_1,  NO_ADC,                     TIMER0,0x51  },  /* D13/PF1,TIM0_CC1 #5 DBG_SWDIO #0 */
-    {gpioPortF, GPIO_PIN_2,  NO_ADC,                     TIMER0,0x52  },  /* D14/PF2,TIM0_CC2 #5 */
+    {gpioPortF, GPIO_PIN_0,  NO_ADC,                     TIMER0,0x50  },  /* D14/PF0,TIM0_CC0 #5 DBG_SWCLK #0 */
+    {gpioPortF, GPIO_PIN_1,  NO_ADC,                     TIMER0,0x51  },  /* D15/PF1,TIM0_CC1 #5 DBG_SWDIO #0 */
+    {gpioPortF, GPIO_PIN_2,  NO_ADC,                     TIMER0,0x52  },  /* D16/PF2,TIM0_CC2 #5 */
 #else
-    {gpioPortF, GPIO_PIN_0,  NO_ADC,                     NO_PWM,NO_PWM},  /* D12/PF0,TIM0_CC0 #5 DBG_SWCLK #0 */
-    {gpioPortF, GPIO_PIN_1,  NO_ADC,                     NO_PWM,NO_PWM},  /* D13/PF1,TIM0_CC1 #5 DBG_SWDIO #0 */
-    {gpioPortF, GPIO_PIN_2,  NO_ADC,                     NO_PWM,NO_PWM},  /* D14/PF2,TIM0_CC2 #5 */
+    {gpioPortF, GPIO_PIN_0,  NO_ADC,                     NO_PWM,NO_PWM},  /* D14/PF0,TIM0_CC0 #5 DBG_SWCLK #0 */
+    {gpioPortF, GPIO_PIN_1,  NO_ADC,                     NO_PWM,NO_PWM},  /* D15/PF1,TIM0_CC1 #5 DBG_SWDIO #0 */
+    {gpioPortF, GPIO_PIN_2,  NO_ADC,                     NO_PWM,NO_PWM},  /* D16/PF2,TIM0_CC2 #5 */
 #endif
 };
 
