@@ -26,10 +26,10 @@
 
 #include "LowPower.h"
 
-#define	DEBUG					1
+#define	DEBUG					2
 //#define DEBUG_HEX_PKT			1
 
-#define ENABLE_SSD1306			1
+//#define ENABLE_SSD1306			1
 
 // use the dynamic ACK feature of our modified SX1272 lib
 //#define GW_AUTO_ACK
@@ -39,7 +39,7 @@
 #define RECEIVE_ALL
 
 #define TXRX_CH				CH_01_472
-#define RX_TIME				300
+#define RX_TIME				330
 
 uint8_t loraMode = 12;
 
