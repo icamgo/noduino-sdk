@@ -29,19 +29,22 @@
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 20;		/* 20s */
+static uint32_t sample_period = 8;		/* 20s */
 
 #define	TX_TESTING				1
 
 // 1, 2, 3 <----> A, B, C
 #define DEV_ID					4
 
+// PIN17_PC14_D8
+#define	PWR_CTRL_PIN			8
+
 static uint8_t need_push = 0;
 
 #define ENABLE_CAD				1
 
 #define DEST_ADDR				1
-#define	TX_TIME					5600		// 1000ms
+#define	TX_TIME					1800		// 1000ms
 
 #ifdef CONFIG_V0
 #define TXRX_CH				CH_01_472
@@ -116,12 +119,12 @@ char *ftoa(char *a, double f, int precision)
 
 void power_on_dev()
 {
-	digitalWrite(10, HIGH);
+	digitalWrite(PWR_CTRL_PIN, HIGH);
 }
 
 void power_off_dev()
 {
-	digitalWrite(10, LOW);
+	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
 #ifdef ENABLE_SSD1306
@@ -207,7 +210,7 @@ void setup()
 #endif
 
 	// dev power ctrl
-	pinMode(10, OUTPUT);
+	pinMode(PWR_CTRL_PIN, OUTPUT);
 
 	power_off_dev();
 
