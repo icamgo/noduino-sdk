@@ -19,10 +19,9 @@ void setup() {
 	digitalWrite(8, HIGH);
 
 	Serial.setRouteLoc(1);
-	Serial.begin(9600);
+	Serial.begin(115200);
 
-	adc.reference(adcRef2V5);
-	//adc.reference(adcRefVDD);
+	adc.reference(adcRef1V25);
 }
 
 void loop() {
@@ -30,9 +29,6 @@ void loop() {
 	Serial.println("Energy monitor testing...");
 	Serial.print("Clock Freq = ");
 	Serial.println(CMU_ClockFreqGet(cmuClock_CORE));
-
-	Serial.print("ADC differential ch6 ch7 read:");
-	Serial.println(adc.read(A6, A7));
 #if 0
 	Serial.print("ADC6 = ");
 	Serial.println(adc.read(A6));
@@ -41,6 +37,13 @@ void loop() {
 	Serial.print("Vbat = ");
 	Serial.println(adc.readVbat(), 3);
 #endif
+
+	int ad = adc.read(A6, A7);
+	Serial.print("ADC differential ch6 ch7 read:");
+	Serial.println(ad);
+
+	Serial.print("The consumption current (mA): ");
+	Serial.println(1250.0*ad/2.0/2048.0/0.7, 2);
 
 	delay(2000);  // wait for 2 seconds
 }
