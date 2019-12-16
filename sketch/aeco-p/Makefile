@@ -72,7 +72,7 @@ OPENOCD_DUMP_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; in
 OPENOCD_GET_DID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image .did.bin 0x0FE00008 0x8; reset; shutdown"
 OPENOCD_GET_UUID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image .uuid.bin 0x0FE081F0 0x8; reset; shutdown"
 
-OPENOCD_GO = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
+OPENOCD_GO = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
 
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
 CXX	:= $(TOOLCHAIN_DIR)/arm-none-eabi-g++
@@ -120,12 +120,7 @@ $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/softspi/softspi.cpp							\
 $(LIB_DIR)/pc10/pc10.cpp								\
-$(LIB_DIR)/sx127x/sx1272.cpp							\
-./vbat.cpp
-
-#../aeco-th/sx1272.cpp
-#$(LIB_DIR)/SPI/src/SPI.cpp							\
-$(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
+$(LIB_DIR)/sx127x/sx1272.cpp
 
 
 CXX_APP = main.cpp
@@ -312,14 +307,15 @@ produce: $(fw)
 # same as produce
 # make go (write firmware main.bin into main flash, set a random devid and log it)
 # make go fw=xxx.bin (write firmware xxx.bin into main flash, set a random devid and log it)
-go: $(fw)
-	-$(Q) echo "Generating the random DevID: $(id)"
-	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
-		echo "Generating the u.bin ..."; cp user.bin .u.bin;				  \
-		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
+
+go: $(fw) .u.bin
 	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
-	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GO)
-	@rm -f .u.bin
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GO) && rm -f .u.bin
+
+#$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER) && rm -f .u.bin
+#$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FW)
+
+
 
 .u.bin:
 	-$(Q) echo $(id)

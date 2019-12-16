@@ -18,7 +18,6 @@
 
 #include "softspi.h"
 #include "sx1272.h"
-#include "vbat.h"
 #include "softi2c.h"
 #include "pc10.h"
 
@@ -40,7 +39,7 @@ static uint8_t need_push = 0;
 //#define ENABLE_CAD				1
 
 #define DEST_ADDR				1
-#define	TX_TIME					80		// 1000ms
+#define	TX_TIME					100		// 1000ms
 
 #ifdef CONFIG_V0
 #define TXRX_CH				CH_01_472
@@ -51,7 +50,7 @@ static uint8_t need_push = 0;
 #define node_addr				110
 #endif
 
-#define MAX_DBM				14	
+#define MAX_DBM				20	
 
 //#define WITH_ACK
 //#define	DEBUG					1
@@ -192,8 +191,6 @@ void setup()
 
 void qsetup()
 {
-	vbat_adc_init();
-
 	power_on_dev();		// turn on device power
 
 #ifdef CONFIG_V0
@@ -247,7 +244,7 @@ void push_data()
 	//press = get_pressure();		// hPa (mbar)
 	press = 0.0;		// hPa (mbar)
 
-	vbat = get_vbat();
+	vbat = adc.readVbat();
 
 #ifdef CONFIG_V0
 	uint8_t *pkt = message;

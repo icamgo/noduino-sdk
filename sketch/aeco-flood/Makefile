@@ -113,12 +113,7 @@ $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/softspi/softspi.cpp							\
 $(LIB_DIR)/pc10/pc10.cpp								\
-$(LIB_DIR)/sx127x/sx1272.cpp							\
-./vbat.cpp
-
-#../aeco-th/sx1272.cpp
-#$(LIB_DIR)/SPI/src/SPI.cpp							\
-$(ARDUINO_CORES)/efm32/avr_emulation.cpp				\
+$(LIB_DIR)/sx127x/sx1272.cpp
 
 
 CXX_APP = main.cpp

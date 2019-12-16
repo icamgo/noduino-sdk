@@ -18,7 +18,6 @@
 
 #include "softspi.h"
 #include "sx1272.h"
-#include "vbat.h"
 #include "softi2c.h"
 #include "pc10.h"
 //#include "U8g2lib.h"
@@ -228,8 +227,6 @@ void setup()
 
 void qsetup()
 {
-	vbat_adc_init();
-
 	power_on_dev();		// turn on device power
 
 #ifdef CONFIG_V0
@@ -291,7 +288,7 @@ void push_data()
 		cur_pres = get_pressure();		// hPa (mbar)
 	}
 
-	vbat = get_vbat();
+	vbat = adc.readVbat();
 
 #ifdef CONFIG_V0
 	uint8_t *pkt = message;
