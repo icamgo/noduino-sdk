@@ -27,6 +27,9 @@
 
 //#define ENABLE_SSD1306			1
 
+#define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
+#define	KEY_PIN					0		/* PIN01_PA00_D0 */
+
 // use the dynamic ACK feature of our modified SX1272 lib
 //#define GW_AUTO_ACK
 
@@ -468,12 +471,12 @@ void beep(int c, int ontime)
 
 void power_on_dev()
 {
-	digitalWrite(8, HIGH);
+	digitalWrite(PWR_CTRL_PIN, HIGH);
 }
 
 void power_off_dev()
 {
-	digitalWrite(8, LOW);
+	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
 void setup()
@@ -481,8 +484,8 @@ void setup()
 	int e;
 
 	// Key connected to D0
-	pinMode(0, INPUT);
-	attachInterrupt(0, change_omode, FALLING);
+	pinMode(KEY_PIN, INPUT);
+	attachInterrupt(KEY_PIN, change_omode, FALLING);
 
 #if 0
 	// beep
@@ -490,17 +493,10 @@ void setup()
 	digitalWrite(7, LOW);
 #endif
 
-	// turn on the device power
-#ifdef ENABLE_SSD1306
-	// open-plant use the D6 to ctrl dev pwr
-	pinMode(6, OUTPUT);
-	digitalWrite(6, HIGH);
-#else
 	// dev power ctrl
-	pinMode(8, OUTPUT);
+	pinMode(PWR_CTRL_PIN, OUTPUT);
 
 	power_on_dev();
-#endif
 
 #ifdef ENABLE_SSD1306
 	u8g2.begin();
@@ -535,7 +531,7 @@ void loop(void)
 	}
 #endif
 
-	if (digitalRead(2) == 0) {
+	if (digitalRead(KEY_PIN) == 0) {
 		// x 200ms
 		key_time++;
 	} else {
@@ -562,8 +558,9 @@ void loop(void)
 		digitalWrite(13, LOW);
 
 		// dev power off
-		//digitalWrite(6, LOW);
 		power_off_dev();
+
+		EMU_EnterEM2(true);
 
 		setup();
 	}
