@@ -74,6 +74,8 @@ OPENOCD_GET_UUID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; ini
 
 OPENOCD_GO = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
 
+OPENOCD_RESET = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset; shutdown"
+
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
 CXX	:= $(TOOLCHAIN_DIR)/arm-none-eabi-g++
 LD	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
@@ -392,6 +394,9 @@ setdid:
 	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
 	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
 	@rm -f .u.bin
+
+reset:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_RESET)
 
 clean:
 	$(RM) build/main.hex build/main.eep build/main.cof build/main.elf \

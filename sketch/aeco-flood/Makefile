@@ -67,6 +67,8 @@ OPENOCD_DUMP_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; in
 OPENOCD_GET_UUID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image uuid.bin 0x0FE081F0 0x8; reset; shutdown"
 
 
+OPENOCD_RESET = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset; shutdown"
+
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
 CXX	:= $(TOOLCHAIN_DIR)/arm-none-eabi-g++
 LD	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
@@ -291,6 +293,9 @@ getuuid:
 getid:
 	-$(Q) xxd -g1 uuid.bin | cut -d ' ' -f2-10 | tr -d [:space:] | tr [:lower:] [:upper:]
 
+
+reset:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_RESET)
 
 clean:
 	$(RM) build/main.hex build/main.eep build/main.cof build/main.elf \
