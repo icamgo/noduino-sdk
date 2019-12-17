@@ -501,7 +501,7 @@ void setup()
 	// dev power ctrl
 	pinMode(8, OUTPUT);
 
-	power_off_dev();
+	power_on_dev();
 #endif
 
 #ifdef ENABLE_SSD1306
