@@ -480,13 +480,11 @@ void setup()
 {
 	int e;
 
-#if 0
-	// Key connected to D2
-	pinMode(2, INPUT_PULLUP);
-
-	// attach interrupt in D2
+	// Key connected to D0
+	pinMode(0, INPUT);
 	attachInterrupt(0, change_omode, FALLING);
 
+#if 0
 	// beep
 	pinMode(7, OUTPUT);
 	digitalWrite(7, LOW);
