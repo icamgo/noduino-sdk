@@ -29,6 +29,7 @@
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
+#define	BEEP_PIN				10		/* PIN13_PD06_D10 */
 
 // use the dynamic ACK feature of our modified SX1272 lib
 //#define GW_AUTO_ACK
@@ -38,7 +39,7 @@
 #define RECEIVE_ALL
 
 #define TXRX_CH				CH_01_472
-#define RX_TIME				300
+#define RX_TIME				330
 
 uint8_t loraMode = 12;
 
@@ -453,19 +454,19 @@ void beep(int c, int ontime)
 {
 	switch (c) {
 		case 3:
-			digitalWrite(7, HIGH);
+			digitalWrite(BEEP_PIN, HIGH);
 			delay(ontime);
-			digitalWrite(7, LOW);
+			digitalWrite(BEEP_PIN, LOW);
 			delay(40);
 		case 2:
-			digitalWrite(7, HIGH);
+			digitalWrite(BEEP_PIN, HIGH);
 			delay(ontime);
-			digitalWrite(7, LOW);
+			digitalWrite(BEEP_PIN, LOW);
 			delay(40);
 		case 1:
-			digitalWrite(7, HIGH);
+			digitalWrite(BEEP_PIN, HIGH);
 			delay(ontime);
-			digitalWrite(7, LOW);
+			digitalWrite(BEEP_PIN, LOW);
 	}
 }
 
@@ -487,11 +488,9 @@ void setup()
 	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, change_omode, FALLING);
 
-#if 0
 	// beep
-	pinMode(7, OUTPUT);
-	digitalWrite(7, LOW);
-#endif
+	pinMode(BEEP_PIN, OUTPUT);
+	digitalWrite(BEEP_PIN, LOW);
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
