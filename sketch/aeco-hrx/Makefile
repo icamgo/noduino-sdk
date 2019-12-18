@@ -24,7 +24,7 @@ ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 #ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
-DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
+DEFS := -DCONFIG_V0 -DUSE_SOFTSPI -DUSE_SOFTI2C
 #DEFS = -DUSE_SOFTSPI
 
 MCU = cortex-m0plus
@@ -103,6 +103,43 @@ $(ARDUINO_CORES)/efm32/efm32init.c						\
 $(ARDUINO_CORES)/efm32/efm32gpio.c						\
 $(ARDUINO_CORES)/efm32/core_callback.c					\
 $(ARDUINO_CORES)/avr/dtostrf.c							\
+$(LIB_DIR)/U8g2/src/clib/u8g2_bitmap.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_box.c						\
+$(LIB_DIR)/U8g2/src/clib/u8g2_buffer.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_circle.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_cleardisplay.c			\
+$(LIB_DIR)/U8g2/src/clib/u8g2_d_memory.c				\
+$(LIB_DIR)/U8g2/src/clib/u8g2_d_setup.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_font.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_fonts.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_hvline.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_input_value.c				\
+$(LIB_DIR)/U8g2/src/clib/u8g2_intersection.c			\
+$(LIB_DIR)/U8g2/src/clib/u8g2_kerning.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_line.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_ll_hvline.c				\
+$(LIB_DIR)/U8g2/src/clib/u8g2_message.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_polygon.c					\
+$(LIB_DIR)/U8g2/src/clib/u8g2_selection_list.c			\
+$(LIB_DIR)/U8g2/src/clib/u8g2_setup.c					\
+$(LIB_DIR)/U8g2/src/clib/u8log.c						\
+$(LIB_DIR)/U8g2/src/clib/u8log_u8g2.c					\
+$(LIB_DIR)/U8g2/src/clib/u8log_u8x8.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_8x8.c						\
+$(LIB_DIR)/U8g2/src/clib/u8x8_byte.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_cad.c						\
+$(LIB_DIR)/U8g2/src/clib/u8x8_d_ssd1306_128x32.c		\
+$(LIB_DIR)/U8g2/src/clib/u8x8_d_ssd1306_128x64_noname.c	\
+$(LIB_DIR)/U8g2/src/clib/u8x8_debounce.c				\
+$(LIB_DIR)/U8g2/src/clib/u8x8_display.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_gpio.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_input_value.c				\
+$(LIB_DIR)/U8g2/src/clib/u8x8_message.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_selection_list.c			\
+$(LIB_DIR)/U8g2/src/clib/u8x8_setup.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_string.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_u16toa.c					\
+$(LIB_DIR)/U8g2/src/clib/u8x8_u8toa.c					\
 $(LIB_DIR)/rtcdrv/rtcdriver.c
 
 #$(ARDUINO_CORES)/efm32/efm32dac.c						\
@@ -122,6 +159,7 @@ $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/softspi/softspi.cpp							\
 $(LIB_DIR)/sx127x/sx1272.cpp							\
+$(LIB_DIR)/U8g2/src/U8x8lib.cpp							\
 
 CXX_APP = main.cpp
 MODULES = $(C_MODULES) $(CXX_MODULES)

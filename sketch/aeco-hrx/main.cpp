@@ -25,6 +25,8 @@
 #define	DEBUG					2
 //#define DEBUG_HEX_PKT			1
 
+#define ENABLE_OLED					1
+#define ENABLE_SH1106				1
 //#define ENABLE_SSD1306			1
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
@@ -96,11 +98,22 @@ int key_time = 0;
 
 #endif
 
-#ifdef ENABLE_SSD1306
+#ifdef ENABLE_OLED
 #include "U8g2lib.h"
 #include "logo.h"
 
+#ifdef ENABLE_SSD1306
 U8G2_SSD1306_128X32_UNIVISION_1_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
+#endif
+
+#ifdef ENABLE_SH1106
+/*
+ * PIN24_PE13_D13 - SCL
+ * PIN23_PE12_D12 - SDA
+ */
+U8G2_SH1106_128X32_NONAME_1_SW_I2C u8g2(U8G2_R2, 13, 12, 16);
+#endif
+
 #endif
 
 void radio_setup()
@@ -338,7 +351,7 @@ char did2abc(uint8_t did)
 }
 #endif
 
-#ifdef ENABLE_SSD1306
+#ifdef ENABLE_OLED
 void show_frame(int l, int mode)
 {
 	u8g2.setPowerSave(0);
@@ -501,7 +514,7 @@ void setup()
 
 	power_on_dev();
 
-#ifdef ENABLE_SSD1306
+#ifdef ENABLE_OLED
 	u8g2.begin();
 
 	delay(2);
@@ -523,7 +536,7 @@ void loop(void)
 	int e = 1;
 	static int c = 0;
 
-#ifdef ENABLE_SSD1306
+#ifdef ENABLE_OLED
 	if (omode != old_omode) {
 		// show mode and clean buffer
 		show_mode(omode);
@@ -548,7 +561,7 @@ void loop(void)
 		INFOLN("%s", "Key long time pressed, enter deep sleep...");
 		delay(300);
 
-#ifdef ENABLE_SSD1306
+#ifdef ENABLE_OLED
 		u8g2.setPowerSave(1);
 #endif
 		sx1272.setSleepMode();
@@ -647,7 +660,7 @@ void loop(void)
 				decode_ver(sx1272.packet_received.data),
 				sx1272._RSSIpacket);
 
-#ifdef ENABLE_SSD1306
+#ifdef ENABLE_OLED
 				sprintf(frame_buf[c % 2], "%s %4d",
 					dev_id,
 					sx1272._RSSIpacket);
@@ -670,7 +683,7 @@ void loop(void)
 					decode_sensor_data(sx1272.packet_received.data),
 					sx1272._RSSIpacket);
 
-#ifdef ENABLE_SSD1306
+#ifdef ENABLE_OLED
 				sprintf(frame_buf[c % 2], " %c  %4d  %s",
 					did2abc(p[1]),
 					sx1272._RSSIpacket,
@@ -697,7 +710,7 @@ void loop(void)
 					decode_sensor_data(sx1272.packet_received.data),
 					sx1272._RSSIpacket);
 
-#ifdef ENABLE_SSD1306
+#ifdef ENABLE_OLED
 				sprintf(frame_buf[c % 2], "%s %4d",
 					dev_id,
 					sx1272._RSSIpacket);
