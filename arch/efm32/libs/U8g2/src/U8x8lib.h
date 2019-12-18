@@ -53,11 +53,15 @@
 //#define U8X8_USE_ARDUINO_AVR_SW_I2C_OPTIMIZATION
 
 
+#ifndef	USE_SOFTSPI
 /* Assumption: All Arduino Boards have "SPI.h" */
 #define U8X8_HAVE_HW_SPI
+#endif
 
+#ifndef	USE_SOFTI2C
 /* Assumption: All Arduino Boards have "Wire.h" */
 #define U8X8_HAVE_HW_I2C
+#endif
 
 /* Undefine U8X8_HAVE_HW_SPI for those Boards without SPI.h */
 
