@@ -686,7 +686,7 @@ void loop(void)
 			}
 		} else if (0x2 == omode) {
 			// only show trigged message
-			if (p[2] == 0x33 && p[15] == 0x03) {
+			if (p[2] == 0x33 && (p[15] == 0x03 || p[15] == 0x04)) {
 
 				decode_devid(sx1272.packet_received.data);
 
