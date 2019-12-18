@@ -26,10 +26,10 @@
 
 #include "LowPower.h"
 
-#define	DEBUG					2
+//#define	DEBUG					2
 //#define DEBUG_HEX_PKT			1
 
-//#define ENABLE_SSD1306			1
+#define ENABLE_SSD1306			1
 
 // use the dynamic ACK feature of our modified SX1272 lib
 //#define GW_AUTO_ACK
@@ -237,10 +237,6 @@ char *decode_sensor_type()
 				strcpy(dev_type, "T2m");
 				break;
 		}
-	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
-
-		strcpy(dev_type, "T2v");
-
 	} else if (dev_id[3] == '1' && dev_id[4] == '0') {
 
 		strcpy(dev_type, "GoMaste");
@@ -249,13 +245,21 @@ char *decode_sensor_type()
 
 		strcpy(dev_type, "MBus");
 
+	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
+
+		strcpy(dev_type, "T2v");
+
+	} else if (dev_id[3] == '1' && dev_id[4] == '3') {
+
+		strcpy(dev_type, "T2w");
+
 	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
 
 		strcpy(dev_type, "GoCC");
 
-	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
+	} else if (dev_id[3] == '2' && dev_id[4] == '1') {
 
-		strcpy(dev_type, "GoCC");
+		strcpy(dev_type, "T3abc");
 	}
 	return dev_type;
 }
