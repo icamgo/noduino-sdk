@@ -61,7 +61,6 @@ static uint8_t need_push = 0;
 
 #define MAX_DBM					20
 
-//#define ENABLE_SSD1306		1
 //#define WITH_ACK
 
 //#define	DEBUG					1
@@ -97,11 +96,6 @@ uint8_t message[32];
 
 void push_data();
 
-#ifdef ENABLE_SSD1306
-U8G2_SSD1306_128X64_NONAME_1_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
-//U8G2_SSD1306_128X64_NONAME_1_SW_I2C u8g2(U8G2_R0, SCL, SDA, U8X8_PIN_NONE);
-#endif
-
 char *ftoa(char *a, double f, int precision)
 {
 	long p[] =
@@ -131,31 +125,6 @@ void power_off_dev()
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
-#ifdef ENABLE_SSD1306
-void draw_press(int32_t p)
-{
-	u8g2.setPowerSave(0);
-
-	//u8g2.clearBuffer();		// clear the internal memory
-
-	u8g2.setFont(u8g2_font_logisoso24_tf);	// choose a suitable font
-
-	u8g2.firstPage();
-
-	do {
-		u8g2.drawStr(98, 48, "Pa");		// write something to the internal memory
-		u8g2.setCursor(16, 48);
-		u8g2.print(p);
-	} while (u8g2.nextPage());
-
-	delay(2000);
-
-	u8g2.setPowerSave(1);
-
-	//u8g2.sendBuffer();		// transfer internal memory to the display
-}
-#endif
-
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
 	(void)id;
@@ -165,15 +134,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	float pres = 0.0;
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
-
-	//Serial.println("Checking...");
-
-	//power_on_dev();		// turn on device power
-
-	//pressure_init();	// initialization of the sensor
-	//float pres = get_pressure();
-
-	//power_off_dev();
 
 #ifdef TX_TESTING
 	need_push = 0x5a;
@@ -207,12 +167,6 @@ void setup()
 {
 	Ecode_t e;
 
-#if 0
-	/* Initialize EM23 with default parameters */
-	EMU_EM23Init_TypeDef em23Init = EMU_EM23INIT_DEFAULT;
-	EMU_EM23Init(&em23Init);
-#endif
-
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 
@@ -220,14 +174,6 @@ void setup()
 
 	pinMode(0, INPUT);
 	attachInterrupt(0, trig_check_sensor, FALLING);
-
-#ifdef ENABLE_SSD1306
-	float pres = get_pressure();
-
-	u8g2.begin();
-
-	draw_press((int32_t) pres);
-#endif
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
@@ -259,9 +205,6 @@ void qsetup()
 	sx1272._enableCarrierSense = true;
 #endif
 
-#ifdef ENABLE_SSD1306
-	u8g2.begin();
-#endif
 }
 
 #ifdef CONFIG_V0
@@ -288,7 +231,7 @@ void push_data()
 	long startSend;
 	long endSend;
 
-	float vbat = 0.0, press = 0.0;
+	float vbat = 0.0, temp = 0.0;
 
 	uint8_t r_size;
 
@@ -296,10 +239,7 @@ void push_data()
 
 	qsetup();
 
-	//pressure_init();
-	//press = get_pressure();		// hPa (mbar)
-	press = 0.0;		// hPa (mbar)
-
+	temp = 0.0;
 	vbat = adc.readVbat();
 
 #ifdef CONFIG_V0
@@ -317,10 +257,7 @@ void push_data()
 		pkt[3+i] = p[7-i];
 	}
 
-	// press/1000.0 = bar (0.1MPa), then x 100 for packet
-	press /= 10.0;
-	press = roundf(press);
-	uint16_t ui16 = (uint16_t)press;
+	uint16_t ui16 = (uint16_t)(temp * 10);
 	p = (uint8_t *) &ui16;
 
 	pkt[11] = p[1]; pkt[12] = p[0];
@@ -339,11 +276,11 @@ void push_data()
 	pkt[18] = p[1]; pkt[19] = p[0];
 
 #else
-	char vbat_s[10], pres_s[10];
+	char vbat_s[10], temp_s[10];
 	ftoa(vbat_s, vbat, 2);
-	ftoa(pres_s, press, 2);
+	ftoa(temp_s, temp, 2);
 
-	r_size = sprintf((char *)message, "\\!U/%s/P/%s", vbat_s, pres_s);
+	r_size = sprintf((char *)message, "\\!U/%s/T/%s", vbat_s, temp_s);
 
 	INFO("Sending ");
 	INFOLN((char *)message);
