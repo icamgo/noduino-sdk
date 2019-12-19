@@ -4934,7 +4934,7 @@ int8_t SX1272::setSyncWord(uint8_t sw)
 
 	writeRegister(REG_SYNC_WORD, sw);
 
-	sx_delay(100);
+	//sx_delay(100);
 
 	config1 = readRegister(REG_SYNC_WORD);
 
