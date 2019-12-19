@@ -239,7 +239,7 @@ void push_data()
 
 	qsetup();
 
-	temp = 0.0;
+	temp = adc.temperatureCelsius();
 	vbat = adc.readVbat();
 
 #ifdef CONFIG_V0
