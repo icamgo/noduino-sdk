@@ -20,10 +20,10 @@
 #include "sx1272.h"
 #include "softi2c.h"
 #include "pc10.h"
-//#include "U8g2lib.h"
 
 #include "rtcdriver.h"
 #include "math.h"
+#include "em_wdog.h"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -130,25 +130,12 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	(void)id;
 	(void)user;
 
-	static float old_pres = 0.0;
-	float pres = 0.0;
+	WDOG_Feed();
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
-#ifdef TX_TESTING
 	need_push = 0x5a;
 	tx_cause = 2;
-#else
-	if (fabsf(pres - old_pres) > 3.0) {
-
-		old_pres = pres;
-
-		need_push = 0x5a;
-#ifdef CONFIG_V0
-		tx_cause = 1;
-#endif
-	}
-#endif
 }
 
 void trig_check_sensor()
@@ -167,6 +154,13 @@ void setup()
 {
 	Ecode_t e;
 
+	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
+
+	/* Watchdog setup - Use defaults, excepts for these : */
+	wInit.em2Run = true;
+	wInit.em3Run = true;
+	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 
@@ -183,6 +177,9 @@ void setup()
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
 #endif
+
+	/* Start watchdog */
+	WDOG_Init(&wInit);
 
 	/* bootup tx */
 	tx_cause = 0;
@@ -358,8 +355,8 @@ void push_data()
 
 void loop()
 {
-	//INFO("Clock Freq = ");
-	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
+	INFO("Clock Freq = ");
+	INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
 
 	//INFOLN("Feed the watchdog");
 
@@ -373,13 +370,14 @@ void loop()
 	digitalWrite(SX1272_RST, LOW);
 
 	spi_end();
-	wire_end();
 
 	/*
 	 * Enable rtc timer before enter deep sleep
 	 * Stop rtc timer after enter check_sensor_data()
 	 */
 	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
+
+	wire_end();
 
 	EMU_EnterEM2(true);
 }
