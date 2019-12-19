@@ -58,6 +58,7 @@ static uint8_t need_push = 0;
 #define	DELTA_TX			1
 #define	TIMER_TX			2
 #define	KEY_TX				3
+#define	WATER_LEAK_TX		4
 
 #else
 #define node_addr				110
@@ -182,6 +183,14 @@ void trig_check_sensor()
 	interrupts();
 }
 
+void water_leak_alarm()
+{
+	need_push = 0x5a;
+#ifdef CONFIG_V0
+	tx_cause = WATER_LEAK_TX;
+#endif
+}
+
 void setup()
 {
 	Ecode_t e;
@@ -206,6 +215,9 @@ void setup()
 
 	pinMode(0, INPUT);
 	attachInterrupt(0, trig_check_sensor, FALLING);
+
+	pinMode(16, INPUT);
+	attachInterrupt(16, water_leak_alarm, FALLING);
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
@@ -280,7 +292,8 @@ void push_data(bool alarm)
 
 	qsetup();
 
-	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
+	if (KEY_TX == tx_cause || RESET_TX == tx_cause ||
+		WATER_LEAK_TX == tx_cause) {
 		pt1000_init();
 		cur_temp = pt1000_get_temp();		// 'C
 	}
