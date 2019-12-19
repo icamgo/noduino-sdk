@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define	DEBUG					2
+#define	DEBUG					1
 //#define DEBUG_HEX_PKT			1
 
 #define ENABLE_OLED					1
@@ -32,6 +32,10 @@
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
 #define	BEEP_PIN				10		/* PIN13_PD06_D10 */
+
+#define SYNCWORD_DEFAULT		0x12
+#define SYNCWORD_LORAWAN		0x34
+#define SYNCWORD_ABC			0x55
 
 // use the dynamic ACK feature of our modified SX1272 lib
 //#define GW_AUTO_ACK
@@ -76,7 +80,7 @@ char frame_buf[2][24];
  *   0x1: only rx the tagged message
  *   0x2: only rx trigged message
 */
-int omode = 0;
+int omode = 1;
 int old_omode = 1;
 
 int key_time = 0;
@@ -121,6 +125,8 @@ void radio_setup()
 
 #ifdef CONFIG_V0
 	sx1272.setup_v0(CH_01_472, 20);
+	//sx1272.setPreambleLength(6);
+	sx1272.setSyncWord(SYNCWORD_ABC);
 #else
 	sx1272.sx1278_qsetup(CH_00_470, 20);
 	sx1272._nodeAddress = loraAddr;
@@ -306,6 +312,10 @@ char *decode_sensor_data(uint8_t *pkt)
 	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
 		// Vibration Sensor
 
+	} else if (dev_id[3] == '2' && dev_id[4] == '1') {
+		// Internal Temprature of ABC Sensor
+		dd = (float)(data / 10.0);
+		ftoa(dev_data, dd, 1);
 	}
 	return dev_data;
 }
@@ -415,9 +425,6 @@ void show_logo()
 	u8g2.firstPage();
 
 	do {
-		//u8g2.setFont(u8g2_font_profont29_tr);	// choose a suitable font
-		//u8g2.setCursor(4, 26);
-		//u8g2.print("AutoHeat");
 		u8g2.drawXBM(1, 4, logo_width, logo_height, logo_xbm);
 	} while (u8g2.nextPage());
 }
@@ -519,7 +526,7 @@ void setup()
 
 	delay(2);
 	show_logo();
-	delay(1800);
+	delay(1300);
 	show_mode(omode);
 #endif
 
@@ -541,6 +548,19 @@ void loop(void)
 		// show mode and clean buffer
 		show_mode(omode);
 		old_omode = omode;
+
+		switch (omode) {
+			case 0:
+				sx1272.setSyncWord(SYNCWORD_DEFAULT);
+				break;
+			case 1:
+				sx1272.setSyncWord(SYNCWORD_ABC);
+				//NVIC_SystemReset();
+				break;
+			case 2:
+				sx1272.setSyncWord(SYNCWORD_DEFAULT);
+				break;
+		}
 
 		frame_buf[0][0] = '\0';
 		frame_buf[1][0] = '\0';
