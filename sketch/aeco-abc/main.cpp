@@ -34,10 +34,14 @@ static uint32_t sample_period = 8;		/* 20s */
 
 // 1, 2, 3 <----> A, B, C
 #define DEV_ID					3
-#define	DEV_ID_BASE				11951550000ULL
+#define	DEV_ID_BASE				11921550000ULL
 
 // PIN17_PC14_D8
 #define	PWR_CTRL_PIN			8
+
+#define SYNCWORD_DEFAULT		0x12
+#define SYNCWORD_LORAWAN		0x34
+#define SYNCWORD_ABC			0x55
 
 static uint8_t need_push = 0;
 
@@ -245,6 +249,7 @@ void qsetup()
 
 #ifdef CONFIG_V0
 	sx1272.setup_v0(TXRX_CH, MAX_DBM);
+	sx1272.setSyncWord(SYNCWORD_ABC);
 #else
 	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
 	sx1272._nodeAddress = node_addr;
