@@ -34,7 +34,7 @@ static uint32_t sample_period = 8;		/* 20s */
 
 // 1, 2, 3 <----> A, B, C
 #define DEV_ID					3
-#define	DEV_ID_BASE				11921550000ULL
+#define	DEV_ID_BASE				11921510000ULL
 
 // PIN17_PC14_D8
 #define	PWR_CTRL_PIN			8
