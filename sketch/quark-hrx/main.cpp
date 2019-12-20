@@ -349,7 +349,7 @@ char did2abc(uint8_t did)
 #endif
 
 #ifdef ENABLE_SSD1306
-void show_frame(int l, int mode)
+void show_frame(int l, int mode, bool alarm)
 {
 	u8g2.setPowerSave(0);
 
@@ -388,7 +388,15 @@ void show_frame(int l, int mode)
 			}
 		} else if (2 == mode) {
 			// cycle icon. notice the message trigged by magnet
-			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
+			int ic = 64;
+
+			if (alarm == false) {
+				u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
+			} else {
+				u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
+				ic = 71;
+			}
+
 			if (l == 0) {
 				u8g2.drawGlyph(120, 12, 64);
 			} else if (l == 1) {
@@ -667,7 +675,7 @@ void loop(void)
 					dev_id,
 					sx1272._RSSIpacket);
 
-				show_frame(c % 2, omode);
+				show_frame(c % 2, omode, false);
 				c++;
 #endif
 
@@ -691,7 +699,7 @@ void loop(void)
 					sx1272._RSSIpacket,
 					decode_vbat(sx1272.packet_received.data));
 
-				show_frame(c % 2, omode);
+				show_frame(c % 2, omode, false);
 				c++;
 #endif
 
@@ -717,7 +725,7 @@ void loop(void)
 					dev_id,
 					sx1272._RSSIpacket);
 
-				show_frame(c % 2, omode);
+				show_frame(c % 2, omode, p[15] & 0x04);
 				c++;
 #endif
 
