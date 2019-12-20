@@ -34,7 +34,7 @@
 #define I2C_MAXWAIT			800
 #define i2c_delay(x)		delayMicroseconds(x)
 #else
-#define I2C_DELAY			140		/* 14MHz, 1Tick = 1/14 us, 1us */
+#define I2C_DELAY			(F_CPU/100000)		/* 14MHz, 1Tick = 1/14 us, 10us */
 #define I2C_MAXWAIT			800
 #define i2c_delay(x) do{for(int i=0;i<x;i++) {asm volatile("nop");}}while(0)
 #endif

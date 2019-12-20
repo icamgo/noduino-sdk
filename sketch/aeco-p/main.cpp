@@ -26,7 +26,6 @@
 #include "math.h"
 #include "em_wdog.h"
 
-
 //#define	DEBUG					1
 
 /* Timer used for bringing the system back to EM0. */
@@ -214,7 +213,7 @@ void setup()
 
 #ifdef DEBUG
 	Serial.setRouteLoc(1);
-	Serial.begin(115200);
+	Serial.begin(9600);
 #endif
 
 	/* Start watchdog */
