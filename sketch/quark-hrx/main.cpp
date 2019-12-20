@@ -26,7 +26,7 @@
 
 #include "LowPower.h"
 
-//#define	DEBUG					2
+#define	DEBUG					1
 //#define DEBUG_HEX_PKT			1
 
 #define ENABLE_SSD1306			1
@@ -55,6 +55,10 @@ uint8_t loraMode = 11;
 uint8_t loraAddr = 1;
 
 #endif
+
+#define PWR_CTRL_PIN			6
+#define KEY_PIN					2
+#define BEEP_PIN				7
 
 // be careful, max command length is 60 characters
 #define MAX_CMD_LENGTH			100
@@ -456,19 +460,19 @@ void beep(int c, int ontime)
 {
 	switch (c) {
 		case 3:
-			digitalWrite(7, HIGH);
+			digitalWrite(BEEP_PIN, HIGH);
 			delay(ontime);
-			digitalWrite(7, LOW);
+			digitalWrite(BEEP_PIN, LOW);
 			delay(40);
 		case 2:
-			digitalWrite(7, HIGH);
+			digitalWrite(BEEP_PIN, HIGH);
 			delay(ontime);
-			digitalWrite(7, LOW);
+			digitalWrite(BEEP_PIN, LOW);
 			delay(40);
 		case 1:
-			digitalWrite(7, HIGH);
+			digitalWrite(BEEP_PIN, HIGH);
 			delay(ontime);
-			digitalWrite(7, LOW);
+			digitalWrite(BEEP_PIN, LOW);
 	}
 }
 
@@ -477,20 +481,20 @@ void setup()
 	int e;
 
 	// Key connected to D2
-	pinMode(2, INPUT_PULLUP);
+	pinMode(KEY_PIN, INPUT_PULLUP);
 
 	// attach interrupt in D2
 	attachInterrupt(0, change_omode, FALLING);
 
 	// beep
-	pinMode(7, OUTPUT);
-	digitalWrite(7, LOW);
+	pinMode(BEEP_PIN, OUTPUT);
+	digitalWrite(BEEP_PIN, LOW);
 
 	// turn on the device power
 #ifdef ENABLE_SSD1306
 	// open-plant use the D6 to ctrl dev pwr
-	pinMode(6, OUTPUT);
-	digitalWrite(6, HIGH);
+	pinMode(PWR_CTRL_IN, OUTPUT);
+	digitalWrite(PWR_CTRL_PIN, HIGH);
 #else
 	// quark v1.0 use the D7
 	pinMode(7, OUTPUT);
@@ -554,7 +558,7 @@ void loop(void)
 		digitalWrite(13, LOW);
 
 		// dev power off
-		digitalWrite(6, LOW);
+		digitalWrite(PWR_CTRL_PIN, LOW);
 
 		LowPower.powerDown(SLEEP_FOREVER, ADC_OFF, BOD_OFF);
 
