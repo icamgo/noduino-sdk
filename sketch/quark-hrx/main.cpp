@@ -290,6 +290,10 @@ char *decode_sensor_data(uint8_t *pkt)
 	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
 		// Vibration Sensor
 
+	} else if (dev_id[3] == '2' && dev_id[4] == '1') {
+		// Internal Temprature of ABC Sensor
+		dd = (float)(data / 10.0);
+		ftoa(dev_data, dd, 1);
 	}
 	return dev_data;
 }
@@ -399,9 +403,6 @@ void show_logo()
 	u8g2.firstPage();
 
 	do {
-		//u8g2.setFont(u8g2_font_profont29_tr);	// choose a suitable font
-		//u8g2.setCursor(4, 26);
-		//u8g2.print("AutoHeat");
 		u8g2.drawXBM(1, 4, logo_width, logo_height, logo_xbm);
 	} while (u8g2.nextPage());
 }
