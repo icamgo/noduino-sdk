@@ -114,8 +114,13 @@ U8G2_SSD1306_128X32_UNIVISION_1_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
 /*
  * PIN24_PE13_D13 - SCL
  * PIN23_PE12_D12 - SDA
+ * PIN21_PF02_D16 - Reset
  */
-U8G2_SH1106_128X32_NONAME_1_SW_I2C u8g2(U8G2_R2, 13, 12, 16);
+#define SH1106_SCL					13
+#define SH1106_SDA					12
+#define SH1106_RESET				16
+
+U8G2_SH1106_128X32_NONAME_1_SW_I2C u8g2(U8G2_R2, SH1106_SCL, SH1106_SDA, SH1106_RESET);
 #endif
 
 #endif
@@ -595,6 +600,11 @@ void loop(void)
 
 		// dev power off
 		power_off_dev();
+
+		//wire_end();
+		pinMode(SH1106_SCL, INPUT);
+		pinMode(SH1106_SDA, INPUT);
+		digitalWrite(SH1106_RESET, LOW);
 
 		EMU_EnterEM2(true);
 
