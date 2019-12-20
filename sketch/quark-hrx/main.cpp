@@ -60,6 +60,10 @@ uint8_t loraAddr = 1;
 #define KEY_PIN					2
 #define BEEP_PIN				7
 
+#define SYNCWORD_DEFAULT		0x12
+#define SYNCWORD_LORAWAN		0x34
+#define SYNCWORD_ABC			0x55
+
 // be careful, max command length is 60 characters
 #define MAX_CMD_LENGTH			100
 char cmd[MAX_CMD_LENGTH];
@@ -109,6 +113,7 @@ void radio_setup()
 
 #ifdef CONFIG_V0
 	sx1272.setup_v0(CH_01_472, 20);
+	sx1272.setSyncWord(SYNCWORD_ABC);
 #else
 	sx1272.sx1278_qsetup(CH_00_470, 20);
 	sx1272._nodeAddress = loraAddr;
@@ -493,7 +498,7 @@ void setup()
 	// turn on the device power
 #ifdef ENABLE_SSD1306
 	// open-plant use the D6 to ctrl dev pwr
-	pinMode(PWR_CTRL_IN, OUTPUT);
+	pinMode(PWR_CTRL_PIN, OUTPUT);
 	digitalWrite(PWR_CTRL_PIN, HIGH);
 #else
 	// quark v1.0 use the D7
@@ -506,7 +511,7 @@ void setup()
 
 	delay(2);
 	show_logo();
-	delay(1800);
+	delay(1300);
 	show_mode(omode);
 #endif
 
@@ -525,6 +530,19 @@ void loop(void)
 		// show mode and clean buffer
 		show_mode(omode);
 		old_omode = omode;
+
+		switch (omode) {
+			case 0:
+				sx1272.setSyncWord(SYNCWORD_DEFAULT);
+				break;
+			case 1:
+				sx1272.setSyncWord(SYNCWORD_ABC);
+				//NVIC_SystemReset();
+				break;
+			case 2:
+				sx1272.setSyncWord(SYNCWORD_DEFAULT);
+				break;
+		}
 
 		frame_buf[0][0] = '\0';
 		frame_buf[1][0] = '\0';
