@@ -17,6 +17,11 @@
 */
 #include "pt1000.h"
 
+#define PT_1MS			(F_CPU/1000)		/* 14MHz, 1Tick = 1/14 us, 14000 Tick = 1000us */
+#define pt_delay(x)		do{for(int i=0;i<x;i++) {asm volatile("nop");}}while(0)
+
+#define	N_TRY			18
+
 float cal_temp(uint32_t Rt)
 {
 	float temp;
@@ -62,29 +67,50 @@ float cal_temp(uint32_t Rt)
 	return temp;
 }
 
-float pt1000_get_temp()
+uint32_t pt1000_get_rt()
 {
 	uint32_t rt = 0;
 	int a6 = 0, a7 = 0;
 
-	a6 = adc.read(A6);
-	a7 = adc.read(A7);
+	for (int i = 0; i < N_TRY; i++) {
 
-#if 0
-	Serial.print("ADC6 = ");
-	Serial.println(a6);
+		a6 = adc.read(A6);
+		a7 = adc.read(A7);
 
-	Serial.print("ADC7 = ");
-	Serial.println(a7);
-#endif
+	#if 0
+		Serial.print("ADC6 = ");
+		Serial.println(a6);
 
-	// 1.1K x 10
-	rt = (uint32_t)(11000.0 / ((float)a6 / a7 - 1.0));
+		Serial.print("ADC7 = ");
+		Serial.println(a7);
+	#endif
 
-#if 0
-	Serial.print("Rt = ");
-	Serial.println(rt);
-#endif
+		// 1.1K x 10
+		rt += (uint32_t)(11000.0 / ((float)a6 / a7 - 1.0));
+
+	#if 0
+		Serial.print("Rt = ");
+		Serial.println(rt);
+	#endif
+
+		pt_delay(PT_1MS);
+	}
+
+	rt /= N_TRY;
+
+	return rt;
+}
+
+/*
+ * N_TRY = 1: Time consumption <3ms
+ * N_TRY = 5: Time consumption <27ms
+ * N_TRY = 18: Time consumption <95ms
+ */
+float pt1000_get_temp()
+{
+	uint32_t rt = 0;
+
+	rt = pt1000_get_rt();
 
 	return cal_temp(rt);
 }
