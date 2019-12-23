@@ -61,10 +61,16 @@ void loop()
 	float temp = 0.0;
 	char temp_s[10];
 
+	int start = millis();
+
 	temp = pt1000_get_temp();
+
+	int end = millis();
 
 	ftoa(temp_s, temp, 1);
 
+	Serial.print("time = ");
+	Serial.println(end - start);
 	Serial.print("Temperature = ");
 	Serial.print(temp_s);
 	Serial.println(" 'C");
