@@ -298,6 +298,10 @@ void push_data(bool alarm)
 		cur_temp = pt1000_get_temp();		// 'C
 	}
 
+	if (WATER_LEAK_TX == tx_cause) {
+		cur_temp += 300.0;
+	}
+
 	vbat = adc.readVbat();
 
 #ifdef CONFIG_V0
