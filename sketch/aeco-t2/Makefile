@@ -16,8 +16,6 @@
 
 TARGET		= main.cpp
 
-id_base := 11902500000
-
 SDK_BASE	?= ../..
 ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
 ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
@@ -274,7 +272,11 @@ coff: build/main.elf
 	$(NM) -n $< > $@
 
 ############################################################
-#id_l := $$(($(rand)%10000))
+dev_type	:= 02
+year		:= $(shell date +%y)
+week		:= $(shell date +%V)
+
+id_base := 1$(year)$(dev_type)$(week)0000
 
 rand := $(shell echo $$RANDOM)
 
