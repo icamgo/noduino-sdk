@@ -1,4 +1,5 @@
 #include "Arduino.h"
+#include "pt1000.h"
 
 void setup() {
 
@@ -8,7 +9,8 @@ void setup() {
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
 
-	adc.reference(adcRefVDD);
+	//adc.reference(adcRefVDD);
+	pt1000_init();
 }
 
 void loop() {
@@ -25,6 +27,9 @@ void loop() {
 
 	Serial.print("Rt = ");
 	Serial.println( 1100.0 / ((float)a6 / (float)a7 - 1.0), 1 );
+
+	Serial.print("Rt = ");
+	Serial.println(pt1000_get_rt());
 
 	delay(2000);  // wait for 2 seconds
 }
