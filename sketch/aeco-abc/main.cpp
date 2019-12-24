@@ -32,10 +32,6 @@ static uint32_t sample_period = 8;		/* 20s */
 
 #define	TX_TESTING				1
 
-// 1, 2, 3 <----> A, B, C
-#define DEV_ID					3
-#define	DEV_ID_BASE				11921510000ULL
-
 // PIN17_PC14_D8
 #define	PWR_CTRL_PIN			8
 
@@ -208,7 +204,11 @@ void qsetup()
 
 uint64_t get_devid()
 {
-	return (DEV_ID_BASE + DEV_ID);	// T2p
+	uint64_t *p;
+
+	p = (uint64_t *)0x0FE00008;
+
+	return *p;
 }
 
 uint16_t get_crc(uint8_t *pp, int len)
@@ -246,7 +246,7 @@ void push_data()
 	uint8_t *p = (uint8_t *) &devid;
 
 	pkt[0] = 0x55;
-	pkt[1] = DEV_ID;
+	pkt[1] = devid & 0x0f;
 
 	// set devid
 	int i = 0;
