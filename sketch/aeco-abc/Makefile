@@ -302,7 +302,7 @@ produce: $(fw)
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FW)
 	-$(Q) echo "Generating the random DevID: $(id)"
 	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
-		echo "Generating the u.bin ..."; cp user.bin .u.bin;				  \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
@@ -316,15 +316,35 @@ go: $(fw) .u.bin
 	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GO) && rm -f .u.bin
 
-#$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER) && rm -f .u.bin
-#$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FW)
+ida = $$(($(id_base)+1))
+idb = $$(($(id_base)+2))
+idc = $$(($(id_base)+3))
+hex_ida = $$(printf "%016X" $(ida) | fold -w2 | tac | tr -d "\n")
+hex_idb = $$(printf "%016X" $(idb) | fold -w2 | tac | tr -d "\n")
+hex_idc = $$(printf "%016X" $(idc) | fold -w2 | tac | tr -d "\n")
 
+a: $(fw)
+	-$(Q) echo $(ida)
+	-$(Q) echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(hex_ida) | xxd -r -s 8 -p - .u.bin
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GO) && rm -f .u.bin
 
+b: $(fw)
+	-$(Q) echo $(idb)
+	-$(Q) echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(hex_idb) | xxd -r -s 8 -p - .u.bin
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GO) && rm -f .u.bin
+
+c: $(fw)
+	-$(Q) echo $(idc)
+	-$(Q) echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(hex_idc) | xxd -r -s 8 -p - .u.bin
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GO) && rm -f .u.bin
 
 .u.bin:
 	-$(Q) echo $(id)
 	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
-		echo "Generating the u.bin ..."; cp user.bin .u.bin;				  \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 
 upload: build/main.bin

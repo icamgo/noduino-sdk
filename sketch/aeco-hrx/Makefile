@@ -16,8 +16,6 @@
 
 TARGET		= main.cpp
 
-id_base := 11903500000
-
 SDK_BASE	?= ../..
 ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
 ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
@@ -310,7 +308,11 @@ coff: build/main.elf
 	$(NM) -n $< > $@
 
 ############################################################
-#id_l := $$(($(rand)%10000))
+dev_type	:= 21
+year		:= $(shell date +%y)
+week		:= $(shell date +%V)
+
+id_base := 1$(year)$(dev_type)$(week)0000
 
 rand := $(shell echo $$RANDOM)
 
@@ -336,7 +338,7 @@ produce: $(fw)
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FW)
 	-$(Q) echo "Generating the random DevID: $(id)"
 	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
-		echo "Generating the u.bin ..."; cp user.bin .u.bin;				  \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
@@ -348,7 +350,7 @@ produce: $(fw)
 go: $(fw)
 	-$(Q) echo "Generating the random DevID: $(id)"
 	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
-		echo "Generating the u.bin ..."; cp user.bin .u.bin;				  \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GO)
