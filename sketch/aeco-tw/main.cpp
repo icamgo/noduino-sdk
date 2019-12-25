@@ -30,7 +30,7 @@
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 20;		/* 20s */
+static uint32_t sample_period = 60;		/* 20s */
 
 static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			7200
@@ -40,8 +40,9 @@ static float cur_temp = 0.0;
 
 //#define	TX_TESTING				1
 
-// PIN17_PC14_D8
-#define	PWR_CTRL_PIN			8
+#define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
+#define	KEY_PIN					0		/* PIN01_PA00_D0 */
+#define	WATER_LEAK_PIN			16		/* PIN21_PF02_D16 */
 
 static uint8_t need_push = 0;
 
@@ -213,11 +214,11 @@ void setup()
 
 	power_off_dev();
 
-	pinMode(0, INPUT);
-	attachInterrupt(0, trig_check_sensor, FALLING);
+	pinMode(KEY_PIN, INPUT);
+	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
-	pinMode(16, INPUT);
-	attachInterrupt(16, water_leak_alarm, FALLING);
+	pinMode(WATER_LEAK_PIN, INPUT);
+	attachInterrupt(WATER_LEAK_PIN, water_leak_alarm, FALLING);
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
@@ -298,7 +299,7 @@ void push_data(bool alarm)
 		cur_temp = pt1000_get_temp();		// 'C
 	}
 
-	if (WATER_LEAK_TX == tx_cause) {
+	if (WATER_LEAK_TX == tx_cause || 0 == digitalRead(WATER_LEAK_PIN)) {
 		cur_temp += 300.0;
 	}
 
