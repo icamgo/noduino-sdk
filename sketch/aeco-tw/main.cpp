@@ -207,7 +207,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+	wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -257,15 +257,11 @@ void qsetup()
 #ifdef CONFIG_V0
 uint64_t get_devid()
 {
-#if 1
 	uint64_t *p;
 
 	p = (uint64_t *)0x0FE00008;
 
 	return *p;
-#else
-	return 11912510001ULL;		/* T2w */
-#endif
 }
 
 uint16_t get_crc(uint8_t *pp, int len)
