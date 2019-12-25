@@ -539,7 +539,7 @@ void setup()
 
 	delay(2);
 	show_logo();
-	delay(1300);
+	delay(900);
 	show_mode(omode);
 #endif
 
@@ -587,7 +587,7 @@ void loop(void)
 		key_time = 0;
 	}
 
-	if (key_time > 12) {
+	if (key_time > 8) {
 
 		key_time = 0;
 
