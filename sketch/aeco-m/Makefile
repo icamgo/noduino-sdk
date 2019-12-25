@@ -120,7 +120,8 @@ $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/softspi/softspi.cpp							\
 $(LIB_DIR)/pt1000/pt1000.cpp							\
-$(LIB_DIR)/sx127x/sx1272.cpp
+$(LIB_DIR)/sx127x/sx1272.cpp							\
+./displace.cpp
 
 
 CXX_APP = main.cpp

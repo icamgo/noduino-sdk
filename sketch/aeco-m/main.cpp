@@ -26,7 +26,7 @@
 
 #include "displace.h"
 
-//#define	DEBUG					1
+#define	DEBUG					1
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -41,8 +41,8 @@ static float cur_mov = 0.0;
 
 //#define	TX_TESTING				1
 
-// PIN17_PC14_D8
-#define	PWR_CTRL_PIN			8
+#define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
+#define	KEY_PIN					0		/* PIN01_PA00_D0 */
 
 static uint8_t need_push = 0;
 
@@ -153,7 +153,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	pt1000_init();	// initialization of the sensor
 
-	cur_mov = pt1000_get_mov();
+	cur_mov = displace(pt1000_get_rt());
 
 	power_off_dev();
 
@@ -198,15 +198,15 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+	wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 
 	power_off_dev();
 
-	pinMode(0, INPUT);
-	attachInterrupt(0, trig_check_sensor, FALLING);
+	pinMode(KEY_PIN, INPUT);
+	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
@@ -298,6 +298,8 @@ void push_data()
 
 	int16_t ui16 = (int16_t)(cur_mov * 10);
 	p = (uint8_t *) &ui16;
+
+	INFOLN(ui16);
 
 	pkt[11] = p[1]; pkt[12] = p[0];
 
