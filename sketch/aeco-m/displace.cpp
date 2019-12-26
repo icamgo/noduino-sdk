@@ -26,6 +26,11 @@ int displace(uint32_t r)
 {
 	float rt = roundf(r / 10.0);
 
+	if (r == 30000) {
+		// infinity Rt
+		return 55;
+	}
+
 	if (rt >= T[0] && rt < T[1])
 		return 0;
 
