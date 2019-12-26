@@ -35,11 +35,22 @@ static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			7200
 
 //#define	TX_TESTING				1
-//#define	DEBUG					1
+#define	DEBUG					1
 
 #define ENABLE_SHT2X			1
 
 static uint32_t need_push = 0;
+
+#define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
+#define	KEY_PIN					0		/* PIN01_PA00_D0 */
+
+#if 0
+#define SDA_PIN					11		/* PIN14_PD7 */
+#define SCL_PIN					16		/* PIN21_PF2 */
+#else
+#define SDA_PIN					12		/* PIN23_PE12 */
+#define SCL_PIN					13		/* PIN24_PE13 */
+#endif
 
 #define ENABLE_CAD				1
 
@@ -109,12 +120,12 @@ char *ftoa(char *a, double f, int precision)
 
 void power_on_dev()
 {
-	digitalWrite(10, HIGH);
+	digitalWrite(PWR_CTRL_PIN, HIGH);
 }
 
 void power_off_dev()
 {
-	digitalWrite(10, LOW);
+	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
@@ -137,17 +148,12 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		sample_count = 0;
 	}
 
-	//INFOLN("Checking...");
-	//power_on_dev();		// turn on device power
-
 #ifdef ENABLE_SHT2X
-	wire_begin(SW_SCL, SW_SDA);
+	wire_begin(SCL_PIN, SDA_PIN);
 	sht2x_init();		// initialization of the sensor
 	temp = sht2x_get_temp();
 	humi = sht2x_get_humi();
 #endif
-
-	//power_off_dev();
 
 #ifdef TX_TESTING
 	need_push = 0x5a;
@@ -164,7 +170,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 #endif
 	}
 #endif
-	//INFOLN("Checking OK...");
 }
 
 void trig_check_sensor()
@@ -180,11 +185,6 @@ void setup()
 {
 	Ecode_t e;
 
-#if 0
-	/* Initialize EM23 with default parameters */
-	EMU_EM23Init_TypeDef em23Init = EMU_EM23INIT_DEFAULT;
-	EMU_EM23Init(&em23Init);
-#endif
 	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
 
 	/* Watchdog setup - Use defaults, excepts for these : */
@@ -193,12 +193,12 @@ void setup()
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 256 seconds */
 
 	// dev power ctrl
-	pinMode(10, OUTPUT);
+	pinMode(PWR_CTRL_PIN, OUTPUT);
 
 	power_off_dev();
 
-	pinMode(0, INPUT);
-	attachInterrupt(0, trig_check_sensor, FALLING);
+	pinMode(KEY_PIN, INPUT);
+	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
@@ -221,8 +221,12 @@ void qsetup()
 {
 	power_on_dev();		// turn on device power
 
+#ifdef CONFIG_V0
+	sx1272.setup_v0(TXRX_CH, MAX_DBM);
+#else
 	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
-	sx1272.setNodeAddress(node_addr);
+	sx1272._nodeAddress = node_addr;
+#endif
 
 #ifdef ENABLE_CAD
 	sx1272._enableCarrierSense = true;
@@ -233,8 +237,11 @@ void qsetup()
 #ifdef CONFIG_V0
 uint64_t get_devid()
 {
-	return 11903480002ULL;
-	//return 11907480002ULL;	// T2p
+	uint64_t *p;
+
+	p = (uint64_t *)0x0FE00008;
+
+	return *p;
 }
 
 uint16_t get_crc(uint8_t *pp, int len)
@@ -264,7 +271,7 @@ void push_data()
 	qsetup();
 
 #ifdef ENABLE_SHT2X
-	wire_begin(SW_SCL, SW_SDA);
+	wire_begin(SCL_PIN, SDA_PIN);
 	sht2x_init();		// initialization of the sensor
 	temp = sht2x_get_temp();
 	humi = sht2x_get_humi();
