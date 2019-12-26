@@ -237,10 +237,10 @@ char *decode_sensor_type()
 	if (dev_id[3] == '0') {
 		switch(dev_id[4]) {
 			case '0':
-				strcpy(dev_type, "GoT1000");
+				strcpy(dev_type, "GOT1K");
 				break;
 			case '1':
-				strcpy(dev_type, "GoP");
+				strcpy(dev_type, "GOP");
 				break;
 			case '2':
 				strcpy(dev_type, "T2");
@@ -249,44 +249,44 @@ char *decode_sensor_type()
 				strcpy(dev_type, "T2P");
 				break;
 			case '4':
-				strcpy(dev_type, "GoT100");
+				strcpy(dev_type, "GOT100");
 				break;
 			case '6':
-				strcpy(dev_type, "GoWKF");
+				strcpy(dev_type, "GOWKF");
 				break;
 			case '7':
-				strcpy(dev_type, "T2p");
+				strcpy(dev_type, "T2P");
 				break;
 			case '8':
-				strcpy(dev_type, "T2th");
+				strcpy(dev_type, "T2TH");
 				break;
 			case '9':
-				strcpy(dev_type, "T2m");
+				strcpy(dev_type, "T2M");
 				break;
 		}
 	} else if (dev_id[3] == '1' && dev_id[4] == '0') {
 
-		strcpy(dev_type, "GoMaste");
+		strcpy(dev_type, "GOMA");
 
 	} else if (dev_id[3] == '1' && dev_id[4] == '1') {
 
-		strcpy(dev_type, "MBus");
+		strcpy(dev_type, "MBUS");
 
 	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
 
-		strcpy(dev_type, "T2v");
+		strcpy(dev_type, "T2V");
 
 	} else if (dev_id[3] == '1' && dev_id[4] == '3') {
 
-		strcpy(dev_type, "T2w");
+		strcpy(dev_type, "T2W");
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
 
-		strcpy(dev_type, "GoCC");
+		strcpy(dev_type, "GOCC");
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '1') {
 
-		strcpy(dev_type, "T3abc");
+		strcpy(dev_type, "T3ABC");
 	}
 	return dev_type;
 }
@@ -296,7 +296,7 @@ char *decode_sensor_data(uint8_t *pkt)
 	int16_t data = 0;
 	float dd  = 0;
 
-	data = ((pkt[11] << 8) & 0x7F) | pkt[12];
+	data = ((pkt[11] & 0x7F) << 8) | pkt[12];
 
 	if (pkt[11] & 0x80)
 		data = data * -1;
@@ -305,22 +305,29 @@ char *decode_sensor_data(uint8_t *pkt)
 		// Temperature
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
+		sprintf(dev_data, "%s ", dev_data);
 
 	} else if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3' || dev_id[4] == '7')) {
 		// Pressure
 		dd = (float)(data / 100.0);
 		ftoa(dev_data, dd, 2);
+		sprintf(dev_data, "%s  ", dev_data);
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '9') {
 		// Moving Sensor
+		sprintf(dev_data, "%dMM", data);
 
-	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
-		// Vibration Sensor
+	} else if (dev_id[3] == '1' && dev_id[4] == '3') {
+		// Water Leak Sensor
+		dd = (float)(data / 10.0);
+		ftoa(dev_data, dd, 1);
+		sprintf(dev_data, "%s ", dev_data);
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '1') {
 		// Internal Temprature of ABC Sensor
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
+		sprintf(dev_data, "%s", dev_data);
 	}
 	return dev_data;
 }
@@ -476,6 +483,19 @@ void show_mode(int mode)
 		}
 	} while (u8g2.nextPage());
 }
+
+void show_low_bat()
+{
+	u8g2.setPowerSave(0);
+
+	u8g2.firstPage();
+
+	do {
+		u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
+		u8g2.setCursor(12, 26);
+		u8g2.print(" LOW BATTERY ");
+	} while (u8g2.nextPage());
+}
 #endif
 
 void change_omode()
@@ -539,7 +559,13 @@ void setup()
 
 	delay(2);
 	show_logo();
-	delay(900);
+	delay(800);
+
+	if (adc.readVbat() < 3.55) {
+		show_low_bat();
+		delay(2700);
+	}
+
 	show_mode(omode);
 #endif
 
@@ -739,21 +765,27 @@ void loop(void)
 			// only show trigged message
 			if (p[2] == 0x33 && (p[15] == 0x03 || p[15] == 0x04)) {
 
-				decode_devid(sx1272.packet_received.data);
+				decode_devid(p);
 
 				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
 					dev_id,
-					decode_vbat(sx1272.packet_received.data),
+					decode_vbat(p),
 					decode_sensor_type(),
-					decode_sensor_data(sx1272.packet_received.data),
+					decode_sensor_data(p),
 					sx1272._RSSIpacket);
 
 #ifdef ENABLE_OLED
-				sprintf(frame_buf[c % 2], "%s %4d",
+				sprintf(frame_buf[0], "%s %4d",
 					dev_id,
 					sx1272._RSSIpacket);
 
-				show_frame(c % 2, omode, p[15] & 0x04);
+				sprintf(frame_buf[1], " %s %s %s",
+					dev_type,
+					dev_data,
+					dev_vbat
+					);
+
+				show_frame(0, omode, p[15] & 0x04);
 				c++;
 #endif
 
