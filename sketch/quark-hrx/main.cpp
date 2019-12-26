@@ -542,8 +542,7 @@ void setup()
 	show_logo();
 	delay(900);
 
-	float vbat = get_vbat();
-	if (vbat < 3.55) {
+	if (get_vbat() < 2.92) {
 		// show low power
 		show_low_bat();
 		delay(2900);
@@ -625,6 +624,12 @@ void loop(void)
 		//INFO_S("%s", "^$Low-level gw status ON\n");
 		INFO_S("%s", ".");
 		status_counter = 0;
+
+		if (get_vbat() < 2.92) {
+			// show low power
+			show_low_bat();
+			delay(2900);
+		}
 	}
 #endif
 
