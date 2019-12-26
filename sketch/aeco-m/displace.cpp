@@ -2,7 +2,7 @@
 #include "math.h"
 
 static uint32_t T[12] = {
-	   0,   2,   6,  14,   30,
+	   0,   1,   6,  14,   30,
 	  62, 126, 254, 509, 1022,
 	2042, 4075
 };
@@ -34,10 +34,10 @@ int displace(uint32_t r)
 	if (rt >= T[0] && rt < T[1])
 		return 0;
 
-	if (rt >= T[1] && rt < T[2]-1)
+	if (rt >= T[1] && rt < T[2])
 		return 1;
 
-	if (rt >= T[2]-1 && rt < T[3]-1)
+	if (rt >= T[2] && rt < T[3]-1)
 		return 2;
 
 	if (rt >= T[3]-1 && rt < T[4]-1)
