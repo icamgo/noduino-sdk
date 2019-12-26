@@ -40,8 +40,8 @@ static float cur_temp = 0.0;
 
 //#define	TX_TESTING				1
 
-// PIN17_PC14_D8
-#define	PWR_CTRL_PIN			8
+#define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
+#define	KEY_PIN					0		/* PIN01_PA00_D0 */
 
 static uint8_t need_push = 0;
 
@@ -197,15 +197,15 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+	wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 
 	power_off_dev();
 
-	pinMode(0, INPUT);
-	attachInterrupt(0, trig_check_sensor, FALLING);
+	pinMode(KEY_PIN, INPUT);
+	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
