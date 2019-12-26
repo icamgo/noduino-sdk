@@ -33,11 +33,11 @@ float cal_temp(uint32_t Rt)
 	uint8_t Bottom, Top;
 
 	if (Rt < PT100_TABLE[0]) {
-		return 0.0;
+		return -274.0;
 	}
 
 	if (Rt > PT100_TABLE[99]) {
-		return 5000.0;
+		return 300.0;
 	}
 
 	Bottom = 0;
@@ -84,6 +84,7 @@ uint32_t pt1000_get_rt()
 		Serial.print("ADC7 = ");
 		Serial.println(a7);
 	#endif
+		if (a6 == a7) return 30000;
 
 		// 1.1K x 10
 		rt += (uint32_t)(11000.0 / ((float)a6 / a7 - 1.0));
@@ -98,6 +99,11 @@ uint32_t pt1000_get_rt()
 
 	rt /= N_TRY;
 
+	#if 0
+		Serial.print("Rt = ");
+		Serial.println(rt);
+	#endif
+
 	return rt;
 }
 
@@ -111,6 +117,11 @@ float pt1000_get_temp()
 	uint32_t rt = 0;
 
 	rt = pt1000_get_rt();
+
+#if 0
+	Serial.print("Rt = ");
+	Serial.println(rt);
+#endif
 
 	return cal_temp(rt);
 }
