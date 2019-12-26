@@ -287,22 +287,29 @@ char *decode_sensor_data(uint8_t *pkt)
 		// Temperature
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
+		sprintf(dev_data, "%s C", dev_data);
 
 	} else if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3' || dev_id[4] == '7')) {
 		// Pressure
 		dd = (float)(data / 100.0);
 		ftoa(dev_data, dd, 2);
+		sprintf(dev_data, "%sBar", dev_data);
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '9') {
 		// Moving Sensor
+		sprintf(dev_data, "%dMM", data);
 
-	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
-		// Vibration Sensor
+	} else if (dev_id[3] == '1' && dev_id[4] == '3') {
+		// Water Leak Sensor
+		dd = (float)(data / 10.0);
+		ftoa(dev_data, dd, 1);
+		sprintf(dev_data, "%s C", dev_data);
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '1') {
 		// Internal Temprature of ABC Sensor
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
+		sprintf(dev_data, "%s C", dev_data);
 	}
 	return dev_data;
 }
@@ -715,17 +722,23 @@ void loop(void)
 
 				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
 					dev_id,
-					decode_vbat(sx1272.packet_received.data),
+					decode_vbat(p),
 					decode_sensor_type(),
-					decode_sensor_data(sx1272.packet_received.data),
+					decode_sensor_data(p),
 					sx1272._RSSIpacket);
 
 #ifdef ENABLE_SSD1306
-				sprintf(frame_buf[c % 2], "%s %4d",
+				sprintf(frame_buf[0], "%s %4d",
 					dev_id,
 					sx1272._RSSIpacket);
 
-				show_frame(c % 2, omode, p[15] & 0x04);
+				sprintf(frame_buf[1], " %s %s %s",
+					dev_type,
+					dev_data,
+					dev_vbat
+					);
+
+				show_frame(0, omode, p[15] & 0x04);
 				c++;
 #endif
 
