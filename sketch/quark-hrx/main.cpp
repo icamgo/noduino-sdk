@@ -23,6 +23,7 @@
 
 #include "U8g2lib.h"
 #include "logo.h"
+#include "vbat.h"
 
 #include "LowPower.h"
 
@@ -287,13 +288,13 @@ char *decode_sensor_data(uint8_t *pkt)
 		// Temperature
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
-		sprintf(dev_data, "%s C", dev_data);
+		sprintf(dev_data, "%s ", dev_data);
 
 	} else if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3' || dev_id[4] == '7')) {
 		// Pressure
 		dd = (float)(data / 100.0);
 		ftoa(dev_data, dd, 2);
-		sprintf(dev_data, "%sBar", dev_data);
+		sprintf(dev_data, "%s  ", dev_data);
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '9') {
 		// Moving Sensor
@@ -303,13 +304,13 @@ char *decode_sensor_data(uint8_t *pkt)
 		// Water Leak Sensor
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
-		sprintf(dev_data, "%s C", dev_data);
+		sprintf(dev_data, "%s ", dev_data);
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '1') {
 		// Internal Temprature of ABC Sensor
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
-		sprintf(dev_data, "%s C", dev_data);
+		sprintf(dev_data, "%s", dev_data);
 	}
 	return dev_data;
 }
@@ -465,6 +466,19 @@ void show_mode(int mode)
 		}
 	} while (u8g2.nextPage());
 }
+
+void show_low_bat()
+{
+	u8g2.setPowerSave(0);
+
+	u8g2.firstPage();
+
+	do {
+		u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
+		u8g2.setCursor(12, 26);
+		u8g2.print(" LOW BATTERY ");
+	} while (u8g2.nextPage());
+}
 #endif
 
 void change_omode()
@@ -527,6 +541,14 @@ void setup()
 	delay(2);
 	show_logo();
 	delay(900);
+
+	float vbat = get_vbat();
+	if (vbat < 3.55) {
+		// show low power
+		show_low_bat();
+		delay(2900);
+	}
+
 	show_mode(omode);
 #endif
 

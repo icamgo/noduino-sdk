@@ -114,6 +114,7 @@ $(LIB_DIR)/Wire/src/Wire.cpp							\
 $(LIB_DIR)/SX127x/sx1272.cpp							\
 $(LIB_DIR)/LowPower/LowPower.cpp						\
 $(LIB_DIR)/U8g2/src/U8x8lib.cpp							\
+./vbat.cpp
 
 CXX_APP = main.cpp
 MODULES = $(C_MODULES) $(CXX_MODULES)
