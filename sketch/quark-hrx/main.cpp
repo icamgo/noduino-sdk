@@ -219,10 +219,10 @@ char *decode_sensor_type()
 	if (dev_id[3] == '0') {
 		switch(dev_id[4]) {
 			case '0':
-				strcpy(dev_type, "GoT1000");
+				strcpy(dev_type, "GOT1K");
 				break;
 			case '1':
-				strcpy(dev_type, "GoP");
+				strcpy(dev_type, "GOP");
 				break;
 			case '2':
 				strcpy(dev_type, "T2");
@@ -231,44 +231,44 @@ char *decode_sensor_type()
 				strcpy(dev_type, "T2P");
 				break;
 			case '4':
-				strcpy(dev_type, "GoT100");
+				strcpy(dev_type, "GOT100");
 				break;
 			case '6':
-				strcpy(dev_type, "GoWKF");
+				strcpy(dev_type, "GOWKF");
 				break;
 			case '7':
-				strcpy(dev_type, "T2p");
+				strcpy(dev_type, "T2P");
 				break;
 			case '8':
-				strcpy(dev_type, "T2th");
+				strcpy(dev_type, "T2TH");
 				break;
 			case '9':
-				strcpy(dev_type, "T2m");
+				strcpy(dev_type, "T2M");
 				break;
 		}
 	} else if (dev_id[3] == '1' && dev_id[4] == '0') {
 
-		strcpy(dev_type, "GoMaste");
+		strcpy(dev_type, "GOMA");
 
 	} else if (dev_id[3] == '1' && dev_id[4] == '1') {
 
-		strcpy(dev_type, "MBus");
+		strcpy(dev_type, "MBUS");
 
 	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
 
-		strcpy(dev_type, "T2v");
+		strcpy(dev_type, "T2V");
 
 	} else if (dev_id[3] == '1' && dev_id[4] == '3') {
 
-		strcpy(dev_type, "T2w");
+		strcpy(dev_type, "T2W");
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
 
-		strcpy(dev_type, "GoCC");
+		strcpy(dev_type, "GOCC");
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '1') {
 
-		strcpy(dev_type, "T3abc");
+		strcpy(dev_type, "T3ABC");
 	}
 	return dev_type;
 }
