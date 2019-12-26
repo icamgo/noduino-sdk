@@ -278,7 +278,7 @@ char *decode_sensor_data(uint8_t *pkt)
 	int16_t data = 0;
 	float dd  = 0;
 
-	data = ((pkt[11] << 8) & 0x7F) | pkt[12];
+	data = ((pkt[11] & 0x7F) << 8) | pkt[12];
 
 	if (pkt[11] & 0x80)
 		data = data * -1;
