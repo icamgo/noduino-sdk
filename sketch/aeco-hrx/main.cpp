@@ -561,7 +561,7 @@ void setup()
 	show_logo();
 	delay(800);
 
-	if (adc.readVbat() < 3.55) {
+	if (adc.readVbat() < 2.92) {
 		show_low_bat();
 		delay(2700);
 	}
@@ -650,6 +650,11 @@ void loop(void)
 		//INFO_S("%s", "^$Low-level gw status ON\n");
 		INFO_S("%s", ".");
 		status_counter = 0;
+
+		if (adc.readVbat() < 2.92) {
+			show_low_bat();
+			delay(2700);
+		}
 	}
 #endif
 
