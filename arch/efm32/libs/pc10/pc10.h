@@ -21,7 +21,7 @@
 
 #include "Arduino.h"
 
-void pressure_init();
+void pressure_init(int scl, int sda);
 float get_pressure();
 uint16_t pc10_read();
 void pc10_wakeup();

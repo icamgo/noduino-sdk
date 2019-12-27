@@ -49,7 +49,7 @@ void setup()
 	Serial.begin(115200);
 
 	//wire_begin();
-	pressure_init();
+	pressure_init(SW_SCL, SW_SDA);
 
 	Serial.println("Pressure testing start...");
 }

@@ -56,9 +56,9 @@
 #define PC10_LOW		1642
 #endif
 
-void pressure_init()
+void pressure_init(int scl, int sda)
 {
-	wire_begin(SW_SCL, SW_SDA);
+	wire_begin(scl, sda);
 }
 
 float get_pressure()

@@ -43,6 +43,17 @@ static float cur_pres = 0.0;
 
 static uint8_t need_push = 0;
 
+#define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
+#define	KEY_PIN					0		/* PIN01_PA00_D0 */
+
+#if 0
+#define SDA_PIN					11		/* PIN14_PD7 */
+#define SCL_PIN					16		/* PIN21_PF2 */
+#else
+#define SDA_PIN					12		/* PIN23_PE12 */
+#define SCL_PIN					13		/* PIN24_PE13 */
+#endif
+
 #define ENABLE_CAD				1
 
 #define	TX_TIME					1800		// 1800ms
@@ -121,12 +132,12 @@ char *ftoa(char *a, double f, int precision)
 
 void power_on_dev()
 {
-	digitalWrite(10, HIGH);
+	digitalWrite(PWR_CTRL_PIN, HIGH);
 }
 
 void power_off_dev()
 {
-	digitalWrite(10, LOW);
+	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
@@ -150,7 +161,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	//power_on_dev();		// turn on device power
 
-	pressure_init();	// initialization of the sensor
+	pressure_init(SCL_PIN, SDA_PIN);	// initialization of the sensor
 
 	cur_pres = get_pressure();
 
@@ -200,12 +211,12 @@ void setup()
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 
 	// dev power ctrl
-	pinMode(10, OUTPUT);
+	pinMode(PWR_CTRL_PIN, OUTPUT);
 
 	power_off_dev();
 
-	pinMode(0, INPUT);
-	attachInterrupt(0, trig_check_sensor, FALLING);
+	pinMode(KEY_PIN, INPUT);
+	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
@@ -244,17 +255,11 @@ void qsetup()
 #ifdef CONFIG_V0
 uint64_t get_devid()
 {
-#if 1
 	uint64_t *p;
 
 	p = (uint64_t *)0x0FE00008;
 
 	return *p;
-#else
-	return 11903500001ULL;
-#endif
-
-	//return 11907480002ULL;	// T2p
 }
 
 uint16_t get_crc(uint8_t *pp, int len)
@@ -283,7 +288,7 @@ void push_data()
 	qsetup();
 
 	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
-		pressure_init();
+		pressure_init(SCL_PIN, SDA_PIN);
 		cur_pres = get_pressure();		// hPa (mbar)
 	}
 
