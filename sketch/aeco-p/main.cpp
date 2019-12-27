@@ -67,6 +67,7 @@ static uint8_t need_push = 0;
 #define	DELTA_TX			1
 #define	TIMER_TX			2
 #define	KEY_TX				3
+#define	ALARM_TX			4
 
 #else
 #define node_addr				110
@@ -140,6 +141,27 @@ void power_off_dev()
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
+bool current_leak()
+{
+	adc.reference(adcRef1V25);
+
+	int ad = adc.read(A6, A7);
+
+	float cur = 1250.0*ad/2.0/2048.0/0.7;
+
+	INFO("ADC differential ch6 ch7 read:");
+	INFOLN(ad);
+
+	INFO("The consumption current (mA): ");
+
+	//cur_pres = cur;
+
+	if (cur > 3.2)
+		return true;
+	else
+		return false;
+}
+
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
 	(void)id;
@@ -157,15 +179,9 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		sample_count = 0;
 	}
 
-	//Serial.println("Checking...");
-
-	//power_on_dev();		// turn on device power
-
 	pressure_init(SCL_PIN, SDA_PIN);	// initialization of the sensor
 
 	cur_pres = get_pressure();
-
-	//power_off_dev();
 
 #ifdef TX_TESTING
 	need_push = 0x5a;
@@ -179,29 +195,29 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 #endif
 	}
 #endif
+
+	if (current_leak()) {
+		//tx_cause |= 0x80;
+		tx_cause = ALARM_TX;
+	}
 }
 
 void trig_check_sensor()
 {
-	noInterrupts();
-
 	need_push = 0x5a;
 #ifdef CONFIG_V0
 	tx_cause = KEY_TX;
 #endif
 
-	interrupts();
+	if (current_leak()) {
+		//tx_cause |= 0x80;
+		tx_cause = ALARM_TX;
+	}
 }
 
 void setup()
 {
 	Ecode_t e;
-
-#if 0
-	/* Initialize EM23 with default parameters */
-	EMU_EM23Init_TypeDef em23Init = EMU_EM23INIT_DEFAULT;
-	EMU_EM23Init(&em23Init);
-#endif
 
 	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
 
