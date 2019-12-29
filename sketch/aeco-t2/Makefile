@@ -74,6 +74,9 @@ OPENOCD_GO = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; tar
 
 OPENOCD_RESET = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset; shutdown"
 
+OPENOCD_UNLOCK = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; flash protect 0 0 last off; flash protect 1 0 0 off; shutdown"
+
+
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
 CXX	:= $(TOOLCHAIN_DIR)/arm-none-eabi-g++
 LD	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
@@ -308,6 +311,9 @@ produce: $(fw)
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
 	@rm -f .u.bin
 
+$(fw):
+	-$(Q) echo "Using the $(fw)..."
+
 # same as produce
 # make go (write firmware main.bin into main flash, set a random devid and log it)
 # make go fw=xxx.bin (write firmware xxx.bin into main flash, set a random devid and log it)
@@ -322,8 +328,8 @@ go: $(fw) .u.bin
 		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 
-upload: build/main.bin
-	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
+upload:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FW)
 
 flash: build/main.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
@@ -394,6 +400,9 @@ setdid:
 
 reset:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_RESET)
+
+unlock:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_UNLOCK)
 
 clean:
 	$(RM) build/main.hex build/main.eep build/main.cof build/main.elf \
