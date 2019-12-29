@@ -18,8 +18,8 @@
 
 #include "radio.h"
 
-// be careful, max command length is 60 characters
-#define MAX_CMD_LEN			100
+// be careful, max command length is 128 characters
+#define MAX_CMD_LEN			128
 
 void radio_setup()
 {
@@ -165,15 +165,12 @@ int CarrierSense(bool onlyOnce = false)
 #endif
 
 #ifdef CONFIG_V0
-char goid_buf[21];
-char go_vbat[6];
-char go_temp[10];
+char devid_buf[24];
+char dev_vbat[6];
+char dev_data[12];
 
-char *uint64_to_str(uint64_t n)
+char *uint64_to_str(char *dest, uint64_t n)
 {
-	char *dest;
-	dest = goid_buf;
-
 	dest += 20;
 	*dest-- = 0;
 	while (n) {
@@ -183,18 +180,18 @@ char *uint64_to_str(uint64_t n)
 	return dest + 1;
 }
 
-char *decode_goid(uint8_t *pkt)
+char *decode_devid(uint8_t *pkt)
 {
 	int a = 0, b = 0;
 
-	uint64_t goid = 0UL;
+	uint64_t did = 0UL;
 
 	for (a = 3; a < 11; a++, b++) {
 
-		*(((uint8_t *)&goid) + 7 - b) = pkt[a];
+		*(((uint8_t *)&did) + 7 - b) = pkt[a];
 	}
 
-	return uint64_to_str(goid);
+	return uint64_to_str(devid_buf, did);
 }
 
 /* only support .0001 */
@@ -248,19 +245,51 @@ char *decode_vbat(uint8_t *pkt)
 			break;
 	}
 
-	ftoa(go_vbat, (float)(vbat / 1000.0), 3);
+	ftoa(dev_vbat, (float)(vbat / 1000.0), 3);
+	return dev_vbat;
 }
 
-char *decode_temp(uint8_t *pkt)
+char *decode_sensor_data(uint8_t *pkt, char *id)
 {
-	int16_t temp = 0;
+	char data_buf[8] = {0};
 
-	temp = ((pkt[11] << 8) & 0x7F) | pkt[12];
+	int16_t data = 0;
+	float dd  = 0;
+
+	data = ((pkt[11] & 0x7F) << 8) | pkt[12];
 
 	if (pkt[11] & 0x80)
-		temp = temp * -1;
+		data = data * -1;
 
-	ftoa(go_temp, (float)(temp / 10.0), 1);
+	if (id[3] == '0' && (id[4] == '2' || id[4] == '0' || id[4] == '4')) {
+		// Temperature
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+		sprintf(dev_data, "T/%s", data_buf);
+
+	} else if (id[3] == '0' && (id[4] == '1' || id[4] == '3' || id[4] == '7')) {
+		// Pressure
+		dd = (float)(data / 100.0);
+		ftoa(data_buf, dd, 2);
+		sprintf(dev_data, "P/%s", data_buf);
+
+	} else if (id[3] == '0' && id[4] == '9') {
+		// Moving Sensor
+		sprintf(dev_data, "M/%d", data);
+
+	} else if (id[3] == '1' && id[4] == '3') {
+		// Water Leak Sensor
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+		sprintf(dev_data, "WL/%s", dev_data);
+
+	} else if (id[3] == '2' && id[4] == '1') {
+		// Internal Temprature of ABC Sensor
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+		sprintf(dev_data, "T/%s", data_buf);
+	}
+	return dev_data;
 }
 
 uint8_t decode_cmd(uint8_t *pkt)
@@ -343,10 +372,12 @@ int radio_available(char *cmd)
 #else
 
 #ifdef CONFIG_V0
-		sprintf(cmd, "devid/%s/U/%s/T/%s/cmd/%d/ver/%d/rssi/%d/snr/%d",
-			decode_goid(sx1272.packet_received.data),
+		char *devid = decode_devid(sx1272.packet_received.data);
+
+		sprintf(cmd, "devid/%s/U/%s/%s/cmd/%d/ver/%d/rssi/%d/snr/%d",
+			devid,
 			decode_vbat(sx1272.packet_received.data),
-			decode_temp(sx1272.packet_received.data),
+			decode_sensor_data(sx1272.packet_received.data, devid),
 			decode_cmd(sx1272.packet_received.data),
 			decode_ver(sx1272.packet_received.data),
 			sx1272._RSSIpacket,
