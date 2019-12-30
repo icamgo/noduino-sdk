@@ -414,15 +414,32 @@ void show_frame(int l, int mode, bool alarm)
 
 			if (alarm == false) {
 				u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
+
+				u8g2.drawGlyph(120, 12, ic);
 			} else {
+				// show alarm icon
+				#if 0
+				// show exclamation icon
 				u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
 				ic = 71;
-			}
+				#endif
 
-			if (l == 0) {
-				u8g2.drawGlyph(120, 12, ic);
-			} else if (l == 1) {
-				u8g2.drawGlyph(120, 30, ic);
+				if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3'
+					|| dev_id[4] == '7')) {
+					// Pressure & digital sensor, showing lightning icon
+					u8g2.setFont(u8g2_font_open_iconic_embedded_2x_t);
+					ic = 67;
+
+					u8g2.drawGlyph(116, 15, ic);
+
+				} else if (dev_id[3] == '1' && dev_id[4] == '3') {
+					// Water Leak sensor, showing water drop icon
+					u8g2.setFont(u8g2_font_open_iconic_thing_1x_t);
+					ic = 72;
+
+					u8g2.drawGlyph(118, 12, ic);
+				}
+
 			}
 		}
 
