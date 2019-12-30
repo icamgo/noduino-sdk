@@ -12,7 +12,7 @@
   Glyphs: 8/8
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_battery19_tn[167] U8G2_FONT_SECTION("u8g2_font_battery19_tn") = 
+const uint8_t u8g2_font_battery19_tn[167] U8G2_FONT_SECTION("u8g2_font_battery19_tn") =
   "\10\0\3\3\4\5\1\1\5\10\23\0\0\23\0\23\0\0\0\0\0\0\212\60\13\70\317\42\35\304\372\377"
   "\371 \61\17\70\317\42\35\304\372\177\241H(\342\203\0\62\23\70\317\42\35\304\372/\24\11E,\241H"
   "(\342\203\0\63\27\70\317\42\35\304\372\205\42\241\210%\24\11E,\241H(\342\203\0\64\33\70\317\42"
@@ -26,7 +26,7 @@ const uint8_t u8g2_font_battery19_tn[167] U8G2_FONT_SECTION("u8g2_font_battery19
   Glyphs: 5/5
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_open_iconic_check_1x_t[97] U8G2_FONT_SECTION("u8g2_font_open_iconic_check_1x_t") = 
+const uint8_t u8g2_font_open_iconic_check_1x_t[97] U8G2_FONT_SECTION("u8g2_font_open_iconic_check_1x_t") =
   "\5\0\3\3\4\4\1\2\5\10\10\0\0\10\0\10\0\0\13\0\0\0D@\13h\307\16OB\23\33"
   "U\10A\15\210\305\242Y*&\332\201b#\1B\15\210\305\242YTJ\246\212\212\215\4C\15w\307"
   "(E\205\221\220(*=\4D\20\210\305\11FF\23\33\221f\31M\202\21\0\0\0\0\4\377\377\0"
@@ -37,7 +37,7 @@ const uint8_t u8g2_font_open_iconic_check_1x_t[97] U8G2_FONT_SECTION("u8g2_font_
   Glyphs: 5/5
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_open_iconic_email_1x_t[94] U8G2_FONT_SECTION("u8g2_font_open_iconic_email_1x_t") = 
+const uint8_t u8g2_font_open_iconic_email_1x_t[94] U8G2_FONT_SECTION("u8g2_font_open_iconic_email_1x_t") =
   "\5\0\3\3\4\4\1\3\5\10\10\0\0\10\0\10\0\0\14\0\0\0A@\14h\213q\210XB\42"
   "\322\341PA\17\210\211'\24I\302\22\212HD:\34\12B\13\210\211\361\60V\36\36\16\4C\15w"
   "\213\61\14\305B\262\66\242\4\0D\14G\217!J\11\205F!Q\0\0\0\0\4\377\377\0";
@@ -47,7 +47,7 @@ const uint8_t u8g2_font_open_iconic_email_1x_t[94] U8G2_FONT_SECTION("u8g2_font_
   Glyphs: 17/17
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_open_iconic_embedded_1x_t[246] U8G2_FONT_SECTION("u8g2_font_open_iconic_embedded_1x_t") = 
+const uint8_t u8g2_font_open_iconic_embedded_1x_t[246] U8G2_FONT_SECTION("u8g2_font_open_iconic_embedded_1x_t") =
   "\21\0\3\3\4\4\3\3\5\10\10\0\0\10\0\10\0\0\14\0\0\0\331@\14h,\306%\32\211\256"
   "F.\0A\15\210$\236\224\310f\71\304\201\62\0B\16\210$\236\320d\31\231&&\243\14\0C\14"
   "t.\216(D\212E&\42\0D\13v-\226\214r\70\230H\2E\13w$v\34&\234-J\1"
@@ -62,7 +62,7 @@ const uint8_t u8g2_font_open_iconic_embedded_1x_t[246] U8G2_FONT_SECTION("u8g2_f
   Glyphs: 9/9
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_open_iconic_app_1x_t[164] U8G2_FONT_SECTION("u8g2_font_open_iconic_app_1x_t") = 
+const uint8_t u8g2_font_open_iconic_app_1x_t[164] U8G2_FONT_SECTION("u8g2_font_open_iconic_app_1x_t") =
   "\11\0\3\3\4\4\1\3\5\10\10\0\0\10\0\10\0\0\21\0\0\0\207@\21\210\211\67\213\214fD"
   "\261$\16\220\314\42\42\0A\16\207\211q\210J\17\222\24\213$\345\20B\16\207\211\361\16\70DR\16"
   "\222\310a\0C\17\210\211)\245\34$\242\212\204\42)\35\6D\12h\215Q\23K.\265\6E\17\210"
@@ -75,7 +75,7 @@ const uint8_t u8g2_font_open_iconic_app_1x_t[164] U8G2_FONT_SECTION("u8g2_font_o
   Glyphs: 20/20
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_open_iconic_www_1x_t[313] U8G2_FONT_SECTION("u8g2_font_open_iconic_www_1x_t") = 
+const uint8_t u8g2_font_open_iconic_www_1x_t[313] U8G2_FONT_SECTION("u8g2_font_open_iconic_www_1x_t") =
   "\24\0\3\3\4\4\3\2\5\10\10\0\0\10\0\10\0\0\13\0\0\1\34@\13t\36Gr\210\210E"
   "\22\0A\10t\36\343\3)\0B\15h\34c\16\260\21\351\320P\4\0C\15\210\24oX\262Pl"
   "\302\360\70\6D\16\207\24#\62\212X(\21J\214\234\14E\25\210\24+\244\22\212\3B\261P,\24"
@@ -87,12 +87,28 @@ const uint8_t u8g2_font_open_iconic_www_1x_t[313] U8G2_FONT_SECTION("u8g2_font_o
   "B>\10Q\23\210\24g\16\20\212\242\222\220$\42\222D&)c\0R\16w\34#B\211P\42\226"
   "\232T\34\2S\15x\34;r\10\307a\341C$\14\0\0\0\4\377\377\0";
 /*
+  Fontname: open_iconic_thing_1x
+  Copyright: https://github.com/iconic/open-iconic, SIL OPEN FONT LICENSE
+  Glyphs: 19/19
+  BBX Build Mode: 0
+*/
+const uint8_t u8g2_font_open_iconic_thing_1x_t[266] U8G2_FONT_SECTION("u8g2_font_open_iconic_thing_1x_t") =
+  "\23\0\3\2\4\4\2\2\5\10\10\0\0\10\0\10\0\0\22\0\0\0\355@\22\210\212'\253Q\64\14"
+  "\312\60%J\224(\321\260\0A\15\210\212\65\204Q\64\374;\62|\10B\14h\216q\320\221\341\203\222"
+  "\14\17C\17\210\212\71J\231\24\15\313\60\15\331\272\2D\12\206\213\245Eie\370\7E\17\207\212)"
+  "F\265$K\232\22M\312\66\0F\15\210\212%\213\303\64L\303ON\0G\13\210\212\17\244\352*\252"
+  "\307\25H\15v\213\245\15\311\360\220\14\313!\1I\16h\216\63La\24Fa\62\15\7\1J\17\210"
+  "\212\65fQ\232\244I\32e\332\60\13K\11\205\213q\363\66\34\4L\12\205\213\25\35\244)l\2M"
+  "\14w\216\227N\303\220\14\312\305rN\16\207\212\25\213\227d\32\224AZ\222!O\11v\217\245E-"
+  "\303\77P\13\210\212\361\354<\334\304a\1Q\14w\216\63h\343\64\14Y\134\3R\11\207\212qP\275"
+  "\16\37\0\0\0\4\377\377\0";
+/*
   Fontname: open_iconic_embedded_2x
   Copyright: https://github.com/iconic/open-iconic, SIL OPEN FONT LICENSE
   Glyphs: 17/17
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_open_iconic_embedded_2x_t[443] U8G2_FONT_SECTION("u8g2_font_open_iconic_embedded_2x_t") = 
+const uint8_t u8g2_font_open_iconic_embedded_2x_t[443] U8G2_FONT_SECTION("u8g2_font_open_iconic_embedded_2x_t") =
   "\21\0\4\4\5\5\4\3\6\20\20\0\0\20\0\20\0\0\24\0\0\1\236@\24\220\241ap\342D\250"
   "\20\241B\204\332\251\20\241B<\1A\27\20\42a#k\22!\356\224\251b\343\342\301\3\361\20\222\26"
   "\7\0B!\20\42\341\23Mp\4\211A\134\15\32D\214D\61e%\210\21\232\212\21\243\21$\6\222"
@@ -113,7 +129,7 @@ const uint8_t u8g2_font_open_iconic_embedded_2x_t[443] U8G2_FONT_SECTION("u8g2_f
   Glyphs: 19/19
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_open_iconic_thing_2x_t[487] U8G2_FONT_SECTION("u8g2_font_open_iconic_thing_2x_t") = 
+const uint8_t u8g2_font_open_iconic_thing_2x_t[487] U8G2_FONT_SECTION("u8g2_font_open_iconic_thing_2x_t") =
   "\23\0\4\4\5\5\3\3\6\20\20\0\0\20\0\20\0\0%\0\0\1\312@%\20\222\360\211&kT"
   "\210HA\342\6\215y\360@\10#FB\210\10\22BD\220\20\42\202\204\20\21\304\11\0A\25\20\222"
   "p\231D(H\240 A\17\376\201yH\36\374\200\0B\23\220\321\60| \36\222\7\77\60\42D\211"
@@ -139,7 +155,7 @@ const uint8_t u8g2_font_open_iconic_thing_2x_t[487] U8G2_FONT_SECTION("u8g2_font
   Glyphs: 86/94
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_sirclivethebold_tr[892] U8G2_FONT_SECTION("u8g2_font_sirclivethebold_tr") = 
+const uint8_t u8g2_font_sirclivethebold_tr[892] U8G2_FONT_SECTION("u8g2_font_sirclivethebold_tr") =
   "V\0\4\4\4\4\2\4\5\15\12\0\376\7\376\5\0\1\26\2\134\3_ \5\0b\5!\7r\343"
   "\4%\2\42\10#\67\205\20\42\2#\23{\342\216pA\302\205X\21.\304\212pA\302\205\0$\16"
   "y\237\246@j\2%\12\243(\20\0%\25{#\7\22\241\202\204\10E\42h\24\244B\4\11\25\202"
@@ -174,7 +190,7 @@ const uint8_t u8g2_font_sirclivethebold_tr[892] U8G2_FONT_SECTION("u8g2_font_sir
   Glyphs: 17/94
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_sirclivethebold_tn[162] U8G2_FONT_SECTION("u8g2_font_sirclivethebold_tn") = 
+const uint8_t u8g2_font_sirclivethebold_tn[162] U8G2_FONT_SECTION("u8g2_font_sirclivethebold_tn") =
   "\21\0\4\4\4\4\2\3\5\12\11\0\377\7\376\5\0\0\0\0\0\0\205 \5\0\262\2+\13YS"
   "S\300@\211\2\6\2,\6\42o\2\1-\6\31[C\2.\6\22s\202\0/\13\205\323\312\220@"
   "\361d\10\0\60\10YS\303*\252\26\61\6Rs\202\2\62\10YSC\272v\11\63\11YSC:"
@@ -187,7 +203,7 @@ const uint8_t u8g2_font_sirclivethebold_tn[162] U8G2_FONT_SECTION("u8g2_font_sir
   Glyphs: 86/94
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_sirclive_tr[891] U8G2_FONT_SECTION("u8g2_font_sirclive_tr") = 
+const uint8_t u8g2_font_sirclive_tr[891] U8G2_FONT_SECTION("u8g2_font_sirclive_tr") =
   "V\0\4\4\4\4\2\4\5\15\12\0\376\7\376\5\0\1\26\2\134\3^ \5\0b\5!\7q\243"
   "\204\22\1\42\10#\67\205\20\42\2#\23{\342\216pA\302\205X\21.\304\212pA\302\205\0$\16"
   "y\237\246@j\2%\12\243(\20\0%\25{#\7\22\241\202\204\10E\42h\24\244B\4\11\25\202"
@@ -222,7 +238,7 @@ const uint8_t u8g2_font_sirclive_tr[891] U8G2_FONT_SECTION("u8g2_font_sirclive_t
   Glyphs: 17/94
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_sirclive_tn[162] U8G2_FONT_SECTION("u8g2_font_sirclive_tn") = 
+const uint8_t u8g2_font_sirclive_tn[162] U8G2_FONT_SECTION("u8g2_font_sirclive_tn") =
   "\21\0\4\4\4\4\2\3\5\12\11\0\377\7\376\5\0\0\0\0\0\0\205 \5\0\262\2+\13YS"
   "S\300@\211\2\6\2,\6!O\202\0-\6\31[C\2.\6\21SB\0/\13\205\323\312\220@"
   "\361d\10\0\60\10YS\203:\351\24\61\6QSB\1\62\10YSC\302\205\11\63\11YSC\302"
@@ -237,7 +253,7 @@ const uint8_t u8g2_font_sirclive_tn[162] U8G2_FONT_SECTION("u8g2_font_sirclive_t
   Glyphs: 64/256
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_freedoomr10_tu[658] U8G2_FONT_SECTION("u8g2_font_freedoomr10_tu") = 
+const uint8_t u8g2_font_freedoomr10_tu[658] U8G2_FONT_SECTION("u8g2_font_freedoomr10_tu") =
   "@\0\3\3\3\4\4\5\5\7\13\0\1\14\0\14\2\0\364\0\0\2u \5\0\214\27!\5\0\214"
   "\27\42\5\0\214\27#\5\0\214\27$\5\0\214\27%\5\0\214\27&\5\0\214\27'\5\0\214\27("
   "\10S\224\67\243\374&)\12\323\225\27\262P>M\0*\13\255\274\30\221\224Yl\222\1+\13\77\244"
@@ -265,7 +281,7 @@ const uint8_t u8g2_font_freedoomr10_tu[658] U8G2_FONT_SECTION("u8g2_font_freedoo
   Glyphs: 64/256
   BBX Build Mode: 2
 */
-const uint8_t u8g2_font_freedoomr10_mu[904] U8G2_FONT_SECTION("u8g2_font_freedoomr10_mu") = 
+const uint8_t u8g2_font_freedoomr10_mu[904] U8G2_FONT_SECTION("u8g2_font_freedoomr10_mu") =
   "@\2\4\3\4\4\1\2\5\10\13\0\1\14\0\14\2\1W\0\0\3k \7\270\307\217\327\0!\7"
   "\270\307\217\327\0\42\7\270\307\217\327\0#\7\270\307\217\327\0$\7\270\307\217\327\0%\7\270\307\217\327"
   "\0&\7\270\307\217\327\0'\7\270\307\217\327\0(\12\270\307!\25\227\37J\3)\12\270\307#\30\227"
@@ -308,7 +324,7 @@ const uint8_t u8g2_font_freedoomr10_mu[904] U8G2_FONT_SECTION("u8g2_font_freedoo
   Glyphs: 224/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso16_tf[3074] U8G2_FONT_SECTION("u8g2_font_logisoso16_tf") = 
+const uint8_t u8g2_font_logisoso16_tf[3074] U8G2_FONT_SECTION("u8g2_font_logisoso16_tf") =
   "\340\0\3\3\5\5\4\6\6\23\27\376\374\20\374\20\0\2\17\4\11\13\345 \6\0 \250\2!\11\2"
   "*h\342C\211\0\42\11dl\253B\62\21\5#\37\10&\250N\42\232\210$#\311H\42\71\34$"
   "\23\221\312\341 Q\223\310$\242\211H\11\0$\24\210\246\247N,\245YFE\362>\23K\23\33U"
@@ -412,7 +428,7 @@ const uint8_t u8g2_font_logisoso16_tf[3074] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 96/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso16_tr[1566] U8G2_FONT_SECTION("u8g2_font_logisoso16_tr") = 
+const uint8_t u8g2_font_logisoso16_tr[1566] U8G2_FONT_SECTION("u8g2_font_logisoso16_tr") =
   "`\0\3\3\4\5\4\6\6\17\27\0\374\20\374\20\0\2\13\4\1\6\1 \6\0\20T\1!\10\2"
   "\25\64\361\241D\42\11\64\266U!\231\210\2#\36\10\23T'\21MD\222\221d$\221\34\16\222\211"
   "H\345p\220\250Id\22\321D\244\4$\24H\323S'\226\322,\243\42y\237\211\245\211\215*\226\1"
@@ -468,7 +484,7 @@ const uint8_t u8g2_font_logisoso16_tr[1566] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 18/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso16_tn[287] U8G2_FONT_SECTION("u8g2_font_logisoso16_tn") = 
+const uint8_t u8g2_font_logisoso16_tn[287] U8G2_FONT_SECTION("u8g2_font_logisoso16_tn") =
   "\22\0\3\3\4\5\3\5\5\11\23\0\377\20\374\20\0\0\0\0\0\1\2 \5\0\10\65*\21x\272"
   "\365\204\21I\344\20\42\35\42\21IP\6+\13f<\265\204\242CI(\2,\7\62\374,(\1-"
   "\7&\134\65\16\5.\6\42\14-\10/\23\10\13\265\245S\261t*\226\212U\305\322\251X:\5\60"
@@ -484,7 +500,7 @@ const uint8_t u8g2_font_logisoso16_tn[287] U8G2_FONT_SECTION("u8g2_font_logisoso
   Glyphs: 224/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso18_tf[3719] U8G2_FONT_SECTION("u8g2_font_logisoso18_tf") = 
+const uint8_t u8g2_font_logisoso18_tf[3719] U8G2_FONT_SECTION("u8g2_font_logisoso18_tf") =
   "\340\0\4\3\5\5\4\6\6\26\34\376\373\22\373\22\0\2\201\5\4\16j \6\0 \310\2!\11B"
   "*x\302\17D\10\42\12f\354\313\202EH\26\0#(J&\310\316\304\314\304\314\304\214\210\314\210\314"
   "\304\304\301\201\211\310\214\210\310\301\201\305\232\211\31\221\31\21\231\21\231\211\31\0$\35\352\246\307\222\240\62"
@@ -608,7 +624,7 @@ const uint8_t u8g2_font_logisoso18_tf[3719] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 96/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso18_tr[1964] U8G2_FONT_SECTION("u8g2_font_logisoso18_tr") = 
+const uint8_t u8g2_font_logisoso18_tr[1964] U8G2_FONT_SECTION("u8g2_font_logisoso18_tr") =
   "`\0\4\3\5\5\4\6\6\22\33\0\373\22\373\22\0\2\201\5\4\7\217 \6\0 \310\2!\11B"
   "*x\302\17D\10\42\12f\354\313\202EH\26\0#(J&\310\316\304\314\304\314\304\214\210\314\210\314"
   "\304\304\301\201\211\310\214\210\310\301\201\305\232\211\31\221\31\21\231\21\231\211\31\0$\35\352\246\307\222\240\62"
@@ -677,7 +693,7 @@ const uint8_t u8g2_font_logisoso18_tr[1964] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 18/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso18_tn[334] U8G2_FONT_SECTION("u8g2_font_logisoso18_tn") = 
+const uint8_t u8g2_font_logisoso18_tn[334] U8G2_FONT_SECTION("u8g2_font_logisoso18_tn") =
   "\22\0\4\3\4\5\4\5\5\13\26\0\377\22\373\22\0\0\0\0\0\1\61 \5\0\20r*\21\210\264"
   "\367\21\23\71\220\60\261\70\210\21\211\221\1+\14w\224\356\221Rrp#%\2,\7\62\364]\240\10"
   "-\6'\324nx.\6\42\24^ /\24(\25rS\65%\265Jj\225\324\224\324*\251Ub\0"
@@ -695,7 +711,7 @@ const uint8_t u8g2_font_logisoso18_tn[334] U8G2_FONT_SECTION("u8g2_font_logisoso
   Glyphs: 224/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso20_tf[4144] U8G2_FONT_SECTION("u8g2_font_logisoso20_tf") = 
+const uint8_t u8g2_font_logisoso20_tf[4144] U8G2_FONT_SECTION("u8g2_font_logisoso20_tf") =
   "\340\0\4\4\5\5\4\6\6\31\37\376\373\25\373\25\0\2\347\5\313\20\23 \6\0 \350\2!\14\243"
   ".\210\302\17\14\205(\1\0\42\12\206p\354\2\213 \261\0#/\253&\330\316\220\61C\306\14\31\63"
   "d\314\210A#\6\215\30\361\340\301\220\21\203F\14y\360`\304\220\61C\4\215\30\64b\314\220\61C"
@@ -832,7 +848,7 @@ const uint8_t u8g2_font_logisoso20_tf[4144] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 96/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso20_tr[2226] U8G2_FONT_SECTION("u8g2_font_logisoso20_tr") = 
+const uint8_t u8g2_font_logisoso20_tr[2226] U8G2_FONT_SECTION("u8g2_font_logisoso20_tr") =
   "`\0\4\4\5\5\4\6\6\24\37\0\373\25\373\25\0\2\347\5\313\10\225 \6\0 \350\2!\14\243"
   ".\210\302\17\14\205(\1\0\42\12\206p\354\2\213 \261\0#/\253&\330\316\220\61C\306\14\31\63"
   "d\314\210A#\6\215\30\361\340\301\220\21\203F\14y\360`\304\220\61C\4\215\30\64b\314\220\61C"
@@ -909,7 +925,7 @@ const uint8_t u8g2_font_logisoso20_tr[2226] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 18/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso20_tn[381] U8G2_FONT_SECTION("u8g2_font_logisoso20_tn") = 
+const uint8_t u8g2_font_logisoso20_tn[381] U8G2_FONT_SECTION("u8g2_font_logisoso20_tn") =
   "\22\0\4\4\4\5\4\5\5\15\31\0\377\25\373\25\0\0\0\0\0\1` \5\0\20z*\25\230\366"
   "\373\21\23D\310\10\21J\210\250\20\61DH\30\61\0+\15\210\226z\31\65\315\203$\243\306\0,\12"
   "C\366\341\10Q$\4\0-\10\70\366zx\220\0.\11\63\26\342\10Q\2\0/\30Z\25\372\33\66"
@@ -928,7 +944,7 @@ const uint8_t u8g2_font_logisoso20_tn[381] U8G2_FONT_SECTION("u8g2_font_logisoso
   Glyphs: 224/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso22_tf[4235] U8G2_FONT_SECTION("u8g2_font_logisoso22_tf") = 
+const uint8_t u8g2_font_logisoso22_tf[4235] U8G2_FONT_SECTION("u8g2_font_logisoso22_tf") =
   "\340\0\4\4\5\5\4\6\6\33!\376\372\26\372\26\0\2\374\5\335\20n \6\0 \350\2!\14\303"
   ".\230\302\17\22\205(\1\0\42\17\206\260\374\302\210\22\42\202\210\10\22\2\0#\62\313*\370\316\220\61"
   "C\306\14\31\63d\314\210A#\6\215\30\361\340\301\220\21\203F\14y\360`\304\220\61C\306\214\30\64"
@@ -1068,7 +1084,7 @@ const uint8_t u8g2_font_logisoso22_tf[4235] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 96/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso22_tr[2262] U8G2_FONT_SECTION("u8g2_font_logisoso22_tr") = 
+const uint8_t u8g2_font_logisoso22_tr[2262] U8G2_FONT_SECTION("u8g2_font_logisoso22_tr") =
   "`\0\4\4\5\5\4\6\6\26!\0\372\26\372\26\0\2\374\5\335\10\271 \6\0 \350\2!\14\303"
   ".\230\302\17\22\205(\1\0\42\17\206\260\374\302\210\22\42\202\210\10\22\2\0#\62\313*\370\316\220\61"
   "C\306\14\31\63d\314\210A#\6\215\30\361\340\301\220\21\203F\14y\360`\304\220\61C\306\214\30\64"
@@ -1146,7 +1162,7 @@ const uint8_t u8g2_font_logisoso22_tr[2262] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 18/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso22_tn[385] U8G2_FONT_SECTION("u8g2_font_logisoso22_tn") = 
+const uint8_t u8g2_font_logisoso22_tn[385] U8G2_FONT_SECTION("u8g2_font_logisoso22_tn") =
   "\22\0\4\3\4\5\4\6\5\15\33\0\377\26\372\26\0\0\0\0\0\1d \6\0\20\364\0*\24\252"
   "\24\366$(%\241\342`\304\310\344`B+A!\0+\16\231\226\374\63\266\346\340\201\315\330\32\0,"
   "\11C\366\313\21a\21\1-\10\71\366\374\360\201\1.\10\63\26\314\21Q\1/\27j\25\364\267\331\334"
@@ -1166,7 +1182,7 @@ const uint8_t u8g2_font_logisoso22_tn[385] U8G2_FONT_SECTION("u8g2_font_logisoso
   Glyphs: 224/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso24_tf[4467] U8G2_FONT_SECTION("u8g2_font_logisoso24_tf") = 
+const uint8_t u8g2_font_logisoso24_tf[4467] U8G2_FONT_SECTION("u8g2_font_logisoso24_tf") =
   "\340\0\4\4\5\5\4\6\6\34#\376\372\30\372\30\1\3$\6C\21V \6\0 \370\2!\11\3"
   "/\230\302\17\230%\42\17\246\360\374F\220\22%D\4\21\21\10\0#\65\14+\10\323\220AC\6\215"
   " C\202\314\220AC\6\15\31\64d\304\203\7F&\32\62h\310\220\7\17L\220\30\64d\320\220A"
@@ -1313,7 +1329,7 @@ const uint8_t u8g2_font_logisoso24_tf[4467] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 96/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso24_tr[2410] U8G2_FONT_SECTION("u8g2_font_logisoso24_tr") = 
+const uint8_t u8g2_font_logisoso24_tr[2410] U8G2_FONT_SECTION("u8g2_font_logisoso24_tr") =
   "`\0\4\4\5\5\4\6\6\27#\0\372\30\372\30\1\3$\6C\11M \6\0 \370\2!\11\3"
   "/\230\302\17\230%\42\17\246\360\374F\220\22%D\4\21\21\10\0#\65\14+\10\323\220AC\6\215"
   " C\202\314\220AC\6\15\31\64d\304\203\7F&\32\62h\310\220\7\17L\220\30\64d\320\220A"
@@ -1396,7 +1412,7 @@ const uint8_t u8g2_font_logisoso24_tr[2410] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 18/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso24_tn[421] U8G2_FONT_SECTION("u8g2_font_logisoso24_tn") = 
+const uint8_t u8g2_font_logisoso24_tn[421] U8G2_FONT_SECTION("u8g2_font_logisoso24_tn") =
   "\22\0\4\4\4\5\4\6\6\16\34\0\377\30\372\30\1\0\0\0\0\1\210 \6\0\20|\1*\24\252"
   "\66\206I\240(\21\42\232\30\62\242B\212A\2\5\1+\16\231\266|g\330\64\17\330\14\233\6\0,"
   "\11C\366K!E\10\0-\10\71\366|\341\1\3.\7\63\26L!\1/ \213\25|q:r\3"
@@ -1417,7 +1433,7 @@ const uint8_t u8g2_font_logisoso24_tn[421] U8G2_FONT_SECTION("u8g2_font_logisoso
   Glyphs: 224/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso26_tf[4905] U8G2_FONT_SECTION("u8g2_font_logisoso26_tf") = 
+const uint8_t u8g2_font_logisoso26_tf[4905] U8G2_FONT_SECTION("u8g2_font_logisoso26_tf") =
   "\340\0\4\4\5\6\4\6\6\37'\376\371\32\371\32\0\3[\6\304\23\14 \6\0@\60\6!\12C"
   "[P\205\77\30\226\0\42\17\207h;\206\21&F\10\21\21&\4\0#;MS\60&\42\203H\20"
   "\32Bh\10\31\42\203\210\14\42\62\210\4\211\7\17\222\20\31Dd\20\221A$\210<x\220\202\310 "
@@ -1578,7 +1594,7 @@ const uint8_t u8g2_font_logisoso26_tf[4905] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 96/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso26_tr[2645] U8G2_FONT_SECTION("u8g2_font_logisoso26_tr") = 
+const uint8_t u8g2_font_logisoso26_tr[2645] U8G2_FONT_SECTION("u8g2_font_logisoso26_tr") =
   "`\0\4\4\5\6\4\6\6\31'\0\371\32\371\32\0\3[\6\304\12\70 \6\0@\60\6!\12C"
   "[P\205\77\30\226\0\42\17\207h;\206\21&F\10\21\21&\4\0#;MS\60&\42\203H\20"
   "\32Bh\10\31\42\203\210\14\42\62\210\4\211\7\17\222\20\31Dd\20\221A$\210<x\220\202\310 "
@@ -1668,7 +1684,7 @@ const uint8_t u8g2_font_logisoso26_tr[2645] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 18/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso26_tn[438] U8G2_FONT_SECTION("u8g2_font_logisoso26_tn") = 
+const uint8_t u8g2_font_logisoso26_tn[438] U8G2_FONT_SECTION("u8g2_font_logisoso26_tn") =
   "\22\0\4\4\4\5\4\6\6\20\37\0\377\32\371\32\0\0\0\0\0\1\231 \6\0\20\214\1*\31\313"
   "V\216i\340 !CB\214x\60\344\320\221\7I\206\204\32\70\10\0+\16\252\266\204i\334l\36<"
   "\32\67\15\0,\10C\366S!I\0-\7:\26\205\341\3.\7\63\26T!\1/\35\255\25\214\223"
@@ -1689,7 +1705,7 @@ const uint8_t u8g2_font_logisoso26_tn[438] U8G2_FONT_SECTION("u8g2_font_logisoso
   Glyphs: 224/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso28_tf[4891] U8G2_FONT_SECTION("u8g2_font_logisoso28_tf") = 
+const uint8_t u8g2_font_logisoso28_tf[4891] U8G2_FONT_SECTION("u8g2_font_logisoso28_tf") =
   "\340\0\4\4\5\6\4\6\7\42)\375\371\34\371\33\0\3p\6\342\22\376 \6\0@P\12!\15\204"
   "[P\11\377\240\361\210!\42\0\42\21\250\350[\32\201B\14\61\62B\210\220\60\42\0#;\216SP"
   "JD\10\21!D\204\20\21BDF\21\31\65\204\20\21BDH<\370`\315\20BD\10\21!\362"
@@ -1849,7 +1865,7 @@ const uint8_t u8g2_font_logisoso28_tf[4891] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 96/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso28_tr[2644] U8G2_FONT_SECTION("u8g2_font_logisoso28_tr") = 
+const uint8_t u8g2_font_logisoso28_tr[2644] U8G2_FONT_SECTION("u8g2_font_logisoso28_tr") =
   "`\0\4\4\5\6\4\6\6\33)\0\371\34\371\33\0\3l\6\327\12\67 \6\0@P\6!\15\204"
   "[P\205\177\320x\304\20\21\0\42\21\250\350[\216@!\206\30\31!DH\30\21\0#;\216SP"
   "&\42\204\210\20\42B\210\10!\42\243\210\214\32B\210\10!\42$\36|\260f\10!\42\204\210\20y"
@@ -1939,7 +1955,7 @@ const uint8_t u8g2_font_logisoso28_tr[2644] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 18/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso28_tn[429] U8G2_FONT_SECTION("u8g2_font_logisoso28_tn") = 
+const uint8_t u8g2_font_logisoso28_tn[429] U8G2_FONT_SECTION("u8g2_font_logisoso28_tn") =
   "\22\0\4\4\4\5\4\6\6\20\37\0\0\34\371\33\0\0\0\0\0\1\220 \6\0\20\224\1*\30\313"
   "x\236i\340 !CJ<\30r\350\210\213$C\4\15\34\4\0+\17\273\270\234\207\34\215\36<p"
   "C\216\42\0,\11C\26T\301\204\220\0-\10K\70\235\341\3\7.\12\64\66Ta\4\11\21\0/"
@@ -1960,7 +1976,7 @@ const uint8_t u8g2_font_logisoso28_tn[429] U8G2_FONT_SECTION("u8g2_font_logisoso
   Glyphs: 224/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso30_tf[5379] U8G2_FONT_SECTION("u8g2_font_logisoso30_tf") = 
+const uint8_t u8g2_font_logisoso30_tf[5379] U8G2_FONT_SECTION("u8g2_font_logisoso30_tf") =
   "\340\0\4\4\5\6\5\6\7$-\375\370\36\370\36\0\3\327\7\234\24\346 \6\0\200\340\24!\15\304"
   "\243 \23\376\3\223\42P\210\0\42\17\250\260\71\25\206\70\31!DH\30\21\0#=\317\223\340\264\210"
   "\220\42B\212\10!\62\204\210\220\42B\212\10)\42\244\210\20*B\342\301o\210\220\42B\210\14\221\7"
@@ -2136,7 +2152,7 @@ const uint8_t u8g2_font_logisoso30_tf[5379] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 96/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso30_tr[2914] U8G2_FONT_SECTION("u8g2_font_logisoso30_tr") = 
+const uint8_t u8g2_font_logisoso30_tr[2914] U8G2_FONT_SECTION("u8g2_font_logisoso30_tr") =
   "`\0\4\4\5\6\5\6\6\35,\0\370\36\370\36\0\3\322\7\226\13E \6\0\200\340\14!\15\304"
   "\243 \13\377\201I\21(D\0\42\17\250\260\71\15C\234\214\20\42$\214\10\0#=\317\223\340\134D"
   "H\21!E\204\20\31BDH\21!E\204\24\21RD\10\25!\361\340\67DH\21!D\206\310\203"
@@ -2235,7 +2251,7 @@ const uint8_t u8g2_font_logisoso30_tr[2914] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 18/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso30_tn[479] U8G2_FONT_SECTION("u8g2_font_logisoso30_tn") = 
+const uint8_t u8g2_font_logisoso30_tn[479] U8G2_FONT_SECTION("u8g2_font_logisoso30_tn") =
   "\22\0\4\4\4\5\4\6\6\21$\0\376\36\370\36\0\0\0\0\0\1\302 \6\0\20\234\1*\34\335"
   "\266\236k\350\260\60cB\220\230\242I\262bI\36\210\230$\314\230`CG\1+\17\313\330\234\211\34"
   "m\36<pD\216\66\0,\13d\330[C\4\12\61Q\0-\10KX\235\341\3\7.\12D\30\134"
@@ -2257,7 +2273,7 @@ const uint8_t u8g2_font_logisoso30_tn[479] U8G2_FONT_SECTION("u8g2_font_logisoso
   Glyphs: 224/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso32_tf[5675] U8G2_FONT_SECTION("u8g2_font_logisoso32_tf") = 
+const uint8_t u8g2_font_logisoso32_tf[5675] U8G2_FONT_SECTION("u8g2_font_logisoso32_tf") =
   "\340\0\4\4\6\6\5\7\7%/\375\370 \370\37\0\4\36\10+\26\16 \6\0\0\201T!\16\4"
   "H\201L\370\17T\213@!\2\0\42\23\211a\265\324\10\24d\12\22G\206\210\21\22(\10\0#E"
   "\20(\201\324\42C\212\14)\42\245\210\224\42B\252\10\251\42\244\310\220\42C\212H)\42%\36\374\200"
@@ -2442,7 +2458,7 @@ const uint8_t u8g2_font_logisoso32_tf[5675] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 96/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso32_tr[3100] U8G2_FONT_SECTION("u8g2_font_logisoso32_tr") = 
+const uint8_t u8g2_font_logisoso32_tr[3100] U8G2_FONT_SECTION("u8g2_font_logisoso32_tr") =
   "`\0\4\4\5\6\5\7\7\36/\0\370 \370\37\0\4\34\10%\13\377 \6\0\200@*!\16\4"
   "\244@&\374\7\252E\240\20\1\0\42\23\311\260Zj\4\12\62\5\211#C\304\10\11\24\4\0#E"
   "\20\224@j\221!E\206\24\221RDJ\21!U\204T\21RdH\221!E\244\24\221\22\17~@"
@@ -2546,7 +2562,7 @@ const uint8_t u8g2_font_logisoso32_tr[3100] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 18/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso32_tn[525] U8G2_FONT_SECTION("u8g2_font_logisoso32_tn") = 
+const uint8_t u8g2_font_logisoso32_tn[525] U8G2_FONT_SECTION("u8g2_font_logisoso32_tn") =
   "\22\0\4\4\5\6\4\6\6\22&\0\376 \370\37\0\0\0\0\0\1\360 \6\0@\220\6*\37\315"
   "a\273\256\241\303\302\214\11\61d\310\203\20\213\216\35Z\361 \310\24a\306\4\33:\12\0+\17\214a"
   "\223&\202\64z\360\301 \202\64\2,\15\304`\217\15\21(\206\204\11\1\0-\10\214`\225\206\37\14"
@@ -2570,7 +2586,7 @@ const uint8_t u8g2_font_logisoso32_tn[525] U8G2_FONT_SECTION("u8g2_font_logisoso
   Glyphs: 224/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso34_tf[6175] U8G2_FONT_SECTION("u8g2_font_logisoso34_tf") = 
+const uint8_t u8g2_font_logisoso34_tf[6175] U8G2_FONT_SECTION("u8g2_font_logisoso34_tf") =
   "\340\0\4\4\6\6\5\7\7)\63\374\367\42\367\42\0\4J\10\257\30\2 \6\0\0\201V!\14\204"
   "H\201M\370\37\14f\61\0\42\23\211q\271W\30s\2\5\11\61#\304\10\11$\2\0#I\221("
   "\201\325*R\252H\251\42\245\212\224\42C\214\14\61\62\244\212\224*R\252H)\62D\36\374\0M\221"
@@ -2770,7 +2786,7 @@ const uint8_t u8g2_font_logisoso34_tf[6175] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 96/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso34_tr[3349] U8G2_FONT_SECTION("u8g2_font_logisoso34_tr") = 
+const uint8_t u8g2_font_logisoso34_tr[3349] U8G2_FONT_SECTION("u8g2_font_logisoso34_tr") =
   "`\0\4\4\5\6\5\7\7!\63\0\367\42\367\42\0\4E\10\247\14\370 \6\0\200@+!\13D"
   "\244\300&\374\17\6\263\30\42\23\311\270\334+\214\71\201\202\204\230\21b\204\4\22\1\0#IQ\224\300"
   "j\25)U\244T\221REJ\221!F\206\30\31REJ\25)U\244\24\31\42\17~\200\246H\251"
@@ -2882,7 +2898,7 @@ const uint8_t u8g2_font_logisoso34_tr[3349] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 18/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso34_tn[538] U8G2_FONT_SECTION("u8g2_font_logisoso34_tn") = 
+const uint8_t u8g2_font_logisoso34_tn[538] U8G2_FONT_SECTION("u8g2_font_logisoso34_tn") =
   "\22\0\4\4\5\6\5\6\6\23)\0\376\42\367\42\0\0\0\0\0\1\375 \6\0\200\240\15*\27\355"
   "\241x]C\247\32\62\344\201\223T\247\222<p\62\325\320\251\0+\20\255\251\347M$\351\352\301\7\207"
   "H\322\12\0,\14\304\240^\13,\206\10\11\1\0-\10\215\250\353\15\77\70.\10\204\240`\13,\6"
@@ -2906,7 +2922,7 @@ const uint8_t u8g2_font_logisoso34_tn[538] U8G2_FONT_SECTION("u8g2_font_logisoso
   Glyphs: 224/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso38_tf[6873] U8G2_FONT_SECTION("u8g2_font_logisoso38_tf") = 
+const uint8_t u8g2_font_logisoso38_tf[6873] U8G2_FONT_SECTION("u8g2_font_logisoso38_tf") =
   "\340\0\4\4\6\6\5\7\7.\71\374\366&\366&\0\4\335\11\267\32\274 \6\0\0\201X!\16\205"
   "Y\201N\370\377\36\304\210\27#\0\42\24\312q\277X\30\63\202\10&$\4\11\21$$T\20\0#"
   "N\223\71\201Y+S\254L\261\62\305\212\230\62R\254L\261\62\305\312\24+S\254L\261\42\305\214\24"
@@ -3128,7 +3144,7 @@ const uint8_t u8g2_font_logisoso38_tf[6873] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 96/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso38_tr[3745] U8G2_FONT_SECTION("u8g2_font_logisoso38_tr") = 
+const uint8_t u8g2_font_logisoso38_tr[3745] U8G2_FONT_SECTION("u8g2_font_logisoso38_tr") =
   "`\0\4\4\6\6\5\7\7%\71\0\366&\366&\0\4\335\11\267\16\204 \6\0\0\201X!\16\205"
   "Y\201N\370\377\36\304\210\27#\0\42\24\312q\277X\30\63\202\10&$\4\11\21$$T\20\0#"
   "N\223\71\201Y+S\254L\261\62\305\212\230\62R\254L\261\62\305\312\24+S\254L\261\42\305\214\24"
@@ -3253,7 +3269,7 @@ const uint8_t u8g2_font_logisoso38_tr[3745] U8G2_FONT_SECTION("u8g2_font_logisos
   Glyphs: 18/527
   BBX Build Mode: 0
 */
-const uint8_t u8g2_font_logisoso38_tn[612] U8G2_FONT_SECTION("u8g2_font_logisoso38_tn") = 
+const uint8_t u8g2_font_logisoso38_tn[612] U8G2_FONT_SECTION("u8g2_font_logisoso38_tn") =
   "\22\0\4\4\5\6\5\6\6\26.\0\376&\366&\0\0\0\0\0\2G \6\0\200 \16*!\60"
   "\242;n\204\251\23CFD\11\22\17L\270Y\207l\221\213\7&H\224\20CF\34a\312\0+\20"
   "\356\251'^%\353\350\301\17T\225\254#\0,\15\345\250\236\33#H\250\30#\5\0-\11\256\250,"
