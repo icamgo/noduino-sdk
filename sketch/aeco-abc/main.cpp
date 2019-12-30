@@ -254,7 +254,7 @@ void push_data()
 		pkt[3+i] = p[7-i];
 	}
 
-	uint16_t ui16 = (uint16_t)(temp * 10);
+	int16_t ui16 = (int16_t)(temp * 10);
 	p = (uint8_t *) &ui16;
 
 	pkt[11] = p[1]; pkt[12] = p[0];

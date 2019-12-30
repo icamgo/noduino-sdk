@@ -264,7 +264,7 @@ void push_data()
 	// press/1000.0 = bar (0.1MPa), then x 100 for packet
 	press /= 10.0;
 	press = roundf(press);
-	uint16_t ui16 = (uint16_t)press;
+	int16_t ui16 = (int16_t)press;
 	p = (uint8_t *) &ui16;
 
 	pkt[11] = p[1]; pkt[12] = p[0];

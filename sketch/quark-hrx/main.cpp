@@ -27,10 +27,10 @@
 
 #include "LowPower.h"
 
-#define	DEBUG					1
+#define	DEBUG					2
 //#define DEBUG_HEX_PKT			1
 
-#define ENABLE_SSD1306			1
+//#define ENABLE_SSD1306			1
 
 // use the dynamic ACK feature of our modified SX1272 lib
 //#define GW_AUTO_ACK
@@ -279,10 +279,7 @@ char *decode_sensor_data(uint8_t *pkt)
 	int16_t data = 0;
 	float dd  = 0;
 
-	data = ((pkt[11] & 0x7F) << 8) | pkt[12];
-
-	if (pkt[11] & 0x80)
-		data = data * -1;
+	data = (pkt[11]  << 8) | pkt[12];
 
 	if (dev_id[3] == '0' && (dev_id[4] == '2' || dev_id[4] == '0' || dev_id[4] == '4')) {
 		// Temperature
@@ -627,7 +624,9 @@ void loop(void)
 
 		if (get_vbat() < 2.92) {
 			// show low power
+		#ifdef CONFIG_V0
 			show_low_bat();
+		#endif
 			delay(2900);
 		}
 	}
