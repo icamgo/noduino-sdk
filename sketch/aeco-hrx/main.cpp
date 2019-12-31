@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define	DEBUG					1
+//#define	DEBUG					1
 //#define DEBUG_HEX_PKT			1
 
 #define ENABLE_OLED					1
