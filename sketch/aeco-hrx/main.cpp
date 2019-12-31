@@ -730,9 +730,19 @@ void loop(void)
 
 		uint8_t *p = sx1272.packet_received.data;
 
+		decode_devid(sx1272.packet_received.data);
+
+		if (strcmp(dev_id, "") == 0) {
+			// lora module unexpected error
+			sx1272.reset();
+#if DEBUG > 1
+			INFO_S("%s", "Resetting lora module\n");
+#endif
+			radio_setup();
+		}
+
 		if (0x0 == omode) {
 			// show all message
-			decode_devid(sx1272.packet_received.data);
 
 			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
 				dev_id,
@@ -756,8 +766,6 @@ void loop(void)
 		} else if (0x1 == omode) {
 			// only show tagged message
 			if (p[0] == 0x55) {
-
-				decode_devid(sx1272.packet_received.data);
 
 				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
 					dev_id,
@@ -783,8 +791,6 @@ void loop(void)
 		} else if (0x2 == omode) {
 			// only show trigged message
 			if (p[2] == 0x33 && (p[15] == 0x03 || p[15] == 0x04)) {
-
-				decode_devid(p);
 
 				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
 					dev_id,
