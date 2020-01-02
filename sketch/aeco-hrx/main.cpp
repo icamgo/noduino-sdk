@@ -17,7 +17,7 @@
  */
 
 #include "softspi.h"
-#include "SX1272.h"
+#include "sx1272.h"
 
 #include <stdio.h>
 #include <stdint.h>
