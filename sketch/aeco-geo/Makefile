@@ -275,7 +275,7 @@ week		:= $(shell date +%V)
 
 id_base := 1$(year)$(dev_type)$(week)0000
 
-rand := $(shell echo $$RANDOM)
+rand := $(shell /bin/bash -c 'echo $$RANDOM')
 
 ifndef id
 id = $$(($(id_base)+$(rand)%10000))
