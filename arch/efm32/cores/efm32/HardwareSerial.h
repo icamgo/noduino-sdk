@@ -20,7 +20,7 @@
 #define _HARDWARESERIAL_H_
 
 #include "Stream.h"
-#include "print.h"
+#include "Print.h"
 
 #if !(defined(SERIAL_TX_BUFFER_SIZE) && defined(SERIAL_RX_BUFFER_SIZE))
  #define SERIAL_TX_BUFFER_SIZE 32

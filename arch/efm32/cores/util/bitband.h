@@ -23,7 +23,7 @@
 
 #ifndef __BITBAND_H__
 #define __BITBAND_H__
-#include "arduino.h"
+#include "Arduino.h"
 #include "em_bitband.h"
 #include "digitalPin.h"
 

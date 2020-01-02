@@ -16,7 +16,7 @@
  *
  */
 
-#include "SX1272.h"
+#include "sx1272.h"
 
 #include "softi2c.h"
 

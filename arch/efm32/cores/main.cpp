@@ -22,7 +22,7 @@
 #if __GNUC__ > 5 || (__GNUC__ == 5 && (__GNUC_MINOR__ > 4 || \
    (__GNUC_MINOR__ == 4 && __GNUC_PATCHLEVEL__ > 0)))
 
-#include "arduino.h"
+#include "Arduino.h"
 
 // Declared weak in Arduino.h to allow user redefinitions.
 int atexit(void (* /*func*/ )()) { return 0; }

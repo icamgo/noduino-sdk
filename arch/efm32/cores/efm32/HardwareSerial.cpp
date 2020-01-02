@@ -16,7 +16,7 @@
   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 */
 
-#include "arduino.h"
+#include "Arduino.h"
 
 #if defined(USART0)&& (USE_USART0 >0)
 USART_Buf_TypeDef* USART0_buf = 0;
