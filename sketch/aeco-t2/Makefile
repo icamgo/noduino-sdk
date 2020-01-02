@@ -19,7 +19,6 @@ TARGET		= main.cpp
 SDK_BASE	?= ../..
 ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
 ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
-#ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
 DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
@@ -33,11 +32,11 @@ VERSION=187
 
 ifeq ($(OS),Windows_NT)
 TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/arm-none-eabi-2017q4/bin
-#OPENOCD = $(SDK_BASE)/toolchain/openocd/bin/openocd
 OPENOCD = $(SDK_BASE)/toolchain/openocd-nt/bin/openocd
 PORT = COM7
 else
-TOOLCHAIN_DIR = /usr/share/arduino
+TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/gcc-arm-none-eabi/bin
+OPENOCD = $(SDK_BASE)/toolchain/openocd-nt/bin/openocd
 	ifeq ($(UNAME_S),Linux)
 		PORT ?= /dev/ttyUSB0
 	endif
@@ -281,7 +280,7 @@ week		:= $(shell date +%V)
 
 id_base := 1$(year)$(dev_type)$(week)0000
 
-rand := $(shell echo $$RANDOM)
+rand := $(shell /bin/bash -c 'echo $$RANDOM')
 
 ifndef id
 id = $$(($(id_base)+$(rand)%10000))
@@ -307,19 +306,16 @@ produce: $(fw)
 	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
 		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
-	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
+	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
 	@rm -f .u.bin
-
-$(fw):
-	-$(Q) echo "Using the $(fw)..."
 
 # same as produce
 # make go (write firmware main.bin into main flash, set a random devid and log it)
 # make go fw=xxx.bin (write firmware xxx.bin into main flash, set a random devid and log it)
 
 go: $(fw) .u.bin
-	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
+	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GO) && rm -f .u.bin
 
 .u.bin:
@@ -335,7 +331,7 @@ flash: build/main.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
 
 user: .u.bin
-	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
+	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
 	@rm -f .u.bin
 
@@ -362,39 +358,39 @@ eraseuser:
 getid:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GET_DID)
 	@echo ""
-	@printf "The DevID is: %ld" 0x$(DID);
+	@printf "The DevID is: %d\r\n" 0x$(DID);
 	@rm -f .did.bin
 
 # same as getid
 getdid:
 	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GET_DID)
 	@echo ""
-	@printf "The DevID is: %ld" 0x$(DID);
+	@printf "The DevID is: %d\r\n" 0x$(DID);
 	@rm -f .did.bin
 
 getuuid:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GET_UUID)
 	@echo ""
-	@printf "The UUID is: %ld\r\n" 0x$(UUID);
+	@printf "The UUID is: %d\r\n" 0x$(UUID);
 	@echo $(UUID) | tr [:lower:] [:upper:]
 	@rm -f .uuid.bin
 
 # make setid (set random id, do not log it)
 # make setid id=xxx (set id=xxx, do not log it)
 setid:
-	@printf "Current used DevID is: %ld (0x%016X)\r\n" $(id) $(id);
+	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
 	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
-	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
+	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
 	@rm -f .u.bin
 
 # same as setid
 setdid:
-	@printf "Current used DevID is: %ld (0x%016X)\r\n" $(id) $(id);
+	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
 	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
-	@printf "Current DevID in u.bin is: %ld\r\n" 0x$(UBINID);
+	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
 	@rm -f .u.bin
 
