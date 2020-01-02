@@ -314,7 +314,7 @@ week		:= $(shell date +%V)
 
 id_base := 1$(year)$(dev_type)$(week)0000
 
-rand := $(shell echo $$RANDOM)
+rand := $(shell /bin/bash -c 'echo $$RANDOM')
 
 ifndef id
 id = $$(($(id_base)+$(rand)%10000))
@@ -359,7 +359,7 @@ go: $(fw)
 .u.bin:
 	-$(Q) echo $(id)
 	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
-		echo "Generating the u.bin ..."; cp user.bin .u.bin;				  \
+		echo "Generating the u.bin ..."; cp $(ARDUINO_BOARD)/user.bin .u.bin;				  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 
 upload: build/main.bin
@@ -417,7 +417,7 @@ getuuid:
 # make setid id=xxx (set id=xxx, do not log it)
 setid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
-	@echo "Generating the u.bin ..."; cp -f user.bin .u.bin;				  \
+	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
@@ -426,7 +426,7 @@ setid:
 # same as setid
 setdid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
-	@echo "Generating the u.bin ..."; cp -f user.bin .u.bin;				  \
+	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
