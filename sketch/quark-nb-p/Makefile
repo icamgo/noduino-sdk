@@ -4,7 +4,7 @@
 
 SDK_BASE		?= ../..
 OPENCPU_BASE	?= $(SDK_BASE)/arch/opencpu
-TOOLCHAIN_DIR	?= $(SDK_BASE)/toolchain/arm-none-eabi
+TOOLCHAIN_DIR	?= $(SDK_BASE)/toolchain/arm-none-eabi-opencpu
 
 PNAME := quark-nb
 HWVER := LV 
