@@ -60,7 +60,13 @@ void pressure_init(int scl, int sda)
 {
 	wire_begin(scl, sda);
 }
-
+ 
+/*
+ * Return value:
+ *   78.00bar is Bus error
+ *   18.00bar is the max valid value
+ *   -1.0 bar is the min valid value
+*/
 float get_pressure()
 {
 	uint16_t pv = 0;
@@ -103,13 +109,17 @@ uint16_t pc10_read()
 
 	wire_requestFrom(PC10_ADDR, LEN);
 
-	if (wire_available() != LEN)
+	if (wire_available() != LEN) {
+		// The returned press = 78.00 bar
 		return -1;
+	}
 
 	for (i = 0; i < LEN; i++) {
 		buf[i] = wire_read();
 	}
-	
+		
+	// The max value is 0x3FFF = 16383
+	// and the max press = 18bar
 	return ((buf[0] << 8) & 0x3FFF) | buf[1];
 }
 
