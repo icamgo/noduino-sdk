@@ -27,20 +27,20 @@
 
 //#define USE_SI2301				1
 //#define node_addr				249
-#define node_addr				250
+#define node_addr				100
 
-#define ENABLE_GPS			1
-//#define ENABLE_SHT2X		1
+//#define ENABLE_GPS			1
+#define ENABLE_SHT2X		1
 //#define DISABLE_SX1278		1
 
 #define ENABLE_CAD			1
 
-#define DEST_ADDR				2
+#define DEST_ADDR				1
 
-//#define LOW_POWER				1
+#define LOW_POWER				1
 
 #define MAX_DBM			20
-#define TXRX_CH			CH_00_441
+#define TXRX_CH			CH_00_470
 
 ///////////////////////////////////////////////////////////////////
 //#define WITH_EEPROM
@@ -56,7 +56,7 @@
 
 ///////////////////////////////////////////////////////////////////
 // CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-unsigned int idlePeriod = 6;	// 6 seconds
+unsigned int idlePeriod = 60;	// 6 seconds
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
@@ -191,6 +191,7 @@ void setup()
 	power_on_dev();		// turn on device power
 
 #ifdef ENABLE_SHT2X
+	Wire.begin();
 	sht2x_init();		// initialization of the sensor
 #endif
 
@@ -213,6 +214,7 @@ void setup()
 void qsetup()
 {
 #ifdef ENABLE_SHT2X
+	Wire.begin();
 	sht2x_init();	// initialization of the sensor
 #endif
 
@@ -472,7 +474,7 @@ void loop(void)
 
 		power_on_dev();
 		delay(100);
-		qsetup();
+		setup();
 #else
 		INFOLN("%ld", next_tx);
 		INFO_S("%s", "Will send next value at\n");
