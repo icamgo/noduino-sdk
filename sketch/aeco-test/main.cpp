@@ -302,6 +302,10 @@ void push_data()
 	p = (uint8_t *) &ui16;
 	pkt[18] = p[1]; pkt[19] = p[0];
 
+	pkt[20] = 0;		// Humidity Sensor data	or Water Leak Sensor data
+	pkt[21] = 0;		// Internal Temperature of the chip
+	pkt[22] = 0;		// Internal humidity to detect water leak of the shell
+	pkt[23] = 0;		// Internal current consumption
 #else
 	char vbat_s[10], pres_s[10];
 	ftoa(vbat_s, vbat, 2);
