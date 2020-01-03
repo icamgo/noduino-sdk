@@ -39,6 +39,8 @@ static uint32_t sample_count = 0;
 static float old_pres = 0.0;
 static float cur_pres = 0.0;
 
+static float cur_curr = 0.0;
+
 //#define	TX_TESTING				1
 
 static uint8_t need_push = 0;
@@ -147,16 +149,14 @@ bool current_leak()
 
 	int ad = adc.read(A6, A7);
 
-	float cur = 1250.0*ad/2.0/2048.0/0.7;
+	cur_curr = 1250.0*ad/2.0/2048.0/0.7;
 
 	INFO("ADC differential ch6 ch7 read:");
 	INFOLN(ad);
 
 	INFO("The consumption current (mA): ");
 
-	//cur_pres = cur;
-
-	if (cur > 3.2)
+	if (cur_curr > 3.2)
 		return true;
 	else
 		return false;
@@ -340,6 +340,19 @@ void push_data()
 	p = (uint8_t *) &ui16;
 	pkt[18] = p[1]; pkt[19] = p[0];
 
+	float chip_temp = adc.temperatureCelsius();
+
+	// Humidity Sensor data	or Water Leak Sensor data
+	pkt[20] = 0;
+
+	// Internal Temperature of the chip
+	pkt[21] = (int8_t)chip_temp;
+
+	// Internal humidity to detect water leak of the shell
+	pkt[22] = 0;
+
+	// Internal current consumption
+	pkt[23] = (int8_t)cur_curr;
 #else
 	char vbat_s[10], pres_s[10];
 	ftoa(vbat_s, vbat, 2);
