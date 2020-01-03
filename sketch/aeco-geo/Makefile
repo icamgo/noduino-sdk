@@ -269,13 +269,17 @@ coff: build/main.elf
 	$(NM) -n $< > $@
 
 ############################################################
-dev_type	:= 02
+dev_type	:= 21
 year		:= $(shell date +%y)
 week		:= $(shell date +%V)
 
 id_base := 1$(year)$(dev_type)$(week)0000
 
-rand := $(shell /bin/bash -c 'echo $$RANDOM')
+ifeq ($(OS),Windows_NT)
+rand		:= $(shell /bin/bash -c "echo $$RANDOM")
+else
+rand		:= $(shell /bin/bash -c 'echo $$RANDOM')
+endif
 
 ifndef id
 id = $$(($(id_base)+$(rand)%10000))
