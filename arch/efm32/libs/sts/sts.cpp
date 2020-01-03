@@ -34,7 +34,7 @@
 #include <inttypes.h>
 #include <Wire.h>
 #include <Arduino.h>
-#include "STSSensor.h"
+#include "sts.h"
 
 STSSensorDriver::~STSSensorDriver()
 {
