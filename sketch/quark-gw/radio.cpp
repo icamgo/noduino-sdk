@@ -167,7 +167,7 @@ int CarrierSense(bool onlyOnce = false)
 #ifdef CONFIG_V0
 char devid_buf[24];
 char dev_vbat[6];
-char dev_data[12];
+char dev_data[32];
 
 char *uint64_to_str(char *dest, uint64_t n)
 {
@@ -265,6 +265,12 @@ char *decode_sensor_data(uint8_t *pkt, char *id)
 		data = data * -1;
 #endif
 
+	/*
+	 * pkt[20]: Humidity Sensor data or Water Leak Sensor data
+	 * pkt[21]: Internal Temperature of the chip
+	 * pkt[22]: Internal humidity to detect water leak of the shell
+	 * pkt[23]: Internal current consumption
+	*/
 	if (id[3] == '0' && (id[4] == '2' || id[4] == '0' || id[4] == '4')) {
 		// Temperature
 		dd = (float)(data / 10.0);
@@ -275,7 +281,13 @@ char *decode_sensor_data(uint8_t *pkt, char *id)
 		// Pressure
 		dd = (float)(data / 100.0);
 		ftoa(data_buf, dd, 2);
-		sprintf(dev_data, "P/%s", data_buf);
+		sprintf(dev_data, "P/%s/iT/%d/iC/%d", data_buf, pkt[21], pkt[23]);
+
+	} else if (id[3] == '0' && id[4] == '8') {
+		// Temperature and Humidity Sensor
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+		sprintf(dev_data, "T/%s/H/%d/iT/%d/iC/%d", data_buf, pkt[20], pkt[21], pkt[23]);
 
 	} else if (id[3] == '0' && id[4] == '9') {
 		// Moving Sensor
@@ -285,7 +297,7 @@ char *decode_sensor_data(uint8_t *pkt, char *id)
 		// Water Leak Sensor
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
-		sprintf(dev_data, "WL/%s", dev_data);
+		sprintf(dev_data, "T/%s/WL/%d", dev_data, pkt[20]);
 
 	} else if (id[3] == '2' && id[4] == '1') {
 		// Internal Temprature of ABC Sensor
