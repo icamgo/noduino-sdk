@@ -32,7 +32,7 @@ F_CPU = 1000000
 VERSION=187
 
 ifeq ($(OS),Windows_NT)
-TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/gcc-arm-none-eabi/bin
+TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/arm-none-eabi-2017q4/bin
 OPENOCD = $(SDK_BASE)/toolchain/openocd-nt/bin/openocd
 PORT = COM7
 else
@@ -271,13 +271,17 @@ coff: build/main.elf
 	$(NM) -n $< > $@
 
 ############################################################
-dev_type	:= 02
+dev_type	:= 21
 year		:= $(shell date +%y)
 week		:= $(shell date +%V)
 
 id_base := 1$(year)$(dev_type)$(week)0000
 
+ifeq ($(OS),Windows_NT)
+idn		:= $(shell /bin/bash -c "echo $$RANDOM")
+else
 idn		:= $(shell /bin/bash -c 'echo $$RANDOM')
+endif
 
 ifndef id
 id = $$(($(id_base) + $(idn) % 10000))
