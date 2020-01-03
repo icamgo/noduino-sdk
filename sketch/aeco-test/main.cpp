@@ -138,6 +138,10 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
+#ifdef TX_TESTING
+	need_push = 0x5a;
+	tx_cause = TIMER_TX;
+#else
 	sample_count++;
 
 	if (sample_count >= HEARTBEAT_TIME/20) {
@@ -148,10 +152,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	cur_temp = adc.temperatureCelsius();
 
-#ifdef TX_TESTING
-	need_push = 0x5a;
-	tx_cause = TIMER_TX;
-#else
 	if (fabsf(cur_temp - old_temp) > 0.5) {
 
 		need_push = 0x5a;
@@ -262,9 +262,13 @@ void push_data()
 
 	qsetup();
 
+#ifdef TX_TESTING
+	cur_temp = adc.temperatureCelsius();
+#else
 	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
 		cur_temp = adc.temperatureCelsius();
 	}
+#endif
 
 	vbat = adc.readVbat();
 
