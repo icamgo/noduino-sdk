@@ -63,9 +63,16 @@ void pressure_init(int scl, int sda)
  
 /*
  * Return value:
- *   78.00bar is Bus error
- *   18.00bar is the max valid value
- *   -1.0 bar is the min valid value
+ *   18.00bar: Max valid value (16383)
+ *   -0.15bar: Min valid value (1501)
+ *   -1.0 bar: Bus error, no sensor connected, not wakeup
+ *   -2.0 bar: Out of low range
+ *   -3.0 bar: Out of high range
+ *
+ * Old Return value:
+ *   78.00bar: Bus error
+ *   18.00bar: Max valid value
+ *   -1.0 bar: Out of low range value
 */
 float get_pressure()
 {
@@ -82,20 +89,40 @@ float get_pressure()
 	//Serial.println(pv, HEX);
 
 	if (pv > 1500 && pv < PC10_MID) {
+
 		p = 8000.0 / (PC10_MID - PC10_LOW) * (pv - PC10_LOW);
-	} else if (pv >= PC10_MID) {
+
+	} else if (pv >= PC10_MID && pv < 15000) {
+
+		// If pv = 65535, then p = 78.006
 		p = 8000.0 / (PC10_HIGH - PC10_MID) * (pv - PC10_MID) + 8000.0;
-	} else {
-		p = -1000.0;
+
+	} else if (pv == 65535) {
+
+		return -1.0;		// Bus error, no sensor connected, not wakeup ...
+
+	} else if (pv <= 1500) {
+
+		return -2.0;		// Out of low range
+
+	} else if (pv >= 15000 && pv <= 0x3FFF) {
+
+		return -3.0;		// Out of high range
 	}
+
 	// The unit of p is hPa(mbar)
 	// p/1000.0 = bar (0.1MPa)
-
 	p /= 1000.0;
 
 	return p;
 }
 
+/*
+ * Returned value:
+ *   65535: Bus error
+ *       0: The min value
+ *   16338: The max value
+*/
 uint16_t pc10_read()
 {
 	uint8_t buf[LEN] = {};
@@ -111,7 +138,7 @@ uint16_t pc10_read()
 
 	if (wire_available() != LEN) {
 		// The returned press = 78.00 bar
-		return -1;
+		return 65535;
 	}
 
 	for (i = 0; i < LEN; i++) {
