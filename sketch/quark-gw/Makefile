@@ -27,6 +27,8 @@ CXXDEFS := -DCONFIG_V0 -DUSE_SOFTSPI
 
 TOOLCHAIN_DIR = $(SDK_BASE)/toolchain
 
+UNAME_S := $(shell uname -s)
+
 ifeq ($(OS),Windows_NT)
 PORT = COM4
 else
