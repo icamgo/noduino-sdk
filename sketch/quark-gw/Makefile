@@ -25,11 +25,11 @@ LIB_DIR = ./lib
 CDEFS := -DCONFIG_V0 -DUSE_SOFTSPI
 CXXDEFS := -DCONFIG_V0 -DUSE_SOFTSPI
 
-ifeq ($(OS),Windows_NT)
 TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/avr-gcc
+
+ifeq ($(OS),Windows_NT)
 PORT = COM4
 else
-TOOLCHAIN_DIR = /usr
 	ifeq ($(UNAME_S),Linux)
 		PORT ?= /dev/ttyUSB0
 	endif
