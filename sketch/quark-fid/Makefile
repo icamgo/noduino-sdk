@@ -21,12 +21,11 @@ SDK_BASE		?= ../..
 ARDUINO_CORES	:= $(SDK_BASE)/arch/avr/cores
 LIB_DIR			:= $(SDK_BASE)/arch/avr/libs
 
+TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/avr-gcc
 
 ifeq ($(OS),Windows_NT)
-TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/avr-gcc
 PORT = COM4
 else
-TOOLCHAIN_DIR = /usr
 	ifeq ($(UNAME_S),Linux)
 		PORT ?= /dev/ttyUSB0
 	endif
