@@ -16,7 +16,7 @@
  *
  */
 
-#include "SX1272.h"
+#include "sx1272.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -624,9 +624,9 @@ void loop(void)
 
 		if (get_vbat() < 2.92) {
 			// show low power
-		#ifdef CONFIG_V0
+#ifdef ENABLE_SSD1306
 			show_low_bat();
-		#endif
+#endif
 			delay(2900);
 		}
 	}

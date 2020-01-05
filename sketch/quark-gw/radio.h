@@ -19,7 +19,7 @@
 #define __RADIO_H__
 
 #include "Arduino.h"
-#include "SX1272.h"
+#include "sx1272.h"
 
 //#define DEBUG
 

@@ -22,7 +22,7 @@
  *  Implementation:    Covadonga Albiñana & Victor Boria
  */
 
-#include "SX1272.h"
+#include "sx1272.h"
 
 // based on SIFS=3CAD
 uint8_t sx1272_SIFS_value[] = { 0, 183, 94, 44, 47, 23, 24, 12, 12, 7, 4, 4, 4 };
