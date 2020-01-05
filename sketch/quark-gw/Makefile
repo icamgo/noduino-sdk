@@ -25,7 +25,7 @@ LIB_DIR = ./lib
 CDEFS := -DCONFIG_V0 -DUSE_SOFTSPI
 CXXDEFS := -DCONFIG_V0 -DUSE_SOFTSPI
 
-TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/avr-gcc
+TOOLCHAIN_DIR = $(SDK_BASE)/toolchain
 
 ifeq ($(OS),Windows_NT)
 PORT = COM4
@@ -46,11 +46,13 @@ F_CPU = 16000000
 VERSION=165
 
 ifeq ($(OS),Windows_NT)
-AVR_TOOLS_PATH 	= $(TOOLCHAIN_DIR)/bin
-AVRDUDE_PATH = $(TOOLCHAIN_DIR)/bin
+AVR_TOOLS_PATH 	= $(TOOLCHAIN_DIR)/avr-gcc/bin
+AVRDUDE_PATH = $(TOOLCHAIN_DIR)/avrdude
+AVRDUDE_CONF_PATH = $(TOOLCHAIN_DIR)/avrdude
 else
-AVR_TOOLS_PATH 	= $(TOOLCHAIN_DIR)/bin
-AVRDUDE_PATH = $(TOOLCHAIN_DIR)/bin
+AVR_TOOLS_PATH 	= $(TOOLCHAIN_DIR)/avr-gcc/bin
+AVRDUDE_PATH = /usr/bin
+AVRDUDE_CONF_PATH = /etc/
 endif
 
 #Note that if your program has dependencies other than those
@@ -166,7 +168,7 @@ AVRDUDE_PORT = $(PORT)
 AVRDUDE_WRITE_MAIN = -U flash:w:build/main.hex
 AVRDUDE_WRITE_EEPROM = -U eeprom:w:eeprom.bin:r
 
-AVRDUDE_FLAGS = -V -F -C $(TOOLCHAIN_DIR)/etc/avrdude.conf \
+AVRDUDE_FLAGS = -V -F -C $(AVRDUDE_CONF_PATH)/avrdude.conf \
 -c arduino -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER) \
 -b $(UPLOAD_RATE) -D
 
