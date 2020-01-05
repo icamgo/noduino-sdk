@@ -91,4 +91,5 @@ clean:
 	@rm -f $(subst /,\,$(OBJS))
 	@rm -rf firmware
 	@rm -f compile.h
+	@rm -f *.o *.sym
 	@echo clean ends
