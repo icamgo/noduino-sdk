@@ -256,14 +256,7 @@ char *decode_sensor_data(uint8_t *pkt, char *id)
 	int16_t data = 0;
 	float dd  = 0;
 
-#if 1
 	data = (pkt[11]  << 8) | pkt[12];
-#else
-	data = ((pkt[11] & 0x7F) << 8) | pkt[12];
-
-	if (pkt[11] & 0x80)
-		data = data * -1;
-#endif
 
 	/*
 	 * pkt[20]: Humidity Sensor data or Water Leak Sensor data
