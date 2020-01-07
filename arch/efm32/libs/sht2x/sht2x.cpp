@@ -201,7 +201,9 @@ float sht2x_get_temp(void)
 	return (-46.85 + 175.72 / 65536.0 * (float)sd);
 }
 
-uint8_t sht2x_init()
+uint8_t sht2x_init(uint8_t scl, uint8_t sda)
 {
+	wire_begin(scl, sda);
+
 	return 0;
 }

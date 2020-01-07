@@ -20,7 +20,6 @@
 #include "sx1272.h"
 #include "softi2c.h"
 #include "sht2x.h"
-//#include "U8g2lib.h"
 #include "rtcdriver.h"
 #include "math.h"
 #include "em_wdog.h"
@@ -33,6 +32,13 @@ static uint32_t sample_period = 20;		/* 20s */
 
 static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			7200
+
+static float old_temp = 0.0;
+static float cur_temp = 0.0;
+static float old_humi = 0.0;
+static float cur_humi = 0.0;
+
+static float cur_curr = 0.0;
 
 //#define	TX_TESTING				1
 #define	DEBUG					1
@@ -56,24 +62,38 @@ static uint32_t need_push = 0;
 
 uint8_t tx_cause = 0;
 
-#define	TX_TIME					5000
+#define	TX_TIME					3000
 #define DEST_ADDR				1
+
+#define	RESET_TX			0
+#define	DELTA_TX			1
+#define	TIMER_TX			2
+#define	KEY_TX				3
+#define	EL_TX				4
+#define	WL_TX				5
 
 #ifdef CONFIG_V0
 #define TXRX_CH				CH_01_472
 #define LORA_MODE			12
+
 #else
-#define node_addr				107
+#define node_addr			107
 
 #define TXRX_CH				CH_00_470
 #define LORA_MODE			11
 #endif
 
-#define MAX_DBM			20
+#define MAX_DBM				20
 
 //#define WITH_ACK
 
-uint8_t message[50];
+#ifdef CONFIG_V0
+uint8_t message[32] = { 0x47, 0x4F, 0x33 };
+uint8_t tx_cause = RESET_TX;
+uint16_t tx_count = 0;
+#else
+uint8_t message[32];
+#endif
 
 #ifdef DEBUG
 
@@ -128,13 +148,29 @@ void power_off_dev()
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
+bool current_leak()
+{
+	adc.reference(adcRef1V25);
+
+	int ad = adc.read(A6, A7);
+
+	cur_curr = 1250.0*ad/2.0/2048.0/0.7;
+
+	INFO("ADC differential ch6 ch7 read:");
+	INFOLN(ad);
+
+	INFO("The consumption current (mA): ");
+
+	if (cur_curr > 3.2)
+		return true;
+	else
+		return false;
+}
+
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
 	(void)id;
 	(void)user;
-
-	static float old_temp = 0.0, old_humi = 0.0;
-	float temp = 0.0, humi = 0.0;
 
 	WDOG_Feed();
 
@@ -142,43 +178,50 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	sample_count++;
 
-	if (sample_count >= HEARTBEAT_TIME/20) {
-		need_push = 0x5a;
-		tx_cause = 2;
-		sample_count = 0;
-	}
-
 #ifdef ENABLE_SHT2X
-	wire_begin(SCL_PIN, SDA_PIN);
-	sht2x_init();		// initialization of the sensor
-	temp = sht2x_get_temp();
-	humi = sht2x_get_humi();
+	sht2x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
+	cur_temp = sht2x_get_temp();
+	cur_humi = sht2x_get_humi();
 #endif
 
 #ifdef TX_TESTING
 	need_push = 0x5a;
-	tx_cause = 2;
+	tx_cause = TIMER_TX;
 #else
-	if (fabsf(temp - old_temp) > 0.3 || fabsf(humi - old_humi) > 1) {
-
-		old_humi = humi;
-		old_temp = temp;
+	if (fabsf(cur_temp - old_temp) > 0.5 || fabsf(cur_humi - old_humi) > 1) {
 
 		need_push = 0x5a;
-#ifdef CONFIG_V0
-		tx_cause = 1;
-#endif
+
+		tx_cause = DELTA_TX;
+
+	} else if (sample_count >= HEARTBEAT_TIME/sample_period) {
+
+		need_push = 0x5a;
+		tx_cause = TIMER_TX;
+
+		sample_count = 0;
 	}
 #endif
+
+	if (current_leak()) {
+		/*
+		 * TX pkt:
+		 *  - 2h interval
+		 *  - sensor data is changed
+		*/
+		tx_cause = EL_TX;
+	}
 }
 
 void trig_check_sensor()
 {
-	noInterrupts();
-
 	need_push = 0x5a;
 
-	interrupts();
+	tx_cause = KEY_TX;
+
+	if (current_leak()) {
+		tx_cause = EL_TX;
+	}
 }
 
 void setup()
@@ -190,11 +233,10 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 256 seconds */
+	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 
-	// dev power ctrl
+	// init dev power ctrl pin
 	pinMode(PWR_CTRL_PIN, OUTPUT);
-
 	power_off_dev();
 
 	pinMode(KEY_PIN, INPUT);
@@ -213,7 +255,7 @@ void setup()
 	WDOG_Init(&wInit);
 
 	/* bootup tx */
-	tx_cause = 0;
+	tx_cause = RESET_TX;
 	need_push = 0x5a;
 }
 
@@ -262,28 +304,73 @@ void push_data()
 	long endSend;
 
 	float vbat = 0.0;
-	float temp = 0.0, humi = 0.0;
-
-	uint8_t r_size;
 
 	int e;
 
 	qsetup();
 
-#ifdef ENABLE_SHT2X
-	wire_begin(SCL_PIN, SDA_PIN);
-	sht2x_init();		// initialization of the sensor
-	temp = sht2x_get_temp();
-	humi = sht2x_get_humi();
-#endif
+	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
+	#ifdef ENABLE_SHT2X
+		sht2x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
+		cur_temp = sht2x_get_temp();
+		cur_humi = sht2x_get_humi();
+	#endif
+	}
 
 	vbat = adc.readVbat();
+
+#ifdef CONFIG_V0
+	uint8_t *pkt = message;
+	uint64_t devid = get_devid();
+
+	uint8_t *p = (uint8_t *) &devid;
+
+	// set devid
+	int i = 0;
+	for(i = 0; i < 8; i++) {
+		pkt[3+i] = p[7-i];
+	}
+
+	int16_t ui16 = (int16_t)(cur_temp * 10);
+	p = (uint8_t *) &ui16;
+
+	pkt[11] = p[1]; pkt[12] = p[0];
+
+	ui16 = vbat * 1000;
+	pkt[13] = p[1]; pkt[14] = p[0];
+
+	pkt[15] = tx_cause;
+
+	p = (uint8_t *) &tx_count;
+	pkt[16] = p[1]; pkt[17] = p[0];
+	tx_count++;
+
+	ui16 = get_crc(pkt, 18);
+	p = (uint8_t *) &ui16;
+	pkt[18] = p[1]; pkt[19] = p[0];
+
+	float chip_temp = adc.temperatureCelsius();
+
+	// Humidity Sensor data	or Water Leak Sensor data
+	pkt[20] = (uint8_t)cur_humi;
+
+	// Internal Temperature of the chip
+	pkt[21] = (int8_t)chip_temp;
+
+	// Internal humidity to detect water leak of the shell
+	pkt[22] = 0;
+
+	// Internal current consumption
+	pkt[23] = (int8_t)cur_curr;
+
+#else
+	uint8_t r_size;
 
 	char vbat_s[10], temp_s[10], humi_s[10];
 
 	ftoa(vbat_s, vbat, 2);
-	ftoa(temp_s, temp, 2);
-	ftoa(humi_s, humi, 0);
+	ftoa(temp_s, cur_temp, 2);
+	ftoa(humi_s, cur_humi, 0);
 
 	r_size = sprintf((char *)message, "\\!U/%s/T/%s/H/%s",
 				vbat_s, temp_s, humi_s);
@@ -293,6 +380,7 @@ void push_data()
 
 	INFO("Real payload size is ");
 	INFOLN(r_size);
+#endif
 
 #ifdef ENABLE_CAD
 	sx1272.CarrierSense();
@@ -300,6 +388,10 @@ void push_data()
 
 	startSend = millis();
 
+#ifdef CONFIG_V0
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
+#else
+	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
 
 	// Send message to the gateway and print the result
@@ -325,10 +417,18 @@ void push_data()
 #else
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
 #endif
-	endSend = millis();
 
 	INFO("LoRa pkt size ");
 	INFOLN(r_size);
+#endif
+
+	if (!e) {
+		// send message succesful, update the old data
+		old_temp = cur_temp;
+		old_humi = cur_humi;
+	}
+
+	endSend = millis();
 
 	INFO("LoRa Sent in ");
 	INFOLN(endSend - startSend);
@@ -350,17 +450,15 @@ void push_data()
 	spi_end();
 
 	power_off_dev();
-
-	wire_end();
 }
 
 void loop()
 {
-	INFO("Clock Freq = ");
-	INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
+	//INFO("Clock Freq = ");
+	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
 
-	INFO("need_push = ");
-	INFOHEX(need_push);
+	//INFO("need_push = ");
+	//INFOHEX(need_push);
 
 	if (0x5a == need_push) {
 		push_data();
@@ -368,19 +466,18 @@ void loop()
 		need_push = 0;
 	}
 
-	delay(50);
-
 	power_off_dev();
 	digitalWrite(SX1272_RST, LOW);
 
 	spi_end();
-	wire_end();
 
 	/*
 	 * Enable rtc timer before enter deep sleep
 	 * Stop rtc timer after enter check_sensor_data()
 	 */
 	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
+
+	wire_end();
 
 	EMU_EnterEM2(true);
 }

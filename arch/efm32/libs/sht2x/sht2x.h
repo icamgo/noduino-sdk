@@ -45,5 +45,5 @@ float sht2x_get_humi(void);
 float sht2x_get_temp(void);
 void sht2x_set_res(uint8_t r);
 uint8_t sht2x_reset(void);
-uint8_t sht2x_init(void);
+uint8_t sht2x_init(uint8_t scl, uint8_t sda);
 #endif
