@@ -69,7 +69,8 @@ static uint8_t need_push = 0;
 #define	DELTA_TX			1
 #define	TIMER_TX			2
 #define	KEY_TX				3
-#define	ALARM_TX			4
+#define	EL_TX				4
+#define	WL_TX				5
 
 #else
 #define node_addr				110
@@ -197,8 +198,12 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 #endif
 
 	if (current_leak()) {
-		//tx_cause |= 0x80;
-		tx_cause = ALARM_TX;
+		/*
+		 * TX pkt:
+		 *  - 2h interval
+		 *  - sensor data is changed
+		*/
+		tx_cause = EL_TX;
 	}
 }
 
@@ -210,8 +215,7 @@ void trig_check_sensor()
 #endif
 
 	if (current_leak()) {
-		//tx_cause |= 0x80;
-		tx_cause = ALARM_TX;
+		tx_cause = EL_TX;
 	}
 }
 
@@ -226,9 +230,8 @@ void setup()
 	wInit.em3Run = true;
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 
-	// dev power ctrl
+	// init dev power ctrl pin
 	pinMode(PWR_CTRL_PIN, OUTPUT);
-
 	power_off_dev();
 
 	pinMode(KEY_PIN, INPUT);
@@ -297,8 +300,6 @@ void push_data()
 
 	float vbat = 0.0;
 
-	uint8_t r_size;
-
 	int e;
 
 	qsetup();
@@ -354,6 +355,8 @@ void push_data()
 	// Internal current consumption
 	pkt[23] = (int8_t)cur_curr;
 #else
+	uint8_t r_size;
+
 	char vbat_s[10], pres_s[10];
 	ftoa(vbat_s, vbat, 2);
 	ftoa(pres_s, cur_pres, 2);
@@ -403,6 +406,9 @@ void push_data()
 	// 10ms max tx time
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
 #endif
+
+	INFO("LoRa pkt size ");
+	INFOLN(r_size);
 #endif
 
 	if (!e) {
@@ -411,9 +417,6 @@ void push_data()
 	}
 
 	endSend = millis();
-
-	INFO("LoRa pkt size ");
-	INFOLN(r_size);
 
 	INFO("LoRa Sent in ");
 	INFOLN(endSend - startSend);
