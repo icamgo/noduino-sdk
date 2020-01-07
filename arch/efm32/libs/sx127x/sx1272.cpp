@@ -3215,6 +3215,8 @@ uint8_t SX1272::receive()
 #endif
 
 	// Initializing packet_received struct
+	memset(packet_data, 0x00, MAX_PAYLOAD);
+
 	memset(&packet_received, 0x00, sizeof(packet_received));
 	packet_received.data = packet_data;
 
@@ -3228,6 +3230,7 @@ uint8_t SX1272::receive()
 	//writeRegister(REG_LNA, 0x23);                     // Important in reception
 	writeRegister(REG_LNA, LNA_MAX_GAIN);
 	writeRegister(REG_FIFO_ADDR_PTR, 0x00);	// Setting address pointer in FIFO data buffer
+
 	// change RegSymbTimeoutLsb
 	// single_chan_pkt_fwd uses 00 00001000
 	// why here we have 11 11111111
@@ -3610,7 +3613,7 @@ int8_t SX1272::getPacket(uint16_t wait)
 {
 	uint8_t state = 2;
 	byte value = 0x00;
-	//unsigned long previous;
+
 	unsigned long exitTime;
 	boolean p_received = false;
 
@@ -3618,20 +3621,15 @@ int8_t SX1272::getPacket(uint16_t wait)
 	INFO_LN(F("Starting 'getPacket'"));
 #endif
 
-	//previous = millis();
 	exitTime = millis() + (unsigned long)wait;
-	if (_modem == LORA) {	// LoRa mode
+
+	if (_modem == LORA) {
+
 		value = readRegister(REG_IRQ_FLAGS);
-		// Wait until the packet is received (RxDone flag) or the timeout expires
-		//while( (bitRead(value, 6) == 0) && (millis() - previous < (unsigned long)wait) )
+
 		while ((bitRead(value, 6) == 0) && (millis() < exitTime)) {
 			value = readRegister(REG_IRQ_FLAGS);
-			// Condition to avoid an overflow (DO NOT REMOVE)
-			//if( millis() < previous )
-			//{
-			//    previous = millis();
-			//}
-		}		// end while (millis)
+		}
 
 		// RxDone
 		if ((bitRead(value, 6) == 1)) {
@@ -3647,7 +3645,7 @@ int8_t SX1272::getPacket(uint16_t wait)
 
 				if ((bitRead(value, 5) == 0)) {
 					// packet received & CRC correct
-					p_received = true;	// packet correctly received
+					p_received = true;
 					_reception = CORRECT_PACKET;
 #if (DEBUG_MODE > 0)
 					INFO_LN(F("** The CRC is correct **"));
@@ -3661,35 +3659,38 @@ int8_t SX1272::getPacket(uint16_t wait)
 				}
 			} else {
 				// as CRC is not set we suppose that CRC is correct
+
 				p_received = true;	// packet correctly received
+
 				_reception = CORRECT_PACKET;
 #if (DEBUG_MODE > 0)
 				INFO_LN(F("## Packet supposed to be correct as CrcOnPayload is off at transmitter ##"));
 #endif
 			}
 		}
-		writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);	// Setting standby LoRa mode
+
+		writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);
+
 #ifdef ENABLE_FSK
 	} else {		// FSK mode
 		value = readRegister(REG_IRQ_FLAGS2);
-		//while( (bitRead(value, 2) == 0) && (millis() - previous < wait) )
+
 		while ((bitRead(value, 2) == 0) && (millis() < exitTime)) {
 			value = readRegister(REG_IRQ_FLAGS2);
-			// Condition to avoid an overflow (DO NOT REMOVE)
-			//if( millis() < previous )
-			//{
-			//    previous = millis();
-			//}
-		}		// end while (millis)
+		}
 
-		if (bitRead(value, 2) == 1) {	// packet received
-			if (bitRead(value, 1) == 1) {	// CRC correct
+		if (bitRead(value, 2) == 1) {
+
+			// packet received
+			if (bitRead(value, 1) == 1) {
+				// CRC correct
 				_reception = CORRECT_PACKET;
 				p_received = true;
 #if (DEBUG_MODE > 0)
 				INFO_LN(F("## Packet correctly received in FSK mode ##"));
 #endif
-			} else {	// CRC incorrect
+			} else {
+				// CRC incorrect
 				_reception = INCORRECT_PACKET;
 				state = 3;
 				p_received = false;
@@ -3702,7 +3703,9 @@ int8_t SX1272::getPacket(uint16_t wait)
 			INFO_LN(F("** The timeout has expired **"));
 #endif
 		}
-		writeRegister(REG_OP_MODE, FSK_STANDBY_MODE);	// Setting standby FSK mode
+
+		// Setting standby FSK mode
+		writeRegister(REG_OP_MODE, FSK_STANDBY_MODE);
 #endif
 	}
 
@@ -3720,23 +3723,25 @@ int8_t SX1272::getPacket(uint16_t wait)
 				packet_received.dst = readRegister(REG_FIFO);	// Storing first byte of the received packet
 			else
 				packet_received.dst = 0;
+#ifdef ENABLE_FSK
 		} else {
 			value = readRegister(REG_PACKET_CONFIG1);
 			if ((bitRead(value, 2) == 0)
 			    && (bitRead(value, 1) == 0)) {
 				packet_received.dst = readRegister(REG_FIFO);	// Storing first byte of the received packet
 			} else {
-				packet_received.dst = _destination;	// Storing first byte of the received packet
+				packet_received.dst = _destination;				// Storing first byte of the received packet
 			}
+#endif
 		}
 
 		if (!_rawFormat) {
-			packet_received.type = readRegister(REG_FIFO);	// Reading second byte of the received packet
+			packet_received.type = readRegister(REG_FIFO);		// Reading second byte of the received packet
+
 			// check packet type to discard unknown packet type
-			if (((packet_received.type & PKT_TYPE_MASK) !=
-			     PKT_TYPE_DATA)
-			    && ((packet_received.type & PKT_TYPE_MASK) !=
-				PKT_TYPE_ACK)) {
+			if (((packet_received.type & PKT_TYPE_MASK) != PKT_TYPE_DATA)
+			    && ((packet_received.type & PKT_TYPE_MASK) != PKT_TYPE_ACK)) {
+
 				_reception = INCORRECT_PACKET_TYPE;
 				state = 3;
 #if (DEBUG_MODE > 0)
@@ -3744,7 +3749,8 @@ int8_t SX1272::getPacket(uint16_t wait)
 #endif
 				return state;
 			}
-			packet_received.src = readRegister(REG_FIFO);	// Reading second byte of the received packet
+
+			packet_received.src = readRegister(REG_FIFO);		// Reading second byte of the received packet
 			packet_received.packnum = readRegister(REG_FIFO);	// Reading third byte of the received packet
 			//packet_received.length = readRegister(REG_FIFO);  // Reading fourth byte of the received packet
 		} else {
@@ -3761,17 +3767,16 @@ int8_t SX1272::getPacket(uint16_t wait)
 				if (_rawFormat) {
 					_payloadlength = packet_received.length;
 				} else
-					_payloadlength =
-					    packet_received.length -
-					    OFFSET_PAYLOADLENGTH;
+					_payloadlength = packet_received.length -
+										OFFSET_PAYLOADLENGTH;
 			}
+
 			if (packet_received.length > (MAX_LENGTH + 1)) {
 #if (DEBUG_MODE > 0)
 				INFO_LN(F("Corrupted packet, length must be less than 256"));
 #endif
 			} else {
-				for (unsigned int i = 0; i < _payloadlength;
-				     i++) {
+				for (unsigned int i = 0; i < _payloadlength; i++) {
 					packet_received.data[i] = readRegister(REG_FIFO);	// Storing payload
 				}
 
@@ -3797,8 +3802,6 @@ int8_t SX1272::getPacket(uint16_t wait)
 					INFO((char)packet_received.data[i]);	// Printing payload
 				}
 				INFO_LN(" ");
-				//INFO(F("Retry number: "));
-				//INFO_LN(packet_received.retry);                        // Printing number retry
 				INFO_LN(F("##"));
 #endif
 				state = 0;
@@ -3826,10 +3829,14 @@ int8_t SX1272::getPacket(uint16_t wait)
 #endif
 		}
 	}
+
 	if (_modem == LORA) {
-		writeRegister(REG_FIFO_ADDR_PTR, 0x00);	// Setting address pointer in FIFO data buffer
+		// Setting address pointer in FIFO data buffer
+		writeRegister(REG_FIFO_ADDR_PTR, 0x00);
 	}
-	clearFlags();		// Initializing flags
+
+	clearFlags();
+
 	if (wait > MAX_WAIT) {
 		state = -1;
 #if (DEBUG_MODE > 0)
