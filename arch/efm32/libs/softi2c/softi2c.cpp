@@ -62,6 +62,8 @@ bool inline i2c_init(uint8_t scl, uint8_t sda)
 
 void inline i2c_deinit(void)
 {
+	SDA_HIGH();
+	SCL_HIGH();
 	pinMode(_sda, INPUT);
 	pinMode(_scl, INPUT);
 }
