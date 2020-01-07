@@ -249,7 +249,7 @@ char *decode_vbat(uint8_t *pkt)
 	return dev_vbat;
 }
 
-char *decode_sensor_data(uint8_t *pkt, char *id)
+char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 {
 	char data_buf[8] = {0};
 
@@ -274,13 +274,22 @@ char *decode_sensor_data(uint8_t *pkt, char *id)
 		// Pressure
 		dd = (float)(data / 100.0);
 		ftoa(data_buf, dd, 2);
-		sprintf(dev_data, "P/%s/iT/%d/iC/%d", data_buf, pkt[21], pkt[23]);
+		if (pkt_len == 24) {
+			sprintf(dev_data, "P/%s/iT/%d/iC/%d", data_buf, pkt[21], pkt[23]);
+		} else {
+			sprintf(dev_data, "P/%s", data_buf);
+		}
 
 	} else if (id[3] == '0' && id[4] == '8') {
 		// Temperature and Humidity Sensor
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
-		sprintf(dev_data, "T/%s/H/%d/iT/%d/iC/%d", data_buf, pkt[20], pkt[21], pkt[23]);
+
+		if (pkt_len == 24) {
+			sprintf(dev_data, "T/%s/H/%d/iT/%d/iC/%d", data_buf, pkt[20], pkt[21], pkt[23]);
+		} else {
+			sprintf(dev_data, "T/%s/H/%d", data_buf, pkt[20]);
+		}
 
 	} else if (id[3] == '0' && id[4] == '9') {
 		// Moving Sensor
@@ -290,7 +299,7 @@ char *decode_sensor_data(uint8_t *pkt, char *id)
 		// Water Leak Sensor
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
-		sprintf(dev_data, "T/%s/WL/%d", dev_data, pkt[20]);
+		sprintf(dev_data, "T/%s/WL/%d", data_buf, pkt[20]);
 
 	} else if (id[3] == '2' && id[4] == '1') {
 		// Internal Temprature of ABC Sensor
@@ -386,7 +395,7 @@ int radio_available(char *cmd)
 		sprintf(cmd, "devid/%s/U/%s/%s/cmd/%d/ver/%d/rssi/%d/snr/%d",
 			devid,
 			decode_vbat(sx1272.packet_received.data),
-			decode_sensor_data(sx1272.packet_received.data, devid),
+			decode_sensor_data(sx1272.packet_received.data, p_len, devid),
 			decode_cmd(sx1272.packet_received.data),
 			decode_ver(sx1272.packet_received.data),
 			sx1272._RSSIpacket,
