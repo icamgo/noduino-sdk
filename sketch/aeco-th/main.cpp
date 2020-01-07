@@ -27,7 +27,6 @@
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-/* 20s */
 static uint32_t sample_period = 20;		/* 20s */
 
 static uint32_t sample_count = 0;
@@ -60,8 +59,6 @@ static uint32_t need_push = 0;
 
 #define ENABLE_CAD				1
 
-uint8_t tx_cause = 0;
-
 #define	TX_TIME					3000
 #define DEST_ADDR				1
 
@@ -71,6 +68,8 @@ uint8_t tx_cause = 0;
 #define	KEY_TX				3
 #define	EL_TX				4
 #define	WL_TX				5
+
+uint8_t tx_cause = RESET_TX;
 
 #ifdef CONFIG_V0
 #define TXRX_CH				CH_01_472
@@ -89,7 +88,6 @@ uint8_t tx_cause = 0;
 
 #ifdef CONFIG_V0
 uint8_t message[32] = { 0x47, 0x4F, 0x33 };
-uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 #else
 uint8_t message[32];
