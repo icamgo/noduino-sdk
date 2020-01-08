@@ -99,7 +99,7 @@ uint8_t message[32];
 #define INFOHEX(param)			Serial.print(param,HEX)
 #define INFO(param)				Serial.print(param)
 #define INFOLN(param)			Serial.println(param)
-#define FLUSHOUTPUT					Serial.flush();
+#define FLUSHOUTPUT				Serial.flush();
 
 #else
 
