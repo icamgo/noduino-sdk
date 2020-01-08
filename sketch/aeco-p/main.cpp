@@ -144,23 +144,24 @@ void power_off_dev()
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
-bool current_leak()
+float fetch_current()
 {
 	adc.reference(adcRef1V25);
 
-	int ad = adc.read(A6, A7);
+	int ad = 0;
 
-	cur_curr = 1250.0*ad/2.0/2048.0/0.7;
+	for (int i = 0; i < 5; i++) {
+		ad += adc.read(A6, A7);
+	}
+
+	cur_curr = 1250.0*ad/2.0/2048.0/0.7 / 5;
 
 	INFO("ADC differential ch6 ch7 read:");
 	INFOLN(ad);
 
 	INFO("The consumption current (mA): ");
 
-	if (cur_curr > 3.2)
-		return true;
-	else
-		return false;
+	return cur_curr;
 }
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
@@ -197,14 +198,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	}
 #endif
 
-	if (current_leak()) {
-		/*
-		 * TX pkt:
-		 *  - 2h interval
-		 *  - sensor data is changed
-		*/
-		tx_cause = EL_TX;
-	}
 }
 
 void trig_check_sensor()
@@ -213,10 +206,6 @@ void trig_check_sensor()
 #ifdef CONFIG_V0
 	tx_cause = KEY_TX;
 #endif
-
-	if (current_leak()) {
-		tx_cause = EL_TX;
-	}
 }
 
 void setup()
@@ -256,8 +245,6 @@ void setup()
 
 void qsetup()
 {
-	power_on_dev();		// turn on device power
-
 #ifdef CONFIG_V0
 	sx1272.setup_v0(TXRX_CH, MAX_DBM);
 #else
@@ -302,17 +289,35 @@ void push_data()
 
 	int e;
 
-	qsetup();
+#ifdef CONFIG_V0
+	uint8_t *pkt = message;
+#endif
+
+	////////////////////////////////
+	cur_curr = fetch_current();
+
+	noInterrupts();
+
+	if (cur_curr > 1.9)
+		pkt[15] = EL_TX;
+	else
+		pkt[15] = tx_cause;
+
+	interrupts();
+	////////////////////////////////
+
+	vbat = adc.readVbat();
+
+	power_on_dev();		// turn on device power
 
 	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
 		pressure_init(SCL_PIN, SDA_PIN);
 		cur_pres = get_pressure();		// hPa (mbar)
 	}
 
-	vbat = adc.readVbat();
+	qsetup();
 
 #ifdef CONFIG_V0
-	uint8_t *pkt = message;
 	uint64_t devid = get_devid();
 
 	uint8_t *p = (uint8_t *) &devid;
@@ -331,7 +336,7 @@ void push_data()
 	ui16 = vbat * 1000;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
-	pkt[15] = tx_cause;
+	//pkt[15] = tx_cause;
 
 	p = (uint8_t *) &tx_count;
 	pkt[16] = p[1]; pkt[17] = p[0];
@@ -374,7 +379,9 @@ void push_data()
 	sx1272.CarrierSense();
 #endif
 
+#ifdef DEBUG
 	startSend = millis();
+#endif
 
 #ifdef CONFIG_V0
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
@@ -416,6 +423,7 @@ void push_data()
 		old_pres = cur_pres;
 	}
 
+#ifdef DEBUG
 	endSend = millis();
 
 	INFO("LoRa Sent in ");
@@ -426,6 +434,7 @@ void push_data()
 
 	INFO("Packet sent, state ");
 	INFOLN(e);
+#endif
 
 	e = sx1272.setSleepMode();
 	if (!e)
@@ -442,8 +451,8 @@ void push_data()
 
 void loop()
 {
-	INFO("Clock Freq = ");
-	INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
+	//INFO("Clock Freq = ");
+	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
 
 	//INFOLN("Feed the watchdog");
 
