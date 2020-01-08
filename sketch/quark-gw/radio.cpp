@@ -287,7 +287,7 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 		ftoa(data_buf, dd, 1);
 
 		if (pkt_len >= 24) {
-			sprintf(dev_data, "T/%s/H/%d/iT/%d/iC/%d", data_buf, pkt[20], pkt[21], pkt[23]);
+			sprintf(dev_data, "T/%s/H/%d/iT/%d/iC/%d", data_buf, pkt[20], (int8_t)(pkt[21]), (int8_t)(pkt[23]));
 		}
 
 	} else if (id[3] == '0' && id[4] == '9') {
@@ -298,7 +298,7 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 		// Water Leak Sensor
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
-		sprintf(dev_data, "T/%s/WL/%d", data_buf, pkt[20]);
+		sprintf(dev_data, "T/%s/WL/%d/iT/%d", data_buf, pkt[20], (int8_t)(pkt[21]),);
 
 	} else if (id[3] == '2' && id[4] == '1') {
 		// Internal Temprature of ABC Sensor
