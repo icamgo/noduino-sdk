@@ -295,7 +295,10 @@ void push_data(bool alarm)
 		cur_temp = pt1000_get_temp();		// 'C
 	}
 
-	if (WATER_LEAK_TX == tx_cause || 0 == digitalRead(WATER_LEAK_PIN)) {
+	// LOW is water leak
+	bool no_water = digitalRead(WATER_LEAK_PIN);
+
+	if (WATER_LEAK_TX == tx_cause || false == no_water) {
 		cur_temp += 300.0;
 	}
 
@@ -331,6 +334,19 @@ void push_data(bool alarm)
 	p = (uint8_t *) &ui16;
 	pkt[18] = p[1]; pkt[19] = p[0];
 
+	float chip_temp = adc.temperatureCelsius();
+
+	// Humidity Sensor data	or Water Leak Sensor data
+	pkt[20] = ~no_water;
+
+	// Internal Temperature of the chip
+	pkt[21] = (int8_t)chip_temp;
+
+	// Internal humidity to detect water leak of the shell
+	pkt[22] = 0;
+
+	// Internal current consumption
+	pkt[23] = -1;
 #else
 	char vbat_s[10], pres_s[10];
 	ftoa(vbat_s, vbat, 2);
