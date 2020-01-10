@@ -315,7 +315,7 @@ char *decode_sensor_data(uint8_t *pkt)
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
 
-		sprintf(dev_data, "%s %2d\%", dev_data, pkt[20]);
+		sprintf(dev_data, "%s %d", dev_data, pkt[20]);
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '9') {
 		// Moving Sensor
@@ -811,11 +811,20 @@ void loop(void)
 					dev_id,
 					sx1272._RSSIpacket);
 
-				sprintf(frame_buf[1], " %s %s %s",
-					dev_type,
-					dev_data,
-					dev_vbat
-					);
+				if (dev_id[3] == '0' && (dev_id[4] == '8')) {
+
+					sprintf(frame_buf[1], "%s %s %s",
+						dev_type,
+						dev_data,
+						dev_vbat
+						);
+				} else {
+					sprintf(frame_buf[1], " %s %s %s",
+						dev_type,
+						dev_data,
+						dev_vbat
+						);
+				}
 
 				show_frame(0, omode, p[15] & 0x04);
 				c++;
