@@ -40,7 +40,7 @@ static float cur_humi = 0.0;
 static float cur_curr = 0.0;
 
 //#define	TX_TESTING				1
-#define	DEBUG					1
+//#define	DEBUG					1
 
 #define ENABLE_SHT2X			1
 
@@ -146,23 +146,24 @@ void power_off_dev()
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
-bool current_leak()
+float fetch_current()
 {
 	adc.reference(adcRef1V25);
 
-	int ad = adc.read(A6, A7);
+	int ad = 0;
 
-	cur_curr = 1250.0*ad/2.0/2048.0/0.7;
+	for (int i = 0; i < 5; i++) {
+		ad += adc.read(A6, A7);
+	}
+
+	cur_curr = 1250.0*ad/2.0/2048.0/0.7 / 5;
 
 	INFO("ADC differential ch6 ch7 read:");
 	INFOLN(ad);
 
 	INFO("The consumption current (mA): ");
 
-	if (cur_curr > 3.2)
-		return true;
-	else
-		return false;
+	return cur_curr;
 }
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
@@ -200,15 +201,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		sample_count = 0;
 	}
 #endif
-
-	if (current_leak()) {
-		/*
-		 * TX pkt:
-		 *  - 2h interval
-		 *  - sensor data is changed
-		*/
-		tx_cause = EL_TX;
-	}
 }
 
 void trig_check_sensor()
@@ -216,10 +208,6 @@ void trig_check_sensor()
 	need_push = 0x5a;
 
 	tx_cause = KEY_TX;
-
-	if (current_leak()) {
-		tx_cause = EL_TX;
-	}
 }
 
 void setup()
@@ -259,8 +247,6 @@ void setup()
 
 void qsetup()
 {
-	power_on_dev();		// turn on device power
-
 #ifdef CONFIG_V0
 	sx1272.setup_v0(TXRX_CH, MAX_DBM);
 #else
@@ -305,7 +291,27 @@ void push_data()
 
 	int e;
 
-	qsetup();
+#ifdef CONFIG_V0
+	uint8_t *pkt = message;
+#endif
+
+	////////////////////////////////
+
+	cur_curr = fetch_current();
+
+	noInterrupts();
+
+	if (cur_curr > 1.9)
+		pkt[15] = EL_TX;
+	else
+		pkt[15] = tx_cause;
+
+	interrupts();
+	////////////////////////////////
+
+	vbat = adc.readVbat();
+
+	power_on_dev();
 
 	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
 	#ifdef ENABLE_SHT2X
@@ -315,10 +321,7 @@ void push_data()
 	#endif
 	}
 
-	vbat = adc.readVbat();
-
 #ifdef CONFIG_V0
-	uint8_t *pkt = message;
 	uint64_t devid = get_devid();
 
 	uint8_t *p = (uint8_t *) &devid;
@@ -380,11 +383,15 @@ void push_data()
 	INFOLN(r_size);
 #endif
 
+	qsetup();
+
 #ifdef ENABLE_CAD
 	sx1272.CarrierSense();
 #endif
 
+#ifdef DEBUG
 	startSend = millis();
+#endif
 
 #ifdef CONFIG_V0
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
@@ -426,6 +433,7 @@ void push_data()
 		old_humi = cur_humi;
 	}
 
+#ifdef DEBUG
 	endSend = millis();
 
 	INFO("LoRa Sent in ");
@@ -436,6 +444,7 @@ void push_data()
 
 	INFO("Packet sent, state ");
 	INFOLN(e);
+#endif
 
 	e = sx1272.setSleepMode();
 	if (!e)
