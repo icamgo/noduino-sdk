@@ -315,8 +315,6 @@ void push_data()
 		cur_pres = get_pressure();		// hPa (mbar)
 	}
 
-	qsetup();
-
 #ifdef CONFIG_V0
 	uint64_t devid = get_devid();
 
@@ -374,6 +372,8 @@ void push_data()
 	INFO("Real payload size is ");
 	INFOLN(r_size);
 #endif
+
+	qsetup();
 
 #ifdef ENABLE_CAD
 	sx1272.CarrierSense();
