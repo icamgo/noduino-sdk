@@ -310,6 +310,13 @@ char *decode_sensor_data(uint8_t *pkt)
 		ftoa(dev_data, dd, 2);
 		sprintf(dev_data, "%s  ", dev_data);
 
+	} else if (dev_id[3] == '0' && dev_id[4] == '8') {
+		// Temp & Humi Sensor
+		dd = (float)(data / 10.0);
+		ftoa(dev_data, dd, 1);
+
+		sprintf(dev_data, "%s %2d\%", dev_data, pkt[20]);
+
 	} else if (dev_id[3] == '0' && dev_id[4] == '9') {
 		// Moving Sensor
 		sprintf(dev_data, "%dMM", data);
