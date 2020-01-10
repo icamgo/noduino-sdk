@@ -144,7 +144,7 @@ void radio_setup()
 char dev_id[24];
 char dev_vbat[6] = "00000";
 char dev_type[8];
-char dev_data[10];
+char dev_data[12];
 
 char *uint64_to_str(uint64_t n)
 {
@@ -315,7 +315,7 @@ char *decode_sensor_data(uint8_t *pkt)
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
 
-		sprintf(dev_data, "%s %d", dev_data, pkt[20]);
+		sprintf(dev_data, "%s %d", dev_data, (int8_t)(pkt[20]));
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '9') {
 		// Moving Sensor
