@@ -29,7 +29,8 @@
  */
 #define SHIFTED_DIVISOR 0x988000	//This is the 0x0131 polynomial shifted to farthest left of three bytes
 
-#define	sht2x_delay(x)		i2c_delay(14*1000*x)
+#define SHT2X_1MS			(F_CPU/1000)		/* 14MHz, 1Tick = 1/14us, 14000tick = 1000us */
+#define	sht2x_delay(x)		i2c_delay(x*SHT2X_1MS)
 
 static uint8_t check_crc(uint16_t message_from_sensor,
 			 uint8_t check_value_from_sensor)
@@ -138,14 +139,11 @@ static uint16_t sht2x_read_sensor(uint8_t command)
 
 	wire_requestFrom(SHT2X_ADDR, 3);
 
-	int count = 0;
-	while (wire_available() < 3) {
-		count++;
-		sht2x_delay(1);
-		if (count > 1000) {
-			INFO("SHT2x: wire request(read) timeout!");
-			return 1;
-		}
+	sht2x_delay(1);
+
+	if (wire_available() < 3) {
+		INFO("SHT2x: wire request(read) timeout!");
+		return 1;
 	}
 
 	uint8_t checksum;
@@ -171,6 +169,8 @@ float sht2x_get_humi(void)
 {
 	uint16_t sd = 2;
 	int cnt = 0;
+	float ret = -1.0;
+
 
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
 		sht2x_reset();
@@ -179,7 +179,14 @@ float sht2x_get_humi(void)
 		cnt++;
 	}
 
-	return (-6.0 + 125.0 / 65536.0 * (float)sd);
+	ret = (-6.0 + 125.0 / 65536.0 * (float)sd);
+
+	if (ret < 0)
+		return -1;
+	else if (ret > 120)
+		return -2;
+	else
+		return ret;
 }
 
 /*
@@ -190,6 +197,7 @@ float sht2x_get_temp(void)
 {
 	uint16_t sd = 2;
 	int cnt = 0;
+	float ret = -273.0;
 
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
 		sht2x_reset();
@@ -198,7 +206,14 @@ float sht2x_get_temp(void)
 		cnt++;
 	}
 
-	return (-46.85 + 175.72 / 65536.0 * (float)sd);
+	ret = (-46.85 + 175.72 / 65536.0 * (float)sd);
+
+	if (ret < -40.0)
+		return -273.0;
+	else if (ret > 120.0)
+		return 300.0;
+	else
+		return ret;
 }
 
 uint8_t sht2x_init(uint8_t scl, uint8_t sda)
