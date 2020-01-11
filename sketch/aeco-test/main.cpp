@@ -129,6 +129,17 @@ void power_off_dev()
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
+float fetch_mcu_temp()
+{
+	float temp = 0.0;
+	for(int i=0; i<5; i++) {
+		temp += adc.temperatureCelsius();
+	}
+	temp /= 5.0;
+
+	return temp;
+}
+
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
 	(void)id;
@@ -150,7 +161,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		sample_count = 0;
 	}
 
-	cur_temp = adc.temperatureCelsius();
+	cur_temp = fetch_mcu_temp();
 
 	if (fabsf(cur_temp - old_temp) > 0.5) {
 
@@ -257,10 +268,10 @@ void push_data()
 	vbat = adc.readVbat();
 
 #ifdef TX_TESTING
-	cur_temp = adc.temperatureCelsius();
+	cur_temp = fetch_mcu_temp();
 #else
 	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
-		cur_temp = adc.temperatureCelsius();
+		cur_temp = fetch_mcu_temp();
 	}
 #endif
 
