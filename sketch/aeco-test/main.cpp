@@ -28,7 +28,7 @@
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 20;		/* 20s */
+static uint32_t sample_period = 30;		/* 30s */
 
 static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			7200
@@ -45,7 +45,7 @@ static uint8_t need_push = 0;
 
 #define ENABLE_CAD				1
 
-#define	TX_TIME					1800		// 1800ms
+#define	TX_TIME					2300		// 2300ms
 #define DEST_ADDR				1
 
 #ifdef CONFIG_V0
@@ -164,14 +164,10 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 void trig_check_sensor()
 {
-	noInterrupts();
-
 	need_push = 0x5a;
 #ifdef CONFIG_V0
 	tx_cause = KEY_TX;
 #endif
-
-	interrupts();
 }
 
 void setup()
@@ -183,7 +179,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
+	wInit.perSel = wdogPeriod_64k;	/* 128k 1kHz periods should give 64 seconds */
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -212,8 +208,6 @@ void setup()
 
 void qsetup()
 {
-	power_on_dev();		// turn on device power
-
 #ifdef CONFIG_V0
 	sx1272.setup_v0(TXRX_CH, MAX_DBM);
 #else
@@ -260,7 +254,7 @@ void push_data()
 
 	int e;
 
-	qsetup();
+	vbat = adc.readVbat();
 
 #ifdef TX_TESTING
 	cur_temp = adc.temperatureCelsius();
@@ -269,8 +263,6 @@ void push_data()
 		cur_temp = adc.temperatureCelsius();
 	}
 #endif
-
-	vbat = adc.readVbat();
 
 #ifdef CONFIG_V0
 	uint8_t *pkt = message;
@@ -320,11 +312,16 @@ void push_data()
 	INFOLN(r_size);
 #endif
 
+	power_on_dev();
+	qsetup();
+
 #ifdef ENABLE_CAD
 	sx1272.CarrierSense();
 #endif
 
+#ifdef DEBUG
 	startSend = millis();
+#endif
 
 #ifdef CONFIG_V0
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
@@ -363,6 +360,7 @@ void push_data()
 		old_temp = cur_temp;
 	}
 
+#ifdef DEBUG
 	endSend = millis();
 
 	INFO("LoRa pkt size ");
@@ -376,6 +374,7 @@ void push_data()
 
 	INFO("Packet sent, state ");
 	INFOLN(e);
+#endif
 
 	e = sx1272.setSleepMode();
 	if (!e)
