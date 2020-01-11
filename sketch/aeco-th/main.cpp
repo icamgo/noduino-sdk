@@ -146,6 +146,17 @@ void power_off_dev()
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
+float fetch_mcu_temp()
+{
+	float temp = 0.0;
+	for(int i=0; i<3; i++) {
+		temp += adc.temperatureCelsius();
+	}
+	temp /= 3.0;
+
+	return temp;
+}
+
 float fetch_current()
 {
 	adc.reference(adcRef1V25);
@@ -350,19 +361,19 @@ void push_data()
 	p = (uint8_t *) &ui16;
 	pkt[18] = p[1]; pkt[19] = p[0];
 
-	float chip_temp = adc.temperatureCelsius();
+	float chip_temp = fetch_mcu_temp();
 
 	// Humidity Sensor data	or Water Leak Sensor data
 	pkt[20] = (uint8_t)cur_humi;
 
 	// Internal Temperature of the chip
-	pkt[21] = (int8_t)chip_temp;
+	pkt[21] = (int8_t)roundf(chip_temp);
 
 	// Internal humidity to detect water leak of the shell
 	pkt[22] = 0;
 
 	// Internal current consumption
-	pkt[23] = (int8_t)cur_curr;
+	pkt[23] = (int8_t)roundf(cur_curr);
 
 #else
 	uint8_t r_size;
