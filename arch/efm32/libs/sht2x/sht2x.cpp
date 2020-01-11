@@ -67,7 +67,8 @@ int sht2x_read_reg(void)
 	wire_write(READ_USER_REG);
 	wire_endTransmission();
 
-	sht2x_delay(85);
+	// delay 11ms for 11bit resolution
+	sht2x_delay(11);
 
 	//Read result
 	if (wire_requestFrom(SHT2X_ADDR, 1) < 1) {
@@ -90,7 +91,8 @@ uint8_t sht2x_write_reg(uint8_t val)
 	wire_write(val);
 	ret = wire_endTransmission();
 
-	sht2x_delay(85);
+	// delay 11ms for 11bit resolution
+	sht2x_delay(11);
 	return ret;
 }
 
@@ -135,7 +137,8 @@ static uint16_t sht2x_read_sensor(uint8_t command)
 	wire_write(command);				//send the pointer location
 	ret = wire_endTransmission();		//end
 
-	sht2x_delay(85);
+	// delay 11ms for 11bit resolution
+	sht2x_delay(11);
 
 	wire_requestFrom(SHT2X_ADDR, 3);
 
@@ -171,10 +174,9 @@ float sht2x_get_humi(void)
 	int cnt = 0;
 	float ret = -1.0;
 
+	sht2x_reset();
 
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
-		sht2x_reset();
-		sht2x_delay(15);
 		sd = sht2x_read_sensor(RH_NO_HOLD_CMD);
 		cnt++;
 	}
@@ -199,9 +201,9 @@ float sht2x_get_temp(void)
 	int cnt = 0;
 	float ret = -273.0;
 
+	sht2x_reset();
+
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
-		sht2x_reset();
-		sht2x_delay(15);
 		sd = sht2x_read_sensor(T_NO_HOLD_CMD);
 		cnt++;
 	}
