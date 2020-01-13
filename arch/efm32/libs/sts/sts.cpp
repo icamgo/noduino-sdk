@@ -36,6 +36,9 @@
 #include "softi2c.h"
 #include "sts.h"
 
+#define STS_1MS				(F_CPU/1000)		/* 14MHz, 1Tick = 1/14us, 14000tick = 1000us */
+#define sts_delay(x)		i2c_delay(x*STS_1MS)
+
 STSSensorDriver::~STSSensorDriver()
 {
 
@@ -63,13 +66,15 @@ bool STSI2cSensor::readFromI2c(uint8_t i2cAddress,
 
 	wire_endTransmission();
 
+	sts_delay(11);
+
 	wire_requestFrom(i2cAddress, dataLength);
 
 	// there should be no reason for this to not be ready, since we're using clock
 	// stretching mode, but just in case we'll try a few times
 	uint8_t tries = 1;
 	while (wire_available() < dataLength) {
-		delay(1);
+		sts_delay(1);
 		if (tries++ >= MAX_I2C_READ_TRIES) {
 			return false;
 		}
@@ -106,17 +111,35 @@ bool STSI2cSensor::readSample()
 	uint8_t data[EXPECTED_DATA_SIZE];
 	uint8_t cmd[CMD_SIZE];
 
+	memset(data, 0, EXPECTED_DATA_SIZE);
+
 	cmd[0] = mI2cCommand >> 8;
 	cmd[1] = mI2cCommand & 0xff;
 
 	if (!readFromI2c(mI2cAddress, cmd, CMD_SIZE, data,
 			 EXPECTED_DATA_SIZE)) {
+#ifdef DEBUG
+		Serial.println("i2c error");
+#endif
 		return false;
 	}
 	// -- Important: assuming each 2 byte of data is followed by 1 byte of CRC
 
+#ifdef DEBUG
+	Serial.print(data[0], HEX);
+	Serial.print(" ");
+
+	Serial.print(data[1], HEX);
+	Serial.print(" ");
+
+	Serial.println(data[2], HEX);
+#endif
+
 	// check CRC for T
-	if (crc8(&data[0], 2) != data[2]) {
+	if (crc8(data, 2) != data[2]) {
+#ifdef DEBUG
+		Serial.println("crc error");
+#endif
 		return false;
 	}
 	// convert to Temperature
