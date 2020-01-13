@@ -76,6 +76,7 @@ uint8_t message[50];
 #else
 
 #define INFO_S(param)
+#define INFO_HEX(param)
 #define INFO(param)
 #define INFOLN(param)
 #define FLUSHOUTPUT

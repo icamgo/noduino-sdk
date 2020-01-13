@@ -21,7 +21,9 @@ SDK_BASE		?= ../..
 ARDUINO_CORES	:= $(SDK_BASE)/arch/avr/cores
 LIB_DIR			:= $(SDK_BASE)/arch/avr/libs
 
-TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/avr-gcc
+TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/
+
+UNAME_S := $(shell uname -s)
 
 ifeq ($(OS),Windows_NT)
 PORT = COM7
@@ -42,11 +44,15 @@ F_CPU = 16000000
 VERSION=187
 
 ifeq ($(OS),Windows_NT)
-AVR_TOOLS_PATH 	= $(TOOLCHAIN_DIR)/bin
-AVRDUDE_PATH = $(TOOLCHAIN_DIR)/bin
+AVR_TOOLS_PATH 	= $(TOOLCHAIN_DIR)/avr-gcc/bin
+AVRDUDE_PATH = $(TOOLCHAIN_DIR)/avrdude
+AVRDUDE_CONF_PATH = $(TOOLCHAIN_DIR)/avrdude
 else
-AVR_TOOLS_PATH 	= $(TOOLCHAIN_DIR)/bin
-AVRDUDE_PATH = $(TOOLCHAIN_DIR)/bin
+AVR_TOOLS_PATH 	= $(TOOLCHAIN_DIR)/avr-gcc/bin
+AVRDUDE_PATH = $(TOOLCHAIN_DIR)/avrdude
+AVRDUDE_CONF_PATH = $(TOOLCHAIN_DIR)/avrdude
+#AVRDUDE_PATH = /usr/bin
+#AVRDUDE_CONF_PATH = /etc/
 endif
 
 #Note that if your program has dependencies other than those
