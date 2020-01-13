@@ -51,7 +51,7 @@ void loop()
 	sts.readSample();
 	
 	Serial.print("Temperatur = ");
-	Serial.print(sts.getTemperature(), HEX);
+	Serial.print(sts.getTemperature(), 2);
 	Serial.println(" C");
 
 	delay(3000);
