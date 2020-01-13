@@ -84,8 +84,7 @@ class STSSensor {
 	 * By default, the i2c bus is queried for known STS Sensors. To address
 	 * a specific sensor, set the `sensorType'.
 	 */
-	 STSSensor(TwoWire i2cWire, STSSensorType sensorType = AUTO_DETECT):
-		mI2cWire(i2cWire),
+	 STSSensor(STSSensorType sensorType = STS3X):
 		mSensorType(sensorType),
 		mSensor(NULL), mTemperature(STSSensor::TEMPERATURE_INVALID) {
 	}
@@ -98,7 +97,7 @@ class STSSensor {
 	 * Initialize the sensor driver
 	 * To read out the sensor use readSample(), followed by getTemperature() 
 	 */
-	bool init(TwoWire i2cWire);
+	bool init(int scl, int sda);
 
 	/*
 	 * Read new values from the sensor
@@ -126,7 +125,6 @@ class STSSensor {
 	STSSensorType mSensorType;
 	STSSensorDriver *mSensor;
 	float mTemperature;
-	TwoWire mI2cWire;
 };
 
 /* Abstract class for a digital STS Sensor driver */
@@ -172,9 +170,9 @@ class STSI2cSensor:public STSSensorDriver {
 	 * temperature value received by the sensor to a floating point value using
 	 * the formula: temperature = a + b * (rawTemperature / c)
 	 */
-	 STSI2cSensor(TwoWire i2cWire, uint8_t i2cAddress, uint16_t i2cCommand,
+	 STSI2cSensor(uint8_t i2cAddress, uint16_t i2cCommand,
 					float a, float b, float c)
-				: mI2cWire(i2cWire), mI2cAddress(i2cAddress), mI2cCommand(i2cCommand),
+				: mI2cAddress(i2cAddress), mI2cCommand(i2cCommand),
 					mA(a), mB(b), mC(c) {
 	}
 	
@@ -189,13 +187,11 @@ class STSI2cSensor:public STSSensorDriver {
 	float mA;
 	float mB;
 	float mC;
-	TwoWire mI2cWire;
 
  private:
 	static const uint8_t MAX_I2C_READ_TRIES;
 	static uint8_t crc8(const uint8_t * data, uint8_t len);
-	static bool readFromI2c(TwoWire localWire,
-				uint8_t i2cAddress,
+	static bool readFromI2c(uint8_t i2cAddress,
 				const uint8_t * i2cCommand,
 				uint8_t commandLength, uint8_t * data,
 				uint8_t dataLength);
