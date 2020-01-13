@@ -22,7 +22,6 @@ ARDUINO_CORES	:= $(SDK_BASE)/arch/avr/cores
 LIB_DIR			:= $(SDK_BASE)/arch/avr/libs
 
 TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/
-
 UNAME_S := $(shell uname -s)
 
 ifeq ($(OS),Windows_NT)
@@ -51,8 +50,6 @@ else
 AVR_TOOLS_PATH 	= $(TOOLCHAIN_DIR)/avr-gcc/bin
 AVRDUDE_PATH = $(TOOLCHAIN_DIR)/avrdude
 AVRDUDE_CONF_PATH = $(TOOLCHAIN_DIR)/avrdude
-#AVRDUDE_PATH = /usr/bin
-#AVRDUDE_CONF_PATH = /etc/
 endif
 
 #Note that if your program has dependencies other than those
