@@ -189,7 +189,7 @@ AVRDUDE_PORT = $(PORT)
 AVRDUDE_WRITE_MAIN = -U flash:w:build/main.hex
 AVRDUDE_WRITE_EEPROM = -U eeprom:w:eeprom.bin:r
 
-AVRDUDE_FLAGS = -V -F -C $(TOOLCHAIN_DIR)/etc/avrdude.conf \
+AVRDUDE_FLAGS = -V -F -C $(AVRDUDE_CONF_PATH)/avrdude.conf \
 -c arduino -p $(MCU) -P $(AVRDUDE_PORT) -c $(AVRDUDE_PROGRAMMER) \
 -b $(UPLOAD_RATE) -D
 
