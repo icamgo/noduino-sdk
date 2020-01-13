@@ -24,26 +24,34 @@
 #include "softi2c.h"
 #include "sts.h"
 
-SHTSensor sts;
+#if 0
+#define SDA_PIN					11		/* PIN14_PD7 */
+#define SCL_PIN					16		/* PIN21_PF2 */
+#else
+#define SDA_PIN					12		/* PIN23_PE12 */
+#define SCL_PIN					13		/* PIN24_PE13 */
+#endif
+
+STSSensor sts;
 
 void setup()
 {
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
 
-	sts.init();
+	sts.init(SCL_PIN, SDA_PIN);
 
 	Serial.println("STS testing start...");
 }
 
 void loop()
 {
-	float temp = 0.0, humi = 0.0;
+	float temp = 0.0;
 
 	sts.readSample();
 	
 	Serial.print("Temperatur = ");
-	Serial.print(sts.getTemperature(), 2);
+	Serial.print(sts.getTemperature(), HEX);
 	Serial.println(" C");
 
 	delay(3000);
