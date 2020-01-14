@@ -22,12 +22,12 @@ F_CPU = 14000000
 
 VERSION=187
 
+TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/gcc-arm-none-eabi/bin
+OPENOCD = $(SDK_BASE)/toolchain/openocd-nt/bin/openocd
+
 ifeq ($(OS),Windows_NT)
-TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/arm-none-eabi-2017q4/bin
-OPENOCD = $(SDK_BASE)/toolchain/openocd/bin/openocd
 PORT = COM7
 else
-TOOLCHAIN_DIR = /usr/share/arduino
 	ifeq ($(UNAME_S),Linux)
 		PORT ?= /dev/ttyUSB0
 	endif

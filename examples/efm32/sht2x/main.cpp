@@ -24,6 +24,14 @@
 #include "softi2c.h"
 #include "sht2x.h"
 
+#if 0
+#define SDA_PIN					11		/* PIN14_PD7 */
+#define SCL_PIN					16		/* PIN21_PF2 */
+#else
+#define SDA_PIN					12		/* PIN23_PE12 */
+#define SCL_PIN					13		/* PIN24_PE13 */
+#endif
+
 char *ftoa(char *a, double f, int precision)
 {
 	long p[] =
@@ -48,7 +56,7 @@ void setup()
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
 
-	sht2x_init();
+	sht2x_init(SCL_PIN, SDA_PIN);
 
 	Serial.println("SHT2x testing start...");
 }
