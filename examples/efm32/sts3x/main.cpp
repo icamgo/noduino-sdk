@@ -48,5 +48,7 @@ void loop()
 	Serial.print(sts3x_get_temp(), 2);
 	Serial.println(" C");
 
+	sts3x_show_alert();
+
 	delay(3000);
 }

@@ -71,7 +71,7 @@ uint8_t sts3x_reset(void)
 	wire_write(SOFT_RESET & 0xff);
 	ret = wire_endTransmission();
 
-	sts3x_delay(15);
+	sts3x_delay(2);
 	return ret;
 }
 
@@ -120,6 +120,48 @@ static uint16_t sts3x_read_sensor(uint16_t cmd)
 }
 
 /*
+ * Reset value:
+ *
+ *   High Alert set:   0x0133
+ *   High Alert clear: 0x012D
+ *   Low Alert set:    0x0066
+ *   Low Alert clear:  0x0069
+*/
+void sts3x_show_alert()
+{
+	uint16_t has, hac, las, lac;
+
+	has = sts3x_read_sensor(R_HIGH_ALERT_SET);
+	hac = sts3x_read_sensor(R_HIGH_ALERT_CLR);
+
+	las = sts3x_read_sensor(R_LOW_ALERT_SET);
+	lac = sts3x_read_sensor(R_LOW_ALERT_CLR);
+
+	Serial.print("High Alert set: ");
+	Serial.print(has, HEX);
+	Serial.print(" / ");
+
+	Serial.println(-45.0 + 175.0*has*128 / 65535.0, 2);
+	
+
+	Serial.print("High Alert clear: ");
+	Serial.print(hac, HEX);
+	Serial.print(" / ");
+	Serial.println(-45.0 + 175.0*hac*128 / 65535.0, 2);
+
+	Serial.print("Low Alert set: ");
+	Serial.print(las, HEX);
+	Serial.print(" / ");
+	Serial.println(-45.0 + 175.0*las*128 / 65535.0, 2);
+	
+
+	Serial.print("Low Alert clear: ");
+	Serial.print(lac, HEX);
+	Serial.print(" / ");
+	Serial.println(-45.0 + 175.0*lac*128 / 65535.0, 2);
+}
+
+/*
  * Gets the current temperature from the sensor.
  * @return float - The temperature in Deg C
  */
@@ -130,6 +172,7 @@ float sts3x_get_temp(void)
 	float ret = -273.0;
 
 	//sts3x_reset();
+	sts3x_delay(2);
 
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
 		sd = sts3x_read_sensor(READ_HIGH_RES);

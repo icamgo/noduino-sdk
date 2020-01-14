@@ -52,6 +52,7 @@
 #define W_LOW_ALERT_CLR				0x6100
 
 float sts3x_get_temp(void);
+void sts3x_show_alert();
 
 uint8_t sts3x_reset(void);
 uint8_t sts3x_init(uint8_t scl, uint8_t sda);
