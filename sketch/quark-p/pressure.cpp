@@ -64,7 +64,7 @@ float get_pressure()
 
 	pc10_wakeup();
 
-	delay(11);		/* delay 11ms */
+	delay(15);		/* delay 11ms */
 
 	pv = pc10_read();
 

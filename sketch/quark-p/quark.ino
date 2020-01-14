@@ -195,6 +195,7 @@ void check_sensor()
 	}
 
 	power_on_dev();		// turn on device power
+	delay(2);
 
 	pressure_init();	// initialization of the sensor
 	cur_pres = get_pressure();
@@ -232,6 +233,7 @@ void setup()
 
 #ifdef ENABLE_SSD1306
 	power_on_dev();		// turn on device power
+	delay(2);
 	pressure_init();	// initialization of the sensor
 
 	float pres = get_pressure();
@@ -292,7 +294,10 @@ void push_data()
 	if (RESET_TX == g_param.tx_cause) {
 		power_on_dev();		// turn on device power
 
+		delay(2);
+
 		pressure_init();	// initialization of the sensor
+
 		cur_pres = get_pressure();
 
 		g_param.tx_cause = TIMER_TX;
