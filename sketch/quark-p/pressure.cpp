@@ -64,6 +64,8 @@ float get_pressure()
 
 	pc10_wakeup();
 
+	delay(11);		/* delay 11ms */
+
 	pv = pc10_read();
 
 //	Serial.print("pc10 = ");
@@ -89,7 +91,7 @@ uint16_t pc10_read()
 	Wire.write(0x09);
 	Wire.endTransmission();
 
-	delay(1);
+	delay(2);		/* delay 1.6ms */
 
 	Wire.requestFrom(PC10_ADDR, LEN);
 
