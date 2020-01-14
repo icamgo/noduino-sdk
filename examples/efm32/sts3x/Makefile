@@ -81,7 +81,7 @@ $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
-$(LIB_DIR)/sts/sts.cpp
+$(LIB_DIR)/sts3x/sts3x.cpp
 
 CXX_APP = main.cpp
 MODULES = $(C_MODULES) $(CXX_MODULES)
@@ -97,7 +97,7 @@ CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys 
 
 CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
-			-I $(LIB_DIR)/sts/						\
+			-I $(LIB_DIR)/sts3x/					\
 			-I $(LIB_DIR)/sx127x					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
@@ -105,7 +105,7 @@ CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I .									
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
-			-I $(LIB_DIR)/sts/						\
+			-I $(LIB_DIR)/sts3x/					\
 			-I $(LIB_DIR)/sx127x					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
