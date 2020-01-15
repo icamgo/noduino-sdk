@@ -194,9 +194,6 @@ void check_sensor()
 		//INFOLN("It's time to push data...");
 	}
 
-	power_on_dev();		// turn on device power
-	delay(2);
-
 	pressure_init();	// initialization of the sensor
 	cur_pres = get_pressure();
 
@@ -223,7 +220,7 @@ void setup()
 #else
 	pinMode(7, OUTPUT);
 #endif
-	power_off_dev();		// turn off device power
+	power_on_dev();		// turn on device power
 
 #ifdef DEBUG
 	Serial.begin(115200);
@@ -232,8 +229,6 @@ void setup()
 	INFOLN("Seting up the device...");
 
 #ifdef ENABLE_SSD1306
-	power_on_dev();		// turn on device power
-	delay(2);
 	pressure_init();	// initialization of the sensor
 
 	float pres = get_pressure();
@@ -292,9 +287,6 @@ void push_data()
 	vbat = get_vbat();
 
 	if (RESET_TX == g_param.tx_cause) {
-		power_on_dev();		// turn on device power
-
-		delay(2);
 
 		pressure_init();	// initialization of the sensor
 

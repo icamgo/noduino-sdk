@@ -62,6 +62,8 @@ float get_pressure()
 	uint16_t pv = 0;
 	float p;
 
+	pc10_wakeup();
+
 	pv = pc10_read();
 
 //	Serial.print("pc10 = ");
