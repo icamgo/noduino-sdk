@@ -179,6 +179,8 @@ void draw_press(int32_t p)
 
 void setup()
 {
+	need_push = 0;
+
 #ifndef USE_SI2301
 	pinMode(6, OUTPUT);
 #else
@@ -286,6 +288,8 @@ void loop(void)
 #endif
 
 	if (need_push == 0x5a) {
+
+		need_push = 0;
 
 #ifdef WITH_APPKEY
 		app_key_offset = sizeof(my_appKey);
