@@ -24,17 +24,14 @@
 #include "vbat.h"
 #include "U8g2lib.h"
 
-//#define	DEBUG				1
-
-//#define USE_SI2301			1
-
+//#define USE_SI2301		1
 #define ENABLE_CAD			1
 
-#define node_addr			248
+#define node_addr		248
 
-#define DEST_ADDR			1
+#define DEST_ADDR		1
 
-#define USE_SX1278			1
+#define USE_SX1278		1
 
 //#define ENABLE_SSD1306		1
 
@@ -42,46 +39,46 @@
 #define	DELTA_TX			1
 #define	TIMER_TX			2
 
-//uint8_t tx_cause = RESET_TX;
+uint8_t need_push = 0;
+
+#define HEARTBEAT_TIME			3600
+
+#define LOW_POWER
 
 #define MAX_DBM			11
 #define TXRX_CH			CH_00_433
-#define LORAMODE		11	// BW=125KHz, SF=12, CR=4/5, sync=0x34
 
 ///////////////////////////////////////////////////////////////////
 #define WITH_EEPROM
+//#define WITH_APPKEY
 //#define WITH_ACK
 ///////////////////////////////////////////////////////////////////
 
-//uint32_t sample_count = 0;
-#define		HEARTBEAT_TIME			3600
+///////////////////////////////////////////////////////////////////
+// CHANGE HERE THE LORA MODE
+#define LORAMODE		11	// BW=125KHz, SF=12, CR=4/5, sync=0x34
+//////////////////////////////////////////////////////////////////
 
-//float old_pres = 0.0;
-float cur_pres = 0.0;
+///////////////////////////////////////////////////////////////////
+// CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
+uint32_t idlePeriod = 40;	// 40 seconds
+///////////////////////////////////////////////////////////////////
 
-uint8_t need_push = 0;
-
-uint8_t idlePeriod = 40;	// 40 seconds
-
-uint8_t message[50];
-
-#ifdef DEBUG
-
-#define INFO_S(param)				Serial.print(F(param))
-#define INFO_HEX(param)				Serial.println(param,HEX)
-#define INFO(param)					Serial.print(param)
-#define INFOLN(param)				Serial.println(param)
-#define FLUSHOUTPUT					Serial.flush();
-
-#else
-
-#define INFO_S(param)
-#define INFO_HEX(param)
-#define INFO(param)
-#define INFOLN(param)
-#define FLUSHOUTPUT
-
+#ifdef WITH_APPKEY
+// CHANGE HERE THE APPKEY, BUT IF GW CHECKS FOR APPKEY, MUST BE
+// IN THE APPKEY LIST MAINTAINED BY GW.
+uint8_t my_appKey[4] = { 5, 6, 8, 8 };
 #endif
+
+///////////////////////////////////////////////////////////////////
+// IF YOU SEND A LONG STRING, INCREASE THE SIZE OF MESSAGE
+uint8_t message[50];
+///////////////////////////////////////////////////////////////////
+
+#define INFO_S(fmt,param)			Serial.print(F(param))
+#define INFO(fmt,param)				Serial.print(param)
+#define INFOLN(fmt,param)			Serial.println(param)
+#define FLUSHOUTPUT					Serial.flush();
 
 #ifdef WITH_EEPROM
 #include <EEPROM.h>
@@ -91,11 +88,13 @@ uint8_t message[50];
 #define	NB_RETRIES			2
 #endif
 
+#ifdef LOW_POWER
 #define	LOW_POWER_PERIOD	8
 // you need the LowPower library from RocketScream
 // https://github.com/rocketscream/Low-Power
 #include "LowPower.h"
 uint32_t nCycle = idlePeriod / LOW_POWER_PERIOD;
+#endif
 
 uint32_t next_tx = 0L;
 
@@ -178,41 +177,6 @@ void draw_press(int32_t p)
 }
 #endif
 
-void check_sensor()
-{
-	// feed the watchdog
-
-	//INFOLN("Checking the sensor...");
-
-	g_param.sample_count++;
-
-	if (g_param.sample_count >= HEARTBEAT_TIME/idlePeriod) {
-		need_push = 0x5a;
-		g_param.tx_cause = TIMER_TX;
-		g_param.sample_count = 0;
-
-		//INFOLN("It's time to push data...");
-	}
-
-	pressure_init();	// initialization of the sensor
-	cur_pres = get_pressure();
-
-	power_off_dev();
-
-	// 50.0 hPa
-	if (fabsf(cur_pres - g_param.old_pres) > 50.0) {
-
-		need_push = 0x5a;
-		g_param.tx_cause = DELTA_TX;
-
-		//INFOLN("Data is changed...");
-	}
-
-#ifdef WITH_EEPROM
-	EEPROM.put(0, g_param);
-#endif
-}
-
 void setup()
 {
 #ifndef USE_SI2301
@@ -220,17 +184,16 @@ void setup()
 #else
 	pinMode(7, OUTPUT);
 #endif
+
+	Serial.begin(115200);
+
+	//INFO_S("%s", "Noduino Quark LoRa Node\n");
+
 	power_on_dev();		// turn on device power
 
-#ifdef DEBUG
-	Serial.begin(115200);
-#endif
-
-	INFOLN("Seting up the device...");
-
-#ifdef ENABLE_SSD1306
 	pressure_init();	// initialization of the sensor
 
+#ifdef ENABLE_SSD1306
 	float pres = get_pressure();
 
 	u8g2.begin();
@@ -248,17 +211,24 @@ void setup()
 		g_param.sample_count = 0;
 	}
 
-	INFO_HEX(g_param.sample_count);
+#ifdef USE_SX1278
+	// Set the TX power to 11dBm
+	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
 
-	/* bootup tx */
-	if (RESET_TX == g_param.tx_cause) {
-		need_push = 0x5a;
-	}
+	sx1272.setNodeAddress(node_addr);
+
+#ifdef ENABLE_CAD
+	sx1272._enableCarrierSense = true;
+#endif
+
+	INFO_S("%s", "SX1272 successfully configured\n");
+#endif
+
 }
 
 void qsetup()
 {
-	power_on_dev();
+	pressure_init();	// initialization of the sensor
 
 #ifdef USE_SX1278
 	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
@@ -274,151 +244,189 @@ void qsetup()
 #endif
 }
 
-void push_data()
+void loop(void)
 {
 	long startSend;
 	long endSend;
-
+	uint8_t app_key_offset = 0;
 	int e;
-	float vbat = 0;
+	float pres, vbat;
 
-	uint8_t r_size = 0;
-
-	vbat = get_vbat();
-
-	if (RESET_TX == g_param.tx_cause) {
-
-		pressure_init();	// initialization of the sensor
-
-		cur_pres = get_pressure();
-
-		g_param.tx_cause = TIMER_TX;
-	}
-
-	char vbat_s[10], pres_s[10];
-	ftoa(vbat_s, vbat, 2);
-	ftoa(pres_s, cur_pres, 2);
-
-	r_size = sprintf((char *)message, "\\!U/%s/P/%s", vbat_s, pres_s);
-
-	INFO_S("Sending ");
-	INFOLN((char *)message);
-
-	INFO_S("Real payload size is ");
-	INFOLN(r_size);
-
-	INFO_S("tx_cause = ");
-	INFOLN(g_param.tx_cause);
-
-	qsetup();
-
-#ifdef ENABLE_CAD
-	sx1272.CarrierSense();
+#ifndef LOW_POWER
+	if (millis() > next_tx) {
 #endif
 
-#ifdef DEBUG
-	startSend = millis();
-#endif
+		pres = get_pressure();
+		vbat = get_vbat();
 
-#ifdef USE_SX1278
-	sx1272.setPacketType(PKT_TYPE_DATA);
+		INFO("%s", "Pressure = ");
+		INFOLN("%f", pres);
 
-	// Send message to the gateway and print the result
-#ifdef WITH_ACK
-	int n_retry = NB_RETRIES;
+		// 50.0 hPa
+		if (fabsf(pres - g_param.old_pres) > 50.0) {
 
-	do {
-		e = sx1272.sendPacketTimeoutACK(DEST_ADDR,
-						message, r_size);
+			need_push = 0x5a;
+			g_param.tx_cause = DELTA_TX;
 
-		if (e == 3)
-			INFO_S("No ACK");
+		}
 
-		n_retry--;
+		g_param.sample_count++;
 
-		if (n_retry)
-			INFO_S("Retry");
-		else
-			INFO_S("Abort");
+		if (g_param.sample_count >= HEARTBEAT_TIME/idlePeriod) {
 
-	} while (e && n_retry);
-#else
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size);
-#endif
+			need_push = 0x5a;
+			g_param.tx_cause = TIMER_TX;
+			g_param.sample_count = 0;
 
-	if (!e) {
-		// send message succesful, update the old_pres
-		g_param.old_pres = cur_pres;
+			//INFOLN("It's time to push data...");
+		}
 
 #ifdef WITH_EEPROM
 		EEPROM.put(0, g_param);
 #endif
 
-		INFOLN("Update old press...");
-	}
+	if (need_push == 0x5a) {
 
-#ifdef DEBUG
-	endSend = millis();
-
-	INFO_S("LoRa Sent in ");
-	INFOLN(endSend - startSend);
-
-	INFO_S("LoRa Sent w/CAD in ");
-	INFOLN(endSend - sx1272._startDoCad);
-
-	INFO_S("Packet sent, state ");
-	INFOLN(e);
+#ifdef WITH_APPKEY
+		app_key_offset = sizeof(my_appKey);
+		// set the app key in the payload
+		memcpy(message, my_appKey, app_key_offset);
 #endif
 
-#endif	// USE_SX1278
+		uint8_t r_size;
+
+		// the recommended format if now \!TC/22.5
+		char vbat_s[10], pres_s[10];
+		ftoa(vbat_s, vbat, 2);
+		ftoa(pres_s, pres, 2);
+
+		// this is for testing, uncomment if you just want to test, without a real pressure sensor plugged
+		//strcpy(vbat_s, "noduino");
+		r_size = sprintf((char *)message + app_key_offset, "\\!U/%s/P/%s", vbat_s, pres_s);
+
+		INFO_S("%s", "Sending ");
+		INFOLN("%s", (char *)(message + app_key_offset));
+
+		INFO_S("%s", "Real payload size is ");
+		INFOLN("%d", r_size);
+
+		int pl = r_size + app_key_offset;
+
+#ifdef ENABLE_CAD
+		sx1272.CarrierSense();
+#endif
+
+		startSend = millis();
 
 #ifdef USE_SX1278
-	e = sx1272.setSleepMode();
-	if (!e)
-		INFO_S("Successfully switch LoRa into sleep mode\n");
-	else
-		INFO_S("Could not switch LoRa into sleep mode\n");
+#ifdef WITH_APPKEY
+		// indicate that we have an appkey
+		sx1272.setPacketType(PKT_TYPE_DATA | PKT_FLAG_DATA_WAPPKEY);
+#else
+		// just a simple data packet
+		sx1272.setPacketType(PKT_TYPE_DATA);
 #endif
 
-	digitalWrite(SX1272_RST, LOW);
+		// Send message to the gateway and print the result
+		// with the app key if this feature is enabled
+#ifdef WITH_ACK
+		int n_retry = NB_RETRIES;
 
-	SPI.end();
-	digitalWrite(10, LOW);
-	digitalWrite(11, LOW);
-	digitalWrite(12, LOW);
-	digitalWrite(13, LOW);
+		do {
+			e = sx1272.sendPacketTimeoutACK(DEST_ADDR,
+							message, pl);
 
-	FLUSHOUTPUT
-	delay(5);
+			if (e == 3)
+				INFO_S("%s", "No ACK");
 
-	Wire.end();
-	digitalWrite(A4, LOW);	// SDA
-	digitalWrite(A5, LOW);	// SCL
+			n_retry--;
 
-	power_off_dev();
-}
+			if (n_retry)
+				INFO_S("%s", "Retry");
+			else
+				INFO_S("%s", "Abort");
 
-void loop(void)
-{
-	check_sensor();
+		} while (e && n_retry);
+#else
+		e = sx1272.sendPacketTimeout(DEST_ADDR, message, pl);
+#endif
 
-	if (need_push == 0x5a) {
-		push_data();
+	if (!e) {
+		// send message succesful, update the old_pres
+		g_param.old_pres = pres;
 
-		need_push = 0;
+#ifdef WITH_EEPROM
+		EEPROM.put(0, g_param);
+#endif
+		INFOLN("%s", "Update old press...");
 	}
 
-	for (uint32_t i = 0; i < nCycle; i++) {
+		endSend = millis();
 
-		// ATmega328P, ATmega168, ATmega32U4
-		LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+		INFO_S("%s", "LoRa Sent in ");
+		INFOLN("%ld", endSend - startSend);
 
-		//INFO_S("%s", ".");
-		FLUSHOUTPUT delay(10);
+		INFO_S("%s", "LoRa Sent w/CAD in ");
+		INFOLN("%ld", endSend - sx1272._startDoCad);
+
+		INFO_S("%s", "Packet sent, state ");
+		INFOLN("%d", e);
+#endif
+
+#ifdef LOW_POWER
+		INFO_S("%s", "Switch to power saving mode\n");
 	}
 
-	delay(100);
+#ifdef USE_SX1278
+		e = sx1272.setSleepMode();
+		if (!e)
+			INFO_S("%s", "Successfully switch LoRa into sleep mode\n");
+		else
+			INFO_S("%s", "Could not switch LoRa into sleep mode\n");
+#endif
 
-	digitalWrite(SX1272_RST, LOW);
-	Wire.end();
+		//sx1272.reset();
+		//sx1272.OFF();
+
+		digitalWrite(SX1272_RST, LOW);
+
+		SPI.end();
+		digitalWrite(10, LOW);
+		digitalWrite(11, LOW);
+		digitalWrite(12, LOW);
+		digitalWrite(13, LOW);
+
+		FLUSHOUTPUT
+		delay(50);
+
+		Wire.end();
+		digitalWrite(A4, LOW);	// SDA
+		digitalWrite(A5, LOW);	// SCL
+
+		power_off_dev();
+
+		for (uint32_t i = 0; i < nCycle; i++) {
+
+			// ATmega328P, ATmega168, ATmega32U4
+			LowPower.powerDown(SLEEP_8S, ADC_OFF, BOD_OFF);
+
+			//INFO_S("%s", ".");
+			FLUSHOUTPUT delay(10);
+		}
+
+		delay(50);
+
+		power_on_dev();
+		delay(100);
+
+		setup();
+#else
+		INFOLN("%ld", next_tx);
+		INFO_S("%s", "Will send next value at\n");
+
+		next_tx = millis() + (uint32_t)idlePeriod * 1000;
+
+		INFOLN("%ld", next_tx);
+	}
+#endif
 }

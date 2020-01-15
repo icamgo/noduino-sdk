@@ -66,8 +66,8 @@ float get_pressure()
 
 	pv = pc10_read();
 
-//	Serial.print("pc10 = ");
-//	Serial.println(pv, HEX);
+	//Serial.print("pc10 = ");
+	//Serial.println(pv, HEX);
 
 	if (pv >= PC10_LOW && pv < PC10_MID) {
 		p = 8000.0 / (PC10_MID - PC10_LOW) * (pv - PC10_LOW);
