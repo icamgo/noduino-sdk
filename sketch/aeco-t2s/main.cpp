@@ -172,8 +172,7 @@ float fetch_current()
 
 	INFO("The consumption current (mA): ");
 
-	//return cur_curr;
-	return 1.0;
+	return cur_curr;
 }
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
@@ -241,7 +240,7 @@ void setup()
 
 #ifdef DEBUG
 	Serial.setRouteLoc(1);
-	Serial.begin(115200);
+	Serial.begin(9600);
 #endif
 
 	/* Start watchdog */
