@@ -298,6 +298,9 @@ ifndef fw
 fw := build/main.bin
 endif
 
+#
+# while true; do make produce && beep; echo " " && sleep 4; done
+#
 # make produce (write firmware main.bin into main flash, set a random devid and log it)
 # make produce fw=xxx.bin (write firmware xxx.bin into main flash, set a random devid and log it)
 produce: $(fw)

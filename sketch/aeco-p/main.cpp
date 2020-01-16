@@ -200,7 +200,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	need_push = 0x5a;
 	tx_cause = TIMER_TX;
 #else
-	if (fabsf(cur_pres - old_pres) > 0.05) {
+	if (fabsf(cur_pres - old_pres) > 0.08) {
 
 		need_push = 0x5a;
 #ifdef CONFIG_V0
@@ -364,7 +364,7 @@ void push_data()
 	pkt[21] = (int8_t)roundf(chip_temp);
 
 	// Internal humidity to detect water leak of the shell
-	pkt[22] = 0;
+	pkt[22] = 255;
 
 	// Internal current consumption
 	pkt[23] = (int8_t)roundf(cur_curr);
