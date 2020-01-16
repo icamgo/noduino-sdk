@@ -268,15 +268,10 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 		// Temperature
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
-		sprintf(dev_data, "T/%s", data_buf);
 
-	} else if (id[3] == '0' && id[4] == '2' && id[1] == '2' && id[2] == '0') {
-		// Temperature sensor produced after 2020-01-01
-		dd = (float)(data / 10.0);
-		ftoa(data_buf, dd, 1);
-
-		if (pkt_len == 24) {
-			sprintf(dev_data, "T/%s/iT/%d/iC/%d/iH/%d", data_buf, pkt[21], pkt[23], pkt[22]);
+		if (pkt_len == 24 && strncmp(id, "1200203", 7) >= 0) {
+			// Temperature sensor produced after 2020-01-01
+			sprintf(dev_data, "T/%s/iT/%d/iC/%d/iH/%d", data_buf, (int8_t)(pkt[21]), (int8_t)(pkt[23]), (int8_t)(pkt[22]));
 		} else {
 			sprintf(dev_data, "T/%s", data_buf);
 		}
@@ -286,8 +281,10 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 		dd = (float)(data / 100.0);
 		ftoa(data_buf, dd, 2);
 
-		if (pkt_len == 24) {
+		if (pkt_len == 24 && strncmp(id, "1190350", 7) > 0) {
+
 			sprintf(dev_data, "P/%s/iT/%d/iC/%d", data_buf, pkt[21], pkt[23]);
+
 		} else {
 			// exclude the packet of old protocol format (0x32, 0x31...)
 			sprintf(dev_data, "P/%s", data_buf);
