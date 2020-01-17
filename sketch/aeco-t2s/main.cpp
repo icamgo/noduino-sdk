@@ -35,6 +35,7 @@ static uint32_t sample_count = 0;
 
 static float old_temp = 0.0;
 static float cur_temp = 0.0;
+static float old_inter_humi = 0.0;
 static float inter_humi = 0.0;
 
 static float cur_curr = 0.0;
@@ -187,13 +188,16 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	sample_count++;
 
 	sts3x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
+
 	cur_temp = sts3x_get_temp();
+
+	inter_humi = sht2x_get_humi();
 
 #ifdef TX_TESTING
 	need_push = 0x5a;
 	tx_cause = TIMER_TX;
 #else
-	if (fabsf(cur_temp - old_temp) > 0.5) {
+	if (fabsf(cur_temp - old_temp) > 0.5 || (inter_humi - old_inter_humi) > 2.0) {
 
 		need_push = 0x5a;
 
@@ -324,7 +328,13 @@ void push_data()
 		sts3x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
 		cur_temp = sts3x_get_temp();
 
+		inter_humi = sht2x_get_humi();
 	}
+
+	noInterrupts();
+	if (inter_humi > 70.0)
+		pkt[15] = WL_TX;
+	interrupts();
 
 #ifdef CONFIG_V0
 	uint64_t devid = get_devid();
@@ -355,18 +365,16 @@ void push_data()
 	p = (uint8_t *) &ui16;
 	pkt[18] = p[1]; pkt[19] = p[0];
 
-	//float chip_temp = fetch_mcu_temp();
+	float chip_temp = fetch_mcu_temp();
 
-	sht2x_init(SCL_PIN, SDA_PIN);
-	float inter_temp = sht2x_get_temp();
-
-	inter_humi = sht2x_get_humi();
+	//sht2x_init(SCL_PIN, SDA_PIN);
+	//float inter_temp = sht2x_get_temp();
 
 	// Humidity Sensor data	or Water Leak Sensor data
 	pkt[20] = 0; 
 
 	// Internal Temperature of the chip
-	pkt[21] = (int8_t)roundf(inter_temp);
+	pkt[21] = (int8_t)roundf(chip_temp);
 
 	// Internal humidity to detect water leak of the shell
 	pkt[22] = (int8_t)roundf(inter_humi);
@@ -440,6 +448,7 @@ void push_data()
 	if (!e) {
 		// send message succesful, update the old data
 		old_temp = cur_temp;
+		old_inter_humi = inter_humi;
 	}
 
 #ifdef DEBUG
