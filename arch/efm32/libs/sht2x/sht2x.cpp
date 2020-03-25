@@ -174,9 +174,8 @@ float sht2x_get_humi(void)
 	int cnt = 0;
 	float ret = -1.0;
 
-	sht2x_reset();
-
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
+		sht2x_reset();
 		sd = sht2x_read_sensor(RH_NO_HOLD_CMD);
 		cnt++;
 	}
@@ -201,9 +200,8 @@ float sht2x_get_temp(void)
 	int cnt = 0;
 	float ret = -273.0;
 
-	sht2x_reset();
-
-	while ((sd == 1 || sd == 2) && cnt <= 3) {
+	while ((sd == 1 || sd == 2) && cnt <= 5) {
+		sht2x_reset();
 		sd = sht2x_read_sensor(T_NO_HOLD_CMD);
 		cnt++;
 	}
