@@ -198,7 +198,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	need_push = 0x5a;
 	tx_cause = TIMER_TX;
 #else
-	if (fabsf(cur_temp - old_temp) > 0.5 || fabsf(cur_humi - old_humi) > 1) {
+	if (fabsf(cur_temp - old_temp) > 0.5 || fabsf(cur_humi - old_humi) > 3) {
 
 		need_push = 0x5a;
 
