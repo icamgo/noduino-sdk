@@ -364,7 +364,7 @@ void push_data()
 	float chip_temp = fetch_mcu_temp();
 
 	// Humidity Sensor data	or Water Leak Sensor data
-	pkt[20] = (uint8_t)cur_temp;
+	pkt[20] = (int8_t)roundf(cur_temp);
 
 	// Internal Temperature of the chip
 	pkt[21] = (int8_t)roundf(chip_temp);
