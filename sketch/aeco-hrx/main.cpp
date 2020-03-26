@@ -258,7 +258,7 @@ char *decode_sensor_type()
 				strcpy(dev_type, "T2P");
 				break;
 			case '8':
-				strcpy(dev_type, "T2TH");
+				strcpy(dev_type, "TH");
 				break;
 			case '9':
 				strcpy(dev_type, "T2M");
@@ -311,9 +311,9 @@ char *decode_sensor_data(uint8_t *pkt)
 		sprintf(dev_data, "%s  ", dev_data);
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '8') {
-		// Temp & Humi Sensor
+		// Humi&Temp Sensor
 		dd = (float)(data / 10.0);
-		ftoa(dev_data, dd, 1);
+		ftoa(dev_data, dd, 0);
 
 		sprintf(dev_data, "%s %d", dev_data, (int8_t)(pkt[20]));
 
