@@ -258,7 +258,7 @@ char *decode_sensor_type()
 				strcpy(dev_type, "T2P");
 				break;
 			case '8':
-				strcpy(dev_type, "TH");
+				strcpy(dev_type, "HT");
 				break;
 			case '9':
 				strcpy(dev_type, "T2M");
@@ -312,10 +312,10 @@ char *decode_sensor_data(uint8_t *pkt)
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '8') {
 		// Humi&Temp Sensor
-		dd = (float)(data / 10.0);
-		ftoa(dev_data, dd, 0);
-
-		sprintf(dev_data, "%s %d", dev_data, (int8_t)(pkt[20]));
+		//dd = (float)(data / 10.0);
+		//ftoa(dev_data, dd, 0);
+		//sprintf(dev_data, "%s %d", dev_data, (int8_t)(pkt[20]));
+		sprintf(dev_data, "%d %d", data/10, (int8_t)(pkt[20]));
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '9') {
 		// Moving Sensor
