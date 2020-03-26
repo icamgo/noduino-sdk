@@ -315,7 +315,7 @@ char *decode_sensor_data(uint8_t *pkt)
 		//dd = (float)(data / 10.0);
 		//ftoa(dev_data, dd, 0);
 		//sprintf(dev_data, "%s %d", dev_data, (int8_t)(pkt[20]));
-		sprintf(dev_data, "%d %d", data/10, (int8_t)(pkt[20]));
+		sprintf(dev_data, "%d %d", (int)(data/10.0+0.5), (int8_t)(pkt[20]));
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '9') {
 		// Moving Sensor
