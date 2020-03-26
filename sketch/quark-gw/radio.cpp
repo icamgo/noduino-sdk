@@ -296,7 +296,7 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 		ftoa(data_buf, dd, 1);
 
 		if (pkt_len >= 24) {
-			sprintf(dev_data, "T/%s/H/%d/iT/%d/iC/%d", data_buf, pkt[20], (int8_t)(pkt[21]), (int8_t)(pkt[23]));
+			sprintf(dev_data, "H/%s/T/%d/iT/%d/iC/%d", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]), (int8_t)(pkt[23]));
 		}
 
 	} else if (id[3] == '0' && id[4] == '9') {
