@@ -333,6 +333,12 @@ void push_data()
 
 	power_on_dev();
 
+	INFO("Temp: ");
+	INFOLN(cur_temp);
+
+	INFO("Humi: ");
+	INFOLN(cur_humi);
+
 #ifdef CONFIG_V0
 	uint64_t devid = get_devid();
 

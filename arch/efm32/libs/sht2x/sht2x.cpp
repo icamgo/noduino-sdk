@@ -174,8 +174,9 @@ float sht2x_get_humi(void)
 	int cnt = 0;
 	float ret = -1.0;
 
+	sht2x_reset();
+
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
-		sht2x_reset();
 		sd = sht2x_read_sensor(RH_NO_HOLD_CMD);
 		cnt++;
 	}
@@ -198,10 +199,12 @@ float sht2x_get_temp(void)
 {
 	uint16_t sd = 2;
 	int cnt = 0;
-	float ret = -273.0;
+	float ret = -127.0;
+
+	sht2x_reset();
+	sht2x_reset();
 
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
-		sht2x_reset();
 		sd = sht2x_read_sensor(T_NO_HOLD_CMD);
 		cnt++;
 	}
@@ -209,11 +212,12 @@ float sht2x_get_temp(void)
 	ret = (-46.85 + 175.72 / 65536.0 * (float)sd);
 
 	if (ret < -40.0)
-		return -273.0;
-	else if (ret > 120.0)
-		return 300.0;
-	else
-		return ret;
+		ret = -127.0;
+
+	if (ret > 120.0)
+		ret = 127.0;
+
+	return ret;
 }
 
 uint8_t sht2x_init(uint8_t scl, uint8_t sda)
