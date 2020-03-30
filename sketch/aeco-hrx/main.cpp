@@ -432,8 +432,8 @@ void show_frame(int l, int mode, bool alarm)
 				#endif
 
 				if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3'
-					|| dev_id[4] == '7')) {
-					// Pressure & digital sensor, showing lightning icon
+					|| dev_id[4] == '7' || dev_id[4] == '8')) {
+					// Pressure & Level, Humidity digital sensor, showing lightning icon
 					u8g2.setFont(u8g2_font_open_iconic_embedded_2x_t);
 					ic = 67;
 
