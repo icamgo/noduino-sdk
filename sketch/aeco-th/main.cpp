@@ -59,7 +59,7 @@ static uint32_t need_push = 0;
 
 #define ENABLE_CAD				1
 
-#define	TX_TIME					3000
+#define	TX_TIME					1800
 #define DEST_ADDR				1
 
 #define	RESET_TX			0
@@ -188,6 +188,16 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	sample_count++;
 
+	if (sample_count >= HEARTBEAT_TIME/sample_period) {
+
+		need_push = 0x5a;
+		tx_cause = TIMER_TX;
+
+		sample_count = 0;
+
+		return;
+	}
+
 #ifdef ENABLE_SHT2X
 	sht2x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
 	cur_temp = sht2x_get_temp();
@@ -205,12 +215,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 		tx_cause = DELTA_TX;
 
-	} else if (sample_count >= HEARTBEAT_TIME/sample_period) {
-
-		need_push = 0x5a;
-		tx_cause = TIMER_TX;
-
-		sample_count = 0;
 	}
 #endif
 }
@@ -308,7 +312,6 @@ void push_data()
 #endif
 
 	////////////////////////////////
-
 	cur_curr = fetch_current();
 
 	noInterrupts();
@@ -377,7 +380,7 @@ void push_data()
 	pkt[21] = (int8_t)roundf(chip_temp);
 
 	// Internal humidity to detect water leak of the shell
-	pkt[22] = 0;
+	pkt[22] = 255;
 
 	// Internal current consumption
 	pkt[23] = (int8_t)roundf(cur_curr);
@@ -438,6 +441,7 @@ void push_data()
 
 	} while (e && n_retry);
 #else
+	// 10ms max tx time
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
 #endif
 
