@@ -77,7 +77,7 @@ int sht2x_read_reg(void)
 
 	reg = wire_read();
 
-	return(reg);  
+	return(reg);
 }
 
 uint8_t sht2x_write_reg(uint8_t val)
@@ -164,17 +164,11 @@ static uint16_t sht2x_read_sensor(uint8_t command)
 	return result;
 }
 
-/*
- * Gets the current humidity from the sensor.
- * @return float - The relative humidity in %RH
- */
-float sht2x_get_humi(void)
+float sht2x_read_humi(void)
 {
 	uint16_t sd = 2;
 	int cnt = 0;
 	float ret = -1.0;
-
-	sht2x_reset();
 
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
 		sd = sht2x_read_sensor(RH_NO_HOLD_CMD);
@@ -191,18 +185,11 @@ float sht2x_get_humi(void)
 		return ret;
 }
 
-/*
- * Gets the current temperature from the sensor.
- * @return float - The temperature in Deg C
- */
-float sht2x_get_temp(void)
+float sht2x_read_temp(void)
 {
 	uint16_t sd = 2;
 	int cnt = 0;
 	float ret = -127.0;
-
-	sht2x_reset();
-	sht2x_reset();
 
 	while ((sd == 1 || sd == 2) && cnt <= 3) {
 		sd = sht2x_read_sensor(T_NO_HOLD_CMD);
@@ -218,6 +205,84 @@ float sht2x_get_temp(void)
 		ret = 127.0;
 
 	return ret;
+}
+
+
+static void swap(float *p, float *q)
+{
+	float t;
+
+	t = *p;
+	*p = *q;
+	*q = t;
+}
+
+static void sort(float a[], int n)
+{
+	int i, j;
+
+	for (i = 0; i < n - 1; i++) {
+
+		for (j = 0; j < n - i - 1; j++) {
+
+			if (a[j] > a[j + 1]) {
+
+				swap(&a[j], &a[j + 1]);
+
+			}
+		}
+	}
+}
+
+static float median(float a[], int n)
+{
+	int m = 0;
+
+	sort(a, n);
+
+	m = (n + 1) / 2 - 1;
+
+	return a[m];
+}
+
+/*
+ * return float: The relative humidity in %RH
+ */
+float sht2x_get_humi(void)
+{
+	float h[5] = {0};
+
+	int i;
+
+	sht2x_reset();
+
+	for(i = 0; i < 5; i++) {
+		h[i] = sht2x_read_humi();
+
+		sht2x_delay(1);
+	}
+
+	return median(h, 5);
+}
+
+/*
+ * return float: The temperature in Deg C
+ */
+float sht2x_get_temp(void)
+{
+	float t[5] = {0};
+
+	int i;
+
+	sht2x_reset();
+
+	for(i = 0; i < 5; i++) {
+		t[i] = sht2x_read_temp();
+
+		sht2x_delay(1);
+	}
+
+	return median(t, 5);
 }
 
 uint8_t sht2x_init(uint8_t scl, uint8_t sda)
