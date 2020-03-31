@@ -358,7 +358,7 @@ void push_data()
 	ui16 = vbat * 1000;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
-	pkt[15] = tx_cause;
+	//pkt[15] = tx_cause;
 
 	p = (uint8_t *) &tx_count;
 	pkt[16] = p[1]; pkt[17] = p[0];
