@@ -46,6 +46,12 @@ static float cur_curr = 0.0;
 //#define ENABLE_SHT2X			1
 #define ENABLE_SHT3X			1
 
+#ifdef ENABLE_SHT2X
+#define	DELTA_HUMI				3
+#elif ENABLE_SHT3X
+#define	DELTA_HUMI				2
+#endif
+
 static uint32_t need_push = 0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
@@ -217,7 +223,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	tx_cause = TIMER_TX;
 #else
 	//if (fabsf(cur_temp - old_temp) > 0.5 || fabsf(cur_humi - old_humi) > 3) {
-	if (fabsf(cur_humi - old_humi) > 3) {
+	if (fabsf(cur_humi - old_humi) > DELTA_HUMI) {
 
 		need_push = 0x5a;
 
