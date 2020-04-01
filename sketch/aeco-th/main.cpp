@@ -20,6 +20,7 @@
 #include "sx1272.h"
 #include "softi2c.h"
 #include "sht2x.h"
+#include "sht3x.h"
 #include "rtcdriver.h"
 #include "math.h"
 #include "em_wdog.h"
@@ -42,7 +43,8 @@ static float cur_curr = 0.0;
 //#define	TX_TESTING				1
 //#define	DEBUG					1
 
-#define ENABLE_SHT2X			1
+//#define ENABLE_SHT2X			1
+#define ENABLE_SHT3X			1
 
 static uint32_t need_push = 0;
 
@@ -203,6 +205,12 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	cur_temp = sht2x_get_temp();
 	cur_humi = sht2x_get_humi();
 #endif
+#ifdef ENABLE_SHT3X
+	sht3x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
+	//sht3x_read_sensor(&cur_temp, &cur_humi);
+	cur_temp = sht3x_get_temp();
+	cur_humi = sht3x_get_humi();
+#endif
 
 #ifdef TX_TESTING
 	need_push = 0x5a;
@@ -331,6 +339,12 @@ void push_data()
 		sht2x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
 		cur_temp = sht2x_get_temp();
 		cur_humi = sht2x_get_humi();
+	#endif
+	#ifdef ENABLE_SHT3X
+		sht3x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
+		//sht3x_read_sensor(&cur_temp, &cur_humi);
+		cur_temp = sht3x_get_temp();
+		cur_humi = sht3x_get_humi();
 	#endif
 	}
 

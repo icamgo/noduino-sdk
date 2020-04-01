@@ -116,6 +116,7 @@ $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/softspi/softspi.cpp							\
 $(LIB_DIR)/sht2x/sht2x.cpp								\
+$(LIB_DIR)/sht3x/sht3x.cpp								\
 $(LIB_DIR)/sx127x/sx1272.cpp
 
 
@@ -131,6 +132,7 @@ CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys 
 CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/sht2x/					\
+			-I $(LIB_DIR)/sht3x/					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
@@ -139,6 +141,7 @@ CINCS		+= -I  $(LIB_DIR)/softspi/				\
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/sht2x/					\
+			-I $(LIB_DIR)/sht3x/					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
