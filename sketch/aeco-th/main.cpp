@@ -31,7 +31,7 @@ RTCDRV_TimerID_t xTimerForWakeUp;
 static uint32_t sample_period = 20;		/* 20s */
 
 static uint32_t sample_count = 0;
-#define		HEARTBEAT_TIME			7200
+#define		HEARTBEAT_TIME			6600
 
 static float old_temp = 0.0;
 static float cur_temp = 0.0;
