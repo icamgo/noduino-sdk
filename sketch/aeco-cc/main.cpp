@@ -23,7 +23,6 @@
 #include <stdint.h>
 
 #define	DEBUG					1
-//#define DEBUG_HEX_PKT			1
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
@@ -54,6 +53,10 @@ char cmd[MAX_CMD_LENGTH];
 
 #define DEST_ADDR				1
 #define MAX_DBM					20
+
+int8_t rx_intval = 125;
+int8_t rx_window = 5;
+int8_t rx_flag = 0;
 
 char msg_buf[2][24];
 
@@ -135,29 +138,6 @@ char *decode_devid(uint8_t *pkt)
 
 	return uint64_to_str(devid);
 }
-
-uint8_t decode_cmd(uint8_t *pkt)
-{
-	uint8_t cmd = 0;
-
-	switch(pkt[2]) {
-
-		case 0x33:
-			cmd = pkt[15];
-			break;
-		default:
-			cmd = 255;
-			break;
-	}
-
-	return cmd;
-}
-
-uint8_t decode_ver(uint8_t *pkt)
-{
-	return pkt[2];
-}
-
 #endif
 
 void change_omode()
