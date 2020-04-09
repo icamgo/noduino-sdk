@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <stdint.h>
 
-//#define	DEBUG					1
+#define	DEBUG					1
 //#define DEBUG_HEX_PKT			1
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
@@ -32,8 +32,7 @@
 #define SYNCWORD_LORAWAN		0x34
 #define SYNCWORD_ABC			0x55
 
-// use the dynamic ACK feature of our modified SX1272 lib
-//#define GW_AUTO_ACK
+#define	ENABLE_CAD				1
 
 #ifdef CONFIG_V0
 
@@ -41,7 +40,7 @@
 #define TXRX_CH					CH_01_472
 #define RX_TIME					330
 #define DEST_ADDR				1
-#define	TX_TIME					100		// 100ms
+#define	TX_TIME					500		// 100ms
 uint8_t loraMode = 12;
 
 #else
@@ -61,8 +60,6 @@ char cmd[MAX_CMD_LENGTH];
 
 // number of retries to unlock remote configuration feature
 bool withAck = false;
-
-int status_counter = 0;
 
 char msg_buf[2][24];
 
@@ -105,6 +102,10 @@ void radio_setup()
 #else
 	sx1272.sx1278_qsetup(CH_00_470, 20);
 	sx1272._nodeAddress = loraAddr;
+	sx1272._enableCarrierSense = true;
+#endif
+
+#ifdef ENABLE_CAD
 	sx1272._enableCarrierSense = true;
 #endif
 }
@@ -236,36 +237,16 @@ void loop(void)
 		// dev power off
 		power_off_dev();
 
-		//wire_end();
-		pinMode(SH1106_SCL, INPUT);
-		pinMode(SH1106_SDA, INPUT);
-		digitalWrite(SH1106_RESET, LOW);
-
 		EMU_EnterEM2(true);
 
 		setup();
 	}
-
-#if DEBUG > 1
-	if (status_counter == 60 || status_counter == 0) {
-		//INFO_S("%s", "^$Low-level gw status ON\n");
-		INFO_S("%s", ".");
-		status_counter = 0;
-
-		if (adc.readVbat() < 2.92) {
-			//show_low_bat();
-			delay(2700);
-		}
-	}
-#endif
 
 	// check if we received data from the receiving LoRa module
 #ifdef RECEIVE_ALL
 	e = sx1272.receiveAll(RX_TIME);
 #else
 	e = sx1272.receivePacketTimeout(RX_TIME);
-
-	status_counter++;
 
 	if (e != 0 && e != 3) {
 		// e = 1 or e = 2 or e > 3
@@ -289,13 +270,12 @@ void loop(void)
 
 		sx1272.getRSSIpacket();
 
-		INFOLN("%s", "");
+		uint8_t pkt_len = sx1272.getPayloadLength();
 
 #ifdef DEBUG_HEX_PKT
 		int a = 0, b = 0;
-		uint8_t p_len = sx1272.getPayloadLength();
 
-		for (; a < p_len; a++, b++) {
+		for (; a < pkt_len; a++, b++) {
 
 			if ((uint8_t) sx1272.packet_received.data[a] < 16)
 				INFO_S("%s", "0");
@@ -306,10 +286,9 @@ void loop(void)
 
 		INFOLN("%d", "$");
 #endif
+		uint8_t *rx_pkt = sx1272.packet_received.data;
 
-		uint8_t *p = sx1272.packet_received.data;
-
-		decode_devid(sx1272.packet_received.data);
+		decode_devid(rx_pkt);
 
 		if (strcmp(dev_id, "") == 0) {
 			// lora module unexpected error
@@ -318,16 +297,24 @@ void loop(void)
 			INFO_S("%s", "Resetting lora module\n");
 
 			radio_setup();
+
+	//	} else if (strcmp(dev_id, "11902041155") == 0) {
+		} else if (strcmp(dev_id, "11902460803") == 0) {
+
+			// Add a tag. It's relayed by cc
+			rx_pkt[15] |= 0x80;
+
+#ifdef ENABLE_CAD
+			sx1272.CarrierSense();
+#endif
+			// here we resend the received data to the next gateway
+			e = sx1272.sendPacketTimeout(DEST_ADDR, rx_pkt, 24, TX_TIME);
+
+			INFO_S("%s", "Packet re-sent, state ");
+			INFOLN("%d", e);
+
+			// set back the gateway address
+			sx1272._nodeAddress = DEST_ADDR;
 		}
-
-
-		// here we resend the received data to the next gateway
-		e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
-
-		INFO_S("%s", "Packet re-sent, state ");
-		INFOLN("%d", e);
-
-		// set back the gateway address
-		sx1272._nodeAddress = LORA_ADDR;
 	}
 }
