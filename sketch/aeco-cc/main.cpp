@@ -18,6 +18,8 @@
 
 #include "softspi.h"
 #include "sx1272.h"
+#include "rtcdriver.h"
+#include "em_wdog.h"
 
 #include <stdio.h>
 #include <stdint.h>
@@ -54,23 +56,28 @@ char cmd[MAX_CMD_LENGTH];
 #define DEST_ADDR				1
 #define MAX_DBM					20
 
-int8_t rx_intval = 125;
-int8_t rx_window = 5;
-int8_t rx_flag = 0;
+#define	HEARTBEAT_TIME			7100
+
+/* Timer used for bringing the system back to EM0 */
+RTCDRV_TimerID_t xTimerForWakeUp;
+
+uint32_t rx_intval = 125;
+uint32_t rx_window = 130;
+uint32_t rx_flag = 0;
+uint32_t rx_count = 0;
+
+int8_t need_push = 0;
+int8_t need_cc = 0;
+
+#define SYS_1S_TICK				(F_CPU)		/* 14MHz, 1Tick = 1/14us, 14000tick = 1000us */
 
 char msg_buf[2][24];
 
 /*
  * Output Mode:
  *
- *   0x0: rx all messages
- *   0x1: only rx the tagged message
- *   0x2: only rx trigged message
 */
 int omode = 1;
-int old_omode = 1;
-
-int key_time = 0;
 
 #ifdef DEBUG
 
@@ -160,7 +167,12 @@ void power_off_dev()
 
 void setup()
 {
-	int e;
+	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
+
+	/* Watchdog setup - Use defaults, excepts for these : */
+	wInit.em2Run = true;
+	wInit.em3Run = true;
+	wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
@@ -169,111 +181,153 @@ void setup()
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 
-	power_on_dev();
+	/* Initialize RTC timer. */
+	RTCDRV_Init();
+	RTCDRV_AllocateTimer(&xTimerForWakeUp);
 
 #ifdef DEBUG
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
 #endif
 
+	/* Start watchdog */
+	WDOG_Init(&wInit);
+
+	/* bootup tx */
+	need_push = 0x5a;
+	need_cc = 0x5a;
+}
+
+void task_cc(RTCDRV_TimerID_t id, void *user)
+{
+	(void)id;
+	(void)user;
+
+	WDOG_Feed();
+
+	RTCDRV_StopTimer(xTimerForWakeUp);
+
+	rx_count++;
+
+	if (rx_count >= HEARTBEAT_TIME/rx_intval) {
+		need_push = 0x5a;
+		rx_count = 0;
+	}
+
+	need_cc = 0x5a;
+}
+
+void cc_worker()
+{
+	int i; 
+	int e;
+
+	power_on_dev();
+
 	radio_setup();
+
+	for (i = 0; i < rx_window*1000/RX_TIME; i++) {
+
+		// check if we received data from the receiving LoRa module
+	#ifdef RECEIVE_ALL
+		e = sx1272.receiveAll(RX_TIME);
+	#else
+		e = sx1272.receivePacketTimeout(RX_TIME);
+
+		if (e != 0 && e != 3) {
+			// e = 1 or e = 2 or e > 3
+			INFO_S("%s", "^$Receive error ");
+			INFOLN("%d", e);
+
+			if (e == 2) {
+				// Power OFF the module
+				sx1272.reset();
+				INFO_S("%s", "^$Resetting radio module\n");
+
+				radio_setup();
+
+				// to start over
+				e = 1;
+			}
+		}
+	#endif
+
+		if (!e) {
+
+			sx1272.getRSSIpacket();
+
+			uint8_t pkt_len = sx1272.getPayloadLength();
+
+			uint8_t *rx_pkt = sx1272.packet_received.data;
+
+			decode_devid(rx_pkt);
+
+			if (strcmp(dev_id, "") == 0) {
+				// lora module unexpected error
+				sx1272.reset();
+
+				INFO_S("%s", "Resetting lora module\n");
+
+				radio_setup();
+
+		//	} else if (strcmp(dev_id, "11902041155") == 0) {
+			} else if (strcmp(dev_id, "11902460803") == 0) {
+
+				// Add a tag. It's relayed by cc
+				rx_pkt[15] |= 0x80;
+
+	#ifdef ENABLE_CAD
+				sx1272.CarrierSense();
+	#endif
+				// here we resend the received data to the next gateway
+				e = sx1272.sendPacketTimeout(DEST_ADDR, rx_pkt, 24, TX_TIME);
+
+				INFO_S("%s", "Packet re-sent, state ");
+				INFOLN("%d", e);
+
+				// set back the gateway address
+				sx1272._nodeAddress = DEST_ADDR;
+
+				rx_flag = 1;
+			}
+		}
+	}
+
+	if (rx_flag == 0) {
+		rx_window++;
+	}
+
+	if (rx_flag == 1 && rx_window >= rx_intval) {
+		rx_window = 5;
+	}
+
+	INFO_S("%s", "rx_win = ");
+	INFOLN("%d", rx_window);
 }
 
 void loop(void)
 {
-	int e = 1;
-	static int c = 0;
 
-	if (digitalRead(KEY_PIN) == 0) {
-		// x 200ms
-		key_time++;
-	} else {
-		key_time = 0;
+	if (0x5a == need_push) {
+		// push_stat_data();
+		need_push = 0;
 	}
 
-	if (key_time > 8) {
-
-		key_time = 0;
-
-		INFOLN("%s", "Key long time pressed, enter deep sleep...");
-		delay(300);
-
-		sx1272.setSleepMode();
-		digitalWrite(SX1272_RST, LOW);
-
-		spi_end();
-		digitalWrite(10, LOW);
-		digitalWrite(11, LOW);
-		digitalWrite(12, LOW);
-		digitalWrite(13, LOW);
-
-		// dev power off
-		power_off_dev();
-
-		EMU_EnterEM2(true);
-
-		setup();
+	if (0x5a == need_cc) {
+		cc_worker();
+		need_cc = 0;
 	}
 
-	// check if we received data from the receiving LoRa module
-#ifdef RECEIVE_ALL
-	e = sx1272.receiveAll(RX_TIME);
-#else
-	e = sx1272.receivePacketTimeout(RX_TIME);
+	power_off_dev();
+	digitalWrite(SX1272_RST, LOW);
 
-	if (e != 0 && e != 3) {
-		// e = 1 or e = 2 or e > 3
-		INFO_S("%s", "^$Receive error ");
-		INFOLN("%d", e);
+	spi_end();
 
-		if (e == 2) {
-			// Power OFF the module
-			sx1272.reset();
-			INFO_S("%s", "^$Resetting radio module\n");
+	/*
+	 * Enable rtc timer before enter deep sleep
+	 * Stop rtc timer after enter task_cc()
+	 */
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, rx_intval * 1000, task_cc, NULL);
 
-			radio_setup();
-
-			// to start over
-			e = 1;
-		}
-	}
-#endif
-
-	if (!e) {
-
-		sx1272.getRSSIpacket();
-
-		uint8_t pkt_len = sx1272.getPayloadLength();
-
-		uint8_t *rx_pkt = sx1272.packet_received.data;
-
-		decode_devid(rx_pkt);
-
-		if (strcmp(dev_id, "") == 0) {
-			// lora module unexpected error
-			sx1272.reset();
-
-			INFO_S("%s", "Resetting lora module\n");
-
-			radio_setup();
-
-	//	} else if (strcmp(dev_id, "11902041155") == 0) {
-		} else if (strcmp(dev_id, "11902460803") == 0) {
-
-			// Add a tag. It's relayed by cc
-			rx_pkt[15] |= 0x80;
-
-#ifdef ENABLE_CAD
-			sx1272.CarrierSense();
-#endif
-			// here we resend the received data to the next gateway
-			e = sx1272.sendPacketTimeout(DEST_ADDR, rx_pkt, 24, TX_TIME);
-
-			INFO_S("%s", "Packet re-sent, state ");
-			INFOLN("%d", e);
-
-			// set back the gateway address
-			sx1272._nodeAddress = DEST_ADDR;
-		}
-	}
+	EMU_EnterEM2(true);
 }
