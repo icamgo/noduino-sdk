@@ -39,27 +39,21 @@
 #define RECEIVE_ALL
 #define TXRX_CH					CH_01_472
 #define RX_TIME					330
-#define DEST_ADDR				1
 #define	TX_TIME					500		// 100ms
-uint8_t loraMode = 12;
+#define LORA_MODE				12
 
 #else
 
 #define TXRX_CH					CH_00_470		// 470.0MHz
 #define RX_TIME					MAX_TIMEOUT
 // Default LoRa mode BW=125KHz, CR=4/5, SF=12
-uint8_t loraMode = 11;
-// Gateway address: 1
-uint8_t loraAddr = 1;
-
-// be careful, max command length is 60 characters
+#define LORA_MODE				11
 #define MAX_CMD_LENGTH			100
 char cmd[MAX_CMD_LENGTH];
-
 #endif
 
-// number of retries to unlock remote configuration feature
-bool withAck = false;
+#define DEST_ADDR				1
+#define MAX_DBM					20
 
 char msg_buf[2][24];
 
@@ -96,13 +90,12 @@ void radio_setup()
 {
 
 #ifdef CONFIG_V0
-	sx1272.setup_v0(CH_01_472, 20);
+	sx1272.setup_v0(TXRX_CH, MAX_DBM);
 	//sx1272.setPreambleLength(6);
 	//sx1272.setSyncWord(SYNCWORD_ABC);
 #else
-	sx1272.sx1278_qsetup(CH_00_470, 20);
-	sx1272._nodeAddress = loraAddr;
-	sx1272._enableCarrierSense = true;
+	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
+	sx1272._nodeAddress = DEST_ADDR;
 #endif
 
 #ifdef ENABLE_CAD
@@ -272,20 +265,6 @@ void loop(void)
 
 		uint8_t pkt_len = sx1272.getPayloadLength();
 
-#ifdef DEBUG_HEX_PKT
-		int a = 0, b = 0;
-
-		for (; a < pkt_len; a++, b++) {
-
-			if ((uint8_t) sx1272.packet_received.data[a] < 16)
-				INFO_S("%s", "0");
-
-			INFO_HEX("%X", (uint8_t) sx1272. packet_received.data[a]);
-			INFO_S("%s", " ");
-		}
-
-		INFOLN("%d", "$");
-#endif
 		uint8_t *rx_pkt = sx1272.packet_received.data;
 
 		decode_devid(rx_pkt);
