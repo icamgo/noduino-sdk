@@ -324,7 +324,9 @@ here:
 	if (1 == rx_flag || rx_count > 5) {
 		rx_intval = INIT_RX_INTVAL;
 		rx_window = INIT_RX_WINDOW;
+
 		rx_flag = 0;					// reset flag
+		rx_count = 0;
 	}
 
 	INFO_S("%s", "window = ");
