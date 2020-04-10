@@ -58,13 +58,17 @@ char cmd[MAX_CMD_LENGTH];
 
 #define	HEARTBEAT_TIME			7100
 
+#define	INIT_RX_INTVAL			120
+#define	INIT_RX_WINDOW			5
+
 /* Timer used for bringing the system back to EM0 */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-uint32_t rx_intval = 125;
-uint32_t rx_window = 130;
+uint32_t rx_intval = INIT_RX_INTVAL;
+uint32_t rx_window = INIT_RX_INTVAL + INIT_RX_WINDOW;
 uint32_t rx_flag = 0;
 uint32_t rx_count = 0;
+uint32_t cc_count = 0;
 
 int8_t need_push = 0;
 int8_t need_cc = 0;
@@ -72,6 +76,10 @@ int8_t need_cc = 0;
 #define SYS_1S_TICK				(F_CPU)		/* 14MHz, 1Tick = 1/14us, 14000tick = 1000us */
 
 char msg_buf[2][24];
+
+char dev_id[24];
+//char pair_id[12] = "11902460803";
+char pair_id[12] = "11902041155";
 
 /*
  * Output Mode:
@@ -113,9 +121,6 @@ void radio_setup()
 #endif
 }
 
-#ifdef CONFIG_V0
-char dev_id[24];
-
 char *uint64_to_str(uint64_t n)
 {
 	char *dest = dev_id;
@@ -145,12 +150,15 @@ char *decode_devid(uint8_t *pkt)
 
 	return uint64_to_str(devid);
 }
-#endif
 
-void change_omode()
+void change_rxmode()
 {
 	omode++;
 	omode %= 3;
+
+	rx_intval = INIT_RX_INTVAL;
+	rx_window = INIT_RX_INTVAL + INIT_RX_WINDOW;
+
 	INFO("%s", "omode: ");
 	INFOLN("%d", omode);
 }
@@ -176,7 +184,7 @@ void setup()
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
-	attachInterrupt(KEY_PIN, change_omode, FALLING);
+	attachInterrupt(KEY_PIN, change_rxmode, FALLING);
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -207,11 +215,11 @@ void task_cc(RTCDRV_TimerID_t id, void *user)
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
-	rx_count++;
+	cc_count++;
 
-	if (rx_count >= HEARTBEAT_TIME/rx_intval) {
+	if (cc_count >= HEARTBEAT_TIME/rx_intval) {
 		need_push = 0x5a;
-		rx_count = 0;
+		cc_count = 0;
 	}
 
 	need_cc = 0x5a;
@@ -221,10 +229,13 @@ void cc_worker()
 {
 	int i; 
 	int e;
+	int start = 0, end = 0;
 
 	power_on_dev();
 
 	radio_setup();
+
+	start = millis();
 
 	for (i = 0; i < rx_window*1000/RX_TIME; i++) {
 
@@ -270,8 +281,7 @@ void cc_worker()
 
 				radio_setup();
 
-		//	} else if (strcmp(dev_id, "11902041155") == 0) {
-			} else if (strcmp(dev_id, "11902460803") == 0) {
+			} else if (strcmp(dev_id, pair_id) == 0) {
 
 				// Add a tag. It's relayed by cc
 				rx_pkt[15] |= 0x80;
@@ -289,20 +299,38 @@ void cc_worker()
 				sx1272._nodeAddress = DEST_ADDR;
 
 				rx_flag = 1;
+				break;
 			}
 		}
 	}
 
-	if (rx_flag == 0) {
-		rx_window++;
+here:
+	end = millis();
+
+	INFO_S("%s", "RX Time: ");
+	INFOLN("%d", (end - start)/1000);
+
+	if (0 == rx_flag) {
+#if 0
+		rx_intval--;
+		rx_window += 2;
+#endif
+		if (rx_window == INIT_RX_WINDOW)
+			rx_intval = INIT_RX_INTVAL - (end-start)/1000;
+
+		rx_count++;
 	}
 
-	if (rx_flag == 1 && rx_window >= rx_intval) {
-		rx_window = 5;
+	if (1 == rx_flag || rx_count > 5) {
+		rx_intval = INIT_RX_INTVAL;
+		rx_window = INIT_RX_WINDOW;
+		rx_flag = 0;					// reset flag
 	}
 
-	INFO_S("%s", "rx_win = ");
+	INFO_S("%s", "window = ");
 	INFOLN("%d", rx_window);
+	INFO_S("%s", "intval = ");
+	INFOLN("%d", rx_intval);
 }
 
 void loop(void)
