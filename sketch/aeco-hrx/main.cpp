@@ -603,10 +603,14 @@ void loop(void)
 	int e = 1;
 	static int c = 0;
 
-#ifdef ENABLE_OLED
 	if (omode != old_omode) {
+#ifdef ENABLE_OLED
 		// show mode and clean buffer
 		show_mode(omode);
+
+		frame_buf[0][0] = '\0';
+		frame_buf[1][0] = '\0';
+#endif
 		old_omode = omode;
 
 		switch (omode) {
@@ -622,10 +626,7 @@ void loop(void)
 				break;
 		}
 
-		frame_buf[0][0] = '\0';
-		frame_buf[1][0] = '\0';
 	}
-#endif
 
 	if (digitalRead(KEY_PIN) == 0) {
 		// x 200ms
@@ -656,10 +657,12 @@ void loop(void)
 		// dev power off
 		power_off_dev();
 
+#ifdef ENABLE_SH1106
 		//wire_end();
 		pinMode(SH1106_SCL, INPUT);
 		pinMode(SH1106_SDA, INPUT);
 		digitalWrite(SH1106_RESET, LOW);
+#endif
 
 		EMU_EnterEM2(true);
 
