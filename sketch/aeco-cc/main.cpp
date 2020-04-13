@@ -40,7 +40,7 @@
 #define RECEIVE_ALL
 #define TXRX_CH					CH_01_472
 #define RX_TIME					330
-#define	TX_TIME					500		// 100ms
+#define	TX_TIME					200		// 200ms
 #define LORA_MODE				12
 
 #else
@@ -58,8 +58,8 @@ char cmd[MAX_CMD_LENGTH];
 
 #define	HEARTBEAT_TIME			7100
 
-#define	INIT_RX_INTVAL			120
-#define	INIT_RX_WINDOW			5
+#define	INIT_RX_INTVAL			120000
+#define	INIT_RX_WINDOW			2000
 
 /* Timer used for bringing the system back to EM0 */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -229,7 +229,7 @@ void cc_worker()
 {
 	int i; 
 	int e;
-	int start = 0, end = 0;
+	int start = 0, end = 0, rx_ts = 0;
 
 	power_on_dev();
 
@@ -237,7 +237,7 @@ void cc_worker()
 
 	start = millis();
 
-	for (i = 0; i < rx_window*1000/RX_TIME; i++) {
+	for (i = 0; i < rx_window/RX_TIME; i++) {
 
 		// check if we received data from the receiving LoRa module
 	#ifdef RECEIVE_ALL
@@ -283,6 +283,8 @@ void cc_worker()
 
 			} else if (strcmp(dev_id, pair_id) == 0) {
 
+				rx_ts = millis();
+
 				// Add a tag. It's relayed by cc
 				rx_pkt[15] |= 0x80;
 
@@ -308,24 +310,42 @@ here:
 	end = millis();
 
 	INFO_S("%s", "RX Time: ");
-	INFOLN("%d", (end - start)/1000);
+	INFOLN("%d", (end - start));
 
 	if (0 == rx_flag) {
 #if 0
 		rx_intval--;
 		rx_window += 2;
-#endif
+
 		if (rx_window == INIT_RX_WINDOW)
 			rx_intval = INIT_RX_INTVAL - (end-start)/1000;
+#endif
 
 		rx_count++;
 	}
 
-	if (1 == rx_flag || rx_count > 5) {
-		rx_intval = INIT_RX_INTVAL;
+	if (1 == rx_flag) {
+
+		if (rx_window > INIT_RX_WINDOW) {
+
+			rx_intval = INIT_RX_INTVAL;
+
+		} else {
+
+			rx_intval = INIT_RX_INTVAL - (end - rx_ts);
+		}
+
 		rx_window = INIT_RX_WINDOW;
 
 		rx_flag = 0;					// reset flag
+		rx_count = 0;
+	}
+
+	if (rx_count >= 30) {
+
+		rx_intval = INIT_RX_INTVAL;
+		rx_window = INIT_RX_INTVAL + INIT_RX_WINDOW;
+
 		rx_count = 0;
 	}
 
@@ -357,7 +377,7 @@ void loop(void)
 	 * Enable rtc timer before enter deep sleep
 	 * Stop rtc timer after enter task_cc()
 	 */
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, rx_intval * 1000, task_cc, NULL);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, rx_intval, task_cc, NULL);
 
 	EMU_EnterEM2(true);
 }
