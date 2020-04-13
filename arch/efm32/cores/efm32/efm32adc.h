@@ -133,8 +133,12 @@ class ADC {
       int temp = readTemp();
       return  convertToFahrenheit(temp);
     }
+	void set_adcinited(uint8_t st) {
+		adcinited = st;
+	}
 
 
+	uint8_t adcinited = 0;
 };
 
 extern ADC adc;

@@ -87,13 +87,13 @@ int analogGetReference(void) {
 //  adcSingleInputCh4Ch5   = _ADC_SINGLECTRL_INPUTSEL_CH4CH5,   /**< Positive Ch4, negative Ch5. */
 //  adcSingleInputCh6Ch7   = _ADC_SINGLECTRL_INPUTSEL_CH6CH7,   /**< Positive Ch6, negative Ch7. */
 //  adcSingleInputDiff0    = 4                                  /**< Differential 0. */
-static uint8_t adcinited = 0;
 
 extern "C"
 int analogReadChannel(ADC_SingleInput_TypeDef adcSingleInputChx, uint8_t diff) {
 
-  if (adcinited == 0) {
-    adcinited = 1;
+  if (adc.adcinited == 0) {
+    adc.adcinited = 1;
+
     ADC_Init_TypeDef init = ADC_INIT_DEFAULT;  // Declare init structs
     CMU_ClockEnable(cmuClock_ADC0, true);  // Enable ADC0 clock
 
