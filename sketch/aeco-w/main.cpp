@@ -33,6 +33,7 @@ RTCDRV_TimerID_t xTimerForWakeUp;
 static uint32_t sample_period = 18;		/* 20s */
 
 static uint32_t sample_count = 0;
+static uint32_t leak_tx_count = 0;
 #define		HEARTBEAT_TIME			6600
 
 static float old_temp = 0.0;
@@ -158,12 +159,12 @@ bool get_water()
 	power_on_water();
 	pt_delay(PT_1MS*9);
 
+	// LOW/fasle is water leak
 	ret = digitalRead(WATER_LEAK_PIN);
 
 	power_off_water();
 	pinMode(WATER_PWR_PIN, INPUT_PULLUP);
 
-	// LOW/fasle is water leak
 	return !ret;
 }
 
@@ -178,7 +179,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	sample_count++;
 
-	if (sample_count >= HEARTBEAT_TIME/sample_period) {
+	if (sample_count > HEARTBEAT_TIME/sample_period) {
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 		sample_count = 0;
@@ -190,26 +191,32 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	cur_temp = pt1000_get_temp();
 	power_off_dev();
 
-	if (fabsf(cur_temp - old_temp) > 1.0) {
+	if (fabsf(cur_temp - old_temp) > 1.2) {
 		need_push = 0x5a;
 		tx_cause = DELTA_TX;
 	}
 
 	cur_water = get_water();
 
-	if (1 == cur_water) {
-
-		need_push = 0x5a;
-		tx_cause = WATER_LEAK_TX;
-	}
-
-#if 0
 	if (cur_water != old_water) {
 
 		need_push = 0x5a;
 		tx_cause = DELTA_TX;
+
+	} else {
+
+		if (1 == cur_water && leak_tx_count < 5) {
+
+			need_push = 0x5a;
+			tx_cause = WATER_LEAK_TX;
+
+			leak_tx_count++;
+		}
 	}
-#endif
+
+	if (cur_water == 0) {
+		leak_tx_count = 0;
+	}
 }
 
 void trig_check_sensor()
@@ -325,7 +332,9 @@ void push_data(bool alarm)
 	//}
 
 
-	cur_temp += 300.0*cur_water;
+	if (cur_water != old_water || sample_count%55 == 0) {
+		cur_temp = cur_water;
+	}
 
 	vbat = adc.readVbat();
 
