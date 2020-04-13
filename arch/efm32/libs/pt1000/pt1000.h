@@ -47,6 +47,11 @@ static uint32_t PT100_TABLE[100] = {
 */
 };
 
+#define PT_1MS			(F_CPU/1000)		/* 14MHz, 1Tick = 1/14 us, 14000 Tick = 1000us */
+#define pt_delay(x)		do{for(int i=0;i<x;i++) {asm volatile("nop");}}while(0)
+
+#define	N_TRY			18
+
 void pt1000_init();
 uint32_t pt1000_get_rt();
 float pt1000_get_temp();

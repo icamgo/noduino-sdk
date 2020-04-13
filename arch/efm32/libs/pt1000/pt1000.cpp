@@ -17,11 +17,6 @@
 */
 #include "pt1000.h"
 
-#define PT_1MS			(F_CPU/1000)		/* 14MHz, 1Tick = 1/14 us, 14000 Tick = 1000us */
-#define pt_delay(x)		do{for(int i=0;i<x;i++) {asm volatile("nop");}}while(0)
-
-#define	N_TRY			18
-
 float cal_temp(uint32_t Rt)
 {
 	float temp;
@@ -128,5 +123,6 @@ float pt1000_get_temp()
 
 void pt1000_init()
 {
+	adc.set_adcinited(0);
 	adc.reference(adcRefVDD);
 }
