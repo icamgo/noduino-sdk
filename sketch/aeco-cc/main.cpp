@@ -326,14 +326,7 @@ here:
 
 	if (1 == rx_flag) {
 
-		if (rx_window > INIT_RX_WINDOW) {
-
-			rx_intval = INIT_RX_INTVAL;
-
-		} else {
-
-			rx_intval = INIT_RX_INTVAL - (end - rx_ts);
-		}
+		rx_intval = INIT_RX_INTVAL - (end - rx_ts);
 
 		rx_window = INIT_RX_WINDOW;
 
