@@ -30,12 +30,13 @@
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 18;		/* 20s */
+static uint32_t sample_period = 20;		/* 20s */
 
 static uint32_t sample_count = 0;
 static uint32_t leak_tx_count = 0;
 static uint32_t unleak_tx_count = 0;
-#define		HEARTBEAT_TIME			6600
+#define	HEARTBEAT_TIME				6600	/* 120*60s */
+#define	WATER_HEARTBEAT_TIME		1100	/* 20*60s */
 
 static float old_temp = 0.0;
 static float cur_temp = 0.0;
@@ -185,6 +186,11 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 		sample_count = 0;
+	}
+
+	if (sample_count % (WATER_HEARTBEAT_TIME/sample_period) == 0) {
+		need_push = 0x5a;
+		tx_cause = TIMER_TX;
 	}
 
 	power_on_dev();
@@ -348,7 +354,7 @@ void push_data(bool alarm)
 		power_off_dev();
 	}
 
-	if (cur_water != old_water || sample_count%55 == 0 ||
+	if (cur_water != old_water || sample_count%(WATER_HEARTBEAT_TIME/sample_period) == 0 ||
 		WATER_LEAK_TX == tx_cause) {
 
 		cur_temp = cur_water;
