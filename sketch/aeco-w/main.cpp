@@ -75,6 +75,7 @@ static uint8_t need_push = 0;
 
 #define MAX_DBM					20
 
+#define	T_FIX					10.2
 
 //#define WITH_ACK
 
@@ -157,7 +158,7 @@ bool get_water()
 	pinMode(WATER_PWR_PIN, OUTPUT);
 
 	power_on_water();
-	pt_delay(PT_1MS*9);
+	pt_delay(PT_1MS*3);
 
 	// LOW/fasle is water leak
 	ret = digitalRead(WATER_LEAK_PIN);
@@ -185,15 +186,18 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		sample_count = 0;
 	}
 
-	//cur_temp = adc.temperatureCelsius();
 	power_on_dev();
 	pt1000_init();
-	cur_temp = pt1000_get_temp();
+	cur_temp = pt1000_get_temp() + T_FIX;
 	power_off_dev();
 
-	if (fabsf(cur_temp - old_temp) > 1.2) {
+	int dt = cur_temp*100 - old_temp*100;
+
+	if (abs(dt) > 100) {
+
 		need_push = 0x5a;
 		tx_cause = DELTA_TX;
+
 	}
 
 	cur_water = get_water();
@@ -321,19 +325,21 @@ void push_data(bool alarm)
 
 	int e;
 
-	//if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
+	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
+
+		cur_water = get_water();
 
 		power_on_dev();
 		pt1000_init();
-		cur_temp = pt1000_get_temp();
+		cur_temp = pt1000_get_temp() + T_FIX;
 		power_off_dev();
+	}
 
-		cur_water = get_water();
-	//}
+	if (cur_water != old_water || sample_count%55 == 0 ||
+		WATER_LEAK_TX == tx_cause) {
 
-
-	if (cur_water != old_water || sample_count%55 == 0) {
 		cur_temp = cur_water;
+
 	}
 
 	vbat = adc.readVbat();
@@ -435,6 +441,13 @@ void push_data(bool alarm)
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
 #endif
 #endif
+
+	INFO("oT: ");
+	INFOLN(old_temp);
+
+	INFO("oW: ");
+	INFOLN(old_water);
+
 
 	if (!e) {
 		// send message succesful, update the old_temp
