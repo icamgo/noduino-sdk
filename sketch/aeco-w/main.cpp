@@ -34,6 +34,7 @@ static uint32_t sample_period = 18;		/* 20s */
 
 static uint32_t sample_count = 0;
 static uint32_t leak_tx_count = 0;
+static uint32_t unleak_tx_count = 0;
 #define		HEARTBEAT_TIME			6600
 
 static float old_temp = 0.0;
@@ -216,10 +217,22 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 			leak_tx_count++;
 		}
+
+		if (0 == cur_water && unleak_tx_count < 5) {
+
+			need_push = 0x5a;
+			tx_cause = DELTA_TX;
+
+			unleak_tx_count++;
+		}
 	}
 
 	if (cur_water == 0) {
 		leak_tx_count = 0;
+	}
+
+	if (cur_water == 1) {
+		unleak_tx_count = 0;
 	}
 }
 
