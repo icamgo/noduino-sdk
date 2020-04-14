@@ -25,7 +25,7 @@
 #include "em_wdog.h"
 
 
-#define	DEBUG					1
+//#define	DEBUG					1
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
