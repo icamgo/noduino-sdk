@@ -77,7 +77,7 @@ static uint8_t need_push = 0;
 
 #define MAX_DBM					20
 
-#define	T_FIX					10.2
+#define	T_FIX					12.1
 
 //#define WITH_ACK
 
@@ -183,14 +183,10 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	sample_count++;
 
 	if (sample_count > HEARTBEAT_TIME/sample_period) {
+		/* timer 0 */
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 		sample_count = 0;
-	}
-
-	if (sample_count % (WATER_HEARTBEAT_TIME/sample_period) == 0) {
-		need_push = 0x5a;
-		tx_cause = TIMER_TX;
 	}
 
 	power_on_dev();
@@ -202,6 +198,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	if (abs(dt) > 100) {
 
+		/* timer 1 */
 		need_push = 0x5a;
 		tx_cause = DELTA_TX;
 
@@ -209,23 +206,37 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	cur_water = get_water();
 
+	if (cur_water == 1 && (sample_count % (WATER_HEARTBEAT_TIME/sample_period) == 0)) {
+
+		/* timer 2 */
+		need_push = 0x5a;
+
+		tx_cause = WATER_LEAK_TX;
+
+	}
+
 	if (cur_water != old_water) {
 
+		/* timer 3 */
 		need_push = 0x5a;
 		tx_cause = DELTA_TX;
+
+		return;
 
 	} else {
 
 		if (1 == cur_water && leak_tx_count < 5) {
 
+			/* timer 4 */
 			need_push = 0x5a;
 			tx_cause = WATER_LEAK_TX;
 
 			leak_tx_count++;
 		}
 
-		if (0 == cur_water && unleak_tx_count <= 5) {
+		if (0 == cur_water && unleak_tx_count <= 6) {
 
+			/* timer 5 */
 			need_push = 0x5a;
 			tx_cause = DELTA_TX;
 
@@ -357,7 +368,7 @@ void push_data(bool alarm)
 	if (cur_water != old_water || 
 		(cur_water == 1 && sample_count%(WATER_HEARTBEAT_TIME/sample_period) == 0) ||
 		WATER_LEAK_TX == tx_cause ||
-		(unleak_tx_count > 0 && unleak_tx_count <= 5) {
+		(unleak_tx_count > 0 && unleak_tx_count <= 3)) {
 
 		cur_temp = cur_water;
 
