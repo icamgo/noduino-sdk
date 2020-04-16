@@ -225,7 +225,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	} else {
 
-		if (1 == cur_water && leak_tx_count < 5) {
+		if (1 == cur_water && leak_tx_count < 4) {
 
 			/* timer 4 */
 			need_push = 0x5a;
@@ -368,7 +368,7 @@ void push_data(bool alarm)
 	if (cur_water != old_water || 
 		(cur_water == 1 && sample_count%(WATER_HEARTBEAT_TIME/sample_period) == 0) ||
 		WATER_LEAK_TX == tx_cause ||
-		(unleak_tx_count > 0 && unleak_tx_count <= 3)) {
+		(unleak_tx_count > 0 && unleak_tx_count <= 4)) {
 
 		cur_temp = cur_water;
 
