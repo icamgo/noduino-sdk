@@ -283,7 +283,7 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 
 		if (pkt_len == 24 && strncmp(id, "1190350", 7) > 0) {
 
-			sprintf(dev_data, "P/%s/iT/%d/iC/%d", data_buf, pkt[21], pkt[23]);
+			sprintf(dev_data, "P/%s/iT/%d/iC/%d", data_buf, (int8_t)(pkt[21]), (int8_t)(pkt[23]));
 
 		} else {
 			// exclude the packet of old protocol format (0x32, 0x31...)
