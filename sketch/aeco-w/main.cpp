@@ -25,6 +25,7 @@
 #include "em_wdog.h"
 
 
+//#define	ONLY_WATER_LEAK				1
 //#define	DEBUG					1
 
 /* Timer used for bringing the system back to EM0. */
@@ -387,6 +388,12 @@ void push_data(bool alarm)
 	for(i = 0; i < 8; i++) {
 		pkt[3+i] = p[7-i];
 	}
+
+#ifdef	ONLY_WATER_LEAK
+	if (cur_temp >= 300.0) {
+		cur_temp = cur_water;
+	}
+#endif
 
 	int16_t ui16 = (int16_t)(cur_temp * 10);
 	p = (uint8_t *) &ui16;
