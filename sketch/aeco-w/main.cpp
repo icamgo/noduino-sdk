@@ -390,12 +390,17 @@ void push_data(bool alarm)
 	}
 
 #ifdef	ONLY_WATER_LEAK
+	int16_t ui16 = 0;
+
 	if (cur_temp >= 300.0) {
-		cur_temp = cur_water;
+		ui16 = (int16_t)(cur_water * 10);
+	} else {
+		ui16 = (int16_t)(cur_temp * 10);
 	}
+#else
+	int16_t ui16 = (int16_t)(cur_temp * 10);
 #endif
 
-	int16_t ui16 = (int16_t)(cur_temp * 10);
 	p = (uint8_t *) &ui16;
 
 	pkt[11] = p[1]; pkt[12] = p[0];
