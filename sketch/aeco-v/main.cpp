@@ -70,8 +70,9 @@ static uint8_t need_push = 0;
 #define	DELTA_TX			1
 #define	TIMER_TX			2
 #define	KEY_TX				3
-#define	WATER_LEAK_TX		4
-#define	VIB_TX				5
+#define	ELEC_LEAK_TX		4
+#define	WATER_LEAK_TX		5
+#define	VIB_TX				6
 
 #else
 #define node_addr			110
