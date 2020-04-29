@@ -402,7 +402,7 @@ void push_data(bool alarm)
 	float chip_temp = adc.temperatureCelsius();
 
 	// Humidity Sensor data	or Water Leak Sensor data
-	pkt[20] = cur_vib;
+	pkt[20] = (int8_t)chip_temp;
 
 	// Internal Temperature of the chip
 	pkt[21] = (int8_t)chip_temp;
