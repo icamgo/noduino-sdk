@@ -30,7 +30,7 @@
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 20;		/* 20s */
+static uint32_t sample_period = 55;		/* 60s */
 
 static uint32_t sample_count = 0;
 static uint32_t vib_tx_count = 0;
@@ -43,6 +43,7 @@ static float cur_temp = 0.0;
 
 static uint8_t old_vib = 0;
 static uint8_t cur_vib = 0;
+static uint32_t vib_count = 0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
@@ -164,7 +165,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	sample_count++;
 
-	if (sample_count >= HEARTBEAT_TIME/20) {
+	if (sample_count > HEARTBEAT_TIME/sample_period) {
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 		sample_count = 0;
@@ -186,7 +187,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		tx_cause = DELTA_TX;
 
 		return;
-
 	} else {
 
 		if (1 == cur_vib && vib_tx_count < 4) {
@@ -198,7 +198,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			vib_tx_count++;
 		}
 
-		if (0 == cur_vib && unvib_tx_count <= 6) {
+		if (0 == cur_vib && unvib_tx_count <= 4) {
 
 			/* timer 5 */
 			need_push = 0x5a;
@@ -216,6 +216,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	if (cur_vib == 1) {
 		unvib_tx_count = 0;
 	}
+
 /*
 	power_on_dev();		// turn on device power
 	pt1000_init();		// initialization of the sensor
@@ -246,11 +247,15 @@ void trig_check_sensor()
 
 void vibration_alarm()
 {
-	need_push = 0x5a;
+	vib_count++;
 
+	if (vib_count % 3 == 0) {
+		need_push = 0x5a;
+		cur_vib = 1;
 #ifdef CONFIG_V0
-	tx_cause = VIB_TX;
+		tx_cause = VIB_TX;
 #endif
+	}
 }
 
 void setup()
@@ -262,7 +267,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
+	wInit.perSel = wdogPeriod_64k;	/* 64k 1kHz periods should give 64 seconds */
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -351,6 +356,7 @@ void push_data(bool alarm)
 		//cur_temp = pt1000_get_temp();
 	}
 
+/*
 	if (cur_vib != old_vib || 
 		(cur_vib == 1 && sample_count%(VIB_HEARTBEAT_TIME/sample_period) == 0) ||
 		VIB_TX == tx_cause ||
@@ -359,6 +365,7 @@ void push_data(bool alarm)
 		cur_temp = cur_vib;
 
 	}
+*/
 
 	vbat = adc.readVbat();
 
@@ -374,7 +381,7 @@ void push_data(bool alarm)
 		pkt[3+i] = p[7-i];
 	}
 
-	int16_t ui16 = (int16_t)(cur_vib * 10);
+	int16_t ui16 = (int16_t)(cur_vib);
 	p = (uint8_t *) &ui16;
 
 	pkt[11] = p[1]; pkt[12] = p[0];
