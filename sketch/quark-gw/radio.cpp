@@ -303,6 +303,10 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 		// Moving Sensor
 		sprintf(dev_data, "M/%d", data);
 
+	} else if (id[3] == '1' && id[4] == '2') {
+		// Vibration Sensor
+		sprintf(dev_data, "V/%d/T/%d/iT/%d", data, (int8_t)(pkt[20]), (int8_t)(pkt[21]));
+
 	} else if (id[3] == '1' && id[4] == '3') {
 		// Water Leak Sensor
 		dd = (float)(data / 10.0);
