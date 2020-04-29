@@ -77,11 +77,15 @@ char frame_buf[2][24];
  * Output Mode:
  *
  *   0x0: rx all messages
- *   0x1: only rx the tagged message
- *   0x2: only rx trigged message
+ *   0x1: only rx trigged message
+ *   0x2: only rx the tagged message
 */
-int omode = 1;
-int old_omode = 1;
+#define	MODE_ALL		0
+#define	MODE_KEY		1
+#define	MODE_ABC		2
+
+int omode = 2;
+int old_omode = 2;
 
 int key_time = 0;
 
@@ -399,7 +403,7 @@ void show_frame(int l, int mode, bool alarm)
 		u8g2.setCursor(2, 32);
 		u8g2.print(frame_buf[1]);
 
-		if (0 == mode) {
+		if (MODE_ALL == mode) {
 			// Lora icon. notice rx all message
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
 			if (l == 0) {
@@ -407,7 +411,7 @@ void show_frame(int l, int mode, bool alarm)
 			} else if (l == 1) {
 				u8g2.drawGlyph(120, 30, 81);
 			}
-		} else if (1 == mode) {
+		} else if (MODE_ABC == mode) {
 			// Bell icon. notice the message tagged for testing
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
 			if (l == 0) {
@@ -415,7 +419,7 @@ void show_frame(int l, int mode, bool alarm)
 			} else if (l == 1) {
 				u8g2.drawGlyph(120, 30, 65);
 			}
-		} else if (2 == mode) {
+		} else if (MODE_KEY == mode) {
 			// cycle icon. notice the message trigged by magnet
 			int ic = 64;
 
@@ -477,7 +481,7 @@ void show_mode(int mode)
 	u8g2.firstPage();
 
 	do {
-		if (0 == mode) {
+		if (MODE_ALL == mode) {
 			// Lora icon. notice rx all message
 			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
 			u8g2.setCursor(12, 26);
@@ -485,7 +489,7 @@ void show_mode(int mode)
 
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
 			u8g2.drawGlyph(112, 23, 81);
-		} else if (1 == mode) {
+		} else if (MODE_ABC == mode) {
 			// Bell icon. notice the message tagged for testing
 			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
 			u8g2.setCursor(12, 26);
@@ -493,7 +497,7 @@ void show_mode(int mode)
 
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
 			u8g2.drawGlyph(112, 23, 65);
-		} else if (2 == mode) {
+		} else if (MODE_KEY == mode) {
 			// cycle icon. notice the message trigged by magnet
 			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
 			u8g2.setCursor(12, 26);
@@ -614,14 +618,14 @@ void loop(void)
 		old_omode = omode;
 
 		switch (omode) {
-			case 0:
+			case MODE_ALL:
 				sx1272.setSyncWord(SYNCWORD_DEFAULT);
 				break;
-			case 1:
+			case MODE_ABC:
 				sx1272.setSyncWord(SYNCWORD_ABC);
 				//NVIC_SystemReset();
 				break;
-			case 2:
+			case MODE_KEY:
 				sx1272.setSyncWord(SYNCWORD_DEFAULT);
 				break;
 		}
@@ -751,7 +755,7 @@ void loop(void)
 			radio_setup();
 		}
 
-		if (0x0 == omode) {
+		if (MODE_ALL == omode) {
 			// show all message
 
 			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
@@ -773,7 +777,7 @@ void loop(void)
 #endif
 
 				INFOLN("%s", cmd);
-		} else if (0x1 == omode) {
+		} else if (MODE_ABC == omode) {
 			// only show tagged message
 			if (p[0] == 0x55) {
 
@@ -798,7 +802,7 @@ void loop(void)
 
 				INFOLN("%s", cmd);
 			}
-		} else if (0x2 == omode) {
+		} else if (MODE_KEY == omode) {
 			// only show trigged message
 			if (p[2] == 0x33 && (p[15] == 0x03 || p[15] == 0x04)) {
 
