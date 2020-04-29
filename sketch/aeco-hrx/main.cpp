@@ -84,8 +84,8 @@ char frame_buf[2][24];
 #define	MODE_KEY		1
 #define	MODE_ABC		2
 
-int omode = 2;
-int old_omode = 2;
+int omode = MODE_KEY;
+int old_omode = MODE_KEY;
 
 int key_time = 0;
 
@@ -135,7 +135,9 @@ void radio_setup()
 #ifdef CONFIG_V0
 	sx1272.setup_v0(CH_01_472, 20);
 	//sx1272.setPreambleLength(6);
-	sx1272.setSyncWord(SYNCWORD_ABC);
+	if (MODE_ABC == omode) {
+		sx1272.setSyncWord(SYNCWORD_ABC);
+	}
 #else
 	sx1272.sx1278_qsetup(CH_00_470, 20);
 	sx1272._nodeAddress = loraAddr;
