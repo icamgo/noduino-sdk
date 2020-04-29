@@ -327,6 +327,10 @@ char *decode_sensor_data(uint8_t *pkt)
 		// Moving Sensor
 		sprintf(dev_data, "%dMM", data);
 
+	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
+		// Vibration Sensor
+		sprintf(dev_data, "%d", data);
+
 	} else if (dev_id[3] == '1' && dev_id[4] == '3') {
 		// Water Leak Sensor
 		dd = (float)(data / 10.0);
@@ -451,6 +455,13 @@ void show_frame(int l, int mode, bool alarm)
 					ic = 72;
 
 					u8g2.drawGlyph(118, 12, ic);
+				} else if (dev_id[3] == '1' && dev_id[4] == '2') {
+					// Vibration sensor, showing pulse icon
+					u8g2.setFont(u8g2_font_open_iconic_embedded_2x_t);
+
+					ic = 70;
+
+					u8g2.drawGlyph(116, 15, ic);
 				}
 
 			}
@@ -806,7 +817,7 @@ void loop(void)
 			}
 		} else if (MODE_KEY == omode) {
 			// only show trigged message
-			if (p[2] == 0x33 && (p[15] == 0x03 || p[15] == 0x04)) {
+			if (p[2] == 0x33 && (p[15] == 0x03 || p[15] == 0x04 || p[15] == 0x05)) {
 
 				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
 					dev_id,
