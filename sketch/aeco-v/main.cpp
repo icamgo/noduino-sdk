@@ -25,24 +25,27 @@
 #include "em_wdog.h"
 
 
-#define	DEBUG					1
+//#define	DEBUG					1
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 55;		/* 60s */
-
 static uint32_t sample_count = 0;
+static uint32_t sample_min = 0;
+
 static uint32_t vib_tx_count = 0;
 static uint32_t unvib_tx_count = 0;
+
+#define	sample_period				20		/* 20s */
+
 #define	HEARTBEAT_TIME				6600	/* 120*60s */
 #define	VIB_HEARTBEAT_TIME			1100	/* 20*60s */
 
-static float old_temp = 0.0;
-static float cur_temp = 0.0;
+//static float old_temp = 0.0;
+//static float cur_temp = 0.0;
 
-static uint8_t old_vib = 0;
-static uint8_t cur_vib = 0;
+static uint32_t old_vib = 0;
+static uint32_t cur_vib = 0;
 static uint32_t vib_count = 0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
@@ -116,6 +119,7 @@ uint8_t message[32];
 
 void push_data(bool al);
 
+#ifndef CONFIG_V0
 char *ftoa(char *a, double f, int precision)
 {
 	long p[] =
@@ -134,6 +138,7 @@ char *ftoa(char *a, double f, int precision)
 	itoa(desimal, a, 10);
 	return ret;
 }
+#endif
 
 void power_on_dev()
 {
@@ -145,14 +150,23 @@ void power_off_dev()
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
-bool get_vib()
+uint32_t get_vib()
 {
+	/*
 	bool ret = 0;
 
 	// LOW/fasle is vibration
 	ret = digitalRead(VIB_PIN);
 
 	return !ret;
+	*/
+	if (vib_count > 1)
+		return vib_count;
+	else {
+		// 0 or 1
+		return 0;
+	}
+
 }
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
@@ -166,7 +180,22 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	sample_count++;
 
+	if (sample_count % 3 == 0) {
+		/* timer 0, 1min */
+		sample_min++;
+	}
+
+	if (sample_count % (VIB_HEARTBEAT_TIME/sample_period) == 0) {
+		/* timer 1, 20min */
+
+		sample_min = 0;
+
+		vib_tx_count = 0;
+		unvib_tx_count = 0;
+	}
+
 	if (sample_count > HEARTBEAT_TIME/sample_period) {
+		/* time 2, Two hours */
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 		sample_count = 0;
@@ -174,48 +203,34 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	cur_vib = get_vib();
 
-	if (cur_vib == 1 && (sample_count % (VIB_HEARTBEAT_TIME/sample_period) == 0)) {
+	if (cur_vib > 0) {
 
-		/* timer 2 */
 		need_push = 0x5a;
 		tx_cause = VIB_TX;
-	}
 
-	if (cur_vib != old_vib) {
+		vib_tx_count++;
 
-		/* timer 3 */
+		unvib_tx_count = 0;
+
+	} else if ((cur_vib == 0 && cur_vib != old_vib) ||
+		(cur_vib == 0  && cur_vib == old_vib && unvib_tx_count < 2 && tx_cause != RESET_TX)) {
+		// value changed
+
+		cur_vib = 0;
+
 		need_push = 0x5a;
 		tx_cause = DELTA_TX;
 
-		return;
-	} else {
+		unvib_tx_count++;
 
-		if (1 == cur_vib && vib_tx_count < 4) {
-
-			/* timer 4 */
-			need_push = 0x5a;
-			tx_cause = VIB_TX;
-
-			vib_tx_count++;
-		}
-
-		if (0 == cur_vib && unvib_tx_count <= 4) {
-
-			/* timer 5 */
-			need_push = 0x5a;
-			tx_cause = DELTA_TX;
-
-			unvib_tx_count++;
-		}
-	}
-
-	if (cur_vib == 0) {
-		// no vib
 		vib_tx_count = 0;
 	}
 
-	if (cur_vib == 1) {
-		unvib_tx_count = 0;
+	vib_count = 0;
+
+	if (sample_min < 20 && (vib_tx_count + unvib_tx_count) > 18) {
+
+		need_push = 0;
 	}
 
 /*
@@ -248,15 +263,11 @@ void trig_check_sensor()
 
 void vibration_alarm()
 {
+	noInterrupts();
+
 	vib_count++;
 
-	if (vib_count % 3 == 0) {
-		need_push = 0x5a;
-		cur_vib = 1;
-#ifdef CONFIG_V0
-		tx_cause = VIB_TX;
-#endif
-	}
+	interrupts();
 }
 
 void setup()
@@ -352,21 +363,7 @@ void push_data(bool alarm)
 	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
 
 		cur_vib = get_vib();
-
-		//pt1000_init();
-		//cur_temp = pt1000_get_temp();
 	}
-
-/*
-	if (cur_vib != old_vib || 
-		(cur_vib == 1 && sample_count%(VIB_HEARTBEAT_TIME/sample_period) == 0) ||
-		VIB_TX == tx_cause ||
-		(unvib_tx_count > 0 && unvib_tx_count <= 4)) {
-
-		cur_temp = cur_vib;
-
-	}
-*/
 
 	vbat = adc.readVbat();
 
