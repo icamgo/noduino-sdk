@@ -33,13 +33,14 @@
 #define SYNCWORD_LORAWAN		0x34
 #define SYNCWORD_ABC			0x55
 
-#define	ENABLE_CAD				1
+//#define	ENABLE_CAD				1
 
 #ifdef CONFIG_V0
 
 #define RECEIVE_ALL
 #define TXRX_CH					CH_01_472
 #define RX_TIME					330
+//#define RX_TIME					MAX_TIMEOUT
 #define	TX_TIME					200		// 200ms
 #define LORA_MODE				12
 
@@ -58,8 +59,8 @@ char cmd[MAX_CMD_LENGTH];
 
 #define	HEARTBEAT_TIME			7100
 
-#define	INIT_RX_INTVAL			120000
-#define	INIT_RX_WINDOW			2000
+#define	INIT_RX_INTVAL			119500
+#define	INIT_RX_WINDOW			3000
 
 /* Timer used for bringing the system back to EM0 */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -79,7 +80,8 @@ char msg_buf[2][24];
 
 char dev_id[24];
 //char pair_id[12] = "11902460803";
-char pair_id[12] = "11902041155";
+//char pair_id[12] = "11902041155";
+char pair_id[12] = "11902041149";
 
 /*
  * Output Mode:
@@ -110,7 +112,7 @@ void radio_setup()
 #ifdef CONFIG_V0
 	sx1272.setup_v0(TXRX_CH, MAX_DBM);
 	//sx1272.setPreambleLength(6);
-	//sx1272.setSyncWord(SYNCWORD_ABC);
+	//sx1272.setSyncWord(SYNCWORD_DEFAULT);
 #else
 	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
 	sx1272._nodeAddress = DEST_ADDR;
@@ -184,7 +186,7 @@ void setup()
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
-	attachInterrupt(KEY_PIN, change_rxmode, FALLING);
+	//attachInterrupt(KEY_PIN, change_rxmode, FALLING);
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -204,6 +206,17 @@ void setup()
 	/* bootup tx */
 	need_push = 0x5a;
 	need_cc = 0x5a;
+}
+
+uint16_t get_crc(uint8_t *pp, int len)
+{
+	int i;
+	uint16_t hh = 0;
+
+	for (i = 0; i < len; i++) {
+		hh += pp[i];
+	}
+	return hh;
 }
 
 void task_cc(RTCDRV_TimerID_t id, void *user)
@@ -285,8 +298,24 @@ void cc_worker()
 
 				rx_ts = millis();
 
+	#ifdef DEBUG
 				// Add a tag. It's relayed by cc
-				rx_pkt[15] |= 0x80;
+				rx_pkt[15] = 0x03;
+
+				float data = (float)((rx_pkt[11]  << 8) | rx_pkt[12]) / 10.0 + 100.0;
+				int16_t ui16 = (int16_t)(data * 10);
+				uint8_t *p = (uint8_t *) &ui16;
+				rx_pkt[11] = p[1]; rx_pkt[12] = p[0];
+
+				// increment the tx_count
+				ui16 = (rx_pkt[16] << 8) | rx_pkt[17] + 1;
+				p = (uint8_t *) &ui16;
+				rx_pkt[16] = p[1]; rx_pkt[17] = p[0];
+
+				ui16 = get_crc(rx_pkt, 18);
+				p = (uint8_t *) &ui16;
+				rx_pkt[18] = p[1]; rx_pkt[19] = p[0];
+	#endif
 
 	#ifdef ENABLE_CAD
 				sx1272.CarrierSense();
@@ -334,7 +363,7 @@ here:
 		rx_count = 0;
 	}
 
-	if (rx_count >= 30) {
+	if (rx_count >= 15) {
 
 		rx_intval = INIT_RX_INTVAL;
 		rx_window = INIT_RX_INTVAL + INIT_RX_WINDOW;
