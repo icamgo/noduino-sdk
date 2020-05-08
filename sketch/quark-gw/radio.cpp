@@ -402,6 +402,11 @@ int radio_available(char *cmd)
 #else
 
 #ifdef CONFIG_V0
+		uint8_t *pkt = sx1272.packet_received.data;
+		if (pkt[0] != 0x47 || pkt[1] != 0x4F || pkt[2] != 0x33) {
+			return 0;
+		}
+
 		char *devid = decode_devid(sx1272.packet_received.data);
 
 		sprintf(cmd, "devid/%s/U/%s/%s/cmd/%d/ver/%d/rssi/%d/snr/%d",
