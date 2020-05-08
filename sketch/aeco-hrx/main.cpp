@@ -770,6 +770,9 @@ void loop(void)
 
 		if (MODE_ALL == omode) {
 			// show all message
+			if (p[0] != 0x47 || p[1] != 0x4F || p[2] != 0x33) {
+				return;
+			}
 
 			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
 				dev_id,
@@ -817,6 +820,11 @@ void loop(void)
 			}
 		} else if (MODE_KEY == omode) {
 			// only show trigged message
+
+			if (p[0] != 0x47 || p[1] != 0x4F || p[2] != 0x33) {
+				return;
+			}
+
 			if (p[2] == 0x33 && (p[15] == 0x03 || p[15] == 0x04 || p[15] == 0x05)) {
 
 				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
