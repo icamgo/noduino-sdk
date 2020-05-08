@@ -492,6 +492,7 @@ int push_data(char *pbuf, char serv[]) {
 
 		wdt_reset();
 
+#if 0
 		if(client.connected()) {
 
 			wdt_off();
@@ -525,6 +526,10 @@ int push_data(char *pbuf, char serv[]) {
 				client.stop();
 				return -1;
 		}
+#else
+		client.stop();
+		return 0;
+#endif
 
 	} else {
 #ifdef DEBUG
