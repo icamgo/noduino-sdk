@@ -59,7 +59,7 @@ char cmd[MAX_CMD_LENGTH];
 
 #define	HEARTBEAT_TIME			7100
 
-#define	INIT_RX_INTVAL			119500
+#define	INIT_RX_INTVAL			119700
 #define	INIT_RX_WINDOW			3300
 
 /* Timer used for bringing the system back to EM0 */
@@ -349,8 +349,9 @@ here:
 		if (rx_window == INIT_RX_WINDOW)
 			rx_intval = INIT_RX_INTVAL - (end-start)/1000;
 #endif
-		rx_intval = INIT_RX_INTVAL - (end-start);
-		rx_window += 330;
+		rx_intval = INIT_RX_INTVAL - (end-start)/2;
+		//rx_window += 330;
+		rx_window = INIT_RX_WINDOW + (end-start)/2;
 
 		rx_count++;
 	}
