@@ -160,7 +160,7 @@ uint32_t get_vib()
 
 	return !ret;
 	*/
-	if (vib_count > 1)
+	if (vib_count >= 1)
 		return vib_count;
 	else {
 		// 0 or 1
