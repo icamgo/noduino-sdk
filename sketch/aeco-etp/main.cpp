@@ -113,8 +113,7 @@ void radio_setup()
 
 #ifdef CONFIG_V0
 	sx1272.setup_v0(TXRX_CH, MAX_DBM);
-	//sx1272.setPreambleLength(6);
-	//sx1272.setSyncWord(SYNCWORD_DEFAULT);
+	//sx1272.setSyncWord(SYNCWORD_ABC);
 #else
 	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
 	sx1272._nodeAddress = DEST_ADDR;
@@ -278,6 +277,7 @@ void setup()
 
 	ch1_off();
 	ch2_off();
+	ch3_off();
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
@@ -373,42 +373,27 @@ void rx_worker()
 
 			rx_ts = millis();
 
-#ifdef DEBUG
-			// Add a tag. It's relayed by cc
-			rx_pkt[15] = 0x03;
-
-			float data = (float)((rx_pkt[11]  << 8) | rx_pkt[12]) / 10.0 + 100.0;
-			int16_t ui16 = (int16_t)(data * 10);
-			uint8_t *p = (uint8_t *) &ui16;
-			rx_pkt[11] = p[1]; rx_pkt[12] = p[0];
-
-			// increment the tx_count
-			ui16 = (rx_pkt[16] << 8) | rx_pkt[17] + 1;
-			p = (uint8_t *) &ui16;
-			rx_pkt[16] = p[1]; rx_pkt[17] = p[0];
-
-			ui16 = get_crc(rx_pkt, 18);
-			p = (uint8_t *) &ui16;
-			rx_pkt[18] = p[1]; rx_pkt[19] = p[0];
-#endif
-
 			switch(rx_pkt[11]) {
 				case 0x10:
 					// Level 1
+					INFOLN("%s", "Set to Level 1");
 					level2();
 					delay(2000);
 					level1();
 					break;
 				case 0x20:
 					// Level 2
+					INFOLN("%s", "Set to Level 2");
 					level2();
 					break;
 				case 0x30:
 					// Level 3
+					INFOLN("%s", "Set to Level 3");
 					level3();
 					break;
 				default:
 					// all off
+					INFOLN("%s", "Set to Off!");
 					ch1_off();
 					ch2_off();
 					ch3_off();
