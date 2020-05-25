@@ -32,6 +32,7 @@
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
 #define	BEEP_PIN				10		/* PIN13_PD06_D10 */
+#define	RX_INT_PIN				3		/* PIN8_PB11_D3 */
 
 #define SYNCWORD_DEFAULT		0x12
 #define SYNCWORD_LORAWAN		0x34
@@ -257,8 +258,11 @@ char *decode_sensor_type()
 			case '4':
 				strcpy(dev_type, "GOT100");
 				break;
+			case '5':
+				strcpy(dev_type, "ETP");
+				break;
 			case '6':
-				strcpy(dev_type, "GOWKF");
+				strcpy(dev_type, "EV");
 				break;
 			case '7':
 				strcpy(dev_type, "T2P");
@@ -315,6 +319,11 @@ char *decode_sensor_data(uint8_t *pkt)
 		dd = (float)(data / 100.0);
 		ftoa(dev_data, dd, 2);
 		sprintf(dev_data, "%s  ", dev_data);
+
+	} else if (dev_id[3] == '0' && dev_id[4] == '5') {
+		// ET-Pump
+		dd = data;
+		sprintf(dev_data, "0x%X", data);
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '8') {
 		// Humi&Temp Sensor
@@ -575,6 +584,11 @@ void power_off_dev()
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
+void rx_irq_handler()
+{
+	INFOLN("%s", "new rx pkt...");
+}
+
 void setup()
 {
 	int e;
@@ -582,6 +596,10 @@ void setup()
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, change_omode, FALLING);
+
+	// RF RX Interrupt pin
+	pinMode(RX_INT_PIN, INPUT);
+	attachInterrupt(RX_INT_PIN, rx_irq_handler, FALLING);
 
 	// beep
 	pinMode(BEEP_PIN, OUTPUT);
