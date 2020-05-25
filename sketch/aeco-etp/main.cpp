@@ -28,6 +28,7 @@
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
+#define	RX_INT_PIN				3		/* PIN8_PB11_D3 */
 
 #define SDA_PIN					12		/* PIN23_PE12 */
 #define SCL_PIN					13		/* PIN24_PE13 */
@@ -45,8 +46,7 @@
 
 #define RECEIVE_ALL
 #define TXRX_CH					CH_01_472
-#define RX_TIME					330
-//#define RX_TIME					MAX_TIMEOUT
+#define RX_TIME					180
 #define	TX_TIME					200		// 200ms
 #define LORA_MODE				12
 
@@ -65,13 +65,10 @@ char cmd[MAX_CMD_LENGTH];
 
 #define	HEARTBEAT_TIME			7100
 
-#define	INIT_RX_INTVAL			20000
-#define	INIT_RX_WINDOW			3300
-
 /* Timer used for bringing the system back to EM0 */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-uint32_t rx_intval = INIT_RX_INTVAL;
+uint32_t ck_intval = 20;			// 20s
 uint32_t rx_flag = 0;
 uint32_t rx_count = 0;
 uint32_t ck_count = 0;
@@ -249,10 +246,15 @@ void task_ck(RTCDRV_TimerID_t id, void *user)
 
 	ck_count++;
 
-	if (ck_count >= HEARTBEAT_TIME/rx_intval) {
+	if (ck_count >= HEARTBEAT_TIME/ck_intval) {
 		need_push = 0x5a;
 		ck_count = 0;
 	}
+}
+
+void rx_irq_handler()
+{
+	INFOLN("%s", "new rx pkt...");
 }
 
 void setup()
@@ -267,6 +269,10 @@ void setup()
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
 	//attachInterrupt(KEY_PIN, change_mode, FALLING);
+
+	// RF RX Interrupt pin
+	pinMode(RX_INT_PIN, INPUT);
+	attachInterrupt(RX_INT_PIN, rx_irq_handler, FALLING);
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -297,10 +303,14 @@ void setup()
 	/* fill the my_devid */
 	decode_my_devid();
 
+	power_on_dev();
+
+	radio_setup();
+
 	/*
 	 * Enable rtc timer 
 	 */
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, rx_intval, task_ck, NULL);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, ck_intval*1000, task_ck, NULL);
 }
 
 uint16_t get_crc(uint8_t *pp, int len)
@@ -319,10 +329,6 @@ void rx_worker()
 	int i; 
 	int e;
 	int start = 0, end = 0, rx_ts = 0;
-
-	power_on_dev();
-
-	radio_setup();
 
 	start = millis();
 
@@ -366,8 +372,6 @@ void rx_worker()
 			sx1272.reset();
 
 			INFO_S("%s", "Resetting lora module\n");
-
-			radio_setup();
 
 		} else if (strcmp(rx_devid, my_devid) == 0) {
 
