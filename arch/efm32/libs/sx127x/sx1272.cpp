@@ -355,6 +355,31 @@ void SX1272::sx1278_qsetup(uint32_t freq, uint8_t dbm)
 	}
 }
 
+void SX1272::rx_v0(uint8_t dbm)
+{
+	// Set LowPnTxPllOff
+	writeRegister(REG_PA_RAMP, 0x08);
+
+	//writeRegister(REG_LNA, 0x23);				// Important in reception
+	writeRegister(REG_LNA, LNA_MAX_GAIN);
+	writeRegister(REG_FIFO_ADDR_PTR, 0x00);		// Setting address pointer in FIFO data buffer
+
+	if (_spreadingFactor == SF_10 || _spreadingFactor == SF_11
+	    || _spreadingFactor == SF_12) {
+		writeRegister(REG_SYMB_TIMEOUT_LSB, 0x05);
+	} else {
+		writeRegister(REG_SYMB_TIMEOUT_LSB, 0x08);
+	}
+
+	// Setting current value of reception buffer pointer
+	writeRegister(REG_FIFO_RX_BYTE_ADDR, 0x00);
+
+	// set payload length of lora
+	writeRegister(REG_PAYLOAD_LENGTH_LORA, MAX_LENGTH);
+
+	writeRegister(REG_OP_MODE, LORA_RX_MODE);	// LORA mode - Rx
+}
+
 uint8_t SX1272::ON()
 {
 	uint8_t state = 2;
