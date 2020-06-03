@@ -395,11 +395,7 @@ void push_data(bool alarm)
 		WATER_LEAK_TX == tx_cause ||
 		(unleak_tx_count > 0 && unleak_tx_count <= 4)) {
 
-		if (cur_water != LEVEL_LOW) {
-
-			cur_temp = cur_water;
-
-		}
+		cur_temp = cur_water;
 
 	}
 
@@ -426,7 +422,16 @@ void push_data(bool alarm)
 		ui16 = (int16_t)(cur_temp * 10);
 	}
 #else
-	int16_t ui16 = (int16_t)(cur_temp * 10);
+	int16_t ui16 = 0;
+
+	if (cur_temp == LEVEL_LOW) {
+
+		ui16 = LEVEL_MEDIAN;
+
+	} else {
+
+		ui16 = (int16_t)(cur_temp * 10);
+	}
 #endif
 
 	p = (uint8_t *) &ui16;
