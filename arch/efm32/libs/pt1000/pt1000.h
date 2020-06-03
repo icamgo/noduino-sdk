@@ -55,4 +55,6 @@ static uint32_t PT100_TABLE[100] = {
 void pt1000_init();
 uint32_t pt1000_get_rt();
 float pt1000_get_temp();
+
+float cal_temp(uint32_t Rt);
 #endif
