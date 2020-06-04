@@ -62,9 +62,46 @@ float cal_temp(uint32_t Rt)
 	return temp;
 }
 
+static void swap(uint32_t *p, uint32_t *q)
+{
+	uint32_t t;
+
+	t = *p;
+	*p = *q;
+	*q = t;
+}
+
+static void sort(uint32_t a[], int n)
+{
+	int i, j;
+
+	for (i = 0; i < n - 1; i++) {
+
+		for (j = 0; j < n - i - 1; j++) {
+
+			if (a[j] > a[j + 1]) {
+
+				swap(&a[j], &a[j + 1]);
+
+			}
+		}
+	}
+}
+
+static uint32_t median(uint32_t a[], int n)
+{
+	int m = 0;
+
+	sort(a, n);
+
+	m = (n + 1) / 2 - 1;
+
+	return a[m];
+}
+
 uint32_t pt1000_get_rt()
 {
-	uint32_t rt = 0;
+	uint32_t rt[N_TRY];
 	int a6 = 0, a7 = 0;
 
 	for (int i = 0; i < N_TRY; i++) {
@@ -82,7 +119,7 @@ uint32_t pt1000_get_rt()
 		if (a6 == a7) return 30000;
 
 		// 1.1K x 10
-		rt += (uint32_t)(11000.0 / ((float)a6 / a7 - 1.0));
+		rt[i] = (uint32_t)(11000.0 / ((float)a6 / a7 - 1.0));
 
 	#if 0
 		Serial.print("Rt = ");
@@ -92,14 +129,12 @@ uint32_t pt1000_get_rt()
 		pt_delay(PT_1MS);
 	}
 
-	rt /= N_TRY;
-
 	#if 0
 		Serial.print("Rt = ");
 		Serial.println(rt);
 	#endif
 
-	return rt;
+	return median(rt, N_TRY);
 }
 
 /*
