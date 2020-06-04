@@ -39,6 +39,7 @@ static uint32_t unleak_tx_count = 0;
 #define	HEARTBEAT_TIME				6600	/* 120*60s */
 #define	WATER_HEARTBEAT_TIME		1100	/* 20*60s */
 
+#define LEVEL_UNKNOWN				-2
 #define LEVEL_LOW					-1
 #define LEVEL_MEDIAN				0
 #define LEVEL_HIGH					1
@@ -46,8 +47,8 @@ static uint32_t unleak_tx_count = 0;
 static float old_temp = 0.0;
 static float cur_temp = 0.0;
 
-static int8_t old_water = 0;
-static int8_t cur_water = 0;
+static int8_t old_water = LEVEL_UNKNOWN;
+static int8_t cur_water = LEVEL_UNKNOWN;
 
 //#define	TX_TESTING				1
 
@@ -167,6 +168,8 @@ int get_water()
 		case 0:
 			ret = LEVEL_HIGH;
 			break;
+		default:
+			ret = LEVEL_UNKNOWN;
 	}
 
 	return ret;
@@ -190,10 +193,9 @@ float get_temp()
 
 		rt *= 1.5;
 
-	} else if (n > 2) {
-
-		rt /= n;
 	}
+
+	// n = 3 is the 300'C, no sensor connected
 
 	return cal_temp(rt);
 }
@@ -393,7 +395,7 @@ void push_data(bool alarm)
 		(cur_water == LEVEL_HIGH && sample_count%(WATER_HEARTBEAT_TIME/sample_period) == 0) ||
 		(cur_water == LEVEL_MEDIAN && sample_count%(WATER_HEARTBEAT_TIME/sample_period) == 0) ||
 		WATER_LEAK_TX == tx_cause ||
-		(unleak_tx_count > 0 && unleak_tx_count <= 4)) {
+		(unleak_tx_count > 0 && unleak_tx_count <= 4 && (tx_cause != KEY_TX || RESET_TX != tx_cause))) {
 
 		cur_temp = cur_water;
 

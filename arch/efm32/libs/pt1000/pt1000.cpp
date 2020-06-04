@@ -116,15 +116,10 @@ uint32_t pt1000_get_rt()
 		Serial.print("ADC7 = ");
 		Serial.println(a7);
 	#endif
-		if (a6 == a7) {
+		if (a6 == a7) return 30000;
 
-			rt[i] = 30000;
-
-		} else {
-
-			// 1.1K x 10
-			rt[i] = (uint32_t)(11000.0 / ((float)a6 / a7 - 1.0));
-		}
+		// 1.1K x 10
+		rt[i] = (uint32_t)(11000.0 / ((float)a6 / a7 - 1.0));
 
 	#if 0
 		Serial.print("Rt = ");
