@@ -271,11 +271,11 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		}
 	}
 
-	if (cur_water == LEVEL_LOW) {
+	if (cur_water != LEVEL_HIGH) {
 		leak_tx_count = 0;
 	}
 
-	if (cur_water == LEVEL_HIGH) {
+	if (cur_water != LEVEL_LOW) {
 		unleak_tx_count = 0;
 	}
 }
