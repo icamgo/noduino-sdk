@@ -369,7 +369,7 @@ void push_data(bool alarm)
 	if (cur_water != old_water || 
 		(cur_water == 1 && sample_count%(WATER_HEARTBEAT_TIME/sample_period) == 0) ||
 		WATER_LEAK_TX == tx_cause ||
-		(unleak_tx_count > 0 && unleak_tx_count <= 4)) {
+		(unleak_tx_count > 0 && unleak_tx_count <= 4 && (tx_cause != KEY_TX || RESET_TX != tx_cause))) {
 
 		cur_temp = cur_water;
 
