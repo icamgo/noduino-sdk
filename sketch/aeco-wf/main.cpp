@@ -36,6 +36,8 @@ static uint32_t sample_period = 20;		/* 20s */
 static uint32_t sample_count = 0;
 static uint32_t leak_tx_count = 0;
 static uint32_t unleak_tx_count = 0;
+static uint32_t median_tx_count = 0;
+
 #define	HEARTBEAT_TIME				6600	/* 120*60s */
 #define	WATER_HEARTBEAT_TIME		1100	/* 20*60s */
 
@@ -271,6 +273,15 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 			unleak_tx_count++;
 		}
+
+		if (LEVEL_MEDIAN == cur_water && LEVEL_LOW == old_water && median_tx_count <= 4) {
+
+			/* timer 6 */
+			need_push = 0x5a;
+			tx_cause = WATER_LEAK_TX;
+
+			median_tx_count++;
+		}
 	}
 
 	if (cur_water != LEVEL_HIGH) {
@@ -279,6 +290,10 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	if (cur_water != LEVEL_LOW) {
 		unleak_tx_count = 0;
+	}
+
+	if (cur_water != LEVEL_MEDIAN) {
+		median_tx_count = 0;
 	}
 }
 
@@ -395,6 +410,7 @@ void push_data(bool alarm)
 		(cur_water == LEVEL_HIGH && sample_count%(WATER_HEARTBEAT_TIME/sample_period) == 0) ||
 		(cur_water == LEVEL_MEDIAN && sample_count%(WATER_HEARTBEAT_TIME/sample_period) == 0) ||
 		WATER_LEAK_TX == tx_cause ||
+		(median_tx_count > 0 && median_tx_count <= 4) ||
 		(unleak_tx_count > 0 && unleak_tx_count <= 4 && (tx_cause != KEY_TX || RESET_TX != tx_cause))) {
 
 		cur_temp = cur_water;
