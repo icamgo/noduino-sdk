@@ -22,6 +22,9 @@
 #define PC10_ADDR		0x28
 #define LEN				2
 
+#define	PC10_HALF_RANGE		8000.0			/* 800  KPa */
+//#define	PC10_HALF_RANGE		175.0			/* 17.5 KPa */
+
 //#define	D2429			1
 #define	GENERAL1912			1
 //#define	D15942			247
@@ -90,12 +93,12 @@ float get_pressure()
 
 	if (pv > 1500 && pv < PC10_MID) {
 
-		p = 8000.0 / (PC10_MID - PC10_LOW) * (pv - PC10_LOW);
+		p = PC10_HALF_RANGE / (PC10_MID - PC10_LOW) * (pv - PC10_LOW);
 
 	} else if (pv >= PC10_MID && pv < 15000) {
 
 		// If pv = 65535, then p = 78.006
-		p = 8000.0 / (PC10_HIGH - PC10_MID) * (pv - PC10_MID) + 8000.0;
+		p = PC10_HALF_RANGE / (PC10_HIGH - PC10_MID) * (pv - PC10_MID) + PC10_HALF_RANGE;
 
 	} else if (pv == 65535) {
 
