@@ -548,8 +548,9 @@ void push_data(bool alarm)
 	if (!e) {
 		// send message succesful, update the old_temp
 		old_temp = cur_temp;
-		old_water = cur_water;
 	}
+
+	old_water = cur_water;
 
 	endSend = millis();
 
