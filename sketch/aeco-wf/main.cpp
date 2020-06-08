@@ -73,6 +73,8 @@ static uint8_t need_push = 0;
 #define	TIMER_TX				2
 #define	KEY_TX					3
 #define	WATER_LEAK_TX			5
+#define	WATER_DELTA				8
+#define	WATER_LOW				9
 
 #else
 #define node_addr				110
@@ -250,7 +252,13 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 		/* timer 3 */
 		need_push = 0x5a;
-		tx_cause = DELTA_TX;
+		tx_cause = WATER_DELTA;
+		//tx_cause = DELTA_TX;
+
+		if(LEVEL_LOW == old_water && LEVEL_MEDIAN == cur_water) {
+
+			median_tx_count++;
+		}
 
 		return;
 
@@ -269,13 +277,13 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 			/* timer 5 */
 			need_push = 0x5a;
-			tx_cause = DELTA_TX;
+			//tx_cause = DELTA_TX;
+			tx_cause = WATER_LOW;
 
 			unleak_tx_count++;
 		}
 
-		if (LEVEL_MEDIAN == cur_water && ((LEVEL_LOW == old_water && median_tx_count == 0)
-			|| (median_tx_count >= 1 && median_tx_count <= 4))) {
+		if (LEVEL_MEDIAN == cur_water && (median_tx_count >= 1 && median_tx_count <= 4)) {
 
 			/* timer 6 */
 			need_push = 0x5a;
