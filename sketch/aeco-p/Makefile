@@ -284,9 +284,9 @@ endif
 
 ifndef id
 id = $$(($(id_base)+$(rand)%10000))
+endif
 
 id_ok = $$(cat .idused | grep $(id))
-endif
 
 hex_id = $$(printf "%016X" $(id) | fold -w2 | tac | tr -d "\n")
 
@@ -382,10 +382,11 @@ getuuid:
 # make setid id=xxx (set id=xxx, do not log it)
 setid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
-	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;  \
-		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
-	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
+	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER) && echo $(id) >> .idused;
 	@rm -f .u.bin
 
 # same as setid
