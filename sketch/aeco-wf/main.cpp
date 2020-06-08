@@ -274,7 +274,8 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			unleak_tx_count++;
 		}
 
-		if (LEVEL_MEDIAN == cur_water && LEVEL_LOW == old_water && median_tx_count <= 4) {
+		if (LEVEL_MEDIAN == cur_water && ((LEVEL_LOW == old_water && median_tx_count == 0)
+			|| (median_tx_count >= 1 && median_tx_count <= 4))) {
 
 			/* timer 6 */
 			need_push = 0x5a;
