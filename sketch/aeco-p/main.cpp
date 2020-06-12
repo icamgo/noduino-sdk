@@ -200,7 +200,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	need_push = 0x5a;
 	tx_cause = TIMER_TX;
 #else
-	if (fabsf(cur_pres - old_pres) > 0.08) {
+	if (fabsf(cur_pres - old_pres) > PC10_HALF_RANGE/100000.0) {
 
 		need_push = 0x5a;
 #ifdef CONFIG_V0
