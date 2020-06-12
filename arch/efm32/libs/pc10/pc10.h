@@ -23,6 +23,7 @@
 
 void pressure_init(int scl, int sda);
 float get_pressure();
+float get_water_h();
 uint16_t pc10_read();
 void pc10_wakeup();
 

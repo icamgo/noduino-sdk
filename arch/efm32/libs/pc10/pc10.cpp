@@ -22,7 +22,7 @@
 #define PC10_ADDR		0x28
 #define LEN				2
 
-#define	PC10_HALF_RANGE		8000.0			/* 800  KPa */
+//#define	PC10_HALF_RANGE		8000.0			/* 800  KPa */
 //#define	PC10_HALF_RANGE		175.0			/* 17.5 KPa */
 
 //#define	D2429			1
@@ -118,6 +118,56 @@ float get_pressure()
 	p /= 1000.0;
 
 	return p;
+}
+
+/*
+ * Return value:
+ *   18367.3469 cm: Max valid value (16383)
+ *  -153.061224 cm: Min valid value (1501)
+ *  -1.0 cm: Bus error, no sensor connected, not wakeup
+ *  -2.0 cm: Out of low range
+ *  -3.0 cm: Out of high range
+*/
+float get_water_h()
+{
+	uint16_t pv = 0;
+	float p = 0.0;
+
+	pc10_wakeup();
+
+	i2c_delay(15*1000);		/* delay 11ms */
+
+	pv = pc10_read();
+
+	//Serial.print("pc10 = ");
+	//Serial.println(pv, HEX);
+
+	if (pv > 1500 && pv < PC10_MID) {
+
+		p = PC10_HALF_RANGE / (PC10_MID - PC10_LOW) * (pv - PC10_LOW);
+
+	} else if (pv >= PC10_MID && pv < 15000) {
+
+		// If pv = 65535, then p = 78.006
+		p = PC10_HALF_RANGE / (PC10_HIGH - PC10_MID) * (pv - PC10_MID) + PC10_HALF_RANGE;
+
+	} else if (pv == 65535) {
+
+		return -1.0;		// Bus error, no sensor connected, not wakeup ...
+
+	} else if (pv <= 1500) {
+
+		return -2.0;		// Out of low range
+
+	} else if (pv >= 15000 && pv <= 0x3FFF) {
+
+		return -3.0;		// Out of high range
+	}
+
+	// The unit of p is hPa(mbar)
+	// p * 100 / (9.8*1000) * 100cm =  CM
+
+	return (p * 1.02040816);
 }
 
 /*
