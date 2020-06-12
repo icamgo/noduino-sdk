@@ -1,7 +1,7 @@
 #ifndef __CIRC_BUF_H__
 #define __CIRC_BUF_H__
 
-#define	CIRC_BUF_SIZE		10
+#define	CIRC_BUF_SIZE		6
 
 struct pkt {
 /*
@@ -12,19 +12,22 @@ struct pkt {
 	int16_t vbat;
 */
 	uint8_t data[24];
-}
+	int16_t rssi;
+};
 
 struct circ_buf {
-	struct pkt[CIRC_BUF_SIZE];
+	struct pkt pkt[CIRC_BUF_SIZE];
 	int head;
 	int tail;
 };
 
-int push_pkt(struct circ_buf *cbuf, uint8_t *idata)
+int push_pkt(struct circ_buf *cbuf, uint8_t *idata, int16_t rssi)
 {
 	if (idata != NULL && cbuf != NULL) {
 
-		memcpy(cbuf->pkt[cbuf->head], idata, sizeof(struct pkt));
+		memcpy(cbuf->pkt[cbuf->head].data, idata, 24);
+
+		cbuf->pkt[cbuf->head].rssi = rssi;
 
 		cbuf->head += 1;
 
@@ -36,11 +39,14 @@ int push_pkt(struct circ_buf *cbuf, uint8_t *idata)
 	}
 }
 
-int get_pkt(struct circ_buf *cbuf, uint8_t *odata)
+int get_pkt(struct circ_buf *cbuf, struct pkt *odata)
 {
-	if (idata != NULL && cbuf != NULL) {
+	if (odata != NULL && cbuf != NULL &&
+		((cbuf->head - cbuf->tail) & (CIRC_BUF_SIZE-1)) > 0) {
 	
-		memcpy(odata, cbuf->pkt[cbuf->tail], sizeof(struct pkt));
+		memcpy(odata->data, cbuf->pkt[cbuf->tail].data, 24);
+
+		odata->rssi = cbuf->pkt[cbuf->tail].rssi;
 
 		cbuf->tail += 1;
 		cbuf->tail %= CIRC_BUF_SIZE;

@@ -265,7 +265,7 @@ char *decode_sensor_type()
 				strcpy(dev_type, "EV");
 				break;
 			case '7':
-				strcpy(dev_type, "T2P");
+				strcpy(dev_type, "T2WP");
 				break;
 			case '8':
 				strcpy(dev_type, "HT");
@@ -314,11 +314,17 @@ char *decode_sensor_data(uint8_t *pkt)
 		ftoa(dev_data, dd, 1);
 		sprintf(dev_data, "%s ", dev_data);
 
-	} else if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3' || dev_id[4] == '7')) {
+	} else if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3')) {
+
 		// Pressure
 		dd = (float)(data / 100.0);
 		ftoa(dev_data, dd, 2);
 		sprintf(dev_data, "%s  ", dev_data);
+
+	} else if (dev_id[3] == '0' && dev_id[4] == '7') {
+
+		// water level (pressure)
+		sprintf(dev_data, "%dCM", data);
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '5') {
 		// ET-Pump
@@ -586,7 +592,7 @@ void power_off_dev()
 
 void rx_irq_handler()
 {
-	INFOLN("%s", "new rx pkt...");
+	//INFOLN("%s", "new rx pkt...");
 }
 
 void setup()
