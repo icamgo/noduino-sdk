@@ -324,7 +324,9 @@ char *decode_sensor_data(uint8_t *pkt)
 	} else if (dev_id[3] == '0' && dev_id[4] == '7') {
 
 		// water level (pressure)
-		sprintf(dev_data, "%dCM", data);
+		dd = (float)(data / 100.0);
+		ftoa(dev_data, dd, 2);
+		sprintf(dev_data, "%sM", dev_data);
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '5') {
 		// ET-Pump
