@@ -200,7 +200,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	need_push = 0x5a;
 	tx_cause = TIMER_TX;
 #else
-	if (fabsf(cur_water_h - old_water_h) > 5.0) {
+	if (fabsf(cur_water_h - old_water_h) > 0.05) {
 
 		/* 1/200 or 1/100 */
 
@@ -338,7 +338,7 @@ void push_data()
 		pkt[3+i] = p[7-i];
 	}
 
-	int16_t ui16 = (int16_t)(cur_water_h);
+	int16_t ui16 = (int16_t)(cur_water_h * 100);
 	p = (uint8_t *) &ui16;
 
 	pkt[11] = p[1]; pkt[12] = p[0];

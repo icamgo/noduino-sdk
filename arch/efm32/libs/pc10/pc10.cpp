@@ -122,11 +122,11 @@ float get_pressure()
 
 /*
  * Return value:
- *   18367.3469 cm: Max valid value (16383)
- *  -153.061224 cm: Min valid value (1501)
- *  -1.0 cm: Bus error, no sensor connected, not wakeup
- *  -2.0 cm: Out of low range
- *  -3.0 cm: Out of high range
+ *   183.673469 m: Max valid value (16383)
+ *  -1.53061224 m: Min valid value (1501)
+ *  -10 m: Bus error, no sensor connected, not wakeup
+ *  -20 m: Out of low range
+ *  -30 m: Out of high range
 */
 float get_water_h()
 {
@@ -153,21 +153,21 @@ float get_water_h()
 
 	} else if (pv == 65535) {
 
-		return -1.0;		// Bus error, no sensor connected, not wakeup ...
+		return -10.0;		// Bus error, no sensor connected, not wakeup ...
 
 	} else if (pv <= 1500) {
 
-		return -2.0;		// Out of low range
+		return -20.0;		// Out of low range
 
 	} else if (pv >= 15000 && pv <= 0x3FFF) {
 
-		return -3.0;		// Out of high range
+		return -30.0;		// Out of high range
 	}
 
 	// The unit of p is hPa(mbar)
-	// p * 100 / (9.8*1000) * 100cm =  CM
+	// p * 100 / (9.8*1000) * 100cm / 100 = M
 
-	return (p * 1.02040816);
+	return (p * 1.02040816 / 100.0);
 }
 
 /*
