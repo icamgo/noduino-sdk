@@ -63,6 +63,63 @@ void pressure_init(int scl, int sda)
 {
 	wire_begin(scl, sda);
 }
+
+#define	N_TRY			5
+
+static void swap(uint16_t *p, uint16_t *q)
+{
+	uint16_t t;
+
+	t = *p;
+	*p = *q;
+	*q = t;
+}
+
+static void sort(uint16_t a[], int n)
+{
+	int i, j;
+
+	for (i = 0; i < n - 1; i++) {
+
+		for (j = 0; j < n - i - 1; j++) {
+
+			if (a[j] > a[j + 1]) {
+
+				swap(&a[j], &a[j + 1]);
+
+			}
+		}
+	}
+}
+
+static uint16_t median(uint16_t a[], int n)
+{
+	int m = 0;
+
+	sort(a, n);
+
+	m = (n + 1) / 2 - 1;
+
+	return a[m];
+}
+
+uint16_t pc10_get_pv()
+{
+	uint16_t rt[N_TRY];
+
+	pc10_wakeup();
+
+	i2c_delay(15*1000);		/* delay 11ms */
+
+	for (int i = 0; i < N_TRY; i++) {
+
+		rt[i] = pc10_read();
+
+		i2c_delay(1200);
+	}
+
+	return median(rt, N_TRY);
+}
  
 /*
  * Return value:
@@ -133,11 +190,15 @@ float get_water_h()
 	uint16_t pv = 0;
 	float p = 0.0;
 
+#if 0
 	pc10_wakeup();
 
 	i2c_delay(15*1000);		/* delay 11ms */
 
 	pv = pc10_read();
+#else
+	pv = pc10_get_pv();
+#endif
 
 	//Serial.print("pc10 = ");
 	//Serial.println(pv, HEX);
@@ -157,7 +218,7 @@ float get_water_h()
 
 	} else if (pv <= 1500) {
 
-		return -20.0;		// Out of low range
+		return 0.0;		// Out of low range
 
 	} else if (pv >= 15000 && pv <= 0x3FFF) {
 
