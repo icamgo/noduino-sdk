@@ -181,9 +181,9 @@ float get_pressure()
  * Return value:
  *   183.673469 m: Max valid value (16383)
  *  -1.53061224 m: Min valid value (1501)
- *  -10 m: Bus error, no sensor connected, not wakeup
- *  -20 m: Out of low range
- *  -30 m: Out of high range
+ *  -1 m: Bus error, no sensor connected, not wakeup
+ *  -2 m: Out of low range
+ *  -3 m: Out of high range
 */
 float get_water_h()
 {
@@ -203,7 +203,7 @@ float get_water_h()
 	//Serial.print("pc10 = ");
 	//Serial.println(pv, HEX);
 
-	if (pv > 1500 && pv < PC10_MID) {
+	if (pv > PC10_LOW && pv < PC10_MID) {
 
 		p = PC10_HALF_RANGE / (PC10_MID - PC10_LOW) * (pv - PC10_LOW);
 
@@ -212,17 +212,21 @@ float get_water_h()
 		// If pv = 65535, then p = 78.006
 		p = PC10_HALF_RANGE / (PC10_HIGH - PC10_MID) * (pv - PC10_MID) + PC10_HALF_RANGE;
 
+	} else if (pv >100 && pv <= PC10_LOW) {
+
+		return 0;
+
 	} else if (pv == 65535) {
 
-		return -10.0;		// Bus error, no sensor connected, not wakeup ...
+		return -1.0;		// Bus error, no sensor connected, not wakeup ...
 
-	} else if (pv <= 1500) {
+	} else if (pv <= 100) {
 
-		return 0.0;		// Out of low range
+		return -2.0;		// Out of low range
 
 	} else if (pv >= 15000 && pv <= 0x3FFF) {
 
-		return -30.0;		// Out of high range
+		return -3.0;		// Out of high range
 	}
 
 	// The unit of p is hPa(mbar)
