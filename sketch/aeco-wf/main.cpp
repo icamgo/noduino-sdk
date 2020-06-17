@@ -453,7 +453,7 @@ void push_data(bool alarm)
 
 	if (cur_temp == LEVEL_LOW) {
 
-		ui16 = LEVEL_MEDIAN;
+		ui16 = (int16_t)(LEVEL_LOW * 10);
 
 	} else {
 
