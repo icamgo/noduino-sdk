@@ -18,7 +18,7 @@
 #ifndef __LOGO_H__
 #define __LOGO_H__
 
-#define logo_width		90
+#define logo_width		126
 #define logo_height		23
 
 static uint8_t logo_xbm[] = {

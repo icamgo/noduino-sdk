@@ -22,12 +22,11 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#define	DEBUG					1
+//#define	DEBUG					1
 //#define DEBUG_HEX_PKT			1
 
 #define ENABLE_OLED					1
 #define ENABLE_SH1107				1
-//#define ENABLE_SSD1306			1
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
@@ -62,13 +61,6 @@ uint8_t loraMode = 11;
 uint8_t loraAddr = 1;
 
 #endif
-
-// be careful, max command length is 60 characters
-#define MAX_CMD_LENGTH			100
-char cmd[MAX_CMD_LENGTH];
-
-// number of retries to unlock remote configuration feature
-bool withAck = false;
 
 int status_counter = 0;
 
@@ -123,7 +115,7 @@ int key_time = 0;
 #define SH1107_SCL					13
 #define SH1107_RESET				16
 
-U8G2_SH1107_SEEED_96X96_1_SW_I2C u8g2(U8G2_R0, SH1107_SCL, SH1107_SDA, SH1107_RESET);
+U8G2_SH1107_SEEED_128X128_1_SW_I2C u8g2(U8G2_R0, SH1107_SCL, SH1107_SDA, SH1107_RESET);
 #endif
 
 #endif
@@ -498,7 +490,7 @@ void show_logo()
 	u8g2.firstPage();
 
 	do {
-		u8g2.drawXBM(1, 4, logo_width, logo_height, logo_xbm);
+		u8g2.drawXBM(1, 52, logo_width, logo_height, logo_xbm);
 	} while (u8g2.nextPage());
 }
 
@@ -512,27 +504,27 @@ void show_mode(int mode)
 		if (MODE_ALL == mode) {
 			// Lora icon. notice rx all message
 			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
-			u8g2.setCursor(12, 26);
+			u8g2.setCursor(12, 64);
 			u8g2.print(" T2 - ALL ");
 
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
-			u8g2.drawGlyph(112, 23, 81);
+			u8g2.drawGlyph(112, 61, 81);
 		} else if (MODE_ABC == mode) {
 			// Bell icon. notice the message tagged for testing
 			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
-			u8g2.setCursor(12, 26);
+			u8g2.setCursor(12, 64);
 			u8g2.print(" T3 - ABC ");
 
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
-			u8g2.drawGlyph(70, 23, 65);
+			u8g2.drawGlyph(112, 61, 65);
 		} else if (MODE_KEY == mode) {
 			// cycle icon. notice the message trigged by magnet
 			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
-			u8g2.setCursor(12, 26);
+			u8g2.setCursor(12, 64);
 			u8g2.print(" T2 - KEY ");
 
 			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
-			u8g2.drawGlyph(70, 23, 64);
+			u8g2.drawGlyph(112, 61, 64);
 		}
 	} while (u8g2.nextPage());
 }
@@ -545,7 +537,7 @@ void show_low_bat()
 
 	do {
 		u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
-		u8g2.setCursor(12, 26);
+		u8g2.setCursor(16, 64);
 		u8g2.print(" LOW BATTERY ");
 	} while (u8g2.nextPage());
 }
@@ -599,6 +591,13 @@ void setup()
 {
 	int e;
 
+#ifdef DEBUG
+	Serial.setRouteLoc(1);
+	Serial.begin(115200);
+#endif
+
+	INFOLN("%s", "Init start...");
+
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, change_omode, FALLING);
@@ -617,7 +616,7 @@ void setup()
 	power_on_dev();
 
 #ifdef ENABLE_OLED
-	//u8g2.setI2CAddress(0x78);
+	//u8g2.setI2CAddress(0x3c);
 	u8g2.begin();
 
 	delay(2);
@@ -632,17 +631,12 @@ void setup()
 	show_mode(omode);
 #endif
 
-#ifdef DEBUG
-	Serial.setRouteLoc(1);
-	Serial.begin(115200);
-#endif
-
+	INFOLN("%s", "Init OK......");
 	//radio_setup();
 }
 
 void loop(void)
 {
-/*
 	int e = 1;
 	static int c = 0;
 
@@ -725,6 +719,7 @@ void loop(void)
 	}
 #endif
 
+/*
 	// check if we received data from the receiving LoRa module
 #ifdef RECEIVE_ALL
 	e = sx1272.receiveAll(RX_TIME);
