@@ -38,8 +38,12 @@ static uint32_t leak_tx_count = 0;
 static uint32_t unleak_tx_count = 0;
 static uint32_t median_tx_count = 0;
 
-#define	HEARTBEAT_TIME				6600	/* 120*60s */
+#ifdef CONFIG_WATER_HEATBEAT
 #define	WATER_HEARTBEAT_TIME		1100	/* 20*60s */
+#define	HEARTBEAT_TIME				6600	/* 120*60s */
+#else
+#define	HEARTBEAT_TIME				1100	/* 20*60s */
+#endif
 
 #define LEVEL_UNKNOWN				-2
 #define LEVEL_LOW					-1
@@ -215,12 +219,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	sample_count++;
 
-	if (sample_count > HEARTBEAT_TIME/sample_period) {
-		/* timer 0 */
-		need_push = 0x5a;
-		tx_cause = TIMER_TX;
-		sample_count = 0;
-	}
 
 	power_on_dev();
 	cur_temp = get_temp() + T_FIX;
@@ -238,15 +236,27 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	cur_water = get_water();
 
+
+	if (sample_count > HEARTBEAT_TIME/sample_period) {
+		/* timer 0 */
+		need_push = 0x5a;
+		tx_cause = TIMER_TX;
+		sample_count = 0;
+
+		return;
+	}
+
+#ifdef CONFIG_WATER_HEATBEAT
 	if ((cur_water == LEVEL_HIGH || cur_water == LEVEL_MEDIAN) &&
 		(sample_count % (WATER_HEARTBEAT_TIME/sample_period) == 0)) {
 
-		/* timer 2 */
+		/* timer 2, 20min TX (LH/LM) */
 		need_push = 0x5a;
 
 		tx_cause = WATER_LEAK_TX;
 
 	}
+#endif
 
 	if (cur_water != old_water) {
 
@@ -415,9 +425,13 @@ void push_data(bool alarm)
 		power_off_dev();
 	}
 
-	if (cur_water != old_water || 
+	if (cur_water != old_water ||
+	#ifdef CONFIG_WATER_HEATBEAT
 		(cur_water == LEVEL_HIGH && sample_count%(WATER_HEARTBEAT_TIME/sample_period) == 0) ||
 		(cur_water == LEVEL_MEDIAN && sample_count%(WATER_HEARTBEAT_TIME/sample_period) == 0) ||
+	#else
+		TIMER_TX == tx_cause ||
+	#endif
 		WATER_LEAK_TX == tx_cause ||
 		(median_tx_count > 0 && median_tx_count <= 4) ||
 		(unleak_tx_count > 0 && unleak_tx_count <= 4 && (tx_cause != KEY_TX || RESET_TX != tx_cause))) {
@@ -556,9 +570,15 @@ void push_data(bool alarm)
 	if (!e) {
 		// send message succesful, update the old_temp
 		old_temp = cur_temp;
-	}
 
-	old_water = cur_water;
+		old_water = cur_water;
+	} else {
+
+		if (TIMER_TX == tx_cause) {
+			/* 20 min TX timeout, make sure to TX in next 20s */
+			sample_count = HEARTBEAT_TIME/sample_period;
+		}
+	}
 
 	endSend = millis();
 
