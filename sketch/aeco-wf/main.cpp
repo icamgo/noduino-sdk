@@ -243,7 +243,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		tx_cause = TIMER_TX;
 		sample_count = 0;
 
-		return;
 	}
 
 #ifdef CONFIG_WATER_HEATBEAT
@@ -270,11 +269,19 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			median_tx_count++;
 		}
 
+		if(LEVEL_HIGH == cur_water) {
+			leak_tx_count++;
+		}
+
+		if(LEVEL_LOW == cur_water) {
+			unleak_tx_count++;
+		}
+
 		return;
 
 	} else {
 
-		if (LEVEL_HIGH == cur_water && leak_tx_count < 4) {
+		if (LEVEL_HIGH == cur_water && (leak_tx_count >=1 && leak_tx_count <= 4)) {
 
 			/* timer 4 */
 			need_push = 0x5a;
@@ -283,11 +290,10 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			leak_tx_count++;
 		}
 
-		if (LEVEL_LOW == cur_water && unleak_tx_count <= 6) {
+		if (LEVEL_LOW == cur_water && (unleak_tx_count >= 1 && unleak_tx_count <= 4)) {
 
 			/* timer 5 */
 			need_push = 0x5a;
-			//tx_cause = DELTA_TX;
 			tx_cause = WATER_LOW;
 
 			unleak_tx_count++;
@@ -433,7 +439,6 @@ void push_data(bool alarm)
 		TIMER_TX == tx_cause ||
 	#endif
 		WATER_LEAK_TX == tx_cause ||
-		(median_tx_count > 0 && median_tx_count <= 4) ||
 		(unleak_tx_count > 0 && unleak_tx_count <= 4 && (tx_cause != KEY_TX || RESET_TX != tx_cause))) {
 
 		cur_temp = cur_water;
@@ -465,14 +470,14 @@ void push_data(bool alarm)
 #else
 	int16_t ui16 = 0;
 
-	if (cur_temp == LEVEL_LOW) {
+	//if (cur_temp == LEVEL_LOW) {
 
-		ui16 = (int16_t)(LEVEL_LOW * 10);
+	//	ui16 = (int16_t)(LEVEL_LOW * 10);
 
-	} else {
+	//} else {
 
 		ui16 = (int16_t)(cur_temp * 10);
-	}
+	//}
 #endif
 
 	p = (uint8_t *) &ui16;
