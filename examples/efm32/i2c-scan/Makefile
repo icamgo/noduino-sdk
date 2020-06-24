@@ -44,6 +44,7 @@ endif
 #OPENOCD_CFG	:= $(ARDUINO_BOARD)/efm32zg-openocd.cfg
 OPENOCD_CFG = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
 
+OPENOCD_RESET = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset; shutdown"
 
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
 CXX	:= $(TOOLCHAIN_DIR)/arm-none-eabi-g++
@@ -71,7 +72,8 @@ $(ARDUINO_CORES)/efm32/efm32pwm.c						\
 $(ARDUINO_CORES)/efm32/efm32init.c						\
 $(ARDUINO_CORES)/efm32/efm32gpio.c						\
 $(ARDUINO_CORES)/efm32/core_callback.c					\
-$(ARDUINO_CORES)/avr/dtostrf.c
+$(ARDUINO_CORES)/avr/dtostrf.c							\
+./i2c.c
 
 #$(ARDUINO_CORES)/efm32/efm32dac.c						\
 
@@ -257,6 +259,9 @@ flash: build/main.bin
 
 eeprom: eeprom.bin
 	$(ARMDUDE) $(ARMDUDE_FLAGS) $(ARMDUDE_WRITE_EEPROM)
+
+reset:
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_RESET)
 
 
 clean:

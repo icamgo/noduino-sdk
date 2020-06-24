@@ -24,7 +24,16 @@
 */
 
 #include "Arduino.h"
+
+#ifdef CONFIG_SOFTI2C
 #include "twi.h"
+
+#define I2C_SDA					12		/* PIN23_PE12_D12 */
+#define I2C_SCL					13		/* PIN24_PE13_D13 */
+
+#else
+#include "i2c.h"
+#endif
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define RESET_PIN				16
@@ -39,35 +48,48 @@ void setup()
 
 	// power on sh1107 oled
 	digitalWrite(PWR_CTRL_PIN, HIGH);
+	delay(10);
 
 	digitalWrite(RESET_PIN, LOW);
-	delayMicroseconds(100);
+	delayMicroseconds(200);
 	digitalWrite(RESET_PIN, HIGH);
-	delayMicroseconds(500);
+	delayMicroseconds(800);
 
-	wire_begin(13, 12);
+#ifdef CONFIG_SOFTI2C
+	wire_begin(I2C_SCL, I2C_SDA);
+#else
+	//i2c_init(0x78);
+	i2c_init(0x3c);
+#endif
 }
 
 void loop()
 {
 	byte error, address;
 	int n;
+	uint8_t txbuf[4], rxbuf[4];
 
 	Serial.println("I2C Scanning...");
 
 	n = 0;
 	for (address = 0; address <= 127; address++) {
 
+#ifdef CONFIG_SOFTI2C
 		wire_beginTransmission(address);
 		error = wire_endTransmission();
+#else
+		i2c_init(address);
+		txbuf[0] = 0;
+		error = i2c_write(txbuf, 0, rxbuf, 0);
+#endif
 
 		if (error == 0) {
 			Serial.print("I2C device found at address 0x");
 			Serial.println(address, HEX);
 			n++;
-		} else if (error == 4) {
+		} else {
 			Serial.print("Unknow error at address: ");
-			Serial.println(address, HEX);
+			Serial.println(error, HEX);
 		}
 	}
 	if (n == 0)
