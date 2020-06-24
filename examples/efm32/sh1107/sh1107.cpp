@@ -24,7 +24,14 @@
 
 #include "Arduino.h"
 
+//#define CONFIG_SOFTI2C		1
+
+#ifdef CONFIG_SOFTI2C
 #include "twi.h"
+#else
+#include "i2c.h"
+#endif
+
 #include "sh1107.h"
 
 #if defined(__arm__) && !defined(PROGMEM)
@@ -137,7 +144,9 @@ const unsigned char BasicFont[][8] PROGMEM = {
 };
 
 void sh1107::init(int IC) {
+
     Drive_IC = IC;
+
     if (Drive_IC == SSD1327) {
         sendCommand(0xFD); // Unlock OLED driver IC MCU interface from entering command. i.e: Accept commands
         sendCommand(0x12);
@@ -211,10 +220,14 @@ void sh1107::init(int IC) {
 }
 
 void sh1107::sendCommand(unsigned char command) {
-    wire_beginTransmission(sh1107_Address); // begin I2C communication
-    wire_write(sh1107_Command_Mode);    // Set OLED Command mode
+#ifdef CONFIG_SOFTI2C
+    wire_beginTransmission(sh1107_Address);		// begin I2C communication
+    wire_write(sh1107_Command_Mode);			// Set OLED Command mode
     wire_write(command);
-    wire_endTransmission();                    // End I2C communication
+    wire_endTransmission();						// End I2C communication
+#else
+	i2c_write(sh1107_Command_Mode, command, 1);
+#endif
 }
 
 void sh1107::setContrastLevel(unsigned char ContrastLevel) {
@@ -224,18 +237,18 @@ void sh1107::setContrastLevel(unsigned char ContrastLevel) {
 
 void sh1107::setHorizontalMode() {
     if (Drive_IC == SSD1327) {
-        sendCommand(0xA0); // remap to
-        sendCommand(0x42); // horizontal mode
+        sendCommand(0xA0);		// remap to
+        sendCommand(0x42); 		// horizontal mode
 
         // Row Address
-        sendCommand(0x75);    // Set Row Address
-        sendCommand(0x00);    // Start 0
-        sendCommand(0x5f);    // End 95
+        sendCommand(0x75);		// Set Row Address
+        sendCommand(0x00);		// Start 0
+        sendCommand(0x5f);		// End 95
 
         // Column Address
-        sendCommand(0x15);    // Set Column Address
-        sendCommand(0x08);    // Start from 8th Column of driver IC. This is 0th Column for OLED
-        sendCommand(0x37);    // End at  (8 + 47)th column. Each Column has 2 pixels(or segments)
+        sendCommand(0x15);		// Set Column Address
+        sendCommand(0x08);		// Start from 8th Column of driver IC. This is 0th Column for OLED
+        sendCommand(0x37);		// End at  (8 + 47)th column. Each Column has 2 pixels(or segments)
     } else if (Drive_IC == SH1107G) {
         sendCommand(0xA0);
         sendCommand(0xC8);
@@ -244,8 +257,8 @@ void sh1107::setHorizontalMode() {
 
 void sh1107::setVerticalMode() {
     if (Drive_IC == SSD1327) {
-        sendCommand(0xA0); // remap to
-        sendCommand(0x46); // Vertical mode
+        sendCommand(0xA0);		// remap to
+        sendCommand(0x46);		// Vertical mode
     } else if (Drive_IC == SH1107G) {
         sendCommand(0xA0);
         sendCommand(0xC0);
@@ -255,17 +268,17 @@ void sh1107::setVerticalMode() {
 void sh1107::setTextXY(unsigned char Row, unsigned char Column) {
     if (Drive_IC == SSD1327) {
         //Column Address
-        sendCommand(0x15);             /* Set Column Address */
-        sendCommand(0x08 + (Column * 4)); /* Start Column: Start from 8 */
-        sendCommand(0x37);             /* End Column */
+        sendCommand(0x15);					/* Set Column Address */
+        sendCommand(0x08 + (Column * 4));	/* Start Column: Start from 8 */
+        sendCommand(0x37);					/* End Column */
         // Row Address
-        sendCommand(0x75);             /* Set Row Address */
-        sendCommand(0x00 + (Row * 8)); /* Start Row*/
-        sendCommand(0x07 + (Row * 8)); /* End Row*/
+        sendCommand(0x75);           		/* Set Row Address */
+        sendCommand(0x00 + (Row * 8));		/* Start Row*/
+        sendCommand(0x07 + (Row * 8));		/* End Row*/
     } else if (Drive_IC == SH1107G) {
-        sendCommand(0xb0 + (Row & 0x0F)); // set page/row
+        sendCommand(0xb0 + (Row & 0x0F));	// set page/row
         sendCommand(0x10 + ((Column >> 4) & 0x07)); // set column high 3 byte
-        sendCommand(Column & 0x0F);  // set column low 4 byte
+        sendCommand(Column & 0x0F);			// set column low 4 byte
     }
 }
 
@@ -274,7 +287,7 @@ void sh1107::clearDisplay() {
 
     if (Drive_IC == SSD1327) {
         for (j = 0; j < 48; j++) {
-            for (i = 0; i < 96; i++) { //clear all columns
+            for (i = 0; i < 96; i++) {		// clear all columns
                 sendData(0x00);
             }
         }
@@ -291,10 +304,14 @@ void sh1107::clearDisplay() {
 }
 
 void sh1107::sendData(unsigned char Data) {
-    wire_beginTransmission(sh1107_Address); // begin I2C transmission
-    wire_write(sh1107_Data_Mode);            // data mode
+#ifdef CONFIG_SOFTI2C
+    wire_beginTransmission(sh1107_Address);	// begin I2C transmission
+    wire_write(sh1107_Data_Mode);			// data mode
     wire_write(Data);
-    wire_endTransmission();                    // stop I2C transmission
+    wire_endTransmission();					// stop I2C transmission
+#else
+	i2c_write(sh1107_Data_Mode, Data, 1);
+#endif
 }
 
 void sh1107::setGrayLevel(unsigned char grayLevel) {

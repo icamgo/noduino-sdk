@@ -24,14 +24,21 @@
 */
 
 #include "Arduino.h"
+
+#ifdef CONFIG_SOFTI2C
 #include "twi.h"
+
+#define I2C_SDA					12		/* PIN23_PE12_D12 */
+#define I2C_SCL					13		/* PIN24_PE13_D13 */
+
+#else
+#include "i2c.h"
+#endif
+
 #include "sh1107.h"
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8  */
 #define RESET_PIN				16		/* PIN21_PF02_D16 */
-
-#define I2C_SDA					12		/* PIN23_PE12_D12 */
-#define I2C_SCL					13		/* PIN24_PE13_D13 */
 
 void setup()
 {
@@ -50,7 +57,12 @@ void setup()
 	digitalWrite(RESET_PIN, HIGH);
 	delayMicroseconds(800);
 
+#ifdef CONFIG_SOFTI2C
 	wire_begin(I2C_SCL, I2C_SDA);
+#else
+	i2c_init(0x78);
+	//i2c_init(0x3c);
+#endif
 
     sh1107_oled.init(SH1107G);							// initialize SEEED OLED display
     sh1107_oled.clearDisplay();							// Clear Display.

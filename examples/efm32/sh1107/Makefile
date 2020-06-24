@@ -72,7 +72,9 @@ $(ARDUINO_CORES)/efm32/efm32pwm.c						\
 $(ARDUINO_CORES)/efm32/efm32init.c						\
 $(ARDUINO_CORES)/efm32/efm32gpio.c						\
 $(ARDUINO_CORES)/efm32/core_callback.c					\
-$(ARDUINO_CORES)/avr/dtostrf.c
+$(ARDUINO_CORES)/avr/dtostrf.c							\
+./i2c.c
+
 
 #$(ARDUINO_CORES)/efm32/efm32dac.c						\
 
@@ -88,9 +90,10 @@ $(ARDUINO_CORES)/efm32/HardwareSerial.cpp				\
 $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
-./twi.cpp												\
-./sh1107.cpp												\
+./sh1107.cpp											\
 
+#./twi.cpp												\
+./i2c.cpp											\
 #$(LIB_DIR)/SPI/src/SPI.cpp							\
 
 
