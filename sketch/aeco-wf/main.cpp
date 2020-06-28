@@ -182,6 +182,24 @@ int get_water()
 			ret = LEVEL_UNKNOWN;
 	}
 
+	/* 2/3 x pt1000, (6693, 9234], (10039.5, 13851] */
+	if (ret == LEVEL_HIGH && (rt > 9234 || rt <= 6693)) {
+
+		ret = LEVEL_UNKNOWN;
+	}
+
+	/* 2 x pt1000, (20078, 27702], (10039, 13851] */
+	if (ret == LEVEL_MEDIAN && (rt > 27702 || rt <= 20078)) {
+
+		ret = LEVEL_UNKNOWN;
+	}
+
+	/* 1 x pt1000, (10039, 13851] */
+	if (ret == LEVEL_LOW && (rt > 13851 || rt <= 10039)) {
+
+		ret = LEVEL_UNKNOWN;
+	}
+
 	return ret;
 }
 
@@ -203,6 +221,11 @@ float get_temp()
 
 		rt *= 1.5;
 
+	}
+
+	if (n != 3 && (rt > 13851 || rt <= 10039)) {
+
+		return -2.0;
 	}
 
 	// n = 3 is the 300'C, no sensor connected
@@ -500,10 +523,10 @@ void push_data(bool alarm)
 	pkt[21] = (int8_t)roundf(chip_temp);
 
 	// Internal humidity to detect water leak of the shell
-	pkt[22] = 255;
+	pkt[22] = cur_water;
 
 	// Internal current consumption
-	pkt[23] = -1;
+	pkt[23] = cur_water;
 #else
 	char vbat_s[10], pres_s[10];
 	ftoa(vbat_s, vbat, 2);
