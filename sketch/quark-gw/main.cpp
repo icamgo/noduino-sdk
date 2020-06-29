@@ -367,7 +367,7 @@ byte wan_ok()
 
 uint64_t old_val = 0;
 
-char pbuf[100];
+char pbuf[128];
 
 void loop() {
 
