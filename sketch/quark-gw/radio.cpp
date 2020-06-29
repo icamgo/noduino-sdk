@@ -167,7 +167,7 @@ int CarrierSense(bool onlyOnce = false)
 #ifdef CONFIG_V0
 char devid_buf[24];
 char dev_vbat[6];
-char dev_data[32];
+char dev_data[48];
 
 char *uint64_to_str(char *dest, uint64_t n)
 {
@@ -311,7 +311,7 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 		// Water Leak Sensor
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
-		sprintf(dev_data, "T/%s/WL/%d/iT/%d", data_buf, pkt[20], (int8_t)(pkt[21]));
+		sprintf(dev_data, "T/%s/WL/%d/iT/%d/iH/%d/iC/%d", data_buf, (int8_t)pkt[20], (int8_t)(pkt[21]), (int8_t)(pkt[22]), (int8_t)(pkt[23]));
 
 	} else if (id[3] == '2' && id[4] == '1') {
 		// Internal Temprature of ABC Sensor
