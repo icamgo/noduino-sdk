@@ -58,16 +58,17 @@ void setup()
 #ifdef CONFIG_SOFTI2C
 	wire_begin(I2C_SCL, I2C_SDA);
 #else
-	//i2c_init(0x78);
-	i2c_init(0x3c);
+	i2c_init();
 #endif
 }
 
 void loop()
 {
-	byte error, address;
+	int error, address;
 	int n;
 	uint8_t txbuf[4], rxbuf[4];
+
+	txbuf[0] = 1;
 
 	Serial.println("I2C Scanning...");
 
@@ -78,9 +79,7 @@ void loop()
 		wire_beginTransmission(address);
 		error = wire_endTransmission();
 #else
-		i2c_init(address);
-		txbuf[0] = 0;
-		error = i2c_write(txbuf, 0, rxbuf, 0);
+		error = i2c_write(address, txbuf, 0, rxbuf, 0);
 #endif
 
 		if (error == 0) {
@@ -89,7 +88,7 @@ void loop()
 			n++;
 		} else {
 			Serial.print("Unknow error at address: ");
-			Serial.println(error, HEX);
+			Serial.println(error, DEC);
 		}
 	}
 	if (n == 0)
