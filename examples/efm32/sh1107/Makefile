@@ -22,6 +22,9 @@ ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 #ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
+#DEFS := -DCONFIG_V0 -DCONFIG_SOFTI2C
+DEFS := -DCONFIG_V0
+
 MCU = cortex-m0plus
 F_CPU = 21000000
 
@@ -73,7 +76,7 @@ $(ARDUINO_CORES)/efm32/efm32init.c						\
 $(ARDUINO_CORES)/efm32/efm32gpio.c						\
 $(ARDUINO_CORES)/efm32/core_callback.c					\
 $(ARDUINO_CORES)/avr/dtostrf.c							\
-./i2c.c
+#./i2c.c
 
 
 #$(ARDUINO_CORES)/efm32/efm32dac.c						\
@@ -91,9 +94,9 @@ $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
 ./sh1107.cpp											\
+./i2c.cpp
 
 #./twi.cpp												\
-./i2c.cpp											\
 #$(LIB_DIR)/SPI/src/SPI.cpp							\
 
 
@@ -166,8 +169,8 @@ OBJ_MODULES = $(C_MODULES:.c=.o) $(CXX_MODULES:.cpp=.o)
 
 LST = $(ASRC:.S=.lst) $(CXXSRC:.cpp=.lst) $(SRC:.c=.lst)
 
-ALL_CFLAGS = $(CFLAGS) $(CINCS)
-ALL_CXXFLAGS = $(CXXFLAGS) $(CXXINCS)
+ALL_CFLAGS = $(CFLAGS) $(DEFS) $(CINCS)
+ALL_CXXFLAGS = $(CXXFLAGS) $(DEFS) $(CXXINCS)
 
 all: build_files rebuild build sizeafter
 

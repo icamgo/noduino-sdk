@@ -24,8 +24,6 @@
 
 #include "Arduino.h"
 
-//#define CONFIG_SOFTI2C		1
-
 #ifdef CONFIG_SOFTI2C
 #include "twi.h"
 #else
@@ -226,7 +224,10 @@ void sh1107::sendCommand(unsigned char command) {
     wire_write(command);
     wire_endTransmission();						// End I2C communication
 #else
-	i2c_write(sh1107_Command_Mode, command, 1);
+	uint8_t buf[2];
+	buf[0] = sh1107_Command_Mode;
+	buf[1] = command;
+	i2c_write(buf, 1, buf+1, 1);
 #endif
 }
 
@@ -310,7 +311,10 @@ void sh1107::sendData(unsigned char Data) {
     wire_write(Data);
     wire_endTransmission();					// stop I2C transmission
 #else
-	i2c_write(sh1107_Data_Mode, Data, 1);
+	uint8_t buf[2];
+	buf[0] = sh1107_Data_Mode;
+	buf[1] = Data;
+	i2c_write(buf, 1, buf+1, 1);
 #endif
 }
 

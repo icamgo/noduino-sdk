@@ -21,10 +21,17 @@
 #define SDA_READ()		digitalRead(_sda)
 #define SCL_READ()		digitalRead(_scl)
 
+#if 1
 #define SDA_LOW()		set_low(_sda)
 #define SDA_HIGH() 		set_high(_sda)
 #define SCL_LOW()		set_low(_scl)
 #define SCL_HIGH()		set_high(_scl)
+#else
+#define SDA_LOW()		GPIO_PinModeSet(gpioPortE, GPIO_PIN_12, gpioModePushPull, false)
+#define SDA_HIGH()		GPIO_PinModeSet(gpioPortE, GPIO_PIN_12, gpioModePushPull, true)
+#define SCL_LOW()		GPIO_PinModeSet(gpioPortE, GPIO_PIN_13, gpioModePushPull, false)
+#define SCL_HIGH()		GPIO_PinModeSet(gpioPortE, GPIO_PIN_13, gpioModePushPull, true)
+#endif
 
 static uint8_t _scl = SW_SCL;
 static uint8_t _sda = SW_SDA;
@@ -107,10 +114,12 @@ static inline bool i2c_write_bit(bool bit)
 
 	SCL_LOW();
 
-	if (bit)
+	if (bit) {
 		SDA_HIGH();
-	else
+	} else {
 		SDA_LOW();
+	}
+
 	i2c_delay(I2C_DELAY + 1);
 
 	SCL_HIGH();
