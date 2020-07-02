@@ -94,3 +94,33 @@ I2C_TransferReturn_TypeDef i2c_write(uint8_t d1, uint8_t d2)
 
 	return st;
 }
+
+I2C_TransferReturn_TypeDef i2c_writeto(uint8_t *buf, uint8_t len)
+{
+	uint32_t loop = TIME_OUTT;
+
+	I2C_TransferReturn_TypeDef st;
+
+	I2C_TransferSeq_TypeDef seq;
+
+	seq.addr = I2C_ADDRESS;
+	seq.flags = I2C_FLAG_WRITE;
+
+	seq.buf[0].data = buf;
+	seq.buf[0].len = len;
+
+	st = I2C_TransferInit(I2C0, &seq);
+
+	while ((st == i2cTransferInProgress) && loop > 0)
+	{
+		st = I2C_Transfer(I2C0);
+		loop--;
+	}
+
+	if (loop <= 0) {
+		//Serial.println("i2c_wirte loop faild...");
+		//st = -5;
+	}
+
+	return st;
+}

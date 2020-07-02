@@ -224,7 +224,14 @@ void sh1107::sendCommand(unsigned char command) {
     wire_write(command);
     wire_endTransmission();						// End I2C communication
 #else
+	#if 1
+	uint8_t buf[2];
+	buf[0] = sh1107_Command_Mode;
+	buf[1] = command;
+	i2c_writeto(buf, 2);
+	#else
 	i2c_write(sh1107_Command_Mode, command);
+	#endif
 #endif
 }
 
@@ -308,7 +315,14 @@ void sh1107::sendData(unsigned char Data) {
     wire_write(Data);
     wire_endTransmission();					// stop I2C transmission
 #else
+	#if 1
+	uint8_t buf[2];
+	buf[0] = sh1107_Data_Mode;
+	buf[1] = Data;
+	i2c_writeto(buf, 2);
+	#else
 	i2c_write(sh1107_Data_Mode, Data);
+	#endif
 #endif
 }
 
