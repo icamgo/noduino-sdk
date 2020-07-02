@@ -28,16 +28,6 @@ void i2c_init(uint8_t addr)
 	init_I2C.freq = I2C_FREQ_STANDARD_MAX;
 	init_I2C.refFreq = 0;
 
-/*
-	I2C_Init_TypeDef init_I2C = 
-	{
-		.enable = true,
-		.clhr = i2cClockHLRStandard,
-		.freq = I2C_FREQ_STANDARD_MAX,
-		.master = true,
-		.refFreq = 0
-	};
-*/
 	I2C_ADDRESS = addr;
 
 	/* Enabling clock to the I2C, GPIO*/
@@ -93,42 +83,3 @@ I2C_TransferReturn_TypeDef i2c_write(uint8_t *txbuf, int8_t txlen, uint8_t *rxbu
 
 	return st;
 }
-
-
-/* 
-I2C_TransferReturn_TypeDef i2c_read(uint8_t raddr, uint8_t *rxData, uint8_t readLen)
-{
-	uint32_t loop = TIME_OUTT;
-
-	I2C_TransferReturn_TypeDef st;
-
-	I2C_TransferSeq_TypeDef rx_Init = 
-	{
-		.addr = I2C_ADDRESS,
-		.buf[0].data = &raddr,
-		.buf[0].len = 1,
-		.buf[1].data = rxData,
-		.buf[1].len = readLen,
-		.flags = I2C_FLAG_WRITE_READ,
-	};
-
-	st = I2C_TransferInit(I2C0, &rx_Init);
-
-	while ((st == i2cTransferInProgress) && (loop--))
-	{
-		st = I2C_Transfer(I2C0);
-	}
-
-	if (loop == TIME_OUTT) {
-		//Serial.println("i2c_read loop fail...");
-		st = -5;
-	}
-
-	return(st);
-}
-*/
- 
-//void I2C0_IRQHandler(void)
-//{
-//	I2C_Status = I2C_Transfer(I2C0);
-//}
