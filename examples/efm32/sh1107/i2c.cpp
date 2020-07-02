@@ -24,9 +24,14 @@ void i2c_init(uint8_t addr)
 
 	init_I2C.enable = true;
 	init_I2C.master = true;
+	init_I2C.refFreq = 0;
+#if 0
 	init_I2C.clhr = i2cClockHLRStandard;
 	init_I2C.freq = I2C_FREQ_STANDARD_MAX;
-	init_I2C.refFreq = 0;
+#else
+	init_I2C.clhr = i2cClockHLRFast;
+	init_I2C.freq = I2C_FREQ_FASTPLUS_MAX;
+#endif
 
 	I2C_ADDRESS = addr;
 
