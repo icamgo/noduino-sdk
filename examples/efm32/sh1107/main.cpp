@@ -69,10 +69,10 @@ void setup()
     sh1107_oled.setNormalDisplay();						// Set Normal Display Mode
     sh1107_oled.setVerticalMode();						// Set to vertical mode for displaying text
 
-    for (char i = 0; i < 16 ; i++) {
-        sh1107_oled.setTextXY(i, 0);					// set Cursor to ith line, 0th column
+    for (char i = 0; i < 8 ; i++) {
+        sh1107_oled.setTextXY(i*2, 18);					// set Cursor to ith line, 0th column
         sh1107_oled.setGrayLevel(i);					// Set Grayscale level. Any number between 0 - 15.
-        sh1107_oled.putString("Hello World OLED");		// Print Hello World
+        sh1107_oled.putString("Hello World");		// Print Hello World
     }
 }
 
