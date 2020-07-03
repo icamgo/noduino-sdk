@@ -441,7 +441,7 @@ static uint8_t wire_txBufferIndex = 0;
 static uint8_t wire_txBufferLength = 0;
 static uint8_t wire_transmitting = 0;
 
-void wire_beginTransmission(uint8_t addr)
+static void wire_beginTransmission(uint8_t addr)
 {
 	wire_transmitting = 1;
 	wire_txAddress = addr;
@@ -451,7 +451,7 @@ void wire_beginTransmission(uint8_t addr)
 	i2c_init(addr);
 }
 
-size_t wire_write_b(uint8_t data)
+static size_t wire_write_b(uint8_t data)
 {
 	if(wire_transmitting){
 		if(wire_txBufferLength >= WIRE_BUFFER_LEN){
@@ -464,7 +464,7 @@ size_t wire_write_b(uint8_t data)
 	return 1;
 }
 
-size_t wire_write(uint8_t *data, size_t len)
+static size_t wire_write(uint8_t *data, size_t len)
 {
 	if(wire_transmitting){
 
@@ -477,7 +477,7 @@ size_t wire_write(uint8_t *data, size_t len)
 	return len;
 }
 
-uint8_t wire_endTransmission()
+static uint8_t wire_endTransmission()
 {
 	int8_t ret;
 	ret = i2c_write(wire_txBuffer, wire_txBufferLength);
