@@ -355,8 +355,13 @@ void SX1272::sx1278_qsetup(uint32_t freq, uint8_t dbm)
 	}
 }
 
-void SX1272::rx_v0(uint8_t dbm)
+void SX1272::rx_v0()
 {
+	memset(packet_data, 0x00, MAX_PAYLOAD);
+
+	memset(&packet_received, 0x00, sizeof(packet_received));
+	packet_received.data = packet_data;
+
 	// Set LowPnTxPllOff
 	writeRegister(REG_PA_RAMP, 0x08);
 
@@ -378,6 +383,68 @@ void SX1272::rx_v0(uint8_t dbm)
 	writeRegister(REG_PAYLOAD_LENGTH_LORA, MAX_LENGTH);
 
 	writeRegister(REG_OP_MODE, LORA_RX_MODE);	// LORA mode - Rx
+}
+
+int8_t SX1272::get_pkt_v0()
+{
+	uint8_t state = 2;
+	byte value = 0x00;
+	boolean p_received = false;
+
+	value = readRegister(REG_IRQ_FLAGS);
+
+	//CrcOnPayload?
+	if (bitRead(readRegister(REG_HOP_CHANNEL), 6)) {
+
+		if ((bitRead(value, 5) == 0)) {
+			p_received = true;
+			_reception = CORRECT_PACKET;
+			Serial.println(F("** The CRC is correct **"));
+		} else {
+			_reception = INCORRECT_PACKET;
+			state = 3;
+			Serial.println(F("** The CRC is incorrect **"));
+		}
+	} else {
+		// as CRC is not set we suppose that CRC is correct
+		p_received = true;				// packet correctly received
+		_reception = CORRECT_PACKET;
+		Serial.println(F("## Packet supposed to be correct as CrcOnPayload is off at transmitter ##"));
+	}
+
+	writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);
+
+	if (p_received == true) {
+
+		// set the FIFO addr to 0 to read again all the bytes
+		writeRegister(REG_FIFO_ADDR_PTR, 0x00);	// Setting address pointer in FIFO data buffer
+
+		if (_reception == CORRECT_PACKET) {
+
+			_payloadlength = readRegister(REG_RX_NB_BYTES);
+
+			if (_payloadlength <= (MAX_LENGTH + 1)) {
+
+				for (unsigned int i = 0; i < _payloadlength; i++) {
+
+					packet_received.data[i] = readRegister(REG_FIFO);	// Storing payload
+				}
+
+				state = 0;
+
+			} else {
+
+				Serial.println(F("Corrupted packet, length must be less than 34"));
+			}
+		}
+	}
+
+	// Setting address pointer in FIFO data buffer
+	writeRegister(REG_FIFO_ADDR_PTR, 0x00);
+
+	clearFlags();
+
+	return state;
 }
 
 uint8_t SX1272::ON()
@@ -493,7 +560,7 @@ byte SX1272::readRegister(byte address)
 #if (DEBUG_MODE > 1)
 	INFO(F("## Reading:  ##\t"));
 	INFO(F("Register "));
-	INFO(address, HEX);
+	INFO_HEX(address);
 	INFO(F(":  "));
 	INFO_LN(value, HEX);
 #endif
@@ -518,7 +585,7 @@ void SX1272::writeRegister(byte address, byte data)
 	INFO(F("## Writing:  ##\t"));
 	INFO(F("Register "));
 	bitClear(address, 7);
-	INFO(address, HEX);
+	INFO_HEX(address);
 	INFO(F(":  "));
 	INFO_LN(data, HEX);
 #endif
@@ -695,7 +762,7 @@ uint8_t SX1272::getMode()
 	INFO(F("\t Coding Rate: "));
 	INFO_LN(_codingRate, HEX);
 	INFO(F("\t Spreading Factor: "));
-	INFO(_spreadingFactor, HEX);
+	INFO_HEX(_spreadingFactor);
 	INFO_LN(F(" ##"));
 #endif
 
@@ -1104,11 +1171,11 @@ int8_t SX1272::setMode(uint8_t mode)
 #if (DEBUG_MODE > 1)
 	if (state == 0) {
 		INFO(F("Mode "));
-		INFO(mode, DEC);
+		INFO(mode);
 		INFO_LN(F(" configured with success"));
 	} else {
 		INFO(F("There has been an error while configuring mode: "));
-		INFO_LN(mode, DEC);
+		INFO_LN(mode);
 	}
 #endif
 
@@ -1518,7 +1585,7 @@ int8_t SX1272::getSF()
 			state = 0;
 #if (DEBUG_MODE > 1)
 			INFO(F("## Spreading factor is "));
-			INFO(_spreadingFactor, HEX);
+			INFO_HEX(_spreadingFactor);
 			INFO_LN(F(" ##"));
 #endif
 		}
@@ -1744,7 +1811,7 @@ uint8_t SX1272::setSF(uint8_t spr)
 		_spreadingFactor = spr;
 #if (DEBUG_MODE > 1)
 		INFO(F("Spreading factor "));
-		INFO(_spreadingFactor, DEC);
+		INFO(_spreadingFactor);
 		INFO_LN(F(" has been successfully set"));
 #endif
 	} else {
@@ -1829,7 +1896,7 @@ int8_t SX1272::getBW()
 			state = 0;
 #if (DEBUG_MODE > 1)
 			INFO(F("## Bandwidth is "));
-			INFO(_bandwidth, HEX);
+			INFO_HEX(_bandwidth);
 			INFO_LN(F(" ##"));
 #endif
 		} else {
@@ -1856,7 +1923,7 @@ int8_t SX1272::setBW(uint16_t band)
 		state = 1;
 #if (DEBUG_MODE > 1)
 		INFO(F("Bandwidth "));
-		INFO(band, HEX);
+		INFO_HEX(band);
 		INFO_LN(F(" is not a correct value"));
 #endif
 		return state;
@@ -2008,7 +2075,7 @@ int8_t SX1272::setBW(uint16_t band)
 		_bandwidth = band;
 #if (DEBUG_MODE > 1)
 		INFO(F("Bandwidth "));
-		INFO(band, HEX);
+		INFO_HEX(band);
 		INFO_LN(F(" has been successfully set"));
 #endif
 	}
@@ -2075,7 +2142,7 @@ int8_t SX1272::getCR()
 			state = 0;
 #if (DEBUG_MODE > 1)
 			INFO(F("## Coding rate is "));
-			INFO(_codingRate, HEX);
+			INFO_HEX(_codingRate);
 			INFO_LN(F(" ##"));
 #endif
 		}
@@ -2186,7 +2253,7 @@ int8_t SX1272::setCR(uint8_t cod)
 		_codingRate = cod;
 #if (DEBUG_MODE > 1)
 		INFO(F("Coding Rate "));
-		INFO(cod, HEX);
+		INFO_HEX(cod);
 		INFO_LN(F(" has been successfully set"));
 #endif
 	} else {
@@ -2284,7 +2351,7 @@ uint8_t SX1272::getChannel()
 		state = 0;
 #if (DEBUG_MODE > 1)
 		INFO(F("## Frequency channel is "));
-		INFO(_channel, HEX);
+		INFO_HEX(_channel);
 		INFO_LN(F(" ##"));
 #endif
 	} else {
@@ -2352,7 +2419,7 @@ int8_t SX1272::setChannel(uint32_t ch)
 		_channel = ch;
 #if (DEBUG_MODE > 1)
 		INFO(F("## Frequency channel "));
-		INFO(ch, HEX);
+		INFO_HEX(ch);
 		INFO_LN(F(" has been successfully set ##"));
 #endif
 	} else {
@@ -2647,7 +2714,7 @@ uint8_t SX1272::setPreambleLength(uint16_t l)
 	state = 0;
 #if (DEBUG_MODE > 1)
 	INFO(F("Preamble length "));
-	INFO(l, HEX);
+	INFO_HEX(l);
 	INFO_LN(F(" has been successfully set"));
 #endif
 
@@ -2712,7 +2779,7 @@ int8_t SX1272::setPacketLength(uint8_t l)
 		state = 0;
 #if (DEBUG_MODE > 1)
 		INFO(F("Packet length "));
-		INFO(packet_sent.length, DEC);
+		INFO(packet_sent.length);
 		INFO_LN(F(" has been successfully set"));
 #endif
 	} else {
@@ -2848,7 +2915,7 @@ int8_t SX1272::getSNR()
 		state = 0;
 #if (DEBUG_MODE > 0)
 		INFO(F("SNR value is "));
-		INFO_LN(_SNR, DEC);
+		INFO_LN(_SNR);
 #endif
 	} else {		// forbidden command if FSK mode
 		state = -1;
@@ -2886,7 +2953,7 @@ uint8_t SX1272::getRSSI()
 		state = 0;
 #if (DEBUG_MODE > 0)
 		INFO(F("RSSI value is "));
-		INFO_LN(_RSSI, DEC);
+		INFO_LN(_RSSI);
 #endif
 
 #ifdef ENABLE_FSK
@@ -2947,7 +3014,7 @@ int16_t SX1272::getRSSIpacket()
 			}
 #if (DEBUG_MODE > 0)
 			INFO(F("RSSI packet value is "));
-			INFO_LN(_RSSIpacket, DEC);
+			INFO_LN(_RSSIpacket);
 #endif
 		}
 	} else {
@@ -2985,7 +3052,7 @@ uint8_t SX1272::getMaxCurrent()
 	_maxCurrent = value;
 #if (DEBUG_MODE > 1)
 	INFO(F("Maximum current supply configured is "));
-	INFO(value, DEC);
+	INFO(value);
 	INFO_LN(F(" mA"));
 #endif
 	state = 0;
@@ -3899,13 +3966,13 @@ int8_t SX1272::setDestination(uint8_t dest)
 
 #if (DEBUG_MODE > 1)
 	INFO(F("## Destination "));
-	INFO(_destination, HEX);
+	INFO_HEX(_destination);
 	INFO_LN(F(" successfully set ##"));
 	INFO(F("## Source "));
-	INFO(packet_sent.src, DEC);
+	INFO(packet_sent.src);
 	INFO_LN(F(" successfully set ##"));
 	INFO(F("## Packet number "));
-	INFO(packet_sent.packnum, DEC);
+	INFO(packet_sent.packnum);
 	INFO_LN(F(" successfully set ##"));
 #endif
 	return state;
@@ -3935,7 +4002,7 @@ uint8_t SX1272::setTimeout()
 
 #if (DEBUG_MODE > 1)
 	INFO(F("Timeout to send/receive is: "));
-	INFO_LN(_sendTime, DEC);
+	INFO_LN(_sendTime);
 #endif
 	state = 0;
 	return state;
@@ -4034,7 +4101,7 @@ uint8_t SX1272::setPacket(uint8_t dest, uint8_t * payload)
 		packet_sent.retry = _retries;
 #if (DEBUG_MODE > 0)
 		INFO(F("** Retrying to send last packet "));
-		INFO(_retries, DEC);
+		INFO(_retries);
 		INFO_LN(F(" time **"));
 #endif
 	}
@@ -4731,7 +4798,7 @@ void printDouble(double val, byte precision)
 			padding--;
 		while (padding--)
 			INFO("0");
-		INFO(frac, DEC);
+		INFO(frac);
 	}
 }
 
@@ -4934,7 +5001,7 @@ int8_t SX1272::getSyncWord()
 
 #if (DEBUG_MODE > 1)
 		INFO(F("## Sync word is "));
-		INFO(_syncWord, HEX);
+		INFO_HEX(_syncWord);
 		INFO_LN(F(" ##"));
 #endif
 	}
@@ -4975,7 +5042,7 @@ int8_t SX1272::setSyncWord(uint8_t sw)
 		_syncWord = sw;
 #if (DEBUG_MODE > 1)
 		INFO(F("Sync Word "));
-		INFO(sw, HEX);
+		INFO_HEX(sw);
 		INFO_LN(F(" has been successfully set"));
 #endif
 	} else {
