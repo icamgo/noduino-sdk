@@ -20,7 +20,6 @@
 #include "sx1272.h"
 #include "softi2c.h"
 #include "pc10.h"
-//#include "U8g2lib.h"
 
 #include "rtcdriver.h"
 #include "math.h"
@@ -28,6 +27,7 @@
 
 //#define	DEBUG					1
 #define ENABLE_OLED					1
+#define ENABLE_CAD					1
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -42,8 +42,6 @@ static float cur_pres = 0.0;
 
 static float cur_curr = 0.0;
 
-//#define	TX_TESTING				1
-
 static uint8_t need_push = 0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
@@ -56,8 +54,6 @@ static uint8_t need_push = 0;
 #define SDA_PIN					12		/* PIN23_PE12 */
 #define SCL_PIN					13		/* PIN24_PE13 */
 #endif
-
-#define ENABLE_CAD				1
 
 #define	TX_TIME					1800		// 1800ms
 #define DEST_ADDR				1
@@ -82,11 +78,8 @@ static uint8_t need_push = 0;
 
 #define MAX_DBM					20
 
-
-//#define WITH_ACK
-
 #ifdef CONFIG_V0
-uint8_t message[32] = { 0x47, 0x4F, 0x33 };
+uint8_t message[24] = { 0x47, 0x4F, 0x33 };
 uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 #else
@@ -146,6 +139,7 @@ void show_logo()
 
 void show_low_bat()
 {
+#if 0
 	u8g2.setPowerSave(0);
 
 	u8g2.firstPage();
@@ -155,6 +149,7 @@ void show_low_bat()
 		u8g2.setCursor(16, 64);
 		u8g2.print(" LOW BATTERY ");
 	} while (u8g2.nextPage());
+#endif
 }
 
 void show_press(char *press)
@@ -216,6 +211,7 @@ float fetch_mcu_temp()
 	return temp;
 }
 
+#if 0
 float fetch_current()
 {
 	adc.reference(adcRef1V25);
@@ -235,6 +231,7 @@ float fetch_current()
 
 	return cur_curr;
 }
+#endif
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
@@ -293,7 +290,8 @@ void setup()
 
 	// init dev power ctrl pin
 	pinMode(PWR_CTRL_PIN, OUTPUT);
-	power_off_dev();
+
+	power_on_dev();
 
 	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
@@ -313,6 +311,7 @@ void setup()
 #ifdef ENABLE_OLED
 	u8g2.begin();
 
+	#if 0
 	delay(2);
 	show_logo();
 	delay(800);
@@ -321,6 +320,10 @@ void setup()
 		show_low_bat();
 		delay(2700);
 	}
+	#endif
+
+	show_press("0.01");
+
 #endif
 
 	/* bootup tx */
@@ -379,7 +382,8 @@ void push_data()
 #endif
 
 	////////////////////////////////
-	cur_curr = fetch_current();
+	//cur_curr = fetch_current();
+	cur_curr = 1;
 
 	noInterrupts();
 
@@ -508,6 +512,14 @@ void push_data()
 		old_pres = cur_pres;
 	}
 
+	if (tx_cause == KEY_TX) {
+		char pres_s[6];
+		//ftoa(pres_s, cur_pres, 2);
+		//show_press(pres_s);
+		show_press("0.01");
+		delay(2700);
+	}
+
 #ifdef DEBUG
 	endSend = millis();
 
@@ -519,6 +531,10 @@ void push_data()
 
 	INFO("Packet sent, state ");
 	INFOLN(e);
+#endif
+
+#ifdef ENABLE_OLED
+	u8g2.setPowerSave(1);
 #endif
 
 	e = sx1272.setSleepMode();
@@ -536,23 +552,13 @@ void push_data()
 
 void loop()
 {
-	//INFO("Clock Freq = ");
-	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
-
-	//INFOLN("Feed the watchdog");
 
 	if (0x5a == need_push) {
 		push_data();
 
 		need_push = 0;
 
-		if (tx_cause == KEY_TX) {
-			char pres_s[10];
-			ftoa(pres_s, cur_pres, 2);
-			show_press(pres_s);
-		}
 	}
-
 
 	power_off_dev();
 	digitalWrite(SX1272_RST, LOW);
