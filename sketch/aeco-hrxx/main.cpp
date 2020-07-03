@@ -62,6 +62,9 @@ uint8_t loraAddr = 1;
 
 #endif
 
+#define MAX_CMD_LENGTH			48
+char cmd[MAX_CMD_LENGTH];
+
 int status_counter = 0;
 
 char frame_buf[2][24];
@@ -115,7 +118,12 @@ int key_time = 0;
 #define SH1107_SCL					13
 #define SH1107_RESET				16
 
+#ifdef USE_SOFTI2C
 U8G2_SH1107_SEEED_128X128_1_SW_I2C u8g2(U8G2_R0, SH1107_SCL, SH1107_SDA, SH1107_RESET);
+#else
+U8G2_SH1107_SEEED_128X128_1_HW_I2C u8g2(U8G2_R0, SH1107_RESET);
+#endif
+
 #endif
 
 #endif
@@ -632,7 +640,7 @@ void setup()
 #endif
 
 	INFOLN("%s", "Init OK......");
-	//radio_setup();
+	radio_setup();
 }
 
 void loop(void)
@@ -719,7 +727,6 @@ void loop(void)
 	}
 #endif
 
-/*
 	// check if we received data from the receiving LoRa module
 #ifdef RECEIVE_ALL
 	e = sx1272.receiveAll(RX_TIME);
@@ -907,5 +914,4 @@ void loop(void)
 		INFOLN("%s", cmd);
 #endif
 	}
-*/
 }
