@@ -67,7 +67,7 @@ char cmd[MAX_CMD_LENGTH];
 
 int status_counter = 0;
 
-char frame_buf[2][24];
+char frame_buf[8][24];
 
 /*
  * Output Mode:
@@ -409,29 +409,22 @@ void show_frame(int l, int mode, bool alarm)
 
 	//u8g2.clearBuffer();		// clear the internal memory
 
-	//u8g2.setFont(u8g2_font_logisoso16_tf);	// choose a suitable font
-	//u8g2.setFont(u8g2_font_sirclivethebold_tr);
-
 	u8g2.firstPage();
 
 	do {
-		//u8g2.drawStr(98, 26, "Pa");		// write something to the internal memory
 		u8g2.setFont(u8g2_font_freedoomr10_tu);
 
-		u8g2.setCursor(2, 15);
-		u8g2.print(frame_buf[0]);
-
-		u8g2.setCursor(2, 32);
-		u8g2.print(frame_buf[1]);
+		for (int i=0; i < 8; i++) {
+			u8g2.setCursor(2, 15+i*16);
+			u8g2.print(frame_buf[i]);
+		}
 
 		if (MODE_ALL == mode) {
 			// Lora icon. notice rx all message
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
-			if (l == 0) {
-				u8g2.drawGlyph(120, 12, 81);
-			} else if (l == 1) {
-				u8g2.drawGlyph(120, 30, 81);
-			}
+
+			u8g2.drawGlyph(120, 12+16*l, 81);
+
 		} else if (MODE_ABC == mode) {
 			// Bell icon. notice the message tagged for testing
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
@@ -483,12 +476,6 @@ void show_frame(int l, int mode, bool alarm)
 		}
 
 	} while (u8g2.nextPage());
-
-	//delay(2000);
-
-	//u8g2.setPowerSave(1);
-
-	//u8g2.sendBuffer();		// transfer internal memory to the display
 }
 
 void show_logo()
@@ -653,8 +640,9 @@ void loop(void)
 		// show mode and clean buffer
 		show_mode(omode);
 
-		frame_buf[0][0] = '\0';
-		frame_buf[1][0] = '\0';
+		for (int i = 0; i < 8; i++) {
+			frame_buf[i][0] = '\0';
+		}
 #endif
 		old_omode = omode;
 
@@ -812,11 +800,11 @@ void loop(void)
 				sx1272._RSSIpacket);
 
 #ifdef ENABLE_OLED
-				sprintf(frame_buf[c % 2], "%s %4d",
+				sprintf(frame_buf[c % 8], "%s %4d",
 					dev_id,
 					sx1272._RSSIpacket);
 
-				show_frame(c % 2, omode, false);
+				show_frame(c % 8, omode, false);
 				c++;
 #endif
 
