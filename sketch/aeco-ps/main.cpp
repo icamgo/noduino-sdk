@@ -27,6 +27,7 @@
 #include "em_wdog.h"
 
 //#define	DEBUG					1
+#define ENABLE_OLED					1
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -111,6 +112,66 @@ uint8_t message[32];
 
 #ifdef WITH_ACK
 #define	NB_RETRIES			2
+#endif
+
+#ifdef ENABLE_OLED
+#include "U8g2lib.h"
+//#include "logo.h"
+
+/*
+ * PIN24_PE13_D13 - SH1107_SCL_PIN10
+ * PIN23_PE12_D12 - SH1107_SDA_PIN9
+ * PIN21_PF02_D16 - SH1107_RST_PIN14
+ *
+ * GND - SH1107_A0_PIN13 (I2C_ADDR = 0x78)
+ */
+#define SH1107_SDA					12
+#define SH1107_SCL					13
+#define SH1107_RESET				16
+
+U8G2_SH1107_SEEED_128X128_1_HW_I2C u8g2(U8G2_R0, SH1107_RESET);
+
+void show_logo()
+{
+#if 0
+	u8g2.setPowerSave(0);
+
+	u8g2.firstPage();
+
+	do {
+		u8g2.drawXBM(1, 52, logo_width, logo_height, logo_xbm);
+	} while (u8g2.nextPage());
+#endif
+}
+
+void show_low_bat()
+{
+	u8g2.setPowerSave(0);
+
+	u8g2.firstPage();
+
+	do {
+		u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
+		u8g2.setCursor(16, 64);
+		u8g2.print(" LOW BATTERY ");
+	} while (u8g2.nextPage());
+}
+
+void show_press(char *press)
+{
+	u8g2.setPowerSave(0);
+
+	u8g2.firstPage();
+
+	do {
+		u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
+		u8g2.setCursor(12, 64);
+		u8g2.print(" ");
+		u8g2.print(press);
+		u8g2.print(" bar");
+
+	} while (u8g2.nextPage());
+}
 #endif
 
 void push_data();
@@ -248,6 +309,19 @@ void setup()
 
 	/* Start watchdog */
 	WDOG_Init(&wInit);
+
+#ifdef ENABLE_OLED
+	u8g2.begin();
+
+	delay(2);
+	show_logo();
+	delay(800);
+
+	if (adc.readVbat() < 2.92) {
+		show_low_bat();
+		delay(2700);
+	}
+#endif
 
 	/* bootup tx */
 	tx_cause = RESET_TX;
@@ -471,7 +545,14 @@ void loop()
 		push_data();
 
 		need_push = 0;
+
+		if (tx_cause == KEY_TX) {
+			char pres_s[10];
+			ftoa(pres_s, cur_pres, 2);
+			show_press(pres_s);
+		}
 	}
+
 
 	power_off_dev();
 	digitalWrite(SX1272_RST, LOW);
