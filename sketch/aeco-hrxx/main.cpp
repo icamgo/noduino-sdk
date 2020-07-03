@@ -420,19 +420,19 @@ void show_frame(int l, int mode, bool alarm)
 		}
 
 		if (MODE_ALL == mode) {
+
 			// Lora icon. notice rx all message
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
 
 			u8g2.drawGlyph(120, 12+16*l, 81);
 
 		} else if (MODE_ABC == mode) {
+
 			// Bell icon. notice the message tagged for testing
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
-			if (l == 0) {
-				u8g2.drawGlyph(120, 12, 65);
-			} else if (l == 1) {
-				u8g2.drawGlyph(120, 30, 65);
-			}
+
+			u8g2.drawGlyph(120, 12+16*l, 65);
+
 		} else if (MODE_KEY == mode) {
 			// cycle icon. notice the message trigged by magnet
 			int ic = 64;
@@ -440,36 +440,32 @@ void show_frame(int l, int mode, bool alarm)
 			if (alarm == false) {
 				u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
 
-				u8g2.drawGlyph(120, 12, ic);
+				u8g2.drawGlyph(120, 12+16*l, ic);
 			} else {
-				// show alarm icon
-				#if 0
-				// show exclamation icon
-				u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
-				ic = 71;
-				#endif
 
+				// show alarm icon
 				if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3'
 					|| dev_id[4] == '7' || dev_id[4] == '8')) {
 					// Pressure & Level, Humidity digital sensor, showing lightning icon
 					u8g2.setFont(u8g2_font_open_iconic_embedded_2x_t);
 					ic = 67;
 
-					u8g2.drawGlyph(116, 15, ic);
+					u8g2.drawGlyph(116, 15+16*l, ic);
 
 				} else if (dev_id[3] == '1' && dev_id[4] == '3') {
 					// Water Leak sensor, showing water drop icon
 					u8g2.setFont(u8g2_font_open_iconic_thing_1x_t);
 					ic = 72;
 
-					u8g2.drawGlyph(118, 12, ic);
+					u8g2.drawGlyph(118, 12+16*l, ic);
+
 				} else if (dev_id[3] == '1' && dev_id[4] == '2') {
 					// Vibration sensor, showing pulse icon
 					u8g2.setFont(u8g2_font_open_iconic_embedded_2x_t);
 
 					ic = 70;
 
-					u8g2.drawGlyph(116, 15, ic);
+					u8g2.drawGlyph(116, 15+16*l, ic);
 				}
 
 			}
@@ -851,26 +847,27 @@ void loop(void)
 					sx1272._RSSIpacket);
 
 #ifdef ENABLE_OLED
-				sprintf(frame_buf[0], "%s %4d",
+				int fi = (c % 4) * 2;
+				sprintf(frame_buf[fi], "%s %4d",
 					dev_id,
 					sx1272._RSSIpacket);
 
 				if (dev_id[3] == '0' && (dev_id[4] == '8')) {
 
-					sprintf(frame_buf[1], "%s %s %s",
+					sprintf(frame_buf[fi + 1], "%s %s %s",
 						dev_type,
 						dev_data,
 						dev_vbat
 						);
 				} else {
-					sprintf(frame_buf[1], " %s %s %s",
+					sprintf(frame_buf[fi + 1], " %s %s %s",
 						dev_type,
 						dev_data,
 						dev_vbat
 						);
 				}
 
-				show_frame(0, omode, p[15] & 0x04);
+				show_frame(fi, omode, p[15] & 0x04);
 				c++;
 #endif
 
