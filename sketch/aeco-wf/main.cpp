@@ -286,7 +286,8 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		need_push = 0x5a;
 		tx_cause = WATER_DELTA;
 
-		if(LEVEL_LOW == old_water && LEVEL_MEDIAN == cur_water) {
+		//if(LEVEL_LOW == old_water && LEVEL_MEDIAN == cur_water) {
+		if(LEVEL_MEDIAN == cur_water) {
 
 			median_tx_count++;
 		}
