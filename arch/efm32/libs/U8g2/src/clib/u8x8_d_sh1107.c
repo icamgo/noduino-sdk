@@ -485,7 +485,7 @@ static const u8x8_display_info_t u8x8_seeed_128x128_display_info =
   /* sck_pulse_width_ns = */ 100,	/* cycle time is 100ns, so use 100/2, AVR: below 70: 8 MHz, >= 70 --> 4MHz clock */
   /* sck_clock_hz = */ 4000000UL,	/* since Arduino 1.6.0, the SPI bus speed in Hz. Should be  1000000000/sck_pulse_width_ns */
   /* spi_mode = */ 0,		/* active high, rising edge */
-  /* i2c_bus_clock_100kHz = */ 2,		// 400kHz does not work, but 200kHz seems to be ok
+  /* i2c_bus_clock_100kHz = */ 4,		// 400kHz does not work, but 200kHz seems to be ok
   /* data_setup_time_ns = */ 40,
   /* write_pulse_width_ns = */ 150,	/* sh1107: cycle time is 300ns, so use 300/2 = 150 */
   /* tile_width = */ 16,

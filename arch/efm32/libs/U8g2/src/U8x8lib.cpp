@@ -41,11 +41,10 @@
 #ifdef U8X8_HAVE_HW_SPI
 #include <SPI.h>
 #endif 
-#ifdef U8X8_HAVE_HW_I2C
-#include <Wire.h>
-#endif
 
-/*=============================================*/
+#ifdef U8X8_HAVE_HW_I2C
+//#include <Wire.h>
+#endif
 
 size_t U8X8::write(uint8_t v) 
 {
@@ -65,11 +64,7 @@ size_t U8X8::write(uint8_t v)
   return 1;
 }
 
-
-
-/*=============================================*/
 /*=== ARDUINO GPIO & DELAY ===*/
-
 #ifdef U8X8_USE_PINS
 extern "C" uint8_t u8x8_gpio_and_delay_arduino(u8x8_t *u8x8, uint8_t msg, uint8_t arg_int, U8X8_UNUSED void *arg_ptr)
 {
@@ -370,12 +365,163 @@ extern "C" uint8_t u8x8_byte_arduino_sw_i2c(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSE
 {
     return u8x8_byte_sw_i2c(u8x8, msg,arg_int, arg_ptr);
 }
-
 #endif
 
+/*=== EFM32 HARDWARE I2C ===*/
+
+#ifndef USE_SOFTI2C
+static uint8_t I2C_ADDR = 0x78;
+
+static void i2c_init(uint8_t addr)
+{
+	I2C_Init_TypeDef init = I2C_INIT_DEFAULT;
+
+	init.enable = true;
+	init.master = true;
+	init.refFreq = 0;
+
+	init.clhr = i2cClockHLRFast;
+	init.freq = I2C_FREQ_FASTPLUS_MAX;
+
+	I2C_ADDR = addr;
+
+	/* Enabling clock to the I2C, GPIO*/
+	CMU_ClockEnable(cmuClock_I2C0, true);
+
+	/* PE12 - SDA, PE13 - SCL */
+	GPIO_PinModeSet(gpioPortE, GPIO_PIN_12, gpioModeWiredAndPullUpFilter, 1);
+	GPIO_PinModeSet(gpioPortE, GPIO_PIN_13, gpioModeWiredAndPullUpFilter, 1);
+
+	I2C0->ROUTE = I2C_ROUTE_SDAPEN | I2C_ROUTE_SCLPEN;
+	I2C0->ROUTE = (I2C0->ROUTE & (~_I2C_ROUTE_LOCATION_MASK)) | I2C_ROUTE_LOCATION_LOC6;
+
+	I2C_Init(I2C0, &init);
+}
+
+/*
+ * I2C_FLAG_READ - data read into buf[0].data
+ * I2C_FLAG_WRITE - data written from buf[0].data
+ * I2C_FLAG_WRITE_READ - data written from buf[0].data and read into buf[1].data
+ * I2C_FLAG_WRITE_WRITE - data written from buf[0].data and buf[1].data
+ *
+ */
+#define TIME_OUTT 100
+
+static I2C_TransferReturn_TypeDef i2c_write(uint8_t *buf, uint8_t len)
+{
+	uint32_t loop = TIME_OUTT;
+
+	I2C_TransferReturn_TypeDef st;
+	I2C_TransferSeq_TypeDef seq;
+
+	seq.addr = I2C_ADDR;
+	seq.flags = I2C_FLAG_WRITE;
+
+	seq.buf[0].data = buf;
+	seq.buf[0].len = len;
+
+	st = I2C_TransferInit(I2C0, &seq);
+
+	while ((st == i2cTransferInProgress) && loop > 0)
+	{
+		st = I2C_Transfer(I2C0);
+		loop--;
+	}
+
+	return st;
+}
+
+#define WIRE_BUFFER_LEN		32
+static uint8_t wire_rxBuffer[WIRE_BUFFER_LEN] = {0};
+static uint8_t wire_rxBufferIndex = 0;
+static uint8_t wire_rxBufferLength = 0;
+static uint8_t wire_txAddress = 0;
+static uint8_t wire_txBuffer[WIRE_BUFFER_LEN] = {0};
+static uint8_t wire_txBufferIndex = 0;
+static uint8_t wire_txBufferLength = 0;
+static uint8_t wire_transmitting = 0;
+
+void wire_beginTransmission(uint8_t addr)
+{
+	wire_transmitting = 1;
+	wire_txAddress = addr;
+	wire_txBufferIndex = 0;
+	wire_txBufferLength = 0;
+
+	i2c_init(addr);
+}
+
+size_t wire_write_b(uint8_t data)
+{
+	if(wire_transmitting){
+		if(wire_txBufferLength >= WIRE_BUFFER_LEN){
+			return 0;
+		}
+		wire_txBuffer[wire_txBufferIndex] = data;
+		++wire_txBufferIndex;
+		wire_txBufferLength = wire_txBufferIndex;
+	}
+	return 1;
+}
+
+size_t wire_write(uint8_t *data, size_t len)
+{
+	if(wire_transmitting){
+
+		// in master transmitter mode
+		for(size_t i = 0; i < len; ++i){
+			wire_write_b(data[i]);
+		}
+	}
+
+	return len;
+}
+
+uint8_t wire_endTransmission()
+{
+	int8_t ret;
+	ret = i2c_write(wire_txBuffer, wire_txBufferLength);
+	wire_txBufferIndex = 0;
+	wire_txBufferLength = 0;
+	wire_transmitting = 0;
+
+	return ret;
+}
+
+extern "C" uint8_t u8x8_byte_arduino_hw_i2c(U8X8_UNUSED u8x8_t *u8x8, U8X8_UNUSED uint8_t msg, U8X8_UNUSED uint8_t arg_int, U8X8_UNUSED void *arg_ptr)
+{
+  switch(msg)
+  {
+    case U8X8_MSG_BYTE_SEND:
+      wire_write((uint8_t *)arg_ptr, (int)arg_int);
+      break;
+    case U8X8_MSG_BYTE_INIT:
+      //if ( u8x8->bus_clock == 0 ) 	/* issue 769 */
+	  //u8x8->bus_clock = u8x8->display_info->i2c_bus_clock_100kHz * 100000UL;
+
+	  i2c_init(u8x8_GetI2CAddress(u8x8));
+	  //i2c_init(0x78);
+      break;
+
+    case U8X8_MSG_BYTE_SET_DC:
+      break;
+
+    case U8X8_MSG_BYTE_START_TRANSFER:
+      wire_beginTransmission(u8x8_GetI2CAddress(u8x8));
+      break;
+
+    case U8X8_MSG_BYTE_END_TRANSFER:
+      wire_endTransmission();
+      break;
+    default:
+      return 0;
+  }
+
+  return 1;
+}
+#endif
 
 #ifdef U8X8_USE_PINS
-
 void u8x8_SetPin_SW_I2C(u8x8_t *u8x8, uint8_t clock, uint8_t data, uint8_t reset)
 {
   u8x8_SetPin(u8x8, U8X8_PIN_I2C_CLOCK, clock);
