@@ -159,11 +159,9 @@ void show_press(char *press)
 	u8g2.firstPage();
 
 	do {
-		u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
-		u8g2.setCursor(12, 64);
-		u8g2.print(" ");
+		u8g2.setFont(u8g2_font_freedoomr25_tn);
+		u8g2.setCursor(25, 82);
 		u8g2.print(press);
-		u8g2.print(" bar");
 
 	} while (u8g2.nextPage());
 }
@@ -315,14 +313,12 @@ void setup()
 	delay(2);
 	show_logo();
 	delay(800);
+	#endif
 
 	if (adc.readVbat() < 2.92) {
 		show_low_bat();
 		delay(2700);
 	}
-	#endif
-
-	show_press("0.01");
 
 #endif
 
@@ -514,9 +510,9 @@ void push_data()
 
 	if (tx_cause == KEY_TX) {
 		char pres_s[6];
-		//ftoa(pres_s, cur_pres, 2);
-		//show_press(pres_s);
-		show_press("0.01");
+		ftoa(pres_s, cur_pres, 2);
+		show_press(pres_s);
+		//show_press("16.01");
 		delay(2700);
 	}
 
