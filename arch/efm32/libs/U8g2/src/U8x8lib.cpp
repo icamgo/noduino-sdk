@@ -380,8 +380,16 @@ static void i2c_init(uint8_t addr)
 	init.master = true;
 	init.refFreq = 0;
 
+#if F_CPU == 21000000L
 	init.clhr = i2cClockHLRFast;
 	init.freq = I2C_FREQ_FASTPLUS_MAX;
+#elif F_CPU == 14000000L
+	init.clhr = i2cClockHLRAsymetric;
+	init.freq = I2C_FREQ_FAST_MAX;
+#else
+	init.clhr = i2cClockHLRStandard;
+	init.freq = I2C_FREQ_STANDARD_MAX;
+#endif
 
 	I2C_ADDR = addr;
 
