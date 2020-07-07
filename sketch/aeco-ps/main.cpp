@@ -109,7 +109,6 @@ uint8_t message[32];
 
 #ifdef ENABLE_OLED
 #include "U8g2lib.h"
-//#include "logo.h"
 
 /*
  * PIN24_PE13_D13 - SH1107_SCL_PIN10
@@ -124,9 +123,12 @@ uint8_t message[32];
 
 U8G2_SH1107_SEEED_128X128_1_HW_I2C u8g2(U8G2_R0, SH1107_RESET);
 
+#ifdef EFM32HG
+
+#include "logo.h"
+
 void show_logo()
 {
-#if 0
 	u8g2.setPowerSave(0);
 
 	u8g2.firstPage();
@@ -134,12 +136,10 @@ void show_logo()
 	do {
 		u8g2.drawXBM(1, 52, logo_width, logo_height, logo_xbm);
 	} while (u8g2.nextPage());
-#endif
 }
 
 void show_low_bat()
 {
-#if 0
 	u8g2.setPowerSave(0);
 
 	u8g2.firstPage();
@@ -149,19 +149,27 @@ void show_low_bat()
 		u8g2.setCursor(16, 64);
 		u8g2.print(" LOW BATTERY ");
 	} while (u8g2.nextPage());
-#endif
 }
+#endif
 
 void show_press(char *press)
 {
+	int pos = 0;
+
 	u8g2.setPowerSave(0);
 
 	u8g2.firstPage();
 
 	do {
 		u8g2.setFont(u8g2_font_freedoomr25_tn);
-		u8g2.setCursor(25, 82);
+		u8g2.setCursor(22, 75 + pos);
 		u8g2.print(press);
+
+	#ifdef EFM32HG
+		u8g2.setFont(u8g2_font_freedoomr10_mu);
+		u8g2.setCursor(92, 92 + pos);
+		u8g2.print("BAR");
+	#endif
 
 	} while (u8g2.nextPage());
 }
@@ -309,16 +317,24 @@ void setup()
 #ifdef ENABLE_OLED
 	u8g2.begin();
 
-	#if 0
+	#ifdef EFM32HG
+	pressure_init(SCL_PIN, SDA_PIN);	// initialization of the sensor
+	cur_pres = get_pressure();
+
 	delay(2);
 	show_logo();
 	delay(800);
-	#endif
+
+	char pres_s[6];
+	ftoa(pres_s, cur_pres, 2);
+	show_press(pres_s);
+	delay(800);
 
 	if (adc.readVbat() < 2.92) {
 		show_low_bat();
 		delay(2700);
 	}
+	#endif
 
 #endif
 
@@ -399,6 +415,16 @@ void push_data()
 		pressure_init(SCL_PIN, SDA_PIN);
 		cur_pres = get_pressure();		// hPa (mbar)
 	}
+
+#ifdef ENABLE_OLED
+	if (tx_cause == KEY_TX) {
+		char pres_s[6];
+		ftoa(pres_s, cur_pres, 2);
+		show_press(pres_s);
+		//show_press("16.08");
+		delay(2700);
+	}
+#endif
 
 #ifdef CONFIG_V0
 	uint64_t devid = get_devid();
@@ -508,14 +534,6 @@ void push_data()
 		old_pres = cur_pres;
 	}
 
-	if (tx_cause == KEY_TX) {
-		char pres_s[6];
-		ftoa(pres_s, cur_pres, 2);
-		show_press(pres_s);
-		//show_press("16.01");
-		delay(2700);
-	}
-
 #ifdef DEBUG
 	endSend = millis();
 
@@ -533,16 +551,12 @@ void push_data()
 	u8g2.setPowerSave(1);
 #endif
 
-	e = sx1272.setSleepMode();
-	if (!e)
-		INFO("Successfully switch into sleep mode");
-	else
-		INFO("Could not switch into sleep mode");
-
+	sx1272.setSleepMode();
 	digitalWrite(SX1272_RST, LOW);
 
 	spi_end();
 
+	// dev power off
 	power_off_dev();
 }
 
