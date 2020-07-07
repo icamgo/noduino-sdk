@@ -36,8 +36,19 @@ static uint32_t sample_period = 20;		/* 20s */
 static uint32_t sample_count = 0;
 static uint32_t leak_tx_count = 0;
 static uint32_t unleak_tx_count = 0;
-#define	HEARTBEAT_TIME				6600	/* 120*60s */
+
+#define CONFIG_WATER_HEATBEAT		1
+
+#ifdef CONFIG_WATER_HEATBEAT
 #define	WATER_HEARTBEAT_TIME		1100	/* 20*60s */
+#define	HEARTBEAT_TIME				3300	/* 120*60s */
+#else
+#define	HEARTBEAT_TIME				1100	/* 20*60s */
+#endif
+
+#define LEVEL_UNKNOWN				-2
+#define NO_WATER					0
+#define HAVE_WATER					1
 
 static float old_temp = 0.0;
 static float cur_temp = 0.0;
@@ -68,6 +79,8 @@ static uint8_t need_push = 0;
 #define	TIMER_TX				2
 #define	KEY_TX					3
 #define	WATER_LEAK_TX			5
+#define	WATER_DELTA				8
+#define	WATER_LOW				9
 
 #else
 #define node_addr				110
@@ -183,13 +196,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	sample_count++;
 
-	if (sample_count > HEARTBEAT_TIME/sample_period) {
-		/* timer 0 */
-		need_push = 0x5a;
-		tx_cause = TIMER_TX;
-		sample_count = 0;
-	}
-
 	power_on_dev();
 	pt1000_init();
 	cur_temp = pt1000_get_temp() + T_FIX;
@@ -207,26 +213,46 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	cur_water = get_water();
 
-	if (cur_water == 1 && (sample_count % (WATER_HEARTBEAT_TIME/sample_period) == 0)) {
 
-		/* timer 2 */
+	if (sample_count > HEARTBEAT_TIME/sample_period) {
+		/* timer 0, 60min TX, used by LL */
+		need_push = 0x5a;
+		tx_cause = TIMER_TX;
+
+		/* reset the timer */
+		sample_count = 0;
+	}
+
+#ifdef CONFIG_WATER_HEATBEAT
+	if (HAVE_WATER == cur_water &&
+		(sample_count % (WATER_HEARTBEAT_TIME/sample_period) == 0)) {
+
+		/* timer 2, 20min TX, used by LH */
 		need_push = 0x5a;
 
-		tx_cause = WATER_LEAK_TX;
-
+		tx_cause = TIMER_TX;
 	}
+#endif
 
 	if (cur_water != old_water) {
 
 		/* timer 3 */
 		need_push = 0x5a;
-		tx_cause = DELTA_TX;
+		tx_cause = WATER_DELTA;
+
+		if(HAVE_WATER == cur_water) {
+			leak_tx_count++;
+		}
+
+		if(NO_WATER == cur_water) {
+			unleak_tx_count++;
+		}
 
 		return;
 
 	} else {
 
-		if (1 == cur_water && leak_tx_count < 4) {
+		if (HAVE_WATER == cur_water && (leak_tx_count >=1 && leak_tx_count <= 4)) {
 
 			/* timer 4 */
 			need_push = 0x5a;
@@ -235,21 +261,21 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			leak_tx_count++;
 		}
 
-		if (0 == cur_water && unleak_tx_count <= 6) {
+		if (NO_WATER == cur_water && (unleak_tx_count >=1 && unleak_tx_count <= 4)) {
 
 			/* timer 5 */
 			need_push = 0x5a;
-			tx_cause = DELTA_TX;
+			tx_cause = WATER_LOW;
 
 			unleak_tx_count++;
 		}
 	}
 
-	if (cur_water == 0) {
+	if (cur_water != HAVE_WATER) {
 		leak_tx_count = 0;
 	}
 
-	if (cur_water == 1) {
+	if (cur_water != NO_WATER) {
 		unleak_tx_count = 0;
 	}
 }
@@ -260,16 +286,6 @@ void trig_check_sensor()
 
 	tx_cause = KEY_TX;
 }
-
-#if 0
-void water_leak_alarm()
-{
-	need_push = 0x5a;
-#ifdef CONFIG_V0
-	tx_cause = WATER_LEAK_TX;
-#endif
-}
-#endif
 
 void setup()
 {
@@ -366,8 +382,8 @@ void push_data(bool alarm)
 		power_off_dev();
 	}
 
-	if (cur_water != old_water || 
-		(cur_water == 1 && sample_count%(WATER_HEARTBEAT_TIME/sample_period) == 0) ||
+	if (cur_water != old_water ||
+		TIMER_TX == tx_cause ||
 		WATER_LEAK_TX == tx_cause ||
 		(unleak_tx_count > 0 && unleak_tx_count <= 4 && (tx_cause != KEY_TX || RESET_TX != tx_cause))) {
 
@@ -497,6 +513,24 @@ void push_data(bool alarm)
 		// send message succesful, update the old_temp
 		old_temp = cur_temp;
 		old_water = cur_water;
+	} else {
+
+		if (TIMER_TX == tx_cause) {
+			/* Timer TX timeout, make sure to TX in next 20s */
+
+		#ifndef CONFIG_WATER_HEATBEAT
+			sample_count = HEARTBEAT_TIME/sample_period - 1;
+		#else
+			if (NO_WATER == cur_water) {
+				/* LL use the 60min timer */
+				sample_count = HEARTBEAT_TIME/sample_period - 1;
+
+			} else {
+				/* LH use the 20min timer */
+				sample_count = WATER_HEARTBEAT_TIME/sample_period - 1;
+			}
+		#endif
+		}
 	}
 
 	endSend = millis();
@@ -534,9 +568,6 @@ void push_data(bool alarm)
 
 void loop()
 {
-	//INFO("Clock Freq = ");
-	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
-	//INFOLN("Feed the watchdog");
 
 	if (0x5a == need_push) {
 		push_data(false);
