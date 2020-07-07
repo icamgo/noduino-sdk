@@ -40,7 +40,12 @@ static uint32_t sample_count = 0;
 static float old_pres = 0.0;
 static float cur_pres = 0.0;
 
+static float max_pres = 0.0;
+static float min_pres = 0.0;
+
+#ifdef MONITOR_CURRENT
 static float cur_curr = 0.0;
+#endif
 
 static uint8_t need_push = 0;
 
@@ -107,6 +112,25 @@ uint8_t message[32];
 #define	NB_RETRIES			2
 #endif
 
+char *ftoa(char *a, double f, int precision)
+{
+	long p[] =
+	    { 0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000 };
+
+	char *ret = a;
+	long heiltal = (long)f;
+	itoa(heiltal, a, 10);
+	while (*a != '\0')
+		a++;
+	*a++ = '.';
+	long desimal = abs((long)((f - heiltal) * p[precision]));
+	if (desimal < p[precision - 1]) {
+		*a++ = '0';
+	}
+	itoa(desimal, a, 10);
+	return ret;
+}
+
 #ifdef ENABLE_OLED
 #include "U8g2lib.h"
 
@@ -155,6 +179,7 @@ void show_low_bat()
 void show_press(char *press)
 {
 	int pos = 0;
+	char pres_s[6];
 
 	u8g2.setPowerSave(0);
 
@@ -169,6 +194,22 @@ void show_press(char *press)
 		u8g2.setFont(u8g2_font_freedoomr10_mu);
 		u8g2.setCursor(92, 92 + pos);
 		u8g2.print("BAR");
+
+		u8g2.setCursor(8, 116);
+		u8g2.print("MIN");
+
+		u8g2.setCursor(2, 130);
+		ftoa(pres_s, min_pres, 2);
+		u8g2.print(pres_s);
+		//u8g2.print("16.12");
+
+		u8g2.setCursor(98, 116);
+		u8g2.print("MAX");
+
+		u8g2.setCursor(90, 130);
+		ftoa(pres_s, max_pres, 2);
+		u8g2.print(pres_s);
+		//u8g2.print("16.88");
 	#endif
 
 	} while (u8g2.nextPage());
@@ -176,25 +217,6 @@ void show_press(char *press)
 #endif
 
 void push_data();
-
-char *ftoa(char *a, double f, int precision)
-{
-	long p[] =
-	    { 0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000 };
-
-	char *ret = a;
-	long heiltal = (long)f;
-	itoa(heiltal, a, 10);
-	while (*a != '\0')
-		a++;
-	*a++ = '.';
-	long desimal = abs((long)((f - heiltal) * p[precision]));
-	if (desimal < p[precision - 1]) {
-		*a++ = '0';
-	}
-	itoa(desimal, a, 10);
-	return ret;
-}
 
 void power_on_dev()
 {
@@ -217,7 +239,7 @@ float fetch_mcu_temp()
 	return temp;
 }
 
-#if 0
+#ifdef MONITOR_CURRENT
 float fetch_current()
 {
 	adc.reference(adcRef1V25);
@@ -260,10 +282,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	cur_pres = get_pressure();
 
-#ifdef TX_TESTING
-	need_push = 0x5a;
-	tx_cause = TIMER_TX;
-#else
 	if (fabsf(cur_pres - old_pres) > PC10_HALF_RANGE/100000.0) {
 
 		need_push = 0x5a;
@@ -271,8 +289,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		tx_cause = DELTA_TX;
 #endif
 	}
-#endif
-
 }
 
 void trig_check_sensor()
@@ -394,8 +410,8 @@ void push_data()
 #endif
 
 	////////////////////////////////
-	//cur_curr = fetch_current();
-	cur_curr = 1;
+#ifdef MONITOR_CURRENT
+	cur_curr = fetch_current();
 
 	noInterrupts();
 
@@ -405,6 +421,9 @@ void push_data()
 		pkt[15] = tx_cause;
 
 	interrupts();
+#else
+	pkt[15] = tx_cause;
+#endif
 	////////////////////////////////
 
 	vbat = adc.readVbat();
@@ -414,6 +433,15 @@ void push_data()
 	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
 		pressure_init(SCL_PIN, SDA_PIN);
 		cur_pres = get_pressure();		// hPa (mbar)
+	}
+
+
+	if (cur_pres > max_pres && cur_pres < 18.0) {
+		max_pres = cur_pres;
+	}
+
+	if (cur_pres < min_pres && min_pres > -0.15) {
+		min_pres = cur_pres;
 	}
 
 #ifdef ENABLE_OLED
@@ -445,8 +473,6 @@ void push_data()
 	ui16 = vbat * 1000;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
-	//pkt[15] = tx_cause;
-
 	p = (uint8_t *) &tx_count;
 	pkt[16] = p[1]; pkt[17] = p[0];
 	tx_count++;
@@ -467,7 +493,12 @@ void push_data()
 	pkt[22] = 255;
 
 	// Internal current consumption
+#ifdef MONITOR_CURRENT
 	pkt[23] = (int8_t)roundf(cur_curr);
+#else
+	pkt[23] = 0;
+#endif
+
 #else
 	uint8_t r_size;
 
