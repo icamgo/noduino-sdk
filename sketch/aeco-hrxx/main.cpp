@@ -286,6 +286,10 @@ char *decode_sensor_type()
 
 	} else if (dev_id[3] == '1' && dev_id[4] == '3') {
 
+		strcpy(dev_type, "T2WF");
+
+	} else if (dev_id[3] == '1' && dev_id[4] == '4') {
+
 		strcpy(dev_type, "T2W");
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
@@ -347,6 +351,12 @@ char *decode_sensor_data(uint8_t *pkt)
 		sprintf(dev_data, "%d", data);
 
 	} else if (dev_id[3] == '1' && dev_id[4] == '3') {
+		// Float & Temp Sensor
+		dd = (float)(data / 10.0);
+		ftoa(dev_data, dd, 1);
+		sprintf(dev_data, "%s ", dev_data);
+
+	} else if (dev_id[3] == '1' && dev_id[4] == '4') {
 		// Water Leak Sensor
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
