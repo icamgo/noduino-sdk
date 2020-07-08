@@ -307,7 +307,7 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 		// Vibration Sensor
 		sprintf(dev_data, "V/%d/T/%d/iT/%d", data, (int8_t)(pkt[20]), (int8_t)(pkt[21]));
 
-	} else if (id[3] == '1' && id[4] == '3') {
+	} else if (id[3] == '1' && (id[4] == '3' || id[4] == '4')) {
 		// Water Leak Sensor
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
