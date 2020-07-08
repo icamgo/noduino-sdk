@@ -56,7 +56,7 @@ endif
 
 OPENOCD_FW = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; shutdown"
 
-OPENOCD_FLASH = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
+OPENOCD_FLASH = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; shutdown"
 OPENOCD_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
 
 OPENOCD_ERASE_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; flash banks; reset init; reset halt; wait_halt; flash erase_sector 0 0 31; reset run; shutdown"
@@ -271,7 +271,7 @@ coff: build/main.elf
 	$(NM) -n $< > $@
 
 ############################################################
-dev_type	:= 13
+dev_type	:= 14
 year		:= $(shell date +%y)
 week		:= $(shell date +%V)
 
@@ -328,7 +328,7 @@ go: $(fw) .u.bin
 upload: build/main.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
 
-flash: build/main.bin
+flash: $(fw)
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
 
 user: .u.bin
