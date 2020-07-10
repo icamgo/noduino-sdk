@@ -178,7 +178,7 @@ void show_low_bat()
 
 void show_press(char *press)
 {
-	int pos = 0;
+	int pos = -14;
 	char pres_s[6];
 
 	u8g2.setPowerSave(0);
@@ -186,30 +186,37 @@ void show_press(char *press)
 	u8g2.firstPage();
 
 	do {
-		u8g2.setFont(u8g2_font_freedoomr25_tn);
+		//u8g2.setFont(u8g2_font_freedoomr25_tn);
+		u8g2.setFont(Nesobrite_Bk_24pt_r36);
 		u8g2.setCursor(22, 75 + pos);
+		//u8g2.print("16.27");
 		u8g2.print(press);
 
 	#ifdef EFM32HG
-		u8g2.setFont(u8g2_font_freedoomr10_mu);
-		u8g2.setCursor(92, 92 + pos);
-		u8g2.print("BAR");
 
-		u8g2.setCursor(8, 116);
-		u8g2.print("MIN");
+		u8g2.setFont(Nesobrite_Sc_13pt_r17);
+		//u8g2.setCursor(92, 92 + pos);
+		u8g2.setCursor(96, 75 + pos);
+		u8g2.print("Bar");
 
-		u8g2.setCursor(2, 130);
-		ftoa(pres_s, min_pres, 2);
-		u8g2.print(pres_s);
-		//u8g2.print("16.12");
+		u8g2.setCursor(6, 92);
+		u8g2.print("------------------------");
 
-		u8g2.setCursor(98, 116);
-		u8g2.print("MAX");
+		u8g2.setFont(Nesobrite_Bk_12pt_r18);
+		u8g2.setCursor(8, 108);
+		u8g2.print("Max: ");
 
-		u8g2.setCursor(90, 130);
 		ftoa(pres_s, max_pres, 2);
+		u8g2.setCursor(64, 108);
 		u8g2.print(pres_s);
-		//u8g2.print("16.88");
+
+		u8g2.setCursor(8, 126);
+		u8g2.print("Min: ");
+
+		ftoa(pres_s, min_pres, 2);
+		u8g2.setCursor(64, 126);
+		u8g2.print(pres_s);
+		//u8g2.print("16.27");
 	#endif
 
 	} while (u8g2.nextPage());
@@ -308,7 +315,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+	wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
 
 	// init dev power ctrl pin
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -344,7 +351,7 @@ void setup()
 	char pres_s[6];
 	ftoa(pres_s, cur_pres, 2);
 	show_press(pres_s);
-	delay(800);
+	delay(1800);
 
 	if (adc.readVbat() < 2.92) {
 		show_low_bat();
@@ -450,7 +457,7 @@ void push_data()
 		ftoa(pres_s, cur_pres, 2);
 		show_press(pres_s);
 		//show_press("16.08");
-		delay(2700);
+		delay(10000);
 	}
 #endif
 
