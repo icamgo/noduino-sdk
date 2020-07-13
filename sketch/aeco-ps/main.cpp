@@ -91,6 +91,8 @@ uint16_t tx_count = 0;
 uint8_t message[32];
 #endif
 
+uint8_t key_count = 0;
+
 #ifdef DEBUG
 
 #define INFO_S(param)			Serial.print(F(param))
@@ -186,8 +188,11 @@ void show_press(char *press)
 	u8g2.firstPage();
 
 	do {
-		//u8g2.setFont(u8g2_font_freedoomr25_tn);
+	#ifndef EFM32HG
+		u8g2.setFont(u8g2_font_freedoomr25_tn);
+	#else
 		u8g2.setFont(Nesobrite_Bk_24pt_r36);
+	#endif
 		u8g2.setCursor(22, 75 + pos);
 		//u8g2.print("16.27");
 		u8g2.print(press);
@@ -304,6 +309,8 @@ void trig_check_sensor()
 #ifdef CONFIG_V0
 	tx_cause = KEY_TX;
 #endif
+
+	key_count++;
 }
 
 void setup()
@@ -359,6 +366,7 @@ void setup()
 	}
 	#endif
 
+	u8g2.setPowerSave(1);
 #endif
 
 	/* bootup tx */
@@ -442,24 +450,6 @@ void push_data()
 		cur_pres = get_pressure();		// hPa (mbar)
 	}
 
-
-	if (cur_pres > max_pres && cur_pres < 18.0) {
-		max_pres = cur_pres;
-	}
-
-	if (cur_pres < min_pres && min_pres > -0.15) {
-		min_pres = cur_pres;
-	}
-
-#ifdef ENABLE_OLED
-	if (tx_cause == KEY_TX) {
-		char pres_s[6];
-		ftoa(pres_s, cur_pres, 2);
-		show_press(pres_s);
-		//show_press("16.08");
-		delay(10000);
-	}
-#endif
 
 #ifdef CONFIG_V0
 	uint64_t devid = get_devid();
@@ -585,10 +575,6 @@ void push_data()
 	INFOLN(e);
 #endif
 
-#ifdef ENABLE_OLED
-	u8g2.setPowerSave(1);
-#endif
-
 	sx1272.setSleepMode();
 	digitalWrite(SX1272_RST, LOW);
 
@@ -598,15 +584,58 @@ void push_data()
 	power_off_dev();
 }
 
+void task_oled()
+{
+#ifdef ENABLE_OLED
+	int i;
+	char pres_s[6];
+
+	pressure_init(SCL_PIN, SDA_PIN);
+
+	for (i=0; i<30; i++) {
+
+		WDOG_Feed();
+
+		cur_pres = get_pressure();
+
+		if (cur_pres > max_pres && cur_pres < 18.0) {
+			max_pres = cur_pres;
+		}
+
+		if (cur_pres < min_pres && min_pres > -0.15) {
+			min_pres = cur_pres;
+		}
+
+		ftoa(pres_s, cur_pres, 2);
+
+		show_press(pres_s);
+
+		delay(1000);
+	}
+
+	u8g2.setPowerSave(1);
+#endif
+}
+
 void loop()
 {
+	if (key_count >= 1) {
+
+		power_on_dev();
+		task_oled();
+
+		key_count = 0;
+	}
 
 	if (0x5a == need_push) {
 		push_data();
 
 		need_push = 0;
-
 	}
+
+#ifdef ENABLE_OLED
+	u8g2.setPowerSave(1);
+#endif
 
 	power_off_dev();
 	digitalWrite(SX1272_RST, LOW);
