@@ -133,10 +133,6 @@ void radio_setup()
 
 #ifdef CONFIG_V0
 	sx1272.setup_v0(CH_01_472, 20);
-	//sx1272.setPreambleLength(6);
-	if (MODE_ABC == omode) {
-		sx1272.setSyncWord(SYNCWORD_ABC);
-	}
 #else
 	sx1272.sx1278_qsetup(CH_00_470, 20);
 	sx1272._nodeAddress = loraAddr;
@@ -393,23 +389,6 @@ uint8_t decode_ver(uint8_t *pkt)
 	return pkt[2];
 }
 
-char did2abc(uint8_t did)
-{
-	switch(did) {
-
-		case 1:
-			return 'A';
-			break;
-		case 2:
-			return 'B';
-			break;
-		case 3:
-			return 'C';
-			break;
-		default:
-			return 'X';
-	}
-}
 #endif
 
 #ifdef ENABLE_OLED
@@ -514,7 +493,7 @@ void show_mode(int mode)
 			// Bell icon. notice the message tagged for testing
 			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
 			u8g2.setCursor(12, 64);
-			u8g2.print(" T3 - ABC ");
+			u8g2.print(" T2 - DIS ");
 
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
 			u8g2.drawGlyph(112, 61, 65);
@@ -552,27 +531,6 @@ void change_omode()
 	INFOLN("%d", omode);
 }
 
-// 10 ms, [20, 100]
-void beep(int c, int ontime)
-{
-	switch (c) {
-		case 3:
-			digitalWrite(BEEP_PIN, HIGH);
-			delay(ontime);
-			digitalWrite(BEEP_PIN, LOW);
-			delay(40);
-		case 2:
-			digitalWrite(BEEP_PIN, HIGH);
-			delay(ontime);
-			digitalWrite(BEEP_PIN, LOW);
-			delay(40);
-		case 1:
-			digitalWrite(BEEP_PIN, HIGH);
-			delay(ontime);
-			digitalWrite(BEEP_PIN, LOW);
-	}
-}
-
 void power_on_dev()
 {
 	digitalWrite(PWR_CTRL_PIN, HIGH);
@@ -606,10 +564,6 @@ void setup()
 	// RF RX Interrupt pin
 	//pinMode(RX_INT_PIN, INPUT);
 	//attachInterrupt(RX_INT_PIN, rx_irq_handler, FALLING);
-
-	// beep
-	//pinMode(BEEP_PIN, OUTPUT);
-	//digitalWrite(BEEP_PIN, LOW);
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -651,20 +605,6 @@ void loop(void)
 		}
 #endif
 		old_omode = omode;
-
-		switch (omode) {
-			case MODE_ALL:
-				sx1272.setSyncWord(SYNCWORD_DEFAULT);
-				break;
-			case MODE_ABC:
-				sx1272.setSyncWord(SYNCWORD_ABC);
-				//NVIC_SystemReset();
-				break;
-			case MODE_KEY:
-				sx1272.setSyncWord(SYNCWORD_DEFAULT);
-				break;
-		}
-
 	}
 
 	if (digitalRead(KEY_PIN) == 0) {
@@ -761,9 +701,12 @@ void loop(void)
 		INFOLN("%s", "");
 #endif
 
+		uint8_t p_len = sx1272.getPayloadLength();
+
 #ifdef DEBUG_HEX_PKT
 		int a = 0, b = 0;
-		uint8_t p_len = sx1272.getPayloadLength();
+
+		INFOLN("%d", p_len);
 
 		for (; a < p_len; a++, b++) {
 
@@ -778,6 +721,8 @@ void loop(void)
 #endif
 
 		uint8_t *p = sx1272.packet_received.data;
+
+		memset(p+p_len, 0, MAX_PAYLOAD-p_len);
 
 		decode_devid(sx1272.packet_received.data);
 
@@ -816,28 +761,26 @@ void loop(void)
 
 				INFOLN("%s", cmd);
 		} else if (MODE_ABC == omode) {
-			// only show tagged message
-			if (p[0] == 0x55) {
+			// only show exception message
+			if (p[0] == 0x47 && p[1] == 0x4F && (p[3] != 0 || p[4] != 0 || p[5] != 0 || p_len < 24)) {
 
-				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
+				sprintf(cmd, "%s/rssi/%d",
 					dev_id,
-					decode_vbat(sx1272.packet_received.data),
-					decode_sensor_type(),
-					decode_sensor_data(sx1272.packet_received.data),
 					sx1272._RSSIpacket);
 
 #ifdef ENABLE_OLED
-				sprintf(frame_buf[c % 2], " %c  %4d  %s",
-					did2abc(p[1]),
-					sx1272._RSSIpacket,
-					decode_vbat(sx1272.packet_received.data));
+				int fi = (c % 4) * 2;
 
-				show_frame(c % 2, omode, false);
+				sprintf(frame_buf[fi], "%c", dev_id);
+
+				sprintf(frame_buf[fi + 1], "%s %s %4d",
+					decode_vbat(p),
+					decode_sensor_data(p),
+					sx1272._RSSIpacket);
+
+				show_frame(fi, omode, false);
 				c++;
 #endif
-
-				beep(p[1], 150 + sx1272._RSSIpacket);
-
 				INFOLN("%s", cmd);
 			}
 		} else if (MODE_KEY == omode) {
