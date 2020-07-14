@@ -27,6 +27,7 @@
 
 #define ENABLE_OLED					1
 #define ENABLE_SH1106				1
+
 //#define ENABLE_SSD1306			1
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
@@ -784,6 +785,8 @@ void loop(void)
 		int a = 0, b = 0;
 		uint8_t p_len = sx1272.getPayloadLength();
 
+		INFOLN("%d", p_len);
+
 		for (; a < p_len; a++, b++) {
 
 			if ((uint8_t) sx1272.packet_received.data[a] < 16)
@@ -797,6 +800,8 @@ void loop(void)
 #endif
 
 		uint8_t *p = sx1272.packet_received.data;
+
+		memset(p+p_len, 0, MAX_PAYLOAD-p_len);
 
 		decode_devid(sx1272.packet_received.data);
 
