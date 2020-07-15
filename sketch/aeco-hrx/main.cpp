@@ -86,8 +86,8 @@ char frame_buf[2][24];
 #define	MODE_KEY		1
 #define	MODE_ABC		2
 
-int omode = MODE_KEY;
-int old_omode = MODE_KEY;
+int omode = MODE_ALL;
+int old_omode = MODE_ALL;
 
 int key_time = 0;
 
@@ -785,8 +785,6 @@ void loop(void)
 		int a = 0, b = 0;
 		uint8_t p_len = sx1272.getPayloadLength();
 
-		INFOLN("%d", p_len);
-
 		for (; a < p_len; a++, b++) {
 
 			if ((uint8_t) sx1272.packet_received.data[a] < 16)
@@ -796,7 +794,10 @@ void loop(void)
 			INFO_S("%s", " ");
 		}
 
-		INFOLN("%d", "$");
+		INFO_S("%d", "/");
+		INFO("%d", sx1272._RSSIpacket);
+		INFO_S("%s", "/");
+		INFOLN("%d", p_len);
 #endif
 
 		uint8_t *p = sx1272.packet_received.data;
