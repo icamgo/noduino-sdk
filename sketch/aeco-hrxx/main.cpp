@@ -420,7 +420,7 @@ void show_frame(int l, int mode, bool alarm)
 			// Bell icon. notice the message tagged for testing
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
 
-			u8g2.drawGlyph(120, 12+16*l, 65);
+			u8g2.drawGlyph(120, 12+16*l*2, 65);
 
 		} else if (MODE_KEY == mode) {
 			// cycle icon. notice the message trigged by magnet
@@ -771,7 +771,7 @@ void loop(void)
 #ifdef ENABLE_OLED
 				int fi = (c % 4) * 2;
 
-				sprintf(frame_buf[fi], "%c", dev_id);
+				sprintf(frame_buf[fi], "%s", dev_id);
 
 				sprintf(frame_buf[fi + 1], "%s %s %4d",
 					decode_vbat(p),
