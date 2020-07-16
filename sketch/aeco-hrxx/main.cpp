@@ -228,7 +228,7 @@ char *decode_vbat(uint8_t *pkt)
 			break;
 	}
 
-	ftoa(dev_vbat, (float)(vbat / 1000.0), 3);
+	ftoa(dev_vbat, (float)(vbat / 1000.0), 1);
 	return dev_vbat;
 }
 
@@ -418,9 +418,10 @@ void show_frame(int l, int mode, bool alarm)
 		} else if (MODE_ABC == mode) {
 
 			// Bell icon. notice the message tagged for testing
-			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
-
-			u8g2.drawGlyph(120, 12+16*l*2, 65);
+			//u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
+			//u8g2.drawGlyph(120, 12+16*l*2, 65);
+			u8g2.setCursor(124, 25+17*l);
+			u8g2.print('.');
 
 		} else if (MODE_KEY == mode) {
 			// cycle icon. notice the message trigged by magnet
@@ -493,7 +494,7 @@ void show_mode(int mode)
 			// Bell icon. notice the message tagged for testing
 			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
 			u8g2.setCursor(12, 64);
-			u8g2.print(" T2 - DIS ");
+			u8g2.print(" T2 - EXP ");
 
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
 			u8g2.drawGlyph(112, 61, 65);
@@ -544,6 +545,43 @@ void power_off_dev()
 void rx_irq_handler()
 {
 	//INFOLN("%s", "new rx pkt...");
+}
+
+bool check_crc(uint8_t *p)
+{
+	int i, len = 0;
+	uint16_t hh = 0, sum = 0;
+
+	switch (p[2]) {
+
+		case 0x31:
+			len = 21;
+			sum = p[16] << 8 | p[17];
+			break;
+
+		case 0x32:
+			len = 23;
+			sum = p[18] << 8 | p[19];
+			break;
+
+		case 0x33:
+			len = 24;
+			sum = p[19] << 8 | p[20];
+			break;
+		default:
+			len = 0;
+			sum = 1;
+			break;
+	}
+
+	for (i = 0; i < len; i++) {
+		hh += p[i];
+	}
+
+	if (hh == sum)
+		return true;
+	else
+		return false;
 }
 
 void setup()
@@ -762,7 +800,8 @@ void loop(void)
 				INFOLN("%s", cmd);
 		} else if (MODE_ABC == omode) {
 			// only show exception message
-			if (p[0] == 0x47 && p[1] == 0x4F && (p[3] != 0 || p[4] != 0 || p[5] != 0 || p_len < 24)) {
+			if (p[0] == 0x47 && p[1] == 0x4F && (p[3] != 0 || p[4] != 0 || p[5] != 0 ||
+				(p[2] == 0x31 && p_len != 21) || (p[2] == 0x32 && p_len != 23) || (p[2] == 0x33 && p_len != 24))) {
 
 				sprintf(cmd, "%s/rssi/%d",
 					dev_id,
@@ -773,9 +812,11 @@ void loop(void)
 
 				sprintf(frame_buf[fi], "%s", dev_id);
 
-				sprintf(frame_buf[fi + 1], "%s %s %4d",
+				sprintf(frame_buf[fi + 1], "%02X %d %d %s%4d",
+					p[2],
+					p_len,
+					check_crc(p),
 					decode_vbat(p),
-					decode_sensor_data(p),
 					sx1272._RSSIpacket);
 
 				show_frame(fi, omode, false);
