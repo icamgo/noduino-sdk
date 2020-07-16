@@ -547,27 +547,43 @@ void rx_irq_handler()
 	//INFOLN("%s", "new rx pkt...");
 }
 
-bool check_crc(uint8_t *p)
+bool check_crc(uint8_t *p, int plen)
 {
 	int i, len = 0;
 	uint16_t hh = 0, sum = 0;
 
+#if 0
 	switch (p[2]) {
 
 		case 0x31:
-			len = 21;
-			sum = p[16] << 8 | p[17];
+			len = 15;
+			sum = p[15] << 8 | p[16];
 			break;
 
 		case 0x32:
-			len = 23;
-			sum = p[18] << 8 | p[19];
+			len = 17;
+			sum = p[17] << 8 | p[18];
 			break;
 
 		case 0x33:
-			len = 24;
-			sum = p[19] << 8 | p[20];
+			len = 18;
+			sum = p[18] << 8 | p[19];
 			break;
+#else
+	switch (plen) {
+		case 24:
+			len = 18;
+			sum = p[18] << 8 | p[19];
+			break;
+		case 23:
+			len = 17;
+			sum = p[17] << 8 | p[18];
+			break;
+		case 21:
+			len = 15;
+			sum = p[15] << 8 | p[16];
+			break;
+#endif
 		default:
 			len = 0;
 			sum = 1;
@@ -815,7 +831,7 @@ void loop(void)
 				sprintf(frame_buf[fi + 1], "%02X %d %d %s%4d",
 					p[2],
 					p_len,
-					check_crc(p),
+					check_crc(p, p_len),
 					decode_vbat(p),
 					sx1272._RSSIpacket);
 
