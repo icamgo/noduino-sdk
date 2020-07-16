@@ -19,7 +19,6 @@
 #include "softspi.h"
 #include "sx1272.h"
 #include "softi2c.h"
-#include "pc10.h"
 
 #include "rtcdriver.h"
 #include "math.h"
@@ -30,9 +29,6 @@ RTCDRV_TimerID_t xTimerForWakeUp;
 static uint32_t sample_period = 0.3;		/* 0.5s */
 
 #define	TX_TESTING				1
-
-// 1, 2, 3 <----> A, B, C
-#define DEV_ID					0
 
 static uint8_t need_push = 0;
 
@@ -56,7 +52,7 @@ static uint8_t need_push = 0;
 //#define	DEBUG					1
 
 #ifdef CONFIG_V0
-uint8_t message[64] = { 0x48, 0x4F, 0x33 };
+uint8_t message[64] = { 0x47, 0x4F, 0x33 };
 uint8_t tx_cause = 0;
 uint16_t tx_count = 0;
 #else
@@ -210,7 +206,11 @@ void qsetup()
 
 uint64_t get_devid()
 {
-	return (11907000000ULL + DEV_ID);	// T2p
+	uint64_t *p;
+
+	p = (uint64_t *)0x0FE00008;
+
+	return *p;
 }
 
 uint16_t get_crc(uint8_t *pp, int len)
@@ -240,8 +240,6 @@ void push_data()
 	qsetup();
 #endif
 
-	//pressure_init();
-	//press = get_pressure();		// hPa (mbar)
 	press = 0.0;		// hPa (mbar)
 
 	vbat = adc.readVbat();
@@ -252,18 +250,13 @@ void push_data()
 
 	uint8_t *p = (uint8_t *) &devid;
 
-	pkt[0] = 0x55;
-	pkt[1] = DEV_ID;
-
 	// set devid
 	int i = 0;
 	for(i = 0; i < 8; i++) {
 		pkt[3+i] = p[7-i];
 	}
 
-	// press/1000.0 = bar (0.1MPa), then x 100 for packet
-	press /= 10.0;
-	press = roundf(press);
+	press = 0x55;
 	int16_t ui16 = (int16_t)press;
 	p = (uint8_t *) &ui16;
 
@@ -367,10 +360,6 @@ void push_data()
 
 void loop()
 {
-	//INFO("Clock Freq = ");
-	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
-
-	//INFOLN("Feed the watchdog");
 
 	if (0x5a == need_push) {
 		push_data();
