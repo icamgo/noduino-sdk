@@ -569,7 +569,13 @@ bool check_crc(uint8_t *p, int plen)
 			len = 18;
 			sum = p[18] << 8 | p[19];
 			break;
-#else
+		default:
+			len = 0;
+			sum = 1;
+			break;
+	}
+#endif
+#if 0
 	switch (plen) {
 		case 24:
 			len = 18;
@@ -583,12 +589,16 @@ bool check_crc(uint8_t *p, int plen)
 			len = 15;
 			sum = p[15] << 8 | p[16];
 			break;
-#endif
 		default:
 			len = 0;
 			sum = 1;
 			break;
 	}
+#else
+	len = plen - 6;
+	sum = p[len] << 8 | p[len+1];
+#endif
+
 
 	for (i = 0; i < len; i++) {
 		hh += p[i];
