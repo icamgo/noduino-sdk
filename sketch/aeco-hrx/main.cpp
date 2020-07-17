@@ -22,14 +22,24 @@
 #include <stdio.h>
 #include <stdint.h>
 
-//#define	DEBUG					1
-//#define DEBUG_HEX_PKT			1
+#define ENABLE_RX_INTERRUPT		1
 
+#ifdef ENABLE_RX_INTERRUPT
+#include "circ_buf.h"
+struct circ_buf g_cbuf;
+#endif
+
+#if 1
+#define	DEBUG					1
+#define DEBUG_HEX_PKT			1
+#else
 #define ENABLE_OLED					1
 #define ENABLE_SH1106				1
+#endif
 
 //#define ENABLE_SSD1306			1
 
+////////////////////////////////////////////////////////////
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
 #define	BEEP_PIN				10		/* PIN13_PD06_D10 */
@@ -72,8 +82,7 @@ char cmd[MAX_CMD_LENGTH];
 bool withAck = false;
 
 int status_counter = 0;
-
-char frame_buf[2][24];
+uint8_t rx_err_cnt = 0;
 
 /*
  * Output Mode:
@@ -111,6 +120,8 @@ int key_time = 0;
 #ifdef ENABLE_OLED
 #include "U8g2lib.h"
 #include "logo.h"
+
+char frame_buf[2][24];
 
 #ifdef ENABLE_SSD1306
 U8G2_SSD1306_128X32_UNIVISION_1_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
@@ -501,12 +512,6 @@ void show_frame(int l, int mode, bool alarm)
 		}
 
 	} while (u8g2.nextPage());
-
-	//delay(2000);
-
-	//u8g2.setPowerSave(1);
-
-	//u8g2.sendBuffer();		// transfer internal memory to the display
 }
 
 void show_logo()
@@ -610,20 +615,50 @@ void power_off_dev()
 
 void rx_irq_handler()
 {
-	//INFOLN("%s", "new rx pkt...");
+	noInterrupts();
+#ifdef ENABLE_RX_INTERRUPT
+	int8_t e = 0;
+
+	sx1272.getRSSIpacket();
+
+	e = sx1272.get_pkt_v0();
+
+	if (!e) {
+
+		push_pkt(&g_cbuf, sx1272.packet_received.data, sx1272._RSSIpacket, sx1272._payloadlength);
+
+	} else {
+
+		rx_err_cnt++;
+
+	}
+	//INFOLN("%d", e);
+
+	//sx1272.rx_v0();
+#endif
+	interrupts();
 }
 
 void setup()
 {
 	int e;
 
+	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
+
+	/* Watchdog setup - Use defaults, excepts for these : */
+	wInit.em2Run = true;
+	wInit.em3Run = true;
+	wInit.perSel = wdogPeriod_2k;	/* 2k 1kHz periods should give 2 seconds */
+
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, change_omode, FALLING);
 
+#ifdef ENABLE_RX_INTERRUPT
 	// RF RX Interrupt pin
 	pinMode(RX_INT_PIN, INPUT);
-	attachInterrupt(RX_INT_PIN, rx_irq_handler, FALLING);
+	attachInterrupt(RX_INT_PIN, rx_irq_handler, RISING);
+#endif
 
 	// beep
 	pinMode(BEEP_PIN, OUTPUT);
@@ -655,12 +690,39 @@ void setup()
 #endif
 
 	radio_setup();
+
+#ifdef ENABLE_RX_INTERRUPT
+	sx1272.init_rx_int();
+	sx1272.rx_v0();
+#endif
+
+	/* Start watchdog */
+	WDOG_Init(&wInit);
 }
 
 void loop(void)
 {
 	int e = 1;
 	static int c = 0;
+
+	WDOG_Feed();
+
+#ifdef ENABLE_RX_INTERRUPT
+	status_counter++;
+
+	if (rx_err_cnt > 50) {
+
+		sx1272.reset();
+		INFO_S("%s", "Resetting lora module\n");
+		radio_setup();
+
+		sx1272.init_rx_int();
+		sx1272.rx_v0();
+
+		rx_err_cnt = 0;
+	}
+
+#endif
 
 	if (omode != old_omode) {
 #ifdef ENABLE_OLED
@@ -684,7 +746,6 @@ void loop(void)
 				sx1272.setSyncWord(SYNCWORD_DEFAULT);
 				break;
 		}
-
 	}
 
 	if (digitalRead(KEY_PIN) == 0) {
@@ -741,6 +802,7 @@ void loop(void)
 	}
 #endif
 
+#ifndef ENABLE_RX_INTERRUPT
 	// check if we received data from the receiving LoRa module
 #ifdef RECEIVE_ALL
 	e = sx1272.receiveAll(RX_TIME);
@@ -762,7 +824,6 @@ void loop(void)
 #if DEBUG > 1
 			INFO_S("%s", "^$Resetting radio module\n");
 #endif
-
 			radio_setup();
 
 			// to start over
@@ -775,22 +836,32 @@ void loop(void)
 
 		sx1272.getRSSIpacket();
 
-#ifdef CONFIG_V0
+		uint8_t *p = sx1272.packet_received.data;
+		uint8_t p_len = sx1272.getPayloadLength();
 
-#if DEBUG > 1
-		INFOLN("%s", "");
+#else
+	{
+		struct pkt d;
+
+		noInterrupts();
+		int ret = get_pkt(&g_cbuf, &d);
+		interrupts();
+
+		if (ret != 0) return;
+
+		uint8_t *p = d.data;
+		uint8_t p_len = d.plen;
 #endif
 
 #ifdef DEBUG_HEX_PKT
 		int a = 0, b = 0;
-		uint8_t p_len = sx1272.getPayloadLength();
 
 		for (; a < p_len; a++, b++) {
 
-			if ((uint8_t) sx1272.packet_received.data[a] < 16)
+			if ((uint8_t) p[a] < 16)
 				INFO_S("%s", "0");
 
-			INFO_HEX("%X", (uint8_t) sx1272. packet_received.data[a]);
+			INFO_HEX("%X", (uint8_t) p[a]);
 			INFO_S("%s", " ");
 		}
 
@@ -800,20 +871,23 @@ void loop(void)
 		INFOLN("%d", p_len);
 #endif
 
-		uint8_t *p = sx1272.packet_received.data;
+		if (p_len <= 11) return;
+
+		status_counter = 0;
 
 		memset(p+p_len, 0, MAX_PAYLOAD-p_len);
+		decode_devid(p);
 
-		decode_devid(sx1272.packet_received.data);
-
+#ifndef ENABLE_RX_INTERRUPT
 		if (strcmp(dev_id, "") == 0) {
 			// lora module unexpected error
 			sx1272.reset();
-#if DEBUG > 1
+
 			INFO_S("%s", "Resetting lora module\n");
-#endif
+
 			radio_setup();
 		}
+#endif
 
 		if (MODE_ALL == omode) {
 			// show all message
@@ -908,29 +982,5 @@ void loop(void)
 				INFOLN("%s", cmd);
 			}
 		}
-
-#else
-		int a = 0, b = 0;
-		uint8_t p_len;
-
-		p_len = sx1272.getPayloadLength();
-
-		for (; a < p_len; a++, b++) {
-
-			cmd[b] = (char)sx1272.packet_received.data[a];
-		}
-
-		cmd[b] = '\0';
-
-		b = strlen(cmd);
-
-		// src_id,SNR,RSSI
-		sprintf(cmd+b, "/devid/%d/rssi/%d/snr/%d",
-			sx1272.packet_received.src,
-			sx1272._RSSIpacket,
-			sx1272._SNR);
-
-		INFOLN("%s", cmd);
-#endif
 	}
 }
