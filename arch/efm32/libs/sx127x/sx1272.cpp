@@ -355,6 +355,14 @@ void SX1272::sx1278_qsetup(uint32_t freq, uint8_t dbm)
 	}
 }
 
+void SX1272::init_rx_int()
+{
+	// only allow RxDone & crc interrupts
+	writeRegister(REG_IRQ_FLAGS_MASK, 0x9F);
+
+	//writeRegister(REG_DIO_MAPPING1, 0x00);
+}
+
 void SX1272::rx_v0()
 {
 	memset(packet_data, 0x00, MAX_PAYLOAD);
@@ -365,16 +373,11 @@ void SX1272::rx_v0()
 	// Set LowPnTxPllOff
 	writeRegister(REG_PA_RAMP, 0x08);
 
-	//writeRegister(REG_LNA, 0x23);				// Important in reception
 	writeRegister(REG_LNA, LNA_MAX_GAIN);
 	writeRegister(REG_FIFO_ADDR_PTR, 0x00);		// Setting address pointer in FIFO data buffer
 
-	if (_spreadingFactor == SF_10 || _spreadingFactor == SF_11
-	    || _spreadingFactor == SF_12) {
-		writeRegister(REG_SYMB_TIMEOUT_LSB, 0x05);
-	} else {
-		writeRegister(REG_SYMB_TIMEOUT_LSB, 0x08);
-	}
+	// SF_12
+	writeRegister(REG_SYMB_TIMEOUT_LSB, 0x05);
 
 	// Setting current value of reception buffer pointer
 	writeRegister(REG_FIFO_RX_BYTE_ADDR, 0x00);
@@ -388,61 +391,41 @@ void SX1272::rx_v0()
 int8_t SX1272::get_pkt_v0()
 {
 	uint8_t state = 2;
-	byte value = 0x00;
-	boolean p_received = false;
 
-	value = readRegister(REG_IRQ_FLAGS);
+	uint8_t irq = readRegister(REG_IRQ_FLAGS);
 
-	//CrcOnPayload?
-	if (bitRead(readRegister(REG_HOP_CHANNEL), 6)) {
+	if ((bitRead(irq, 6) == 1) && (bitRead(irq, 5) == 0)) {
 
-		if ((bitRead(value, 5) == 0)) {
-			p_received = true;
-			_reception = CORRECT_PACKET;
-			Serial.println(F("** The CRC is correct **"));
-		} else {
-			_reception = INCORRECT_PACKET;
-			state = 3;
-			Serial.println(F("** The CRC is incorrect **"));
+		// CRC correct, standby to read the pkt data
+		writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);
+
+		writeRegister(REG_FIFO_ADDR_PTR, 0x00);
+
+		_payloadlength = readRegister(REG_RX_NB_BYTES);
+
+		if (_payloadlength < MAX_LENGTH) {
+
+			for (unsigned int i = 0; i < _payloadlength; i++) {
+
+				packet_received.data[i] = readRegister(REG_FIFO);	// Storing payload
+			}
+
+			state = 0;
 		}
 	} else {
-		// as CRC is not set we suppose that CRC is correct
-		p_received = true;				// packet correctly received
-		_reception = CORRECT_PACKET;
-		Serial.println(F("## Packet supposed to be correct as CrcOnPayload is off at transmitter ##"));
+		// CRC incorrect
+		state = irq;
 	}
 
-	writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);
-
-	if (p_received == true) {
-
-		// set the FIFO addr to 0 to read again all the bytes
-		writeRegister(REG_FIFO_ADDR_PTR, 0x00);	// Setting address pointer in FIFO data buffer
-
-		if (_reception == CORRECT_PACKET) {
-
-			_payloadlength = readRegister(REG_RX_NB_BYTES);
-
-			if (_payloadlength <= (MAX_LENGTH + 1)) {
-
-				for (unsigned int i = 0; i < _payloadlength; i++) {
-
-					packet_received.data[i] = readRegister(REG_FIFO);	// Storing payload
-				}
-
-				state = 0;
-
-			} else {
-
-				Serial.println(F("Corrupted packet, length must be less than 34"));
-			}
-		}
-	}
 
 	// Setting address pointer in FIFO data buffer
 	writeRegister(REG_FIFO_ADDR_PTR, 0x00);
 
-	clearFlags();
+	// clear irq Flags
+	writeRegister(REG_IRQ_FLAGS, 0xFF);
+
+	// LORA mode - Rx
+	writeRegister(REG_OP_MODE, LORA_RX_MODE);
 
 	return state;
 }
@@ -557,14 +540,6 @@ byte SX1272::readRegister(byte address)
 #endif
 	digitalWrite(_SX1272_SS, HIGH);
 
-#if (DEBUG_MODE > 1)
-	INFO(F("## Reading:  ##\t"));
-	INFO(F("Register "));
-	INFO_HEX(address);
-	INFO(F(":  "));
-	INFO_LN(value, HEX);
-#endif
-
 	return value;
 }
 
@@ -580,16 +555,6 @@ void SX1272::writeRegister(byte address, byte data)
 	SPI.transfer(data);
 #endif
 	digitalWrite(_SX1272_SS, HIGH);
-
-#if (DEBUG_MODE > 1)
-	INFO(F("## Writing:  ##\t"));
-	INFO(F("Register "));
-	bitClear(address, 7);
-	INFO_HEX(address);
-	INFO(F(":  "));
-	INFO_LN(data, HEX);
-#endif
-
 }
 
 /*

@@ -357,7 +357,7 @@ const uint8_t NOISE_FIGURE = 6.0;
 const uint8_t NOISE_ABSOLUTE_ZERO = 174.0;
 
 #ifdef CONFIG_V0
-const uint8_t MAX_LENGTH = 36;
+const uint8_t MAX_LENGTH = 32;
 const uint8_t MAX_PAYLOAD = 32;
 const uint16_t MAX_TIMEOUT = 800;	// 800 msec = 0.8 sec
 const uint16_t MAX_WAIT = 810;		// 810 msec = 0.81 sec
@@ -423,6 +423,7 @@ class SX1272 {
 
 	void sx1278_qsetup(uint32_t freq, uint8_t dbm);
 	void setup_v0(uint32_t freq, uint8_t dbm);
+	void init_rx_int();
 	void rx_v0();
 	int8_t get_pkt_v0();
 
