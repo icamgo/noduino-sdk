@@ -1,7 +1,13 @@
 #ifndef __CIRC_BUF_H__
 #define __CIRC_BUF_H__
 
-#define	CIRC_BUF_SIZE		6
+#ifdef EFM32HG110F64
+#define	CIRC_BUF_SIZE		16
+#else
+#define	CIRC_BUF_SIZE		8
+#endif
+
+#define	PKT_LEN				32
 
 struct pkt {
 /*
@@ -11,8 +17,9 @@ struct pkt {
 	int16_t val;
 	int16_t vbat;
 */
-	uint8_t data[24];
+	uint8_t data[PKT_LEN];
 	int16_t rssi;
+	int16_t plen;
 };
 
 struct circ_buf {
@@ -21,13 +28,14 @@ struct circ_buf {
 	int tail;
 };
 
-int push_pkt(struct circ_buf *cbuf, uint8_t *idata, int16_t rssi)
+int push_pkt(struct circ_buf *cbuf, uint8_t *idata, int16_t rssi, int len)
 {
 	if (idata != NULL && cbuf != NULL) {
 
-		memcpy(cbuf->pkt[cbuf->head].data, idata, 24);
+		memcpy(cbuf->pkt[cbuf->head].data, idata, len);
 
 		cbuf->pkt[cbuf->head].rssi = rssi;
+		cbuf->pkt[cbuf->head].plen = len;
 
 		cbuf->head += 1;
 
@@ -44,9 +52,10 @@ int get_pkt(struct circ_buf *cbuf, struct pkt *odata)
 	if (odata != NULL && cbuf != NULL &&
 		((cbuf->head - cbuf->tail) & (CIRC_BUF_SIZE-1)) > 0) {
 	
-		memcpy(odata->data, cbuf->pkt[cbuf->tail].data, 24);
+		memcpy(odata->data, cbuf->pkt[cbuf->tail].data, cbuf->pkt[cbuf->tail].plen);
 
 		odata->rssi = cbuf->pkt[cbuf->tail].rssi;
+		odata->plen = cbuf->pkt[cbuf->tail].plen;
 
 		cbuf->tail += 1;
 		cbuf->tail %= CIRC_BUF_SIZE;
