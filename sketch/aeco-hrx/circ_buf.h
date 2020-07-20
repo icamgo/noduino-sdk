@@ -1,8 +1,13 @@
 #ifndef __CIRC_BUF_H__
 #define __CIRC_BUF_H__
 
+#ifdef EFM32HG110F64
+#define	CIRC_BUF_SIZE		16
+#else
 #define	CIRC_BUF_SIZE		8
-#define	BUF_LEN				24
+#endif
+
+#define	PKT_LEN				32
 
 struct pkt {
 /*
@@ -12,7 +17,7 @@ struct pkt {
 	int16_t val;
 	int16_t vbat;
 */
-	uint8_t data[BUF_LEN];
+	uint8_t data[PKT_LEN];
 	int16_t rssi;
 	int16_t plen;
 };

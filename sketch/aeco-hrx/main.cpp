@@ -27,9 +27,13 @@
 #ifdef ENABLE_RX_INTERRUPT
 #include "circ_buf.h"
 struct circ_buf g_cbuf;
+#define KEY_LONG_PRESS_TIME		60000
+
+#else
+#define KEY_LONG_PRESS_TIME		8
 #endif
 
-#if 1
+#if 0
 #define	DEBUG					1
 #define DEBUG_HEX_PKT			1
 #else
@@ -89,14 +93,16 @@ uint8_t rx_err_cnt = 0;
  *
  *   0x0: rx all messages
  *   0x1: only rx trigged message
- *   0x2: only rx the tagged message
+ *   0x2: show the raw message
+ *   0x3: only rx the tagged message
 */
 #define	MODE_ALL		0
 #define	MODE_KEY		1
-#define	MODE_ABC		2
+#define	MODE_RAW		2
+#define	MODE_ABC		3
 
-int omode = MODE_ALL;
-int old_omode = MODE_ALL;
+int omode = MODE_KEY;
+int old_omode = MODE_KEY;
 
 int key_time = 0;
 
@@ -153,9 +159,12 @@ void radio_setup()
 #ifdef CONFIG_V0
 	sx1272.setup_v0(CH_01_472, 20);
 	//sx1272.setPreambleLength(6);
+
+	#ifdef ENABLE_ABC
 	if (MODE_ABC == omode) {
 		sx1272.setSyncWord(SYNCWORD_ABC);
 	}
+	#endif
 #else
 	sx1272.sx1278_qsetup(CH_00_470, 20);
 	sx1272._nodeAddress = loraAddr;
@@ -251,7 +260,7 @@ char *decode_vbat(uint8_t *pkt)
 			break;
 	}
 
-	ftoa(dev_vbat, (float)(vbat / 1000.0), 3);
+	ftoa(dev_vbat, (float)(vbat / 1000.0), 1);
 	return dev_vbat;
 }
 
@@ -447,10 +456,10 @@ void show_frame(int l, int mode, bool alarm)
 		//u8g2.drawStr(98, 26, "Pa");		// write something to the internal memory
 		u8g2.setFont(u8g2_font_freedoomr10_tu);
 
-		u8g2.setCursor(2, 15);
+		u8g2.setCursor(0, 15);
 		u8g2.print(frame_buf[0]);
 
-		u8g2.setCursor(2, 32);
+		u8g2.setCursor(0, 32);
 		u8g2.print(frame_buf[1]);
 
 		if (MODE_ALL == mode) {
@@ -463,12 +472,14 @@ void show_frame(int l, int mode, bool alarm)
 			}
 		} else if (MODE_ABC == mode) {
 			// Bell icon. notice the message tagged for testing
+		#ifdef ENABLE_ABC
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
 			if (l == 0) {
 				u8g2.drawGlyph(120, 12, 65);
 			} else if (l == 1) {
 				u8g2.drawGlyph(120, 30, 65);
 			}
+		#endif
 		} else if (MODE_KEY == mode) {
 			// cycle icon. notice the message trigged by magnet
 			int ic = 64;
@@ -540,14 +551,6 @@ void show_mode(int mode)
 
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
 			u8g2.drawGlyph(112, 23, 81);
-		} else if (MODE_ABC == mode) {
-			// Bell icon. notice the message tagged for testing
-			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
-			u8g2.setCursor(12, 26);
-			u8g2.print(" T3 - ABC ");
-
-			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
-			u8g2.drawGlyph(112, 23, 65);
 		} else if (MODE_KEY == mode) {
 			// cycle icon. notice the message trigged by magnet
 			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
@@ -556,6 +559,26 @@ void show_mode(int mode)
 
 			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
 			u8g2.drawGlyph(112, 23, 64);
+		} else if (MODE_RAW == mode) {
+			// Lora icon. notice rx all raw message
+			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
+			u8g2.setCursor(12, 64);
+			u8g2.print(" T2 - RAW ");
+
+			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
+			u8g2.drawGlyph(112, 61, 81);
+		} else if (MODE_ABC == mode) {
+			// Bell icon. notice the message tagged for testing
+			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
+			u8g2.setCursor(12, 26);
+		#ifdef ENABLE_ABC
+			u8g2.print(" T3 - ABC ");
+		#else
+			u8g2.print(" T2 - EXP ");
+		#endif
+
+			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
+			u8g2.drawGlyph(112, 23, 65);
 		}
 	} while (u8g2.nextPage());
 }
@@ -577,11 +600,12 @@ void show_low_bat()
 void change_omode()
 {
 	omode++;
-	omode %= 3;
+	omode %= 4;
 	INFO("%s", "omode: ");
 	INFOLN("%d", omode);
 }
 
+#ifdef ENABLE_ABC
 // 10 ms, [20, 100]
 void beep(int c, int ontime)
 {
@@ -602,6 +626,7 @@ void beep(int c, int ontime)
 			digitalWrite(BEEP_PIN, LOW);
 	}
 }
+#endif
 
 void power_on_dev()
 {
@@ -625,7 +650,11 @@ void rx_irq_handler()
 
 	if (!e) {
 
-		push_pkt(&g_cbuf, sx1272.packet_received.data, sx1272._RSSIpacket, sx1272._payloadlength);
+		uint8_t plen = sx1272._payloadlength;
+
+		if (plen > 32) plen = 32;
+
+		push_pkt(&g_cbuf, sx1272.packet_received.data, sx1272._RSSIpacket, plen);
 
 	} else {
 
@@ -637,6 +666,69 @@ void rx_irq_handler()
 	//sx1272.rx_v0();
 #endif
 	interrupts();
+}
+
+bool check_crc(uint8_t *p, int plen)
+{
+	int i, len = 0;
+	uint16_t hh = 0, sum = 0;
+
+#if 0
+	switch (p[2]) {
+
+		case 0x31:
+			len = 15;
+			sum = p[15] << 8 | p[16];
+			break;
+
+		case 0x32:
+			len = 17;
+			sum = p[17] << 8 | p[18];
+			break;
+
+		case 0x33:
+			len = 18;
+			sum = p[18] << 8 | p[19];
+			break;
+		default:
+			len = 0;
+			sum = 1;
+			break;
+	}
+#endif
+#if 0
+	switch (plen) {
+		case 24:
+			len = 18;
+			sum = p[18] << 8 | p[19];
+			break;
+		case 23:
+			len = 17;
+			sum = p[17] << 8 | p[18];
+			break;
+		case 21:
+			len = 15;
+			sum = p[15] << 8 | p[16];
+			break;
+		default:
+			len = 0;
+			sum = 1;
+			break;
+	}
+#else
+	len = plen - 6;
+	sum = p[len] << 8 | p[len+1];
+#endif
+
+
+	for (i = 0; i < len; i++) {
+		hh += p[i];
+	}
+
+	if (hh == sum)
+		return true;
+	else
+		return false;
 }
 
 void setup()
@@ -660,9 +752,11 @@ void setup()
 	attachInterrupt(RX_INT_PIN, rx_irq_handler, RISING);
 #endif
 
+#ifdef ENABLE_ABC
 	// beep
 	pinMode(BEEP_PIN, OUTPUT);
 	digitalWrite(BEEP_PIN, LOW);
+#endif
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -739,7 +833,9 @@ void loop(void)
 				sx1272.setSyncWord(SYNCWORD_DEFAULT);
 				break;
 			case MODE_ABC:
+				#ifdef ENABLE_ABC
 				sx1272.setSyncWord(SYNCWORD_ABC);
+				#endif
 				//NVIC_SystemReset();
 				break;
 			case MODE_KEY:
@@ -755,7 +851,7 @@ void loop(void)
 		key_time = 0;
 	}
 
-	if (key_time > 8) {
+	if (key_time > KEY_LONG_PRESS_TIME) {
 
 		key_time = 0;
 
@@ -897,17 +993,17 @@ void loop(void)
 
 			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
 				dev_id,
-				decode_vbat(sx1272.packet_received.data),
+				decode_vbat(p),
 				decode_sensor_type(),
-				decode_sensor_data(sx1272.packet_received.data),
-				decode_cmd(sx1272.packet_received.data),
-				decode_ver(sx1272.packet_received.data),
-				sx1272._RSSIpacket);
+				decode_sensor_data(p),
+				decode_cmd(p),
+				decode_ver(p),
+				d.rssi);
 
 #ifdef ENABLE_OLED
 				sprintf(frame_buf[c % 2], "%s %4d",
 					dev_id,
-					sx1272._RSSIpacket);
+					d.rssi);
 
 				show_frame(c % 2, omode, false);
 				c++;
@@ -915,29 +1011,55 @@ void loop(void)
 
 				INFOLN("%s", cmd);
 		} else if (MODE_ABC == omode) {
+	#ifdef ENABLE_ABC
 			// only show tagged message
 			if (p[0] == 0x55) {
 
 				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
 					dev_id,
-					decode_vbat(sx1272.packet_received.data),
+					decode_vbat(p),
 					decode_sensor_type(),
-					decode_sensor_data(sx1272.packet_received.data),
-					sx1272._RSSIpacket);
+					decode_sensor_data(p),
+					d.rssi);
 
-#ifdef ENABLE_OLED
+			#ifdef ENABLE_OLED
 				sprintf(frame_buf[c % 2], " %c  %4d  %s",
 					did2abc(p[1]),
-					sx1272._RSSIpacket,
-					decode_vbat(sx1272.packet_received.data));
+					d.rssi,
+					decode_vbat(p));
 
 				show_frame(c % 2, omode, false);
 				c++;
-#endif
+			#endif
 
-				beep(p[1], 150 + sx1272._RSSIpacket);
+				beep(p[1], 150 + d.rssi);
 
 				INFOLN("%s", cmd);
+	#else
+			// show exception message
+			if (p[0] == 0x47 && p[1] == 0x4F && (p[3] != 0 || p[4] != 0 || p[5] != 0
+				|| (p[2] == 0x31 && p_len != 21) || (p[2] == 0x32 && p_len != 23)
+				|| check_crc(p, p_len) == false) || p[2] > 0x36 || p[2] < 0x31) {
+
+				sprintf(cmd, "%s/rssi/%d",
+					dev_id,
+					d.rssi);
+
+			#ifdef ENABLE_OLED
+				sprintf(frame_buf[0], "%s", dev_id);
+
+				sprintf(frame_buf[1], "%02X %d %d %s%4d",
+					p[2],
+					p_len,
+					check_crc(p, p_len),
+					decode_vbat(p),
+					d.rssi);
+
+				show_frame(0, omode, false);
+				c++;
+			#endif
+				INFOLN("%s", cmd);
+	#endif
 			}
 		} else if (MODE_KEY == omode) {
 			// only show trigged message
@@ -953,12 +1075,12 @@ void loop(void)
 					decode_vbat(p),
 					decode_sensor_type(),
 					decode_sensor_data(p),
-					sx1272._RSSIpacket);
+					d.rssi);
 
 #ifdef ENABLE_OLED
 				sprintf(frame_buf[0], "%s %4d",
 					dev_id,
-					sx1272._RSSIpacket);
+					d.rssi);
 
 				if (dev_id[3] == '0' && (dev_id[4] == '8')) {
 
@@ -981,6 +1103,19 @@ void loop(void)
 
 				INFOLN("%s", cmd);
 			}
+
+		} else if (MODE_RAW == omode) {
+
+			// only show raw message, <= 32bytes
+#ifdef ENABLE_OLED
+				sprintf(frame_buf[0], "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+					p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
+
+				sprintf(frame_buf[1], "%02X%02X %d %d %s%4d",
+					p[9], p[10], p_len, check_crc(p, p_len), decode_vbat(p), d.rssi);
+
+				show_frame(0, omode, false);
+#endif
 		}
 	}
 }
