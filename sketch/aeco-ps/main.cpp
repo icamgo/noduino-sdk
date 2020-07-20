@@ -590,11 +590,23 @@ void task_oled()
 	int i;
 	char pres_s[6];
 
+	// reset the key count
+	key_count = 0;
+
 	pressure_init(SCL_PIN, SDA_PIN);
 
 	for (i=0; i<30; i++) {
 
 		WDOG_Feed();
+
+		if (key_count >= 2) {
+			// reset the min & max
+			min_pres = 0;
+			max_pres = 0;
+			key_count = 0;
+		} else {
+			key_count = 0;
+		}
 
 		cur_pres = get_pressure();
 
@@ -624,7 +636,6 @@ void loop()
 		power_on_dev();
 		task_oled();
 
-		key_count = 0;
 	}
 
 	if (0x5a == need_push) {
