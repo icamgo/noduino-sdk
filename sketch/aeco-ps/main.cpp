@@ -25,6 +25,12 @@
 #include "math.h"
 #include "em_wdog.h"
 
+#if 0
+#define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
+#else
+#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
+#endif
+
 //#define	DEBUG					1
 #define ENABLE_OLED					1
 #define ENABLE_CAD					1
@@ -84,7 +90,7 @@ static uint8_t need_push = 0;
 #define MAX_DBM					20
 
 #ifdef CONFIG_V0
-uint8_t message[24] = { 0x47, 0x4F, 0x33 };
+uint8_t message[32] = { 0x47, 0x4F, 0x33 };
 uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 #else
@@ -474,10 +480,6 @@ void push_data()
 	pkt[16] = p[1]; pkt[17] = p[0];
 	tx_count++;
 
-	ui16 = get_crc(pkt, 18);
-	p = (uint8_t *) &ui16;
-	pkt[18] = p[1]; pkt[19] = p[0];
-
 	float chip_temp = fetch_mcu_temp();
 
 	// Humidity Sensor data	or Water Leak Sensor data
@@ -496,6 +498,11 @@ void push_data()
 	pkt[23] = 0;
 #endif
 
+
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
+	p = (uint8_t *) &ui16;
+
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 #else
 	uint8_t r_size;
 
@@ -523,7 +530,7 @@ void push_data()
 #endif
 
 #ifdef CONFIG_V0
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
 #else
 	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
@@ -599,11 +606,20 @@ void task_oled()
 
 		WDOG_Feed();
 
-		if (key_count >= 2) {
+		if (key_count == 2) {
+
 			// reset the min & max
 			min_pres = 0;
 			max_pres = 0;
 			key_count = 0;
+
+		} else if (key_count >= 3) {
+
+			key_count = 0;
+			u8g2.setPowerSave(1);
+
+			return ;
+
 		} else {
 			key_count = 0;
 		}
