@@ -921,8 +921,9 @@ void loop(void)
 				INFOLN("%s", cmd);
 		} else if (MODE_ABC == omode) {
 			// only show exception message
-			if (p[0] == 0x47 && p[1] == 0x4F && (p[3] != 0 || p[4] != 0 || p[5] != 0 ||
-				(p[2] == 0x31 && p_len != 21) || (p[2] == 0x32 && p_len != 23) || (p[2] == 0x33 && p_len != 24))) {
+			if (p[0] == 0x47 && p[1] == 0x4F && (p[3] != 0 || p[4] != 0 || p[5] != 0
+				|| (p[2] == 0x31 && p_len != 21) || (p[2] == 0x32 && p_len != 23)
+				|| check_crc(p, p_len) == false) || p[2] > 0x36 || p[2] < 0x31) {
 
 				sprintf(cmd, "%s/rssi/%d",
 					dev_id,
