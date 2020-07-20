@@ -29,6 +29,10 @@
 struct circ_buf g_cbuf;
 
 uint8_t rx_err_cnt = 0;
+#define KEY_LONG_PRESS_TIME		60000
+
+#else
+#define KEY_LONG_PRESS_TIME		8
 #endif
 
 //#define	DEBUG					1
@@ -85,6 +89,7 @@ char frame_buf[8][24];
 #define	MODE_ALL		0
 #define	MODE_KEY		1
 #define	MODE_ABC		2
+#define	MODE_RAW		3
 
 int omode = MODE_KEY;
 int old_omode = MODE_KEY;
@@ -410,7 +415,7 @@ void show_frame(int l, int mode, bool alarm)
 		u8g2.setFont(u8g2_font_freedoomr10_tu);
 
 		for (int i=0; i < 8; i++) {
-			u8g2.setCursor(2, 15+i*16);
+			u8g2.setCursor(0, 15+i*16);
 			u8g2.print(frame_buf[i]);
 		}
 
@@ -421,7 +426,7 @@ void show_frame(int l, int mode, bool alarm)
 
 			u8g2.drawGlyph(120, 12+16*l, 81);
 
-		} else if (MODE_ABC == mode) {
+		} else if (MODE_ABC == mode || MODE_RAW == mode) {
 
 			// Bell icon. notice the message tagged for testing
 			//u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
@@ -512,6 +517,14 @@ void show_mode(int mode)
 
 			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
 			u8g2.drawGlyph(112, 61, 64);
+		} else if (MODE_RAW == mode) {
+			// Lora icon. notice rx all raw message
+			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
+			u8g2.setCursor(12, 64);
+			u8g2.print(" T2 - RAW ");
+
+			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
+			u8g2.drawGlyph(112, 61, 81);
 		}
 	} while (u8g2.nextPage());
 }
@@ -533,7 +546,7 @@ void show_low_bat()
 void change_omode()
 {
 	omode++;
-	omode %= 3;
+	omode %= 4;
 	INFO("%s", "omode: ");
 	INFOLN("%d", omode);
 }
@@ -559,8 +572,11 @@ void rx_irq_handler()
 	e = sx1272.get_pkt_v0();
 
 	if (!e) {
+		uint8_t plen = sx1272._payloadlength;
 
-		push_pkt(&g_cbuf, sx1272.packet_received.data, sx1272._RSSIpacket, sx1272._payloadlength);
+		if (plen > 32) plen = 32;
+
+		push_pkt(&g_cbuf, sx1272.packet_received.data, sx1272._RSSIpacket, plen);
 
 	} else {
 
@@ -740,7 +756,7 @@ void loop(void)
 		key_time = 0;
 	}
 
-	if (key_time > 8) {
+	if (key_time > KEY_LONG_PRESS_TIME) {
 
 		key_time = 0;
 
@@ -854,7 +870,7 @@ void loop(void)
 		}
 
 		INFO_S("%d", "/");
-		INFO("%d", sx1272._RSSIpacket);
+		INFO("%d", d.rssi);
 		INFO_S("%s", "/");
 		INFOLN("%d", p_len);
 #endif
@@ -886,17 +902,17 @@ void loop(void)
 
 			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
 				dev_id,
-				decode_vbat(sx1272.packet_received.data),
+				decode_vbat(p),
 				decode_sensor_type(),
-				decode_sensor_data(sx1272.packet_received.data),
-				decode_cmd(sx1272.packet_received.data),
-				decode_ver(sx1272.packet_received.data),
-				sx1272._RSSIpacket);
+				decode_sensor_data(p),
+				decode_cmd(p),
+				decode_ver(p),
+				d.rssi);
 
 #ifdef ENABLE_OLED
 				sprintf(frame_buf[c % 8], "%s %4d",
 					dev_id,
-					sx1272._RSSIpacket);
+					d.rssi);
 
 				show_frame(c % 8, omode, false);
 				c++;
@@ -910,7 +926,7 @@ void loop(void)
 
 				sprintf(cmd, "%s/rssi/%d",
 					dev_id,
-					sx1272._RSSIpacket);
+					d.rssi);
 
 #ifdef ENABLE_OLED
 				int fi = (c % 4) * 2;
@@ -922,7 +938,7 @@ void loop(void)
 					p_len,
 					check_crc(p, p_len),
 					decode_vbat(p),
-					sx1272._RSSIpacket);
+					d.rssi);
 
 				show_frame(fi, omode, false);
 				c++;
@@ -943,13 +959,13 @@ void loop(void)
 					decode_vbat(p),
 					decode_sensor_type(),
 					decode_sensor_data(p),
-					sx1272._RSSIpacket);
+					d.rssi);
 
 #ifdef ENABLE_OLED
 				int fi = (c % 4) * 2;
 				sprintf(frame_buf[fi], "%s %4d",
 					dev_id,
-					sx1272._RSSIpacket);
+					d.rssi);
 
 				if (dev_id[3] == '0' && (dev_id[4] == '8')) {
 
@@ -972,6 +988,20 @@ void loop(void)
 
 				INFOLN("%s", cmd);
 			}
+		} else if (MODE_RAW == omode) {
+
+			// only show raw message, <= 32bytes
+#ifdef ENABLE_OLED
+				int fi = (c % 4) * 2;
+				sprintf(frame_buf[fi], "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+					p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
+
+				sprintf(frame_buf[fi + 1], "%02X%02X %d %d %s%4d",
+					p[9], p[10], p_len, check_crc(p, p_len), decode_vbat(p), d.rssi);
+
+				show_frame(fi, omode, false);
+				c++;
+#endif
 		}
 	}
 }
