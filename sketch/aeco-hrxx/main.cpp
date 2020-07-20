@@ -46,9 +46,6 @@ uint8_t rx_err_cnt = 0;
 #define SYNCWORD_LORAWAN		0x34
 #define SYNCWORD_ABC			0x55
 
-// use the dynamic ACK feature of our modified SX1272 lib
-//#define GW_AUTO_ACK
-
 #ifdef CONFIG_V0
 
 #define RECEIVE_ALL
@@ -644,6 +641,13 @@ void setup()
 {
 	int e;
 
+	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
+
+	/* Watchdog setup - Use defaults, excepts for these : */
+	wInit.em2Run = true;
+	wInit.em3Run = true;
+	wInit.perSel = wdogPeriod_2k;	/* 2k 1kHz periods should give 2 seconds */
+
 #ifdef DEBUG
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
@@ -689,12 +693,17 @@ void setup()
 	sx1272.init_rx_int();
 	sx1272.rx_v0();
 #endif
+
+	/* Start watchdog */
+	WDOG_Init(&wInit);
 }
 
 void loop(void)
 {
 	int e = 1;
 	static int c = 0;
+
+	WDOG_Feed();
 
 #ifdef ENABLE_RX_INTERRUPT
 	status_counter++;
