@@ -24,6 +24,11 @@
 #include "math.h"
 #include "em_wdog.h"
 
+#if 0
+#define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
+#else
+#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
+#endif
 
 //#define	DEBUG					1
 
@@ -40,9 +45,6 @@ static uint32_t unvib_tx_count = 0;
 
 #define	HEARTBEAT_TIME				6600	/* 120*60s */
 #define	VIB_HEARTBEAT_TIME			1100	/* 20*60s */
-
-//static float old_temp = 0.0;
-//static float cur_temp = 0.0;
 
 static uint32_t old_vib = 0;
 static uint32_t cur_vib = 0;
@@ -152,21 +154,14 @@ void power_off_dev()
 
 uint32_t get_vib()
 {
-	/*
-	bool ret = 0;
-
-	// LOW/fasle is vibration
-	ret = digitalRead(VIB_PIN);
-
-	return !ret;
-	*/
 	if (vib_count >= 1)
+
 		return vib_count;
+
 	else {
 		// 0 or 1
 		return 0;
 	}
-
 }
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
@@ -232,21 +227,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 		need_push = 0;
 	}
-
-/*
-	power_on_dev();		// turn on device power
-	pt1000_init();		// initialization of the sensor
-	cur_temp = pt1000_get_temp();
-	power_off_dev();
-
-	if (fabsf(cur_temp - old_temp) > 1.0) {
-
-		need_push = 0x5a;
-#ifdef CONFIG_V0
-		tx_cause = DELTA_TX;
-#endif
-	}
-*/
 }
 
 void trig_check_sensor()
@@ -393,10 +373,6 @@ void push_data(bool alarm)
 	pkt[16] = p[1]; pkt[17] = p[0];
 	tx_count++;
 
-	ui16 = get_crc(pkt, 18);
-	p = (uint8_t *) &ui16;
-	pkt[18] = p[1]; pkt[19] = p[0];
-
 	float chip_temp = adc.temperatureCelsius();
 
 	// Humidity Sensor data	or Water Leak Sensor data
@@ -410,6 +386,11 @@ void push_data(bool alarm)
 
 	// Internal current consumption
 	pkt[23] = -1;
+
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
+	p = (uint8_t *) &ui16;
+
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 #else
 	char vbat_s[10], pres_s[10];
 	ftoa(vbat_s, vbat, 2);
@@ -434,7 +415,7 @@ void push_data(bool alarm)
 	startSend = millis();
 
 #ifdef CONFIG_V0
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
 #else
 	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
@@ -474,6 +455,7 @@ void push_data(bool alarm)
 		old_vib = cur_vib;
 	}
 
+#ifdef DEBUG
 	endSend = millis();
 
 	INFO("V: ");
@@ -490,13 +472,9 @@ void push_data(bool alarm)
 
 	INFO("Packet sent, state ");
 	INFOLN(e);
+#endif
 
-	e = sx1272.setSleepMode();
-	if (!e)
-		INFO("Successfully switch into sleep mode");
-	else
-		INFO("Could not switch into sleep mode");
-
+	sx1272.setSleepMode();
 	digitalWrite(SX1272_RST, LOW);
 
 	spi_end();
@@ -506,10 +484,6 @@ void push_data(bool alarm)
 
 void loop()
 {
-	//INFO("Clock Freq = ");
-	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
-	//INFOLN("Feed the watchdog");
-
 	if (0x5a == need_push) {
 		push_data(false);
 
