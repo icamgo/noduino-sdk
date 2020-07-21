@@ -638,36 +638,6 @@ void power_off_dev()
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
-void rx_irq_handler()
-{
-	noInterrupts();
-#ifdef ENABLE_RX_INTERRUPT
-	int8_t e = 0;
-
-	sx1272.getRSSIpacket();
-
-	e = sx1272.get_pkt_v0();
-
-	if (!e) {
-
-		uint8_t plen = sx1272._payloadlength;
-
-		if (plen > 32) plen = 32;
-
-		push_pkt(&g_cbuf, sx1272.packet_received.data, sx1272._RSSIpacket, plen);
-
-	} else {
-
-		rx_err_cnt++;
-
-	}
-	//INFOLN("%d", e);
-
-	//sx1272.rx_v0();
-#endif
-	interrupts();
-}
-
 bool check_crc(uint8_t *p, int plen)
 {
 	int i, len = 0;
@@ -729,6 +699,53 @@ bool check_crc(uint8_t *p, int plen)
 		return true;
 	else
 		return false;
+}
+
+bool is_our_pkt(uint8_t *p, int len)
+{
+	if (p[0] != 0x47 || p[1] != 0x4F) return false;
+
+	if (p[2] < 0x31 || p[2] > 0x35) return false;
+
+	if (check_crc(p, len) == false) return false;
+
+	return true;
+}
+
+void rx_irq_handler()
+{
+	noInterrupts();
+#ifdef ENABLE_RX_INTERRUPT
+	int8_t e = 0;
+
+	sx1272.getRSSIpacket();
+	e = sx1272.get_pkt_v0();
+
+	if (!e) {
+
+		uint8_t plen = sx1272._payloadlength;
+		uint8_t *p = sx1272.packet_received.data;
+
+		if (plen > 32) plen = 32;
+
+		if (omode == MODE_RAW ||
+			(omode == MODE_KEY && is_our_pkt(p, plen) && (p[15]&0x0F) >= 3) ||
+			((omode == MODE_ABC || omode == MODE_ALL) && is_our_pkt(p, plen))) {
+
+			push_pkt(&g_cbuf, p, sx1272._RSSIpacket, plen);
+
+		}
+
+	} else {
+
+		rx_err_cnt++;
+
+	}
+	//INFOLN("%d", e);
+
+	//sx1272.rx_v0();
+#endif
+	interrupts();
 }
 
 void setup()
