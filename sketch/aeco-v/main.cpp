@@ -370,7 +370,8 @@ void push_data(bool alarm)
 	pkt[15] = tx_cause;
 
 	p = (uint8_t *) &tx_count;
-	pkt[16] = p[1]; pkt[17] = p[0];
+	//pkt[16] = p[1]; pkt[17] = p[0];
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
 	tx_count++;
 
 	float chip_temp = adc.temperatureCelsius();
