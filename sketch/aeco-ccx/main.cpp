@@ -22,9 +22,13 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "tx_ctrl.h"
 #include "circ_buf.h"
+
 struct circ_buf g_cbuf;
 #define OLED_DELAY_TIME			3600000		/* oled is on about 35s */
+
+struct ctrl_fifo g_cfifo;
 
 #if 0
 #define	DEBUG					1
@@ -620,7 +624,7 @@ bool is_our_pkt(uint8_t *p, int len)
 
 	if (p[2] < 0x33 || p[2] > 0x36) {
 
-		// don't support the old version
+		// support only the 0x33/34/35/36 version
 		return false;
 	}
 
@@ -659,9 +663,18 @@ bool process_pkt(uint8_t *p, int len)
 {
 	p[0] = 0x49;
 
-	update_crc(p, len);
+	// p[15] is the cmd type
+	// try to extend the p[15][7:4] as the pkt re-tx counter
 
-	return true;
+	if (check_ctrl_fno(&g_cfifo, p, len) == true) {
+
+		update_crc(p, len);
+
+		return true;
+
+	} else {
+		return false;
+	}
 }
 
 void rx_irq_handler()
@@ -886,9 +899,10 @@ void loop(void)
 		}
 	}
 
-	process_pkt(p, p_len);
+	if (process_pkt(p, p_len) == true) {
 
-	tx_pkt(p, p_len);
+		tx_pkt(p, p_len);
 
-	sx1272.rx_v0();
+		sx1272.rx_v0();
+	}
 }
