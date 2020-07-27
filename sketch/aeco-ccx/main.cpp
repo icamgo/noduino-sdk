@@ -24,7 +24,7 @@
 
 #include "circ_buf.h"
 struct circ_buf g_cbuf;
-#define OLED_DELAY_TIME			600000
+#define OLED_DELAY_TIME			3600000		/* oled is on about 35s */
 
 #if 0
 #define	DEBUG					1
@@ -837,11 +837,6 @@ void loop(void)
 	INFOLN("%d", p_len);
 #endif
 
-	process_pkt(p, p_len);
-
-	tx_pkt(p, p_len);
-
-	sx1272.rx_v0();
 
 	if (oled_on == true) {
 
@@ -854,6 +849,16 @@ void loop(void)
 				return;
 			}
 
+		#ifdef ENABLE_OLED
+				sprintf(frame_buf[c % 2], "%s %4d",
+					dev_id,
+					d.rssi);
+
+				show_frame(c % 2, omode, false);
+				c++;
+		#endif
+
+		#ifdef DEBUG
 			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
 				dev_id,
 				decode_vbat(p),
@@ -863,16 +868,8 @@ void loop(void)
 				decode_ver(p),
 				d.rssi);
 
-#ifdef ENABLE_OLED
-				sprintf(frame_buf[c % 2], "%s %4d",
-					dev_id,
-					d.rssi);
-
-				show_frame(c % 2, omode, false);
-				c++;
-#endif
-
 				INFOLN("%s", cmd);
+		#endif
 
 		} else if (MODE_RAW == omode) {
 
@@ -888,4 +885,10 @@ void loop(void)
 #endif
 		}
 	}
+
+	process_pkt(p, p_len);
+
+	tx_pkt(p, p_len);
+
+	sx1272.rx_v0();
 }
