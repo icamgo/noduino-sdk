@@ -32,20 +32,24 @@ bool check_ctrl_fno(struct ctrl_fifo *cfifo, uint8_t *p, int plen)
 		*(((uint8_t *)&devid) + 7 - b) = p[a];
 	}
 
-	uint16_t fno = p[plen-8] << 8 + p[plen-7];
+	uint16_t fno = (uint16_t)(p[plen-8] << 8) | p[plen-7];
 
-	for (a = cfifo->tail; a < cfifo->head; ) {
+	for (a = 0; a < CTRL_FIFO_SIZE-1; a++) {
 		
 		if (cfifo->ctrl[a].devid == devid) {
 
-			if (cfifo->ctrl[a].fno != fno)
-				return true;
-			else
-				return false;
-		}
+			if (cfifo->ctrl[a].fno != fno) {
 
-		a += 1;
-		a %= CTRL_FIFO_SIZE;
+				cfifo->ctrl[a].fno = fno;
+				cfifo->ctrl[a].ts = millis();
+
+				return true;
+
+			} else {
+
+				return false;
+			}
+		}
 	}
 
 	// no exist ctrl data, insert a item
