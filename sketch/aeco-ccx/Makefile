@@ -174,7 +174,7 @@ CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I $(LIB_DIR)/sx127x					\
-			-I ../aeco-hrx								
+			-I .
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/pc10/						\
@@ -182,7 +182,7 @@ CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I $(LIB_DIR)/sx127x					\
-			-I ../aeco-hrx								
+			-I .
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 	-fdata-sections -nostdlib --param max-inline-insns-single=500 -Dprintf=iprintf
