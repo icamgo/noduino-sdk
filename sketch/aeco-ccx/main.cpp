@@ -55,6 +55,7 @@ struct ctrl_fifo g_cfifo;
 #ifdef CONFIG_V0
 
 #define ENABLE_CAD				1
+
 #define DEST_ADDR				1
 #define	TX_TIME					600			// 600ms
 
@@ -74,18 +75,24 @@ bool withAck = false;
 int status_counter = 0;
 uint8_t rx_err_cnt = 0;
 
+uint32_t rx_cnt = 0;
+uint32_t tx_cnt = 0;
+
 /*
  * Output Mode:
  *
  *   0x0: rx all messages
  *   0x1: show the raw message
 */
+#define MODE_NUM		4
+
 #define	MODE_ALL		0
 #define	MODE_RAW		1
 #define	MODE_DECODE		2
+#define MODE_STATIS		3
 
-int omode = MODE_ALL;
-int old_omode = MODE_ALL;
+int omode = MODE_STATIS;
+int old_omode = MODE_STATIS;
 
 bool oled_on = true;
 
@@ -510,6 +517,15 @@ void show_mode(int mode)
 
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
 			u8g2.drawGlyph(112, 61, 81);
+
+		} else if (MODE_STATIS == mode) {
+			// cycle icon. notice the message trigged by magnet
+			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
+			u8g2.setCursor(12, 26);
+			u8g2.print(" CC - STA ");
+
+			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
+			u8g2.drawGlyph(112, 23, 64);
 		}
 	} while (u8g2.nextPage());
 }
@@ -531,7 +547,7 @@ void show_low_bat()
 void change_omode()
 {
 	omode++;
-	omode %= 2;
+	omode %= MODE_NUM;
 
 	oled_on = true;
 
@@ -691,6 +707,8 @@ void rx_irq_handler()
 		uint8_t *p = sx1272.packet_received.data;
 
 		if (plen > 32) plen = 32;
+
+		rx_cnt++;
 
 		if (is_our_pkt(p, plen)) {
 
@@ -887,19 +905,59 @@ void loop(void)
 		} else if (MODE_RAW == omode) {
 
 			// only show raw message, <= 32bytes
-#ifdef ENABLE_OLED
-				sprintf(frame_buf[0], "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-					p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
+		#ifdef ENABLE_OLED
+			sprintf(frame_buf[0], "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+				p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
 
-				sprintf(frame_buf[1], "%02X%02X %d %d %s%4d",
-					p[9], p[10], p_len, check_crc(p, p_len), decode_vbat(p), d.rssi);
+			sprintf(frame_buf[1], "%02X%02X %d %d %s%4d",
+				p[9], p[10], p_len, check_crc(p, p_len), decode_vbat(p), d.rssi);
 
-				show_frame(0, omode, false);
-#endif
+			show_frame(0, omode, false);
+		#endif
+
+		} else if (MODE_STATIS == omode) {
+
+		#ifdef ENABLE_OLED
+			sprintf(frame_buf[0], " RX: %4d", rx_cnt);
+			sprintf(frame_buf[1], " TX: %4d", tx_cnt);
+
+			show_frame(0, omode, false);
+		#endif
+
+		} else if (MODE_DECODE == omode) {
+
+		#ifdef ENABLE_OLED
+			sprintf(frame_buf[0], "%s %4d",
+				dev_id,
+				d.rssi);
+
+			decode_vbat(p);
+			decode_sensor_type();
+			decode_sensor_data(p);
+
+			if (dev_id[3] == '0' && (dev_id[4] == '8')) {
+
+				sprintf(frame_buf[1], "%s %s %s",
+					dev_type,
+					dev_data,
+					dev_vbat
+					);
+			} else {
+				sprintf(frame_buf[1], " %s %s %s",
+					dev_type,
+					dev_data,
+					dev_vbat
+					);
+			}
+
+			show_frame(0, omode, p[15] & 0x04);
+		#endif
 		}
 	}
 
 	if (process_pkt(p, p_len) == true) {
+
+		tx_cnt++;
 
 		tx_pkt(p, p_len);
 
