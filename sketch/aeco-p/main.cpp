@@ -20,13 +20,18 @@
 #include "sx1272.h"
 #include "softi2c.h"
 #include "pc10.h"
-//#include "U8g2lib.h"
 
 #include "rtcdriver.h"
 #include "math.h"
 #include "em_wdog.h"
 
 //#define	DEBUG					1
+
+#if 0
+#define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
+#else
+#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
+#endif
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -80,7 +85,6 @@ static uint8_t need_push = 0;
 #endif
 
 #define MAX_DBM					20
-
 
 //#define WITH_ACK
 
@@ -345,16 +349,6 @@ void push_data()
 	ui16 = vbat * 1000;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
-	//pkt[15] = tx_cause;
-
-	p = (uint8_t *) &tx_count;
-	pkt[16] = p[1]; pkt[17] = p[0];
-	tx_count++;
-
-	ui16 = get_crc(pkt, 18);
-	p = (uint8_t *) &ui16;
-	pkt[18] = p[1]; pkt[19] = p[0];
-
 	float chip_temp = fetch_mcu_temp();
 
 	// Humidity Sensor data	or Water Leak Sensor data
@@ -368,6 +362,17 @@ void push_data()
 
 	// Internal current consumption
 	pkt[23] = (int8_t)roundf(cur_curr);
+
+
+	p = (uint8_t *) &tx_count;
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
+	tx_count++;
+
+
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
+	p = (uint8_t *) &ui16;
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
 #else
 	uint8_t r_size;
 
@@ -395,7 +400,7 @@ void push_data()
 #endif
 
 #ifdef CONFIG_V0
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
 #else
 	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
@@ -448,10 +453,13 @@ void push_data()
 #endif
 
 	e = sx1272.setSleepMode();
+
+#ifdef DEBUG
 	if (!e)
 		INFO("Successfully switch into sleep mode");
 	else
 		INFO("Could not switch into sleep mode");
+#endif
 
 	digitalWrite(SX1272_RST, LOW);
 
@@ -462,10 +470,6 @@ void push_data()
 
 void loop()
 {
-	//INFO("Clock Freq = ");
-	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
-
-	//INFOLN("Feed the watchdog");
 
 	if (0x5a == need_push) {
 		push_data();
