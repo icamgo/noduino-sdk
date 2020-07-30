@@ -27,6 +27,10 @@
 
 //#define	DEBUG					1
 
+#define CONFIG_2MIN				1
+
+#define ENABLE_CAD				1
+
 #if 0
 #define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
 #else
@@ -36,17 +40,19 @@
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
+#ifndef CONFIG_2MIN
 static uint32_t sample_period = 20;		/* 20s */
-
 static uint32_t sample_count = 0;
-#define		HEARTBEAT_TIME			7200
-
 static float old_pres = 0.0;
+#define HEARTBEAT_TIME			7200
+
+#else
+static uint32_t sample_period = 110;	/* 120s */
+#endif
+
 static float cur_pres = 0.0;
 
 static float cur_curr = 0.0;
-
-//#define	TX_TESTING				1
 
 static uint8_t need_push = 0;
 
@@ -60,8 +66,6 @@ static uint8_t need_push = 0;
 #define SDA_PIN					12		/* PIN23_PE12 */
 #define SCL_PIN					13		/* PIN24_PE13 */
 #endif
-
-#define ENABLE_CAD				1
 
 #define	TX_TIME					1800		// 1800ms
 #define DEST_ADDR				1
@@ -188,6 +192,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
+#ifndef CONFIG_2MIN
 	sample_count++;
 
 	if (sample_count >= HEARTBEAT_TIME/20) {
@@ -195,24 +200,26 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		tx_cause = TIMER_TX;
 		sample_count = 0;
 	}
+#endif
 
 	pressure_init(SCL_PIN, SDA_PIN);	// initialization of the sensor
 
 	cur_pres = get_pressure();
 
-#ifdef TX_TESTING
-	need_push = 0x5a;
-	tx_cause = TIMER_TX;
-#else
+#ifndef CONFIG_2MIN
 	if (fabsf(cur_pres - old_pres) > PC10_HALF_RANGE/100000.0) {
 
 		need_push = 0x5a;
-#ifdef CONFIG_V0
 		tx_cause = DELTA_TX;
-#endif
 	}
-#endif
 
+#else
+
+	// 2min fixed interval
+	need_push = 0x5a;
+	tx_cause = TIMER_TX;
+
+#endif
 }
 
 void trig_check_sensor()
@@ -232,7 +239,12 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
+
+#ifndef CONFIG_2MIN
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+#else
+	wInit.perSel = wdogPeriod_128k;	/* 128 seconds watchdog */
+#endif
 
 	// init dev power ctrl pin
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -434,10 +446,12 @@ void push_data()
 	INFOLN(r_size);
 #endif
 
+#ifndef CONFIG_2MIN
 	if (!e) {
 		// send message succesful, update the old_pres
 		old_pres = cur_pres;
 	}
+#endif
 
 #ifdef DEBUG
 	endSend = millis();
