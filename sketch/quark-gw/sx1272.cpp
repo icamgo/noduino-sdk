@@ -357,7 +357,7 @@ void SX1272::init_rx_int()
 	// only allow RxDone & crc interrupts
 	writeRegister(REG_IRQ_FLAGS_MASK, 0x9F);
 
-	//writeRegister(REG_DIO_MAPPING1, 0x00);
+	writeRegister(REG_DIO_MAPPING1, 0x00);
 }
 
 void SX1272::rx_v0()

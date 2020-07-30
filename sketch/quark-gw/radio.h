@@ -27,7 +27,6 @@
 
 #ifdef CONFIG_V0
 
-//#define RECEIVE_ALL
 #define	RX_TIME				MAX_TIMEOUT
 
 #define TXRX_CH				CH_01_472

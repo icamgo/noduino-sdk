@@ -18,8 +18,102 @@
 
 #include "radio.h"
 
+#define ENABLE_RX_INTERRUPT				1
+
+#ifdef ENABLE_RX_INTERRUPT
+#include "circ_buf.h"
+
+struct circ_buf g_cbuf;
+uint8_t rx_err_cnt = 0;
+#endif
+
 // be careful, max command length is 128 characters
 #define MAX_CMD_LEN			128
+
+bool check_crc(uint8_t *p, int plen)
+{
+	int i, len = 0;
+	uint16_t hh = 0, sum = 0;
+
+	len = plen - 6;
+	sum = p[len] << 8 | p[len+1];
+
+	for (i = 0; i < len; i++) {
+		hh += p[i];
+	}
+
+	if (hh == sum)
+		return true;
+	else
+		return false;
+}
+
+bool is_our_pkt(uint8_t *p, int len)
+{
+	if (p[0] != 0x47 || p[1] != 0x4F) {
+
+		// invalide pkt header
+		return false;
+	}
+
+	if (len < 24) return false;
+
+	if (p[2] < 0x33 || p[2] > 0x36) {
+
+		// support only the 0x33/34/35/36 version
+		return false;
+	}
+
+	if (check_crc(p, len) == false) {
+
+		return false;
+	}
+
+	if (p[3] != 0 || p[4] != 0 || p[5] != 0) {
+
+		// invalid devid
+		return false;
+	}
+
+	return true;
+}
+
+#ifdef ENABLE_RX_INTERRUPT
+void rx_irq_handler()
+{
+	noInterrupts();
+#ifdef ENABLE_RX_INTERRUPT
+
+	int8_t e = 0;
+
+	sx1272.getRSSIpacket();
+
+	e = sx1272.get_pkt_v0();
+
+	if (!e) {
+
+		uint8_t plen = sx1272._payloadlength;
+		uint8_t *p = sx1272.packet_received.data;
+
+		if (plen > 32) plen = 32;
+
+		if (is_our_pkt(p, plen)) {
+
+			// push into the tx queue buffer
+			push_pkt(&g_cbuf, sx1272.packet_received.data, sx1272._RSSIpacket, plen);
+		}
+
+	} else {
+
+		rx_err_cnt++;
+
+	}
+
+#endif
+	//INFOLN("%s", "rx int");
+	interrupts();
+}
+#endif
 
 void radio_setup()
 {
@@ -36,6 +130,15 @@ void radio_setup()
 #ifdef GW_RELAY
 	sx1272._enableCarrierSense = true;
 	SIFS_cad_number = 6;
+#endif
+
+	pinMode(3, INPUT);
+#ifdef ENABLE_RX_INTERRUPT
+	// RF RX Interrupt pin
+	attachInterrupt(1, rx_irq_handler, RISING);
+
+	sx1272.init_rx_int();
+	sx1272.rx_v0();
 #endif
 
 	INFO_S("%s", "SX1272 successfully configured\n");
@@ -349,11 +452,21 @@ int radio_available(char *cmd)
 {
 	int i = 0, e = 1;
 
-	INFO_S("%s", "^$Low-level gw status ON\n");
+#ifdef ENABLE_RX_INTERRUPT
+	if (rx_err_cnt > 50) {
 
-#ifdef RECEIVE_ALL
-	e = sx1272.receiveAll(RX_TIME);
-#else
+		sx1272.reset();
+		INFO_S("%s", "Resetting lora module\n");
+		radio_setup();
+
+		sx1272.init_rx_int();
+		sx1272.rx_v0();
+
+		rx_err_cnt = 0;
+	}
+#endif
+
+#ifndef ENABLE_RX_INTERRUPT
 	e = sx1272.receivePacketTimeout(RX_TIME);
 
 	if (e != 0 && e != 3) {
@@ -372,14 +485,31 @@ int radio_available(char *cmd)
 			e = 1;
 		}
 	}
-#endif
 
 	if (!e) {
 
-		int a = 0, b = 0;
-		uint8_t p_len ;
+		sx1272.getRSSIpacket();
 
-		p_len = sx1272.getPayloadLength();
+		uint8_t *p = sx1272.packet_received.data;
+		uint8_t p_len = sx1272.getPayloadLength();
+
+		if (is_our_pkt(p, p_len) == false) {
+			return 0;
+		}
+#else
+	{
+		struct pkt d;
+
+		noInterrupts();
+		int ret = get_pkt(&g_cbuf, &d);
+		interrupts();
+
+		if (ret != 0) return 0;
+
+		uint8_t *p = d.data;
+		uint8_t p_len = d.plen;
+
+#endif /* ENABLE_RX_INTERRUPT */
 
 #ifdef GW_RELAY
 		// here we resend the received data to the next gateway
@@ -402,26 +532,30 @@ int radio_available(char *cmd)
 #else
 
 #ifdef CONFIG_V0
-		uint8_t *pkt = sx1272.packet_received.data;
-		if (pkt[0] != 0x47 || pkt[1] != 0x4F || pkt[2] != 0x33) {
-			return 0;
-		}
 
-		char *devid = decode_devid(sx1272.packet_received.data);
+		if (p_len <= 11) return 0;
+
+		memset(p+p_len, 0, MAX_PAYLOAD-p_len);
+
+		char *devid = decode_devid(p);
 
 		if (strlen(devid) != 11) {
 			return 0;
 		}
 
-		sprintf(cmd, "devid/%s/U/%s/%s/cmd/%d/ver/%d/rssi/%d/snr/%d",
+		sprintf(cmd, "devid/%s/U/%s/%s/cmd/%d/ver/%d/rssi/%d",
 			devid,
-			decode_vbat(sx1272.packet_received.data),
-			decode_sensor_data(sx1272.packet_received.data, p_len, devid),
-			decode_cmd(sx1272.packet_received.data),
-			decode_ver(sx1272.packet_received.data),
-			sx1272._RSSIpacket,
-			sx1272._SNR);
+			decode_vbat(p),
+			decode_sensor_data(p, p_len, devid),
+			decode_cmd(p),
+			decode_ver(p),
+		#ifndef ENABLE_RX_INTERRUPT
+			sx1272._RSSIpacket);
+		#else
+			d.rssi);
+		#endif
 #else
+		int a = 0, b = 0;
 
 		for (; a < p_len; a++, b++) {
 
@@ -442,10 +576,10 @@ int radio_available(char *cmd)
 		INFOLN("%s", cmd);
 #endif
 		INFOLN("%s", "pkt rx");
-		return 1;
-	} else {
 
-		INFOLN("%s", "no pkt rx");
-		return 0;
+		return 1;
 	}
+
+	INFOLN("%s", "no pkt rx");
+	return 0;
 }

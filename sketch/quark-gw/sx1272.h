@@ -55,28 +55,14 @@
 
 #ifdef USE_SOFTSPI
 #define SX1272_RST                                     6
+#define SX1272_SS                                      7
 #else
 #define SX1272_RST                                     5
-#endif
-
-#if defined ARDUINO_AVR_FEATHER32U4 || defined ARDUINO_SAMD_FEATHER_M0
-#define SX1272_SS                                      8
-#elif defined ARDUINO_ESP8266_ESP01
-#define SX1272_SS                                      15
-#else
-#define SX1272_SS                                      10
 #endif
 
 #define SX1272Chip  				0
 #define SX1276Chip  				1
 #define SX1278Chip  				1
-
-//#define SX1272_led_send_receive
-
-#ifdef SX1272_led_send_receive
-#define SX1272_led_send 			2
-#define SX1272_led_receive			3
-#endif
 
 #define bitRead(value, bit) (((value) >> (bit)) & 0x01)		// read a bit
 #define bitSet(value, bit) ((value) |= (1UL << (bit)))		// set bit to '1'
