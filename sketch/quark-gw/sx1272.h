@@ -1,71 +1,70 @@
 /*
- *  Library for LoRa 868 / 915MHz SX1272 LoRa module
- *  
- *  Copyright (C) Libelium Comunicaciones Distribuidas S.L. 
- *  http://www.libelium.com 
- *  
- *  This program is free software: you can redistribute it and/or modify 
- *  it under the terms of the GNU General Public License as published by 
- *  the Free Software Foundation, either version 3 of the License, or 
- *  (at your option) any later version. 
- *  
- *  This program is distributed in the hope that it will be useful, 
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of 
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+ *  Library for LoRa SX1276/8 module
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  GNU General Public License for more details.
- *  
- *  You should have received a copy of the GNU General Public License 
- *  along with this program.  If not, see http://www.gnu.org/licenses/. 
- *  
- *  Version:           1.1
- *  Design:            David Gascón 
- *  Implementation:    Covadonga Albiñana & Victor Boria
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see http://www.gnu.org/licenses/.
+ *
  */
 
-#ifndef SX1272_h
-#define SX1272_h
+#ifndef __SX1272_H__
+#define __SX1272_H__
 
 #include <stdlib.h>
 #include <stdint.h>
 #include <Arduino.h>
-#include <SPI.h>
-
-//#define DEBUG_CAD					1
-#define DEBUG_MODE		 			0
-#define W_REQUESTED_ACK
-//#define W_NET_KEY
-//#define W_INITIALIZATION
 
 #ifdef USE_SOFTSPI
 #include "softspi.h"
+#else
+#include <SPI.h>
 #endif
 
 #ifndef inttypes_h
 #include <inttypes.h>
 #endif
 
-#if DEBUG_MODE >= 1
+//#define DEBUG_CAD					1
+
+#define DEBUG_MODE					0
+
+#if	DEBUG_MODE >= 1
 #define INFO			Serial.print
+#define INFO_HEX(s)		Serial.print(s, HEX)
 #define INFO_LN			Serial.println
 #else
 #define INFO
+#define INFO_HEX
 #define INFO_LN
 #endif
+
+#define W_REQUESTED_ACK
+//#define W_NET_KEY
+//#define W_INITIALIZATION
 
 #define SX1272_WRST
 
 #ifdef USE_SOFTSPI
-#define SX1272_RST					6
+#define SX1272_RST                                     6
 #else
-#define SX1272_RST					5
+#define SX1272_RST                                     5
 #endif
 
 #if defined ARDUINO_AVR_FEATHER32U4 || defined ARDUINO_SAMD_FEATHER_M0
-#define SX1272_SS					8
+#define SX1272_SS                                      8
 #elif defined ARDUINO_ESP8266_ESP01
-#define SX1272_SS					15
+#define SX1272_SS                                      15
 #else
-#define SX1272_SS 					10
+#define SX1272_SS                                      10
 #endif
 
 #define SX1272Chip  				0
@@ -144,9 +143,7 @@
 #define        REG_PREAMBLE_MSB_FSK 			0x25
 #define        REG_FIFO_RX_BYTE_ADDR 			0x25
 #define        REG_PREAMBLE_LSB_FSK 			0x26
-// added by C. Pham
 #define        REG_MODEM_CONFIG3	  			0x26
-// end
 #define        REG_SYNC_CONFIG	  				0x27
 #define        REG_SYNC_VALUE1	 				0x28
 #define        REG_SYNC_VALUE2	  				0x29
@@ -167,9 +164,7 @@
 #define        REG_SEQ_CONFIG2	  				0x37
 #define        REG_DETECTION_THRESHOLD          0x37
 #define        REG_TIMER_RESOL	  				0x38
-// added by C. Pham
 #define        REG_SYNC_WORD                    0x39
-//end
 #define        REG_TIMER1_COEF	  				0x39
 #define        REG_TIMER2_COEF	  				0x3A
 #define        REG_IMAGE_CAL	  				0x3B
@@ -192,11 +187,6 @@
 #define        REG_FORMER_TEMP	  				0x6C
 #define        REG_BIT_RATE_FRAC	  			0x70
 
-// added by C. Pham
-// copied from LoRaMAC-Node
-/*!
- * RegImageCal
- */
 #define RF_IMAGECAL_AUTOIMAGECAL_MASK               0x7F
 #define RF_IMAGECAL_AUTOIMAGECAL_ON                 0x80
 #define RF_IMAGECAL_AUTOIMAGECAL_OFF                0x00	// Default
@@ -220,8 +210,6 @@
 #define RF_IMAGECAL_TEMPMONITOR_ON                  0x00	// Default
 #define RF_IMAGECAL_TEMPMONITOR_OFF                 0x01
 
-// added by C. Pham
-// The crystal oscillator frequency of the module
 #define RH_LORA_FXOSC 32000000.0
 
 // The Frequency Synthesizer step = RH_LORA_FXOSC / 2^^19
@@ -343,12 +331,10 @@ const uint8_t LORA_STANDBY_MODE = 0x81;
 const uint8_t LORA_TX_MODE = 0x83;
 const uint8_t LORA_RX_MODE = 0x85;
 
-// added by C. Pham
 const uint8_t LORA_CAD_MODE = 0x87;
 #define LNA_MAX_GAIN                0x23
 #define LNA_OFF_GAIN                0x00
 #define LNA_LOW_GAIN		    0x20
-// end
 
 const uint8_t LORA_STANDBY_FSK_REGS_MODE = 0xC1;
 
@@ -358,8 +344,6 @@ const uint8_t FSK_STANDBY_MODE = 0x01;
 const uint8_t FSK_TX_MODE = 0x03;
 const uint8_t FSK_RX_MODE = 0x05;
 
-//OTHER CONSTANTS:
-
 const uint8_t HEADER_ON = 0;
 const uint8_t HEADER_OFF = 1;
 const uint8_t CRC_ON = 1;
@@ -367,44 +351,42 @@ const uint8_t CRC_OFF = 0;
 const uint8_t LORA = 1;
 const uint8_t FSK = 0;
 const uint8_t BROADCAST_0 = 0x00;
-
-#ifdef CONFIG_V0
-const uint8_t MAX_LENGTH = 128;
-const uint8_t MAX_PAYLOAD = 124;
-const uint16_t MAX_TIMEOUT = 800;	// 800 msec = 0.8 sec
-const uint16_t MAX_WAIT = 810;		// 810 msec = 0.81 sec
-#else
-const uint8_t MAX_LENGTH = 255;
-const uint8_t MAX_PAYLOAD = 251;
-const uint16_t MAX_TIMEOUT = 10000;	// 10 sec
-const uint16_t MAX_WAIT = 12000;	// 12 sec
-#endif
-
-
 const uint8_t MAX_LENGTH_FSK = 64;
 const uint8_t MAX_PAYLOAD_FSK = 60;
-//modified by C. Pham, 7 instead of 5 because we added a type field which should be PKT_TYPE_ACK and the SNR
 const uint8_t ACK_LENGTH = 7;
-// added by C. Pham
 #ifdef W_NET_KEY
 const uint8_t NET_KEY_LENGTH = 2;
 const uint8_t OFFSET_PAYLOADLENGTH = 4 + NET_KEY_LENGTH;
 const uint8_t net_key_0 = 0x12;
 const uint8_t net_key_1 = 0x34;
 #else
-// modified by C. Pham to remove the retry field and the length field
-// which will be replaced by packet type field
 const uint8_t OFFSET_PAYLOADLENGTH = 4;
 #endif
 const uint8_t OFFSET_RSSI = 139;
 const uint8_t NOISE_FIGURE = 6.0;
 const uint8_t NOISE_ABSOLUTE_ZERO = 174.0;
+
+#ifdef CONFIG_V0
+const uint8_t MAX_LENGTH = 36;
+const uint8_t MAX_PAYLOAD = 32;
+const uint16_t MAX_TIMEOUT = 800;	// 800 msec = 0.8 sec
+const uint16_t MAX_WAIT = 810;		// 810 msec = 0.81 sec
+#else
+const uint8_t MAX_LENGTH = 255;
+const uint8_t MAX_PAYLOAD = 251;
+
+const uint16_t MAX_TIMEOUT = 90;	// 90 msec
+const uint16_t MAX_WAIT = 100;		// 100 msec
+
+//const uint16_t MAX_TIMEOUT = 10000;	// 10 sec
+//const uint16_t MAX_WAIT = 12000;		// 12 sec
+#endif
+
 const uint8_t MAX_RETRIES = 5;
 const uint8_t CORRECT_PACKET = 0;
 const uint8_t INCORRECT_PACKET = 1;
 const uint8_t INCORRECT_PACKET_TYPE = 2;
 
-// added by C. Pham
 // Packet type definition
 
 #define PKT_TYPE_MASK   0xF0
@@ -451,6 +433,9 @@ class SX1272 {
 
 	void sx1278_qsetup(uint32_t freq, uint8_t dbm);
 	void setup_v0(uint32_t freq, uint8_t dbm);
+	void init_rx_int();
+	void rx_v0();
+	int8_t get_pkt_v0();
 
 	uint8_t setLORA();
 	uint8_t setFSK();
