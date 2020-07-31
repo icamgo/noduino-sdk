@@ -28,7 +28,7 @@
 
 #include "radio.h"
 
-#define		DEBUG_SERVER
+//#define		DEBUG_SERVER
 #define		DEBUG
 #define		DEBUG_EEPROM
 #define		DEBUG_TOKEN
@@ -44,7 +44,7 @@ byte dkey[9];
 byte uuid[25];
 byte token[25];
 
-IPAddress ip(192,168,1,3);
+IPAddress ip(192,168,1,92);
 IPAddress gw_ip5(10,0,0,2);
 IPAddress ip9(10,0,0,254);
 
@@ -229,7 +229,7 @@ void setup() {
 	// start the Ethernet connection:
 	if (Ethernet.begin(mac) == 0) {
 #ifdef DEBUG
-		Serial.println("Failed to configure Ethernet using DHCP");
+		//Serial.println("Failed to configure Ethernet using DHCP");
 #endif
 		// DHCP failed, so try a fixed IP
 		// If static ip failed, it's network issue
@@ -485,7 +485,8 @@ int push_data(char *pbuf, char serv[]) {
 #ifdef DEBUG_SERVER
 		Serial.println(pbuf);
 #endif
-		//Serial.println("Messages pushed.");
+		// maybe need this to delay some microseconds
+		Serial.println(".");
 #endif
 		// note the time that the connection was made or attempted:
 		last_post_time = millis();
