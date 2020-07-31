@@ -1,8 +1,5 @@
 /*
- *  Library for LoRa 868 / 915MHz SX1272 LoRa module
- *
- *  Copyright (C) Libelium Comunicaciones Distribuidas S.L.
- *  http://www.libelium.com
+ *  Library for LoRa SX1276/8 module
  *
  *  This program is free software: you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -17,16 +14,15 @@
  *  You should have received a copy of the GNU General Public License
  *  along with this program.  If not, see http://www.gnu.org/licenses/.
  *
- *  Version:           1.1
- *  Design:            David Gascón
- *  Implementation:    Covadonga Albiñana & Victor Boria
  */
 
 #include "sx1272.h"
 
+#define	sx_delay(x)				delay(x)
+
 // based on SIFS=3CAD
-uint8_t sx1272_SIFS_value[] = { 0, 183, 94, 44, 47, 23, 24, 12, 12, 7, 4, 4, 4 };
-uint8_t  sx1272_CAD_value[] = { 0, 62, 31, 16, 16, 8, 9, 5, 3, 1, 1, 1, 1 };
+uint8_t sx1272_SIFS_value[11] = { 0, 183, 94, 44, 47, 23, 24, 12, 12, 7, 4 };
+uint8_t sx1272_CAD_value[11] = { 0, 62, 31, 16, 16, 8, 9, 5, 3, 1, 1 };
 
 //#define LIMIT_TOA
 // 0.1% for testing
@@ -142,9 +138,9 @@ void SX1272::RxChainCalibration()
 void SX1272::reset()
 {
 	digitalWrite(SX1272_RST, LOW);
-	delay(200);
+	sx_delay(200);
 	digitalWrite(SX1272_RST, HIGH);
-	delay(500);
+	sx_delay(500);
 }
 
 void SX1272::setup_v0(uint32_t freq, uint8_t dbm)
@@ -190,7 +186,6 @@ void SX1272::setup_v0(uint32_t freq, uint8_t dbm)
 	// LoRa detection threshold: 0x0A --> SF7 to SF12
 	writeRegister(REG_DETECTION_THRESHOLD, 0x0A);
 
-	//setSyncWord(0x34);
 	writeRegister(REG_SYNC_WORD, 0x12);
 
 	// Select frequency channel
@@ -357,6 +352,81 @@ void SX1272::sx1278_qsetup(uint32_t freq, uint8_t dbm)
 	}
 }
 
+void SX1272::init_rx_int()
+{
+	// only allow RxDone & crc interrupts
+	writeRegister(REG_IRQ_FLAGS_MASK, 0x9F);
+
+	//writeRegister(REG_DIO_MAPPING1, 0x00);
+}
+
+void SX1272::rx_v0()
+{
+	memset(packet_data, 0x00, MAX_PAYLOAD);
+
+	memset(&packet_received, 0x00, sizeof(packet_received));
+	packet_received.data = packet_data;
+
+	// Set LowPnTxPllOff
+	writeRegister(REG_PA_RAMP, 0x08);
+
+	writeRegister(REG_LNA, LNA_MAX_GAIN);
+	writeRegister(REG_FIFO_ADDR_PTR, 0x00);		// Setting address pointer in FIFO data buffer
+
+	// SF_12
+	writeRegister(REG_SYMB_TIMEOUT_LSB, 0x05);
+
+	// Setting current value of reception buffer pointer
+	writeRegister(REG_FIFO_RX_BYTE_ADDR, 0x00);
+
+	// set payload length of lora
+	writeRegister(REG_PAYLOAD_LENGTH_LORA, MAX_LENGTH);
+
+	writeRegister(REG_OP_MODE, LORA_RX_MODE);	// LORA mode - Rx
+}
+
+int8_t SX1272::get_pkt_v0()
+{
+	uint8_t state = 2;
+
+	uint8_t irq = readRegister(REG_IRQ_FLAGS);
+
+	if ((bitRead(irq, 6) == 1) && (bitRead(irq, 5) == 0)) {
+
+		// CRC correct, standby to read the pkt data
+		writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);
+
+		writeRegister(REG_FIFO_ADDR_PTR, 0x00);
+
+		_payloadlength = readRegister(REG_RX_NB_BYTES);
+
+		if (_payloadlength < MAX_LENGTH) {
+
+			for (unsigned int i = 0; i < _payloadlength; i++) {
+
+				packet_received.data[i] = readRegister(REG_FIFO);	// Storing payload
+			}
+
+			state = 0;
+		}
+	} else {
+		// CRC incorrect
+		state = irq;
+	}
+
+
+	// Setting address pointer in FIFO data buffer
+	writeRegister(REG_FIFO_ADDR_PTR, 0x00);
+
+	// clear irq Flags
+	writeRegister(REG_IRQ_FLAGS, 0xFF);
+
+	// LORA mode - Rx
+	writeRegister(REG_OP_MODE, LORA_RX_MODE);
+
+	return state;
+}
+
 uint8_t SX1272::ON()
 {
 	uint8_t state = 2;
@@ -467,14 +537,6 @@ byte SX1272::readRegister(byte address)
 #endif
 	digitalWrite(_SX1272_SS, HIGH);
 
-#if (DEBUG_MODE > 1)
-	INFO(F("## Reading:  ##\t"));
-	INFO(F("Register "));
-	INFO(address, HEX);
-	INFO(F(":  "));
-	INFO_LN(value, HEX);
-#endif
-
 	return value;
 }
 
@@ -490,16 +552,6 @@ void SX1272::writeRegister(byte address, byte data)
 	SPI.transfer(data);
 #endif
 	digitalWrite(_SX1272_SS, HIGH);
-
-#if (DEBUG_MODE > 1)
-	INFO(F("## Writing:  ##\t"));
-	INFO(F("Register "));
-	bitClear(address, 7);
-	INFO(address, HEX);
-	INFO(F(":  "));
-	INFO_LN(data, HEX);
-#endif
-
 }
 
 /*
@@ -557,13 +609,13 @@ uint8_t SX1272::setLORA()
 		writeRegister(REG_OP_MODE, FSK_SLEEP_MODE);		// Sleep mode (mandatory to set LoRa mode)
 		writeRegister(REG_OP_MODE, LORA_SLEEP_MODE);	// LoRa sleep mode
 		writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);
-		delay(50 + retry * 10);
+		sx_delay(50 + retry * 10);
 
 		st0 = readRegister(REG_OP_MODE);
 
 		retry++;
 
-		delay(200);
+		sx_delay(200);
 	} while (st0 != LORA_STANDBY_MODE && retry < 8);
 
 	if (st0 == LORA_STANDBY_MODE) {
@@ -606,7 +658,7 @@ uint8_t SX1272::setFSK()
 	config1 = config1 & B00111111;
 	writeRegister(REG_SYNC_CONFIG, config1);
 
-	delay(100);
+	sx_delay(100);
 
 	st0 = readRegister(REG_OP_MODE);	// Reading config mode
 	if (st0 == FSK_STANDBY_MODE) {	// FSK mode
@@ -643,8 +695,6 @@ uint8_t SX1272::getMode()
 
 	if (_board == SX1272Chip) {
 		_bandwidth = (value >> 6);	// Storing 2 MSB from REG_MODEM_CONFIG1 (=_bandwidth)
-		// added by C. Pham
-		// convert to common bandwidth values used by both SX1272 and SX1276
 		_bandwidth += 7;
 	} else
 		_bandwidth = (value >> 4);	// Storing 4 MSB from REG_MODEM_CONFIG1 (=_bandwidth)
@@ -674,11 +724,11 @@ uint8_t SX1272::getMode()
 	INFO(F("\t Coding Rate: "));
 	INFO_LN(_codingRate, HEX);
 	INFO(F("\t Spreading Factor: "));
-	INFO(_spreadingFactor, HEX);
+	INFO_HEX(_spreadingFactor);
 	INFO_LN(F(" ##"));
 #endif
 
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -774,8 +824,6 @@ int8_t SX1272::setMode(uint8_t mode)
 		setBW(BW_500);	// BW = 500 KHz
 		break;
 
-		// added by C. Pham
-		// test for LoRaWAN channel
 	case 11:
 		setCR(CR_5);	// CR = 4/5
 		setSF(SF_12);	// SF = 12
@@ -1085,17 +1133,17 @@ int8_t SX1272::setMode(uint8_t mode)
 #if (DEBUG_MODE > 1)
 	if (state == 0) {
 		INFO(F("Mode "));
-		INFO(mode, DEC);
+		INFO(mode);
 		INFO_LN(F(" configured with success"));
 	} else {
 		INFO(F("There has been an error while configuring mode: "));
-		INFO_LN(mode, DEC);
+		INFO_LN(mode);
 	}
 #endif
 
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -1107,7 +1155,6 @@ uint8_t SX1272::getHeader()
 	INFO_LN(F("Starting 'getHeader'"));
 #endif
 
-	// added by C. Pham
 	uint8_t theHeaderBit;
 
 	if (_board == SX1272Chip)
@@ -1168,9 +1215,9 @@ int8_t SX1272::setHeaderON()
 #endif
 		} else {
 			if (_board == SX1272Chip)
-				config1 = config1 & B11111011;
+				config1 = config1 & 0B11111011;
 			else
-				config1 = config1 & B11111110;
+				config1 = config1 & 0B11111110;
 
 			writeRegister(REG_MODEM_CONFIG1, config1);
 		}
@@ -1217,15 +1264,14 @@ int8_t SX1272::setHeaderOFF()
 		config1 = readRegister(REG_MODEM_CONFIG1);	// Save config1 to modify only the header bit
 
 		if (_board == SX1272Chip)
-			config1 = config1 | B00000100;	// sets bit 2 from REG_MODEM_CONFIG1 = headerOFF
+			config1 = config1 | 0B00000100;	// sets bit 2 from REG_MODEM_CONFIG1 = headerOFF
 		else
-			config1 = config1 | B00000001;	// sets bit 0 from REG_MODEM_CONFIG1 = headerOFF
+			config1 = config1 | 0B00000001;	// sets bit 0 from REG_MODEM_CONFIG1 = headerOFF
 
 		writeRegister(REG_MODEM_CONFIG1, config1);	// Update config1
 
 		config1 = readRegister(REG_MODEM_CONFIG1);
 
-		// added by C. Pham
 		uint8_t theHeaderBit;
 
 		if (_board == SX1272Chip)
@@ -1261,7 +1307,6 @@ uint8_t SX1272::getCRC()
 
 	if (_modem == LORA) {	// LoRa mode
 
-		// added by C. Pham
 		uint8_t theRegister;
 		uint8_t theCrcBit;
 
@@ -1343,9 +1388,9 @@ uint8_t SX1272::setCRC_ON()
 		config1 = readRegister(theRegister);
 
 		if (_board == SX1272Chip)
-			config1 = config1 | B00000010;
+			config1 = config1 | 0B00000010;
 		else
-			config1 = config1 | B00000100;
+			config1 = config1 | 0B00000100;
 
 		writeRegister(theRegister, config1);
 
@@ -1363,7 +1408,7 @@ uint8_t SX1272::setCRC_ON()
 #ifdef ENABLE_FSK
 	} else {		// FSK mode
 		config1 = readRegister(REG_PACKET_CONFIG1);
-		config1 = config1 | B00010000;
+		config1 = config1 | 0B00010000;
 		writeRegister(REG_PACKET_CONFIG1, config1);
 
 		state = 1;
@@ -1400,7 +1445,6 @@ uint8_t SX1272::setCRC_OFF()
 
 	if (_modem == LORA) {	// LORA mode
 
-		// added by C. Pham
 		uint8_t theRegister;
 		uint8_t theCrcBit;
 
@@ -1414,9 +1458,9 @@ uint8_t SX1272::setCRC_OFF()
 
 		config1 = readRegister(theRegister);	// Save config1 to modify only the CRC bit
 		if (_board == SX1272Chip)
-			config1 = config1 & B11111101;	// clears bit 1 from config1 = CRC_OFF
+			config1 = config1 & 0B11111101;	// clears bit 1 from config1 = CRC_OFF
 		else
-			config1 = config1 & B11111011;	// clears bit 2 from config1 = CRC_OFF
+			config1 = config1 & 0B11111011;	// clears bit 2 from config1 = CRC_OFF
 
 		writeRegister(theRegister, config1);
 
@@ -1431,7 +1475,7 @@ uint8_t SX1272::setCRC_OFF()
 #ifdef ENABLE_FSK
 	} else {		// FSK mode
 		config1 = readRegister(REG_PACKET_CONFIG1);	// Save config1 to modify only the CRC bit
-		config1 = config1 & B11101111;	// clears bit 4 from config1 = CRC_OFF
+		config1 = config1 & 0B11101111;	// clears bit 4 from config1 = CRC_OFF
 		writeRegister(REG_PACKET_CONFIG1, config1);
 
 		config1 = readRegister(REG_PACKET_CONFIG1);
@@ -1503,7 +1547,7 @@ int8_t SX1272::getSF()
 			state = 0;
 #if (DEBUG_MODE > 1)
 			INFO(F("## Spreading factor is "));
-			INFO(_spreadingFactor, HEX);
+			INFO_HEX(_spreadingFactor);
 			INFO_LN(F(" ##"));
 #endif
 		}
@@ -1539,29 +1583,29 @@ uint8_t SX1272::setSF(uint8_t spr)
 
 		switch (spr) {
 		case SF_6:
-			config2 = config2 & B01101111;
-			config2 = config2 | B01100000;
+			config2 = config2 & 0B01101111;
+			config2 = config2 | 0B01100000;
 			setHeaderOFF();
 			break;
 		case SF_7:
-			config2 = config2 & B01111111;
-			config2 = config2 | B01110000;
+			config2 = config2 & 0B01111111;
+			config2 = config2 | 0B01110000;
 			break;
 		case SF_8:
-			config2 = config2 & B10001111;
-			config2 = config2 | B10000000;
+			config2 = config2 & 0B10001111;
+			config2 = config2 | 0B10000000;
 			break;
 		case SF_9:
-			config2 = config2 & B10011111;
-			config2 = config2 | B10010000;
+			config2 = config2 & 0B10011111;
+			config2 = config2 | 0B10010000;
 			break;
 		case SF_10:
-			config2 = config2 & B10101111;
-			config2 = config2 | B10100000;
+			config2 = config2 & 0B10101111;
+			config2 = config2 | 0B10100000;
 			break;
 		case SF_11:
-			config2 = config2 & B10111111;
-			config2 = config2 | B10110000;
+			config2 = config2 & 0B10111111;
+			config2 = config2 | 0B10110000;
 			getBW();
 
 			if (_bandwidth == BW_125) {
@@ -1571,31 +1615,31 @@ uint8_t SX1272::setSF(uint8_t spr)
 
 					// Save config1 to modify only the LowDataRateOptimize
 					config1 = (readRegister(REG_MODEM_CONFIG1));
-					config1 = config1 | B00000001;
+					config1 = config1 | 0B00000001;
 					writeRegister(REG_MODEM_CONFIG1, config1);
 
 				} else {
 					byte config3 = readRegister(REG_MODEM_CONFIG3);
-					config3 = config3 | B00001000;
+					config3 = config3 | 0B00001000;
 					writeRegister(REG_MODEM_CONFIG3, config3);
 				}
 			}
 			break;
 		case SF_12:
-			config2 = config2 & B11001111;
-			config2 = config2 | B11000000;
+			config2 = config2 & 0B11001111;
+			config2 = config2 | 0B11000000;
 
 			if (_bandwidth == BW_125) {
 
 				// LowDataRateOptimize (Mandatory with SF_12 if BW_125)
 				if (_board == SX1272Chip) {
 					config1 = (readRegister(REG_MODEM_CONFIG1));
-					config1 = config1 | B00000001;
+					config1 = config1 | 0B00000001;
 					writeRegister(REG_MODEM_CONFIG1,
 						      config1);
 				} else {
 					byte config3 = readRegister(REG_MODEM_CONFIG3);
-					config3 = config3 | B00001000;
+					config3 = config3 | 0B00001000;
 					writeRegister(REG_MODEM_CONFIG3, config3);
 				}
 			}
@@ -1614,7 +1658,6 @@ uint8_t SX1272::setSF(uint8_t spr)
 			// Write 0x0C in the register RegDetectionThreshold.
 			writeRegister(REG_DETECTION_THRESHOLD, 0x0C);
 		} else {
-			// added by C. Pham
 			setHeaderON();
 
 			// LoRa detection Optimize: 0x03 --> SF7 to SF12
@@ -1624,30 +1667,28 @@ uint8_t SX1272::setSF(uint8_t spr)
 			writeRegister(REG_DETECTION_THRESHOLD, 0x0A);
 		}
 
-		// added by C. Pham
 		if (_board == SX1272Chip) {
 			// comment by C. Pham
 			// bit 9:8 of SymbTimeout are then 11
 			// single_chan_pkt_fwd uses 00 and then 00001000
 			// why?
 			// sets bit 2-0 (AgcAutoOn and SymbTimout) for any SF value
-			//config2 = config2 | B00000111;
+			//config2 = config2 | 0B00000111;
 			// modified by C. Pham
-			config2 = config2 | B00000100;
+			config2 = config2 | 0B00000100;
 			writeRegister(REG_MODEM_CONFIG1, config1);	// Update config1
 		} else {
 			// set the AgcAutoOn in bit 2 of REG_MODEM_CONFIG3
 			uint8_t config3 = (readRegister(REG_MODEM_CONFIG3));
-			config3 = config3 | B00000100;
+			config3 = config3 | 0B00000100;
 			writeRegister(REG_MODEM_CONFIG3, config3);
 		}
 
 		// here we write the new SF
 		writeRegister(REG_MODEM_CONFIG2, config2);	// Update config2
 
-		delay(100);
+		sx_delay(100);
 
-		// added by C. Pham
 		byte configAgc;
 		uint8_t theLDRBit;
 
@@ -1724,7 +1765,7 @@ uint8_t SX1272::setSF(uint8_t spr)
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Go back to previous status
 
-	delay(100);
+	sx_delay(100);
 
 	if (isSF(spr)) {
 		// Checking available value for _spreadingFactor
@@ -1732,7 +1773,7 @@ uint8_t SX1272::setSF(uint8_t spr)
 		_spreadingFactor = spr;
 #if (DEBUG_MODE > 1)
 		INFO(F("Spreading factor "));
-		INFO(_spreadingFactor, DEC);
+		INFO(_spreadingFactor);
 		INFO_LN(F(" has been successfully set"));
 #endif
 	} else {
@@ -1752,7 +1793,6 @@ boolean SX1272::isBW(uint16_t band)
 #endif
 
 	// Checking available values for _bandwidth
-	// added by C. Pham
 	if (_board == SX1272Chip) {
 		switch (band) {
 		case BW_125:
@@ -1804,7 +1844,6 @@ int8_t SX1272::getBW()
 		INFO_LN(F("** FSK mode hasn't bandwidth **"));
 #endif
 	} else {
-		// added by C. Pham
 		if (_board == SX1272Chip) {
 			// take out bits 7-6 from REG_MODEM_CONFIG1 indicates _bandwidth
 			config1 = (readRegister(REG_MODEM_CONFIG1)) >> 6;
@@ -1819,7 +1858,7 @@ int8_t SX1272::getBW()
 			state = 0;
 #if (DEBUG_MODE > 1)
 			INFO(F("## Bandwidth is "));
-			INFO(_bandwidth, HEX);
+			INFO_HEX(_bandwidth);
 			INFO_LN(F(" ##"));
 #endif
 		} else {
@@ -1846,7 +1885,7 @@ int8_t SX1272::setBW(uint16_t band)
 		state = 1;
 #if (DEBUG_MODE > 1)
 		INFO(F("Bandwidth "));
-		INFO(band, HEX);
+		INFO_HEX(band);
 		INFO_LN(F(" is not a correct value"));
 #endif
 		return state;
@@ -1871,54 +1910,54 @@ int8_t SX1272::setBW(uint16_t band)
 	if (_board == SX1272Chip) {
 		switch (band) {
 		case BW_125:
-			config1 = config1 & B00111111;
+			config1 = config1 & 0B00111111;
 			getSF();
 			if (_spreadingFactor == 11) {
-				config1 = config1 | B00000001;
+				config1 = config1 | 0B00000001;
 			}
 			if (_spreadingFactor == 12) {
-				config1 = config1 | B00000001;
+				config1 = config1 | 0B00000001;
 			}
 			break;
 		case BW_250:
-			config1 = config1 & B01111111;
-			config1 = config1 | B01000000;
+			config1 = config1 & 0B01111111;
+			config1 = config1 | 0B01000000;
 			break;
 		case BW_500:
-			config1 = config1 & B10111111;
-			config1 = config1 | B10000000;
+			config1 = config1 & 0B10111111;
+			config1 = config1 | 0B10000000;
 			break;
 		}
 	} else {
 		// SX1276
-		config1 = config1 & B00001111;
+		config1 = config1 & 0B00001111;
 		switch (band) {
 		case BW_125:
 			// 0111
-			config1 = config1 | B01110000;
+			config1 = config1 | 0B01110000;
 			getSF();
 
 			if (_spreadingFactor == 11 || _spreadingFactor == 12) {
 
 				byte config3 = readRegister(REG_MODEM_CONFIG3);
-				config3 = config3 | B00001000;
+				config3 = config3 | 0B00001000;
 				writeRegister(REG_MODEM_CONFIG3, config3);
 			}
 			break;
 		case BW_250:
 			// 1000
-			config1 = config1 | B10000000;
+			config1 = config1 | 0B10000000;
 			break;
 		case BW_500:
 			// 1001
-			config1 = config1 | B10010000;
+			config1 = config1 | 0B10010000;
 			break;
 		}
 	}
 
 	writeRegister(REG_MODEM_CONFIG1, config1);
 
-	delay(100);
+	sx_delay(100);
 
 	config1 = (readRegister(REG_MODEM_CONFIG1));
 
@@ -1998,7 +2037,7 @@ int8_t SX1272::setBW(uint16_t band)
 		_bandwidth = band;
 #if (DEBUG_MODE > 1)
 		INFO(F("Bandwidth "));
-		INFO(band, HEX);
+		INFO_HEX(band);
 		INFO_LN(F(" has been successfully set"));
 #endif
 	}
@@ -2006,7 +2045,7 @@ int8_t SX1272::setBW(uint16_t band)
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);
 
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -2048,15 +2087,14 @@ int8_t SX1272::getCR()
 		INFO_LN(F("** FSK mode hasn't coding rate **"));
 #endif
 	} else {
-		// added by C. Pham
 		if (_board == SX1272Chip) {
 			// take out bits 7-3 from REG_MODEM_CONFIG1 indicates _bandwidth & _codingRate
 			config1 = (readRegister(REG_MODEM_CONFIG1)) >> 3;
-			config1 = config1 & B00000111;	// clears bits 7-3 ---> clears _bandwidth
+			config1 = config1 & 0B00000111;	// clears bits 7-3 ---> clears _bandwidth
 		} else {
 			// take out bits 7-1 from REG_MODEM_CONFIG1 indicates _bandwidth & _codingRate
 			config1 = (readRegister(REG_MODEM_CONFIG1)) >> 1;
-			config1 = config1 & B00000111;	// clears bits 7-3 ---> clears _bandwidth
+			config1 = config1 & 0B00000111;	// clears bits 7-3 ---> clears _bandwidth
 		}
 
 		_codingRate = config1;
@@ -2066,7 +2104,7 @@ int8_t SX1272::getCR()
 			state = 0;
 #if (DEBUG_MODE > 1)
 			INFO(F("## Coding rate is "));
-			INFO(_codingRate, HEX);
+			INFO_HEX(_codingRate);
 			INFO_LN(F(" ##"));
 #endif
 		}
@@ -2103,43 +2141,43 @@ int8_t SX1272::setCR(uint8_t cod)
 	if (_board == SX1272Chip) {
 		switch (cod) {
 		case CR_5:
-			config1 = config1 & B11001111;
-			config1 = config1 | B00001000;
+			config1 = config1 & 0B11001111;
+			config1 = config1 | 0B00001000;
 			break;
 		case CR_6:
-			config1 = config1 & B11010111;
-			config1 = config1 | B00010000;
+			config1 = config1 & 0B11010111;
+			config1 = config1 | 0B00010000;
 			break;
 		case CR_7:
-			config1 = config1 & B11011111;
-			config1 = config1 | B00011000;
+			config1 = config1 & 0B11011111;
+			config1 = config1 | 0B00011000;
 			break;
 		case CR_8:
-			config1 = config1 & B11100111;
-			config1 = config1 | B00100000;
+			config1 = config1 & 0B11100111;
+			config1 = config1 | 0B00100000;
 			break;
 		}
 	} else { // SX1276
-		config1 = config1 & B11110001;
+		config1 = config1 & 0B11110001;
 
 		switch (cod) {
 		case CR_5:
-			config1 = config1 | B00000010;
+			config1 = config1 | 0B00000010;
 			break;
 		case CR_6:
-			config1 = config1 | B00000100;
+			config1 = config1 | 0B00000100;
 			break;
 		case CR_7:
-			config1 = config1 | B00000110;
+			config1 = config1 | 0B00000110;
 			break;
 		case CR_8:
-			config1 = config1 | B00001000;
+			config1 = config1 | 0B00001000;
 			break;
 		}
 	}
 	writeRegister(REG_MODEM_CONFIG1, config1);	// Update config1
 
-	delay(100);
+	sx_delay(100);
 
 	config1 = readRegister(REG_MODEM_CONFIG1);
 
@@ -2149,25 +2187,25 @@ int8_t SX1272::setCR(uint8_t cod)
 	if (_board == SX1276Chip)
 		nshift = 1;
 
-	// ((config1 >> 3) & B0000111) ---> take out bits 5-3 from REG_MODEM_CONFIG1 (=_codingRate)
+	// ((config1 >> 3) & 0B0000111) ---> take out bits 5-3 from REG_MODEM_CONFIG1 (=_codingRate)
 	switch (cod) {
 	case CR_5:
-		if (((config1 >> nshift) & B0000111) == 0x01) {
+		if (((config1 >> nshift) & 0B0000111) == 0x01) {
 			state = 0;
 		}
 		break;
 	case CR_6:
-		if (((config1 >> nshift) & B0000111) == 0x02) {
+		if (((config1 >> nshift) & 0B0000111) == 0x02) {
 			state = 0;
 		}
 		break;
 	case CR_7:
-		if (((config1 >> nshift) & B0000111) == 0x03) {
+		if (((config1 >> nshift) & 0B0000111) == 0x03) {
 			state = 0;
 		}
 		break;
 	case CR_8:
-		if (((config1 >> nshift) & B0000111) == 0x04) {
+		if (((config1 >> nshift) & 0B0000111) == 0x04) {
 			state = 0;
 		}
 		break;
@@ -2177,7 +2215,7 @@ int8_t SX1272::setCR(uint8_t cod)
 		_codingRate = cod;
 #if (DEBUG_MODE > 1)
 		INFO(F("Coding Rate "));
-		INFO(cod, HEX);
+		INFO_HEX(cod);
 		INFO_LN(F(" has been successfully set"));
 #endif
 	} else {
@@ -2188,7 +2226,7 @@ int8_t SX1272::setCR(uint8_t cod)
 	}
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -2275,7 +2313,7 @@ uint8_t SX1272::getChannel()
 		state = 0;
 #if (DEBUG_MODE > 1)
 		INFO(F("## Frequency channel is "));
-		INFO(_channel, HEX);
+		INFO_HEX(_channel);
 		INFO_LN(F(" ##"));
 #endif
 	} else {
@@ -2325,7 +2363,7 @@ int8_t SX1272::setChannel(uint32_t ch)
 
 	_stoptime = millis();
 
-	delay(100);
+	sx_delay(100);
 
 	// storing MSB in freq channel value
 	freq3 = (readRegister(REG_FRF_MSB));
@@ -2343,7 +2381,7 @@ int8_t SX1272::setChannel(uint32_t ch)
 		_channel = ch;
 #if (DEBUG_MODE > 1)
 		INFO(F("## Frequency channel "));
-		INFO(ch, HEX);
+		INFO_HEX(ch);
 		INFO_LN(F(" has been successfully set ##"));
 #endif
 	} else {
@@ -2352,7 +2390,7 @@ int8_t SX1272::setChannel(uint32_t ch)
 
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -2368,9 +2406,8 @@ uint8_t SX1272::getPower()
 	value = readRegister(REG_PA_CONFIG);
 	state = 1;
 
-	// modified by C. Pham
 	// get only the OutputPower
-	_power = value & B00001111;
+	_power = value & 0B00001111;
 
 	//if( (value > -1) & (value < 16) )
 	if (_power < 16) {
@@ -2414,11 +2451,6 @@ int8_t SX1272::setPower(char p)
 		// H = High. On SX1272/76: PA0 on RFO setting
 		// M = MAX. On SX1272/76: PA0 on RFO setting
 
-		// x = extreme; added by C. Pham. On SX1272/76: PA1&PA2 PA_BOOST setting
-		// X = eXtreme; added by C. Pham. On SX1272/76: PA1&PA2 PA_BOOST setting + 20dBm settings
-
-		// added by C. Pham
-		//
 	case 'x':
 	case 'X':
 	case 'M':
@@ -2426,7 +2458,6 @@ int8_t SX1272::setPower(char p)
 		// SX1272/76: 14dBm
 		break;
 
-		// modified by C. Pham, set to 0x03 instead of 0x00
 	case 'L':
 		value = 0x03;
 		// SX1272/76: 2dBm
@@ -2446,7 +2477,7 @@ int8_t SX1272::setPower(char p)
 		// we set only the PA_BOOST pin
 		// limit to 14dBm
 		value = 0x0C;
-		value = value | B10000000;
+		value = value | 0B10000000;
 		// set RegOcp for OcpOn and OcpTrim
 		// 130mA
 		setMaxCurrent(0x10);
@@ -2454,7 +2485,7 @@ int8_t SX1272::setPower(char p)
 	} else if (p == 'X') {
 		// normally value = 0x0F;
 		// we set the PA_BOOST pin
-		value = value | B10000000;
+		value = value | 0B10000000;
 		// and then set the high output power config with register REG_PA_DAC
 		writeRegister(RegPaDacReg, 0x87);	// +20dBm on PA_BOOST
 		// set RegOcp for OcpOn and OcpTrim
@@ -2469,7 +2500,6 @@ int8_t SX1272::setPower(char p)
 
 	}
 
-	// added by C. Pham
 	if (_board == SX1272Chip) {
 		// Pout = -1 + _power[3:0] on RFO
 		// Pout = 2 + _power[3:0] on PA_BOOST
@@ -2479,7 +2509,7 @@ int8_t SX1272::setPower(char p)
 		// for the SX1276
 
 		// set MaxPower to 7 -> Pmax=10.8+0.6*MaxPower [dBm] = 15
-		value = value | B01110000;
+		value = value | 0B01110000;
 
 		// then Pout = Pmax-(15-_power[3:0]) if  PaSelect=0 (RFO pin for +14dBm)
 		// so L=3dBm; H=7dBm; M=15dBm (but should be limited to 14dBm by RFO pin)
@@ -2506,7 +2536,7 @@ int8_t SX1272::setPower(char p)
 
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -2542,11 +2572,10 @@ int8_t SX1272::setPowerNum(uint8_t pow)
 #endif
 	}
 
-	// added by C. Pham
 	if (_board == SX1276Chip) {
 		value = readRegister(REG_PA_CONFIG);
 		// clear OutputPower, but keep current value of PaSelect and MaxPower
-		value = value & B11110000;
+		value = value & 0B11110000;
 		value = value + _power;
 		_power = value;
 	}
@@ -2564,7 +2593,7 @@ int8_t SX1272::setPowerNum(uint8_t pow)
 
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -2647,13 +2676,13 @@ uint8_t SX1272::setPreambleLength(uint16_t l)
 	state = 0;
 #if (DEBUG_MODE > 1)
 	INFO(F("Preamble length "));
-	INFO(l, HEX);
+	INFO_HEX(l);
 	INFO_LN(F(" has been successfully set"));
 #endif
 
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 
@@ -2666,7 +2695,6 @@ int8_t SX1272::setPacketLength()
 {
 	uint16_t length;
 
-	// added by C. Pham
 	// if gateway is in rawFormat mode for packet reception, it will also send in rawFormat
 	// unless we switch it back to normal format just for transmission, e.g. for downlink transmission
 	if (_rawFormat)
@@ -2713,7 +2741,7 @@ int8_t SX1272::setPacketLength(uint8_t l)
 		state = 0;
 #if (DEBUG_MODE > 1)
 		INFO(F("Packet length "));
-		INFO(packet_sent.length, DEC);
+		INFO(packet_sent.length);
 		INFO_LN(F(" has been successfully set"));
 #endif
 	} else {
@@ -2727,7 +2755,7 @@ int8_t SX1272::setPacketLength(uint8_t l)
 	// comment by C. Pham
 	// this delay is included in the send delay overhead
 	// TODO: do we really need this delay?
-	delay(100);
+	//sx_delay(100);
 	return state;
 }
 
@@ -2849,7 +2877,7 @@ int8_t SX1272::getSNR()
 		state = 0;
 #if (DEBUG_MODE > 0)
 		INFO(F("SNR value is "));
-		INFO_LN(_SNR, DEC);
+		INFO_LN(_SNR);
 #endif
 	} else {		// forbidden command if FSK mode
 		state = -1;
@@ -2887,7 +2915,7 @@ uint8_t SX1272::getRSSI()
 		state = 0;
 #if (DEBUG_MODE > 0)
 		INFO(F("RSSI value is "));
-		INFO_LN(_RSSI, DEC);
+		INFO_LN(_RSSI);
 #endif
 
 #ifdef ENABLE_FSK
@@ -2933,7 +2961,6 @@ int16_t SX1272::getRSSIpacket()
 				// commented by C. Pham
 				//_RSSIpacket = -NOISE_ABSOLUTE_ZERO + 10.0 * SignalBwLog[_bandwidth] + NOISE_FIGURE + ( double )_SNR;
 
-				// added by C. Pham, using Semtech SX1272 rev3 March 2015
 				// for SX1272 we use -139, for SX1276, we use -157
 				// then for SX1276 when using low-frequency (i.e. 433MHz) then we use -164
 				_RSSIpacket = -(OFFSET_RSSI + (_board == SX1276Chip ? 18 : 0)
@@ -2949,7 +2976,7 @@ int16_t SX1272::getRSSIpacket()
 			}
 #if (DEBUG_MODE > 0)
 			INFO(F("RSSI packet value is "));
-			INFO_LN(_RSSIpacket, DEC);
+			INFO_LN(_RSSIpacket);
 #endif
 		}
 	} else {
@@ -2974,7 +3001,7 @@ uint8_t SX1272::getMaxCurrent()
 	_maxCurrent = readRegister(REG_OCP);
 
 	// extract only the OcpTrim value from the OCP register
-	_maxCurrent &= B00011111;
+	_maxCurrent &= 0B00011111;
 
 	if (_maxCurrent <= 15) {
 		value = (45 + (5 * _maxCurrent));
@@ -2987,7 +3014,7 @@ uint8_t SX1272::getMaxCurrent()
 	_maxCurrent = value;
 #if (DEBUG_MODE > 1)
 	INFO(F("Maximum current supply configured is "));
-	INFO(value, DEC);
+	INFO(value);
 	INFO_LN(F(" mA"));
 #endif
 	state = 0;
@@ -3012,7 +3039,7 @@ int8_t SX1272::setMaxCurrent(uint8_t rate)
 #endif
 	} else {
 		// Enable Over Current Protection
-		rate |= B00100000;
+		rate |= 0B00100000;
 
 		state = 1;
 		st0 = readRegister(REG_OP_MODE);	// Save the previous status
@@ -3156,7 +3183,6 @@ uint8_t SX1272::setACK()
 	INFO_LN(F("Starting 'setACK'"));
 #endif
 
-	// added by C. Pham
 	// check for enough remaining ToA
 	// when operating under duty-cycle mode
 	if (_limitToA) {
@@ -3166,7 +3192,7 @@ uint8_t SX1272::setACK()
 			return SX1272_ERROR_TOA;
 		}
 	}
-	// delay(1000);
+	// sx_delay(1000);
 
 	clearFlags();		// Initializing flags
 
@@ -3188,7 +3214,6 @@ uint8_t SX1272::setACK()
 		ACK.packnum = packet_received.packnum;	// packet number that has been correctly received
 		ACK.length = 2;
 		ACK.data[0] = _reception;	// CRC of the received packet
-		// added by C. Pham
 		// store the SNR
 		ACK.data[1] = readRegister(REG_PKT_SNR_VALUE);
 
@@ -3230,7 +3255,7 @@ uint8_t SX1272::setACK()
 
 		// comment by C. Pham
 		// TODO: do we really need this delay?
-		delay(500);
+		sx_delay(500);
 	}
 	return state;
 }
@@ -3244,6 +3269,8 @@ uint8_t SX1272::receive()
 #endif
 
 	// Initializing packet_received struct
+	memset(packet_data, 0x00, MAX_PAYLOAD);
+
 	memset(&packet_received, 0x00, sizeof(packet_received));
 	packet_received.data = packet_data;
 
@@ -3252,28 +3279,24 @@ uint8_t SX1272::receive()
 	//writeRegister(0x31,0x43);
 
 	// Set LowPnTxPllOff
-	// modified by C. Pham from 0x09 to 0x08
 	writeRegister(REG_PA_RAMP, 0x08);
 
 	//writeRegister(REG_LNA, 0x23);                     // Important in reception
-	// modified by C. Pham
 	writeRegister(REG_LNA, LNA_MAX_GAIN);
 	writeRegister(REG_FIFO_ADDR_PTR, 0x00);	// Setting address pointer in FIFO data buffer
+
 	// change RegSymbTimeoutLsb
-	// comment by C. Pham
 	// single_chan_pkt_fwd uses 00 00001000
 	// why here we have 11 11111111
 	// change RegSymbTimeoutLsb
 	//writeRegister(REG_SYMB_TIMEOUT_LSB, 0xFF);
 
-	// modified by C. Pham
 	if (_spreadingFactor == SF_10 || _spreadingFactor == SF_11
 	    || _spreadingFactor == SF_12) {
 		writeRegister(REG_SYMB_TIMEOUT_LSB, 0x05);
 	} else {
 		writeRegister(REG_SYMB_TIMEOUT_LSB, 0x08);
 	}
-	//end
 
 	writeRegister(REG_FIFO_RX_BYTE_ADDR, 0x00);	// Setting current value of reception buffer pointer
 	//clearFlags();                                             // Initializing flags
@@ -3309,7 +3332,6 @@ uint8_t SX1272::receivePacketTimeout()
 
 #ifdef W_REQUESTED_ACK
 
-// added by C. Pham
 // receiver always use receivePacketTimeout()
 // sender should either use sendPacketTimeout() or sendPacketTimeoutACK()
 uint8_t SX1272::receivePacketTimeout(uint16_t wait)
@@ -3341,7 +3363,6 @@ uint8_t SX1272::receivePacketTimeout(uint16_t wait)
 			state_f = 5;	// The packet type has not been recognized
 		} else {
 			state_f = 0;	// The packet has been correctly received
-			// added by C. Pham
 			// we get the SNR and RSSI of the received packet for future usage
 			//getSNR();
 			getRSSIpacket();
@@ -3432,7 +3453,7 @@ uint8_t SX1272::receiveAll(uint16_t wait)
 	if (_modem == FSK) {	// FSK mode
 		writeRegister(REG_OP_MODE, FSK_STANDBY_MODE);	// Setting standby FSK mode
 		config1 = readRegister(REG_PACKET_CONFIG1);
-		config1 = config1 & B11111001;	// clears bits 2-1 from REG_PACKET_CONFIG1
+		config1 = config1 & 0B11111001;	// clears bits 2-1 from REG_PACKET_CONFIG1
 		writeRegister(REG_PACKET_CONFIG1, config1);	// AddressFiltering = None
 	}
 #endif
@@ -3467,11 +3488,11 @@ boolean SX1272::availableData(uint16_t wait)
 
 	exitTime = millis() + (unsigned long)wait;
 
-	//previous = millis();
-	if (_modem == LORA) {	// LoRa mode
+	if (_modem == LORA) {
+
 		value = readRegister(REG_IRQ_FLAGS);
+
 		// Wait to ValidHeader interrupt
-		//while( (bitRead(value, 4) == 0) && (millis() - previous < (unsigned long)wait) )
 		while ((bitRead(value, 4) == 0) && (millis() < exitTime)) {
 			value = readRegister(REG_IRQ_FLAGS);
 #if defined ARDUINO_ESP8266_ESP01 || defined ARDUINO_ESP8266_NODEMCU || defined ESP32
@@ -3480,7 +3501,7 @@ boolean SX1272::availableData(uint16_t wait)
 			// adding this small delay decreases the CPU load of the lora_gateway process to 4~5% instead of nearly 100%
 			// suggested by rertini (https://github.com/CongducPham/LowCostLoRaGw/issues/211)
 			// tests have shown no side effects
-			delay(1);
+			sx_delay(1);
 #endif
 		}
 
@@ -3498,10 +3519,8 @@ boolean SX1272::availableData(uint16_t wait)
 
 #ifdef W_NET_KEY
 			// actually, need to wait until 3 bytes have been received
-			//while( (header < 3) && (millis() - previous < (unsigned long)wait) )
 			while ((header < 3) && (millis() < exitTime))
 #else
-			//while( (header == 0) && (millis() - previous < (unsigned long)wait) )
 			while ((header == 0) && (millis() < exitTime))
 #endif
 			{	// Waiting to read first payload bytes from packet
@@ -3509,11 +3528,15 @@ boolean SX1272::availableData(uint16_t wait)
 				yield();
 #endif
 				header = readRegister(REG_FIFO_RX_BYTE_ADDR);
+				// Condition to avoid an overflow (DO NOT REMOVE)
+				//if( millis() < previous )
+				//{
+				//    previous = millis();
+				//}
 			}
 
 			if (header != 0) {	// Reading first byte of the received packet
 #ifdef W_NET_KEY
-				// added by C. Pham
 				// if we actually wait for an ACK, there is no net key before ACK data
 				if (_requestACK == 0) {
 					_the_net_key_0 = readRegister(REG_FIFO);
@@ -3530,10 +3553,11 @@ boolean SX1272::availableData(uint16_t wait)
 #endif
 		}
 #ifdef ENABLE_FSK
-	} else {		// FSK mode
+	} else {
+		// FSK mode
 		value = readRegister(REG_IRQ_FLAGS2);
+
 		// Wait to Payload Ready interrupt
-		//while( (bitRead(value, 2) == 0) && (millis() - previous < wait) )
 		while ((bitRead(value, 2) == 0) && (millis() < exitTime)) {
 			value = readRegister(REG_IRQ_FLAGS2);
 		}
@@ -3552,11 +3576,13 @@ boolean SX1272::availableData(uint16_t wait)
 			INFO_LN(F("The timeout has expired"));
 #endif
 		}
-#endif //enable_FSK
+#endif
 	}
+
 	// We use _hreceived because we need to ensure that _destination value is correctly
 	// updated and is not the _destination value from the previously packet
-	if (_hreceived == true) {	// Checking destination
+	if (_hreceived == true) {
+		// Checking destination
 #if (DEBUG_MODE > 0)
 		INFO_LN(F("Checking destination"));
 #endif
@@ -3581,7 +3607,6 @@ boolean SX1272::availableData(uint16_t wait)
 		if (forme && ((_destination == _nodeAddress)
 			|| (_destination == BROADCAST_0)))
 #else
-		// modified by C. Pham
 		// if _rawFormat, accept all
 		if ((_destination == _nodeAddress)
 		    || (_destination == BROADCAST_0) || _rawFormat)
@@ -3602,7 +3627,6 @@ boolean SX1272::availableData(uint16_t wait)
 #endif
 		}
 	}
-	// added by C. Pham
 	if (_hreceived == false || forme == false) {
 		if (_modem == LORA)	// STANDBY PARA MINIMIZAR EL CONSUMO
 		{		// LoRa mode
@@ -3630,7 +3654,6 @@ int8_t SX1272::getPacket()
 /*
  Function: It gets and stores a packet if it is received before ending 'wait' time.
  Returns:  Integer that determines if there has been any error
-   // added by C. Pham
    state = 5  --> The command has been executed with no errors and an ACK is requested
    state = 3  --> The command has been executed but packet has been incorrectly received
    state = 2  --> The command has not been executed
@@ -3644,7 +3667,7 @@ int8_t SX1272::getPacket(uint16_t wait)
 {
 	uint8_t state = 2;
 	byte value = 0x00;
-	//unsigned long previous;
+
 	unsigned long exitTime;
 	boolean p_received = false;
 
@@ -3652,17 +3675,16 @@ int8_t SX1272::getPacket(uint16_t wait)
 	INFO_LN(F("Starting 'getPacket'"));
 #endif
 
-	//previous = millis();
 	exitTime = millis() + (unsigned long)wait;
-	if (_modem == LORA) {	// LoRa mode
+
+	if (_modem == LORA) {
+
 		value = readRegister(REG_IRQ_FLAGS);
-		// Wait until the packet is received (RxDone flag) or the timeout expires
-		//while( (bitRead(value, 6) == 0) && (millis() - previous < (unsigned long)wait) )
+
 		while ((bitRead(value, 6) == 0) && (millis() < exitTime)) {
 			value = readRegister(REG_IRQ_FLAGS);
 		}
 
-		// modified by C. Pham
 		// RxDone
 		if ((bitRead(value, 6) == 1)) {
 #if (DEBUG_MODE > 0)
@@ -3677,7 +3699,7 @@ int8_t SX1272::getPacket(uint16_t wait)
 
 				if ((bitRead(value, 5) == 0)) {
 					// packet received & CRC correct
-					p_received = true;	// packet correctly received
+					p_received = true;
 					_reception = CORRECT_PACKET;
 #if (DEBUG_MODE > 0)
 					INFO_LN(F("** The CRC is correct **"));
@@ -3691,30 +3713,38 @@ int8_t SX1272::getPacket(uint16_t wait)
 				}
 			} else {
 				// as CRC is not set we suppose that CRC is correct
+
 				p_received = true;	// packet correctly received
+
 				_reception = CORRECT_PACKET;
 #if (DEBUG_MODE > 0)
 				INFO_LN(F("## Packet supposed to be correct as CrcOnPayload is off at transmitter ##"));
 #endif
 			}
 		}
-		writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);	// Setting standby LoRa mode
+
+		writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);
+
 #ifdef ENABLE_FSK
 	} else {		// FSK mode
 		value = readRegister(REG_IRQ_FLAGS2);
-		//while( (bitRead(value, 2) == 0) && (millis() - previous < wait) )
+
 		while ((bitRead(value, 2) == 0) && (millis() < exitTime)) {
 			value = readRegister(REG_IRQ_FLAGS2);
 		}
 
-		if (bitRead(value, 2) == 1) {	// packet received
-			if (bitRead(value, 1) == 1) {	// CRC correct
+		if (bitRead(value, 2) == 1) {
+
+			// packet received
+			if (bitRead(value, 1) == 1) {
+				// CRC correct
 				_reception = CORRECT_PACKET;
 				p_received = true;
 #if (DEBUG_MODE > 0)
 				INFO_LN(F("## Packet correctly received in FSK mode ##"));
 #endif
-			} else {	// CRC incorrect
+			} else {
+				// CRC incorrect
 				_reception = INCORRECT_PACKET;
 				state = 3;
 				p_received = false;
@@ -3727,45 +3757,45 @@ int8_t SX1272::getPacket(uint16_t wait)
 			INFO_LN(F("** The timeout has expired **"));
 #endif
 		}
-		writeRegister(REG_OP_MODE, FSK_STANDBY_MODE);	// Setting standby FSK mode
+
+		// Setting standby FSK mode
+		writeRegister(REG_OP_MODE, FSK_STANDBY_MODE);
 #endif
 	}
 
 	if (p_received == true) {
 		// Store the packet
 		if (_modem == LORA) {
-			// comment by C. Pham
 			// set the FIFO addr to 0 to read again all the bytes
 			writeRegister(REG_FIFO_ADDR_PTR, 0x00);	// Setting address pointer in FIFO data buffer
 
 #ifdef W_NET_KEY
-			// added by C. Pham
 			packet_received.netkey[0] = readRegister(REG_FIFO);
 			packet_received.netkey[1] = readRegister(REG_FIFO);
 #endif
-			//modified by C. Pham
 			if (!_rawFormat)
 				packet_received.dst = readRegister(REG_FIFO);	// Storing first byte of the received packet
 			else
 				packet_received.dst = 0;
+#ifdef ENABLE_FSK
 		} else {
 			value = readRegister(REG_PACKET_CONFIG1);
 			if ((bitRead(value, 2) == 0)
 			    && (bitRead(value, 1) == 0)) {
 				packet_received.dst = readRegister(REG_FIFO);	// Storing first byte of the received packet
 			} else {
-				packet_received.dst = _destination;	// Storing first byte of the received packet
+				packet_received.dst = _destination;				// Storing first byte of the received packet
 			}
+#endif
 		}
 
-		// modified by C. Pham
 		if (!_rawFormat) {
-			packet_received.type = readRegister(REG_FIFO);	// Reading second byte of the received packet
+			packet_received.type = readRegister(REG_FIFO);		// Reading second byte of the received packet
+
 			// check packet type to discard unknown packet type
-			if (((packet_received.type & PKT_TYPE_MASK) !=
-			     PKT_TYPE_DATA)
-			    && ((packet_received.type & PKT_TYPE_MASK) !=
-				PKT_TYPE_ACK)) {
+			if (((packet_received.type & PKT_TYPE_MASK) != PKT_TYPE_DATA)
+			    && ((packet_received.type & PKT_TYPE_MASK) != PKT_TYPE_ACK)) {
+
 				_reception = INCORRECT_PACKET_TYPE;
 				state = 3;
 #if (DEBUG_MODE > 0)
@@ -3773,7 +3803,8 @@ int8_t SX1272::getPacket(uint16_t wait)
 #endif
 				return state;
 			}
-			packet_received.src = readRegister(REG_FIFO);	// Reading second byte of the received packet
+
+			packet_received.src = readRegister(REG_FIFO);		// Reading second byte of the received packet
 			packet_received.packnum = readRegister(REG_FIFO);	// Reading third byte of the received packet
 			//packet_received.length = readRegister(REG_FIFO);  // Reading fourth byte of the received packet
 		} else {
@@ -3790,17 +3821,16 @@ int8_t SX1272::getPacket(uint16_t wait)
 				if (_rawFormat) {
 					_payloadlength = packet_received.length;
 				} else
-					_payloadlength =
-					    packet_received.length -
-					    OFFSET_PAYLOADLENGTH;
+					_payloadlength = packet_received.length -
+										OFFSET_PAYLOADLENGTH;
 			}
+
 			if (packet_received.length > (MAX_LENGTH + 1)) {
 #if (DEBUG_MODE > 0)
 				INFO_LN(F("Corrupted packet, length must be less than 256"));
 #endif
 			} else {
-				for (unsigned int i = 0; i < _payloadlength;
-				     i++) {
+				for (unsigned int i = 0; i < _payloadlength; i++) {
 					packet_received.data[i] = readRegister(REG_FIFO);	// Storing payload
 				}
 
@@ -3826,14 +3856,11 @@ int8_t SX1272::getPacket(uint16_t wait)
 					INFO((char)packet_received.data[i]);	// Printing payload
 				}
 				INFO_LN(" ");
-				//INFO(F("Retry number: "));
-				//INFO_LN(packet_received.retry);                        // Printing number retry
 				INFO_LN(F("##"));
 #endif
 				state = 0;
 
 #ifdef W_REQUESTED_ACK
-				// added by C. Pham
 				// need to send an ACK
 				if (packet_received.type & PKT_FLAG_ACK_REQ) {
 					state = 5;
@@ -3856,10 +3883,14 @@ int8_t SX1272::getPacket(uint16_t wait)
 #endif
 		}
 	}
+
 	if (_modem == LORA) {
-		writeRegister(REG_FIFO_ADDR_PTR, 0x00);	// Setting address pointer in FIFO data buffer
+		// Setting address pointer in FIFO data buffer
+		writeRegister(REG_FIFO_ADDR_PTR, 0x00);
 	}
-	clearFlags();		// Initializing flags
+
+	clearFlags();
+
 	if (wait > MAX_WAIT) {
 		state = -1;
 #if (DEBUG_MODE > 0)
@@ -3897,13 +3928,13 @@ int8_t SX1272::setDestination(uint8_t dest)
 
 #if (DEBUG_MODE > 1)
 	INFO(F("## Destination "));
-	INFO(_destination, HEX);
+	INFO_HEX(_destination);
 	INFO_LN(F(" successfully set ##"));
 	INFO(F("## Source "));
-	INFO(packet_sent.src, DEC);
+	INFO(packet_sent.src);
 	INFO_LN(F(" successfully set ##"));
 	INFO(F("## Packet number "));
-	INFO(packet_sent.packnum, DEC);
+	INFO(packet_sent.packnum);
 	INFO_LN(F(" successfully set ##"));
 #endif
 	return state;
@@ -3933,7 +3964,7 @@ uint8_t SX1272::setTimeout()
 
 #if (DEBUG_MODE > 1)
 	INFO(F("Timeout to send/receive is: "));
-	INFO_LN(_sendTime, DEC);
+	INFO_LN(_sendTime);
 #endif
 	state = 0;
 	return state;
@@ -3986,7 +4017,6 @@ uint8_t SX1272::setPacket(uint8_t dest, uint8_t * payload)
 	INFO_LN(F("Starting 'setPacket'"));
 #endif
 
-	// added by C. Pham
 	// check for enough remaining ToA
 	// when operating under duty-cycle mode
 	if (_limitToA) {
@@ -4033,17 +4063,15 @@ uint8_t SX1272::setPacket(uint8_t dest, uint8_t * payload)
 		packet_sent.retry = _retries;
 #if (DEBUG_MODE > 0)
 		INFO(F("** Retrying to send last packet "));
-		INFO(_retries, DEC);
+		INFO(_retries);
 		INFO_LN(F(" time **"));
 #endif
 	}
 
-	// added by C. Pham
 	// set the type to be a data packet
 	packet_sent.type |= PKT_TYPE_DATA;
 
 #ifdef W_REQUESTED_ACK
-	// added by C. Pham
 	// indicate that an ACK should be sent by the receiver
 	if (_requestACK)
 		packet_sent.type |= PKT_FLAG_ACK_REQ;
@@ -4054,7 +4082,6 @@ uint8_t SX1272::setPacket(uint8_t dest, uint8_t * payload)
 		state = 1;
 		// Writing packet to send in FIFO
 #ifdef W_NET_KEY
-		// added by C. Pham
 		packet_sent.netkey[0] = _my_netkey[0];
 		packet_sent.netkey[1] = _my_netkey[1];
 		//#if (DEBUG_MODE > 0)
@@ -4063,12 +4090,10 @@ uint8_t SX1272::setPacket(uint8_t dest, uint8_t * payload)
 		writeRegister(REG_FIFO, packet_sent.netkey[0]);
 		writeRegister(REG_FIFO, packet_sent.netkey[1]);
 #endif
-		// added by C. Pham
 		// we can skip the header for instance when we want to generate
 		// at a higher layer a LoRaWAN packet
 		if (!_rawFormat) {
 			writeRegister(REG_FIFO, packet_sent.dst);	// Writing the destination in FIFO
-			// added by C. Pham
 			writeRegister(REG_FIFO, packet_sent.type);	// Writing the packet type in FIFO
 			writeRegister(REG_FIFO, packet_sent.src);	// Writing the source in FIFO
 			writeRegister(REG_FIFO, packet_sent.packnum);	// Writing the packet number in FIFO
@@ -4191,7 +4216,6 @@ uint8_t SX1272::sendWithTimeout(uint16_t wait)
 #if (DEBUG_MODE > 1)
 		INFO_LN(F("## Packet successfully sent ##"));
 #endif
-		// added by C. Pham
 		// normally there should be enough remaing ToA as the test has been done earlier
 		if (_limitToA)
 			removeToA(_currentToA);
@@ -4293,14 +4317,12 @@ uint8_t SX1272::sendPacketTimeoutACK(uint8_t dest, uint8_t * payload,
 		state_f = state;
 	}
 	if (state == 0) {
-		// added by C. Pham
 		INFO_LN(F("wait for ACK"));
 
 		if (availableData()) {
 			state_f = getACK();	// Getting ACK
 		} else {
 			state_f = SX1272_ERROR_ACK;
-			// added by C. Pham
 			INFO_LN(F("no ACK"));
 		}
 	} else {
@@ -4334,14 +4356,12 @@ uint8_t SX1272::sendPacketTimeoutACK(uint8_t dest, uint8_t * payload,
 		state_f = 1;
 	}
 	if (state == 0) {
-		// added by C. Pham
 		INFO_LN(F("wait for ACK"));
 
 		if (availableData()) {
 			state_f = getACK();	// Getting ACK
 		} else {
 			state_f = SX1272_ERROR_ACK;
-			// added by C. Pham
 			INFO_LN(F("no ACK"));
 		}
 	} else {
@@ -4372,52 +4392,39 @@ uint8_t SX1272::getACK(uint16_t wait)
 {
 	uint8_t state = 2;
 	byte value = 0x00;
-	//unsigned long previous;
 	unsigned long exitTime;
 	boolean a_received = false;
 
-	//#if (DEBUG_MODE > 1)
 	INFO_LN(F("Starting 'getACK'"));
-	//#endif
 
-	//previous = millis();
 	exitTime = millis() + (unsigned long)wait;
-	if (_modem == LORA) {	// LoRa mode
+
+	if (_modem == LORA) {
 		value = readRegister(REG_IRQ_FLAGS);
+
 		// Wait until the ACK is received (RxDone flag) or the timeout expires
-		//while ((bitRead(value, 6) == 0) && (millis() - previous < wait))
 		while ((bitRead(value, 6) == 0) && (millis() < exitTime)) {
 			value = readRegister(REG_IRQ_FLAGS);
-			//if( millis() < previous )
-			//{
-			//    previous = millis();
-			//}
 		}
+
 		if (bitRead(value, 6) == 1) {	// ACK received
-			// comment by C. Pham
-			// not really safe because the received packet may not be an ACK
-			// probability is low if using unicast to gateway, but if broadcast
-			// can get a packet from another node!!
 			a_received = true;
 		}
-		// Standby para minimizar el consumo
+
 		writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);	// Setting standby LoRa mode
 #ifdef ENABLE_FSK
-	} else {		// FSK mode
+	} else {
 		value = readRegister(REG_IRQ_FLAGS2);
+
 		// Wait until the packet is received (RxDone flag) or the timeout expires
-		//while ((bitRead(value, 2) == 0) && (millis() - previous < wait))
 		while ((bitRead(value, 2) == 0) && (millis() < exitTime)) {
 			value = readRegister(REG_IRQ_FLAGS2);
-			//if( millis() < previous )
-			//{
-			//    previous = millis();
-			//}
 		}
+
 		if (bitRead(value, 2) == 1) {	// ACK received
 			a_received = true;
 		}
-		// Standby para minimizar el consumo
+
 		writeRegister(REG_OP_MODE, FSK_STANDBY_MODE);	// Setting standby FSK mode
 #endif
 	}
@@ -4753,7 +4760,7 @@ void printDouble(double val, byte precision)
 			padding--;
 		while (padding--)
 			INFO("0");
-		INFO(frac, DEC);
+		INFO(frac);
 	}
 }
 
@@ -4827,8 +4834,6 @@ uint16_t SX1272::getToA(uint8_t pl)
 	// in us secs
 	airTime = floor(tOnAir * 1e6 + 0.999);
 
-	//////
-
 #ifdef DEBUG_GETTOA
 	INFO(F("SX1272::airTime is "));
 	INFO_LN(airTime);
@@ -4877,7 +4882,7 @@ void SX1272::CarrierSense()
 						INFO(F(" CAD = "));
 						INFO_LN(sx1272_CAD_value[_loraMode] * w);
 
-						delay(sx1272_CAD_value
+						sx_delay(sx1272_CAD_value
 						      [_loraMode] * w);
 
 						// check for free channel (SIFS/DIFS) once again
@@ -4904,7 +4909,7 @@ void SX1272::CarrierSense()
 					INFO(F(" DIFS=3SIFS= "));
 					INFO_LN(sx1272_SIFS_value[_loraMode] * 3 * w);
 
-					delay(sx1272_SIFS_value[_loraMode] * 3 * w);
+					sx_delay(sx1272_SIFS_value[_loraMode] * 3 * w);
 
 					INFO(F("--> retry\n"));
 				}
@@ -4924,7 +4929,7 @@ void SX1272::CarrierSense()
 						INFO(F("--> RSSI "));
 						INFO_LN(_RSSI);
 						rssi_retry_count--;
-						delay(1);
+						sx_delay(1);
 					} while (_RSSI > -90 && rssi_retry_count);
 				} else
 					INFO(F("--> RSSI error\n"));
@@ -4958,7 +4963,7 @@ int8_t SX1272::getSyncWord()
 
 #if (DEBUG_MODE > 1)
 		INFO(F("## Sync word is "));
-		INFO(_syncWord, HEX);
+		INFO_HEX(_syncWord);
 		INFO_LN(F(" ##"));
 #endif
 	}
@@ -4990,7 +4995,7 @@ int8_t SX1272::setSyncWord(uint8_t sw)
 
 	writeRegister(REG_SYNC_WORD, sw);
 
-	delay(100);
+	//sx_delay(100);
 
 	config1 = readRegister(REG_SYNC_WORD);
 
@@ -4999,7 +5004,7 @@ int8_t SX1272::setSyncWord(uint8_t sw)
 		_syncWord = sw;
 #if (DEBUG_MODE > 1)
 		INFO(F("Sync Word "));
-		INFO(sw, HEX);
+		INFO_HEX(sw);
 		INFO_LN(F(" has been successfully set"));
 #endif
 	} else {
@@ -5012,7 +5017,7 @@ int8_t SX1272::setSyncWord(uint8_t sw)
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);
 
-	delay(100);
+	sx_delay(100);
 
 	return state;
 }
@@ -5024,19 +5029,14 @@ int8_t SX1272::setSleepMode()
 	byte value;
 
 	writeRegister(REG_OP_MODE, LORA_STANDBY_MODE);
-	// proposed by escyes
-	// https://github.com/CongducPham/LowCostLoRaGw/issues/53#issuecomment-289237532
-	//
+
 	// inserted to avoid REG_OP_MODE stay = 0x40 (no sleep mode)
-	delay(100);
+	sx_delay(100);
 	writeRegister(REG_OP_MODE, LORA_SLEEP_MODE);	// LoRa sleep mode
 
-	//delay(50);
+	//sx_delay(50);
 
 	value = readRegister(REG_OP_MODE);
-
-	//INFO(F("## REG_OP_MODE 0x"));
-	//INFO_LN(value, HEX);
 
 	if (value == LORA_SLEEP_MODE)
 		state = 0;
@@ -5096,7 +5096,7 @@ int8_t SX1272::setPowerDBM(uint8_t dbm)
 		if (_needPABOOST) {
 			value = dbm - 2;
 			// we set the PA_BOOST pin
-			value = value | B10000000;
+			value = value | 0B10000000;
 		} else
 			value = dbm + 1;
 
@@ -5115,12 +5115,12 @@ int8_t SX1272::setPowerDBM(uint8_t dbm)
 		if (_needPABOOST) {
 			value = dbm - 17 + 15;
 			// we set the PA_BOOST pin
-			value = value | B10000000;
+			value = value | 0B10000000;
 		} else
 			value = dbm - pmax + 15;
 
 		// set MaxPower to 7 -> Pmax=10.8+0.6*MaxPower [dBm] = 15
-		value = value | B01110000;
+		value = value | 0B01110000;
 
 		writeRegister(REG_PA_CONFIG, value);
 	}
@@ -5140,7 +5140,7 @@ int8_t SX1272::setPowerDBM(uint8_t dbm)
 
 	if (st0 != stnew)
 		writeRegister(REG_OP_MODE, st0);	// Getting back to previous status
-	delay(100);
+	sx_delay(100);
 	return state;
 }
 

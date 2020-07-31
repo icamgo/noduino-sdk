@@ -451,6 +451,9 @@ class SX1272 {
 
 	void sx1278_qsetup(uint32_t freq, uint8_t dbm);
 	void setup_v0(uint32_t freq, uint8_t dbm);
+	void init_rx_int();
+	void rx_v0();
+	int8_t get_pkt_v0();
 
 	uint8_t setLORA();
 	uint8_t setFSK();
