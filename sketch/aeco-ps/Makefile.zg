@@ -18,7 +18,7 @@ TARGET		= main.cpp
 
 SDK_BASE	?= ../..
 ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
-ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
+ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
 DEFS := -DCONFIG_V0 -DUSE_SOFTSPI -DPC10_HALF_RANGE=8000.0
@@ -164,9 +164,9 @@ MODULES = $(C_MODULES) $(CXX_MODULES)
 SRC = $(C_MODULES)
 CXXSRC = $(CXX_MODULES) $(CXX_APP)
 
-CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32HG/Include -I$(ARDUINO_CORES)/../variants/efm32hg110 
+CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
 
-CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32HG/Include -I$(ARDUINO_CORES)/../variants/efm32hg110 
+CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
 
 CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
@@ -190,7 +190,7 @@ CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 
 CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mfp16-format=ieee -mthumb -MMD
 
-DEFS += -DARDUINO_efm32hg110f64 -DEFM32HG -DEFM32HG110F64 			\
+DEFS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
 	-DARM_MATH_CM0PLUS 													\
 	-DF_CPU=$(F_CPU)													\
 	-DUSE_HFRCO															\
@@ -198,7 +198,7 @@ DEFS += -DARDUINO_efm32hg110f64 -DEFM32HG -DEFM32HG110F64 			\
 	-DUSE_LFBLFRCO=1													\
 	-DMENU_SERIAL=SerialLEUART0 										\
 	-DEMDRV_RTCDRV_USE_LFRCO											\
-	-DRAM_LENGTH=8192 -DFLASH_LENGTH=65536 -DEFM32GENERIC	 			\
+	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 			\
 	-DARDUINO_ARCH_EFM32 -DARDUINO=$(VERSION)
 
 CXXFLAGS := -g -Os -w -fno-exceptions -std=gnu++14 -fpermissive			\
@@ -214,7 +214,7 @@ LDFLAGS := -mcpu=$(MCU) -mthumb -Os -Wl,--cref					\
 	-u _sbrk -u link -u _close -u _fstat -u _isatty -u _lseek -u _read	\
 	-u _write -u _exit -u kill -u _getpid
 
-LDFLAGS += "-T$(ARDUINO_BOARD)/ld/efm32hg110f64.ld"
+LDFLAGS += "-T$(ARDUINO_BOARD)/ld/efm32zg110f32.ld"
 
 
 OBJ = $(SRC:.c=.o) $(CXXSRC:.cpp=.o) $(ASRC:.S=.o)
