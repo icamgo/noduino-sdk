@@ -2761,6 +2761,14 @@ extern const uint8_t Nesobrite_Sc_13pt_r17[] U8G2_FONT_SECTION("Nesobrite_Sc_13p
 extern const uint8_t Nesobrite_Bk_12pt_r18[] U8G2_FONT_SECTION("Nesobrite_Bk_12pt_r18");
 extern const uint8_t Nesobrite_Bk_20pt_r31[] U8G2_FONT_SECTION("Nesobrite_Bk_20pt_r31");
 extern const uint8_t Nesobrite_Bk_24pt_r36[] U8G2_FONT_SECTION("Nesobrite_Bk_24pt_r36");
+extern const uint8_t Futura_Medium_12px[] U8G2_FONT_SECTION("Futura_Medium_12px");
+extern const uint8_t Futura_Medium_15px[] U8G2_FONT_SECTION("Futura_Medium_15px");
+extern const uint8_t Futura_Medium_16px[] U8G2_FONT_SECTION("Futura_Medium_16px");
+extern const uint8_t Futura_Medium_19px[] U8G2_FONT_SECTION("Futura_Medium_19px");
+extern const uint8_t Futura_Medium_31px[] U8G2_FONT_SECTION("Futura_Medium_31px");
+extern const uint8_t Futura_Medium_47px[] U8G2_FONT_SECTION("Futura_Medium_47px");
+extern const uint8_t Futura_Medium_55px[] U8G2_FONT_SECTION("Futura_Medium_55px");
+extern const uint8_t Futura_Heavy_20px[] U8G2_FONT_SECTION("Futura_Heavy_20px");
 
 /* end font list */
 
