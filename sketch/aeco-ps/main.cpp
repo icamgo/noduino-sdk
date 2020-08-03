@@ -166,8 +166,8 @@ void show_logo()
 	u8g2.firstPage();
 
 	do {
-		//u8g2.drawXBM(12, 34, logo_width, logo_height, logo_xbm);
-		u8g2.drawXBM(0, 0, ptest_width, ptest_height, ptest);
+		u8g2.drawXBM(12, 34, logo_width, logo_height, logo_xbm);
+		//u8g2.drawXBM(0, 0, ptest_width, ptest_height, ptest);
 	} while (u8g2.nextPage());
 }
 
@@ -183,23 +183,57 @@ void show_low_bat()
 		u8g2.print(" LOW BATTERY ");
 	} while (u8g2.nextPage());
 }
+
+char dev_id[24];
+
+uint64_t get_devid();
+
+char *uint64_to_str(uint64_t n)
+{
+	char *dest = dev_id;
+
+	dest += 20;
+	*dest-- = 0;
+	while (n) {
+		*dest-- = (n % 10) + '0';
+		n /= 10;
+	}
+
+	strcpy(dev_id, dest+1);
+
+	return dest + 1;
+}
+
 #endif
 
-void show_press(char *press)
+void show_press(char *press, float vb, bool show_bat)
 {
-	int pos = -14;
-	char pres_s[6];
+	char dev_vbat[6] = "00000";
+
+	int len = strlen(press);		/* 5 or 4 */
+
+	ftoa(dev_vbat, vb, 2);
+	dev_vbat[4] = 'V';
 
 	u8g2.setPowerSave(0);
 
 	u8g2.firstPage();
 
+	uint64_to_str(get_devid());
+
 	do {
-		u8g2.drawXBM(58, 8, battery_width, battery_height, battery_icon);
+		if (vb < 3.2) {
+
+			if (show_bat)
+				u8g2.drawXBM(58, 8, low_battery_width, low_battery_height, low_battery_icon);
+
+		} else {
+			u8g2.drawXBM(58, 8, battery_width, battery_height, battery_icon);
+		}
 
 		u8g2.setFont(Futura_Medium_15px);
-		u8g2.setCursor(6, 18);
-		u8g2.print("3.62V");
+		u8g2.setCursor(8, 18);
+		u8g2.print(dev_vbat);
 
 		u8g2.setFont(Futura_Heavy_20px);
 		u8g2.setCursor(98, 20);
@@ -207,12 +241,19 @@ void show_press(char *press)
 
 		u8g2.setFont(Futura_Medium_16px);
 		u8g2.setCursor(20, 119);
-		u8g2.print("12003319999");
+		u8g2.print(dev_id);
 
 		u8g2.setFont(Futura_Medium_55px);
-		u8g2.setCursor(8, 80);
-		u8g2.print("16.27");
-		//u8g2.print(press);
+		if (len <= 4) {
+
+			u8g2.setCursor(24, 80);
+
+		} else if (len == 5) {
+
+			u8g2.setCursor(8, 80);
+		}
+
+		u8g2.print(press);
 
 	} while (u8g2.nextPage());
 }
@@ -397,15 +438,17 @@ void setup()
 	show_logo();
 	delay(800);
 
-	char pres_s[6];
-	ftoa(pres_s, cur_pres, 2);
-	show_press(pres_s);
-	delay(1800);
+	float vbat = adc.readVbat();
 
-	if (adc.readVbat() < 2.92) {
+	if (vbat < 2.92) {
 		show_low_bat();
 		delay(2700);
 	}
+
+	char pres_s[6];
+	ftoa(pres_s, cur_pres, 2);
+	show_press(pres_s, vbat, true);
+	delay(1800);
 	#endif
 
 	u8g2.setPowerSave(1);
@@ -636,6 +679,8 @@ void task_oled()
 	// reset the key count
 	key_count = 0;
 
+	float vbat = adc.readVbat();
+
 	pressure_init(SCL_PIN, SDA_PIN);
 
 	for (i=0; i<30; i++) {
@@ -672,7 +717,7 @@ void task_oled()
 
 		ftoa(pres_s, cur_pres, 2);
 
-		show_press(pres_s);
+		show_press(pres_s, vbat, i%2);
 
 		delay(1000);
 	}
