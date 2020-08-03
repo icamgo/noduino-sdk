@@ -206,9 +206,12 @@ char *uint64_to_str(uint64_t n)
 
 #endif
 
-void show_press(char *press, float vb, bool show_bat)
+void show_press(float p, float vb, bool show_bat)
 {
 	char dev_vbat[6] = "00000";
+	char press[6];
+
+	ftoa(press, p, 2);
 
 	int len = strlen(press);		/* 5 or 4 */
 
@@ -222,7 +225,7 @@ void show_press(char *press, float vb, bool show_bat)
 	uint64_to_str(get_devid());
 
 	do {
-		if (vb < 3.2) {
+		if (vb < 3.0) {
 
 			if (show_bat)
 				u8g2.drawXBM(58, 8, low_battery_width, low_battery_height, low_battery_icon);
@@ -243,17 +246,31 @@ void show_press(char *press, float vb, bool show_bat)
 		u8g2.setCursor(20, 119);
 		u8g2.print(dev_id);
 
-		u8g2.setFont(Futura_Medium_55px);
-		if (len <= 4) {
+		if (p == -1.0) {
+			// no sensor connected
+			u8g2.drawXBM(27, 36, no_sensor_width, no_sensor_height, no_sensor_icon);
 
-			u8g2.setCursor(24, 80);
+		} else if (p == -2.0) {
+			// out of low range
 
-		} else if (len == 5) {
+			u8g2.drawXBM(32, 43, x_low_width, x_low_height, x_low_icon);
 
-			u8g2.setCursor(8, 80);
+		} else if (p == -3.0) {
+			// out of high range
+			u8g2.drawXBM(32, 43, x_high_width, x_high_height, x_high_icon);
+		} else {
+			u8g2.setFont(Futura_Medium_55px);
+			if (len <= 4) {
+
+				u8g2.setCursor(24, 80);
+
+			} else if (len == 5) {
+
+				u8g2.setCursor(8, 80);
+			}
+
+			u8g2.print(press);
 		}
-
-		u8g2.print(press);
 
 	} while (u8g2.nextPage());
 }
@@ -445,10 +462,17 @@ void setup()
 		delay(2700);
 	}
 
-	char pres_s[6];
-	ftoa(pres_s, cur_pres, 2);
-	show_press(pres_s, vbat, true);
+	show_press(cur_pres, vbat, true);
 	delay(1800);
+
+#if 0
+	show_press(-2.0, vbat, true);
+	delay(1800);
+
+	show_press(-3.0, vbat, true);
+	delay(1800);
+#endif
+
 	#endif
 
 	u8g2.setPowerSave(1);
@@ -715,9 +739,7 @@ void task_oled()
 			min_pres = cur_pres;
 		}
 
-		ftoa(pres_s, cur_pres, 2);
-
-		show_press(pres_s, vbat, i%2);
+		show_press(cur_pres, vbat, i%2);
 
 		delay(1000);
 	}
