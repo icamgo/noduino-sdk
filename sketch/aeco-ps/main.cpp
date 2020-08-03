@@ -166,7 +166,8 @@ void show_logo()
 	u8g2.firstPage();
 
 	do {
-		u8g2.drawXBM(1, 52, logo_width, logo_height, logo_xbm);
+		//u8g2.drawXBM(12, 34, logo_width, logo_height, logo_xbm);
+		u8g2.drawXBM(0, 0, ptest_width, ptest_height, ptest);
 	} while (u8g2.nextPage());
 }
 
@@ -185,6 +186,39 @@ void show_low_bat()
 #endif
 
 void show_press(char *press)
+{
+	int pos = -14;
+	char pres_s[6];
+
+	u8g2.setPowerSave(0);
+
+	u8g2.firstPage();
+
+	do {
+		u8g2.drawXBM(58, 8, battery_width, battery_height, battery_icon);
+
+		u8g2.setFont(Futura_Medium_15px);
+		u8g2.setCursor(6, 18);
+		u8g2.print("3.62V");
+
+		u8g2.setFont(Futura_Heavy_20px);
+		u8g2.setCursor(98, 20);
+		u8g2.print("Bar");
+
+		u8g2.setFont(Futura_Medium_16px);
+		u8g2.setCursor(20, 119);
+		u8g2.print("12003319999");
+
+		u8g2.setFont(Futura_Medium_55px);
+		u8g2.setCursor(8, 80);
+		u8g2.print("16.27");
+		//u8g2.print(press);
+
+	} while (u8g2.nextPage());
+}
+
+#if 0
+void show_press_oldstyle(char *press)
 {
 	int pos = -14;
 	char pres_s[6];
@@ -232,6 +266,8 @@ void show_press(char *press)
 
 	} while (u8g2.nextPage());
 }
+#endif
+
 #endif
 
 void push_data();
