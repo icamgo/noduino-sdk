@@ -93,9 +93,24 @@ static uint8_t need_push = 0;
 uint8_t message[32] = { 0x47, 0x4F, 0x33 };
 uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
+uint32_t tx_ok_cnt = 0;
 #else
 uint8_t message[32];
 #endif
+
+/*
+ * Show Mode:
+ *
+ *   0x0: show pressure
+ *   0x1: show max and min
+ *   0x2: show send and version
+*/
+#define	MODE_P			0
+#define	MODE_MAX		1
+#define	MODE_VER		2
+
+int mode = MODE_P;
+int old_mode = MODE_P;
 
 uint8_t key_count = 0;
 
@@ -275,6 +290,75 @@ void show_press(float p, float vb, bool show_bat)
 	} while (u8g2.nextPage());
 }
 
+void show_maxmin(float max, float min)
+{
+	char pres_s[6];
+
+	u8g2.setPowerSave(0);
+
+	u8g2.firstPage();
+
+	do {
+		u8g2.setFont(Futura_Heavy_20px);
+		u8g2.setCursor(98, 20);
+		u8g2.print("Bar");
+
+		u8g2.setCursor(10, 55);
+		u8g2.print("Max ");
+
+		u8g2.setCursor(10, 92);
+		u8g2.print("Min ");
+
+		u8g2.setFont(Futura_Medium_32px);
+		u8g2.setCursor(50, 58);
+		ftoa(pres_s, max, 2);
+		u8g2.print(pres_s);
+
+
+		u8g2.setCursor(48, 95);
+		ftoa(pres_s, min, 2);
+		u8g2.print(pres_s);
+
+	} while (u8g2.nextPage());
+}
+
+void show_ver(int txc)
+{
+	char txc_s[6];
+
+	u8g2.setPowerSave(0);
+
+	u8g2.firstPage();
+
+	do {
+		u8g2.setFont(Futura_Heavy_20px);
+		u8g2.setCursor(64, 23);
+		u8g2.print("Ver 1.0");
+
+		u8g2.setCursor(58, 116);
+		u8g2.print("1.6 MPa");
+
+		if(txc < 9999) {
+			u8g2.setCursor(10, 78);
+		} else {
+			u8g2.setCursor(6, 78);
+		}
+		u8g2.print("Send");
+
+		//ftoa(txc_s, txc, 0);
+		u8g2.setFont(Futura_Medium_32px);
+
+		if(txc < 9999) {
+			u8g2.setCursor(60, 78);
+		} else {
+			u8g2.setCursor(45, 78);
+		}
+
+		u8g2.print(txc);
+
+	} while (u8g2.nextPage());
+}
+
 #if 0
 void show_press_oldstyle(char *press)
 {
@@ -423,6 +507,9 @@ void trig_check_sensor()
 #endif
 
 	key_count++;
+
+	mode++;
+	mode %= 3;
 }
 
 void setup()
@@ -462,6 +549,8 @@ void setup()
 	#ifdef EFM32HG
 	pressure_init(SCL_PIN, SDA_PIN);	// initialization of the sensor
 	cur_pres = get_pressure();
+
+	min_pres = cur_pres;
 
 	delay(2);
 	show_logo();
@@ -682,6 +771,7 @@ void push_data()
 	if (!e) {
 		// send message succesful, update the old_pres
 		old_pres = cur_pres;
+		tx_ok_cnt++;
 	}
 
 #ifdef DEBUG
@@ -723,11 +813,13 @@ void task_oled()
 
 		WDOG_Feed();
 
+		cur_pres = get_pressure();
+
 		if (key_count == 2) {
 
 			// reset the min & max
-			min_pres = 0;
-			max_pres = 0;
+			min_pres = cur_pres;
+			max_pres = cur_pres;
 			key_count = 0;
 
 		} else if (key_count >= 3) {
@@ -741,17 +833,28 @@ void task_oled()
 			key_count = 0;
 		}
 
-		cur_pres = get_pressure();
-
-		if (cur_pres > max_pres && cur_pres < 18.0) {
+		if (cur_pres > max_pres) {
 			max_pres = cur_pres;
 		}
 
-		if (cur_pres < min_pres && min_pres > -0.15) {
+		if (cur_pres < min_pres) {
 			min_pres = cur_pres;
 		}
 
-		show_press(cur_pres, vbat, i%2);
+		switch(mode) {
+			case MODE_P:
+				show_press(cur_pres, vbat, i%2);
+				break;
+
+			case MODE_MAX:
+				show_maxmin(max_pres, min_pres);
+				//show_maxmin(16.88, -2.0);
+				break;
+
+			case MODE_VER:
+				show_ver(tx_ok_cnt);
+				break;
+		}
 
 		delay(1000);
 	}
