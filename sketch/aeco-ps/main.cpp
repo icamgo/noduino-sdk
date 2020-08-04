@@ -373,6 +373,17 @@ float fetch_current()
 }
 #endif
 
+float fetch_vbat()
+{
+	float vbat = 0;
+
+	for (int i = 0; i < 5; i++) {
+		vbat += adc.readVbat();
+	}
+
+	return vbat/5.0;
+}
+
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
 	(void)id;
@@ -389,6 +400,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		tx_cause = TIMER_TX;
 		sample_count = 0;
 	}
+
 
 	pressure_init(SCL_PIN, SDA_PIN);	// initialization of the sensor
 
@@ -455,7 +467,7 @@ void setup()
 	show_logo();
 	delay(800);
 
-	float vbat = adc.readVbat();
+	float vbat = fetch_vbat();
 
 	if (vbat < 2.92) {
 		show_low_bat();
@@ -550,7 +562,7 @@ void push_data()
 #endif
 	////////////////////////////////
 
-	vbat = adc.readVbat();
+	vbat = fetch_vbat();
 
 	power_on_dev();		// turn on device power
 
@@ -703,7 +715,7 @@ void task_oled()
 	// reset the key count
 	key_count = 0;
 
-	float vbat = adc.readVbat();
+	float vbat = fetch_vbat();
 
 	pressure_init(SCL_PIN, SDA_PIN);
 
