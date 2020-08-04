@@ -2765,7 +2765,7 @@ extern const uint8_t Futura_Medium_12px[] U8G2_FONT_SECTION("Futura_Medium_12px"
 extern const uint8_t Futura_Medium_15px[] U8G2_FONT_SECTION("Futura_Medium_15px");
 extern const uint8_t Futura_Medium_16px[] U8G2_FONT_SECTION("Futura_Medium_16px");
 extern const uint8_t Futura_Medium_19px[] U8G2_FONT_SECTION("Futura_Medium_19px");
-extern const uint8_t Futura_Medium_31px[] U8G2_FONT_SECTION("Futura_Medium_31px");
+extern const uint8_t Futura_Medium_32px[] U8G2_FONT_SECTION("Futura_Medium_32px");
 extern const uint8_t Futura_Medium_47px[] U8G2_FONT_SECTION("Futura_Medium_47px");
 extern const uint8_t Futura_Medium_55px[] U8G2_FONT_SECTION("Futura_Medium_55px");
 extern const uint8_t Futura_Heavy_20px[] U8G2_FONT_SECTION("Futura_Heavy_20px");
