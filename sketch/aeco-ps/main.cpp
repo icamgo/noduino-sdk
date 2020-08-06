@@ -243,13 +243,13 @@ void show_press(float p, float vb, bool show_bat)
 		if (vb < 3.0) {
 
 			if (show_bat)
-				u8g2.drawXBM(58, 8, low_battery_width, low_battery_height, low_battery_icon);
+				u8g2.drawXBM(59, 8, low_battery_width, low_battery_height, low_battery_icon);
 
 		} else {
-			u8g2.drawXBM(58, 8, battery_width, battery_height, battery_icon);
+			u8g2.drawXBM(59, 8, battery_width, battery_height, battery_icon);
 		}
 
-		u8g2.setFont(Futura_Medium_15px);
+		u8g2.setFont(Futura_Medium_16px);
 		u8g2.setCursor(8, 18);
 		u8g2.print(dev_vbat);
 
@@ -257,8 +257,8 @@ void show_press(float p, float vb, bool show_bat)
 		u8g2.setCursor(98, 20);
 		u8g2.print("Bar");
 
-		u8g2.setFont(Futura_Medium_16px);
-		u8g2.setCursor(20, 119);
+		u8g2.setFont(Futura_Medium_19px);
+		u8g2.setCursor(16, 120);
 		u8g2.print(dev_id);
 
 		if (p == -1.0) {
