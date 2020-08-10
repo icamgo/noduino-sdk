@@ -61,7 +61,7 @@ uint8_t need_push = 0;
 
 ///////////////////////////////////////////////////////////////////
 // CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-uint32_t idlePeriod = 40;	// 40 seconds
+uint32_t idlePeriod = 20;	// 20 seconds
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
@@ -264,8 +264,8 @@ void loop(void)
 		INFO("%s", "Pressure = ");
 		INFOLN("%f", pres);
 
-		// 50.0 hPa
-		if (fabsf(pres - g_param.old_pres) > 50.0) {
+		// 160.0 hPa(mbar) = 0.16 bar
+		if (fabsf(pres - g_param.old_pres) > 160.0) {
 
 			need_push = 0x5a;
 			g_param.tx_cause = DELTA_TX;
