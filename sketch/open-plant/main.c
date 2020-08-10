@@ -646,8 +646,11 @@ irom void user_init()
 
 		dev_pwr_off();	/* turn off the device power */
 
+		float vb = 0.0;
+		get_vbat(&vb);
+
 		/* Setup next sleep cycle */
-		if (g_hb.cnt == MAX_DP_NUM - 1) {
+		if (g_hb.cnt == MAX_DP_NUM - 1 && vb >= 3.5) {
 			set_deepsleep_wakeup_normal();
 			INFO("set deepsleep wakeup normal\r\n");
 
