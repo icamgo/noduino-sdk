@@ -25,25 +25,32 @@
 #include "math.h"
 #include "em_wdog.h"
 
+//#define	DEBUG					1
+
+#define CONFIG_2MIN					1
+
+#define ENABLE_OLED					1
+#define ENABLE_CAD					1
+
 #if 0
 #define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
 #else
 #define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
 #endif
 
-//#define	DEBUG					1
-#define ENABLE_OLED					1
-#define ENABLE_CAD					1
-
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 20;		/* 20s */
-
+#ifndef CONFIG_2MIN
+static uint32_t sample_period = 18;			/* 20s */
 static uint32_t sample_count = 0;
-#define		HEARTBEAT_TIME			7200
-
+#define		HEARTBEAT_TIME			6600	/* 120min */
 static float old_pres = 0.0;
+#else
+//static uint32_t sample_period = 110;		/* 120s */
+static uint32_t sample_period = 18;			/* 20s */
+#endif
+
 static float cur_pres = 0.0;
 
 static float max_pres = 0.0;
@@ -477,6 +484,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
+#ifndef CONFIG_2MIN
 	sample_count++;
 
 	if (sample_count >= HEARTBEAT_TIME/20) {
@@ -484,19 +492,28 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		tx_cause = TIMER_TX;
 		sample_count = 0;
 	}
-
+#endif
 
 	pressure_init(SCL_PIN, SDA_PIN);	// initialization of the sensor
 
 	cur_pres = get_pressure();
 
+#ifndef CONFIG_2MIN
+	/*
+	 * PC10_HALF_RANGE / 100000.0 = 0.08 (0.5% of 16bar)
+	 * PC10_HALF_RANGE / 50000.0 = 0.16 (1% of 16bar)
+	 * 0.2 (1.25% of 16bar)
+	*/
 	if (fabsf(cur_pres - old_pres) > PC10_HALF_RANGE/100000.0) {
 
 		need_push = 0x5a;
-#ifdef CONFIG_V0
 		tx_cause = DELTA_TX;
-#endif
 	}
+#else
+	// 2min fixed interval
+	need_push = 0x5a;
+	tx_cause = TIMER_TX;
+#endif
 }
 
 void trig_check_sensor()
@@ -521,7 +538,13 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
+
+#ifdef CONFIG_2MIN
+	//wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
+	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+#else
+	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+#endif
 
 	// init dev power ctrl pin
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -770,7 +793,9 @@ void push_data()
 
 	if (!e) {
 		// send message succesful, update the old_pres
+	#ifndef CONFIG_2MIN
 		old_pres = cur_pres;
+	#endif
 		tx_ok_cnt++;
 	}
 
