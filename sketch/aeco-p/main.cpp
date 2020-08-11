@@ -27,7 +27,11 @@
 
 //#define	DEBUG					1
 
-#define CONFIG_2MIN				1
+//#define CONFIG_2MIN				1
+
+//#define ENABLE_P_TEST			1
+
+#define DELTA_P					0.12
 
 #define ENABLE_CAD				1
 
@@ -37,17 +41,22 @@
 #define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
 #endif
 
+#ifdef ENABLE_P_TEST
+static uint32_t cnt_01 = 0;
+#endif
+
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
 #ifndef CONFIG_2MIN
-static uint32_t sample_period = 20;		/* 20s */
+static uint32_t sample_period = 18;		/* 20s */
 static uint32_t sample_count = 0;
 static float old_pres = 0.0;
-#define HEARTBEAT_TIME			7200
+#define HEARTBEAT_TIME			6600	/* 120min */
 
 #else
 static uint32_t sample_period = 110;	/* 120s */
+//static uint32_t sample_period = 18;	/* 20s */
 #endif
 
 static float cur_pres = 0.0;
@@ -207,11 +216,40 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	cur_pres = get_pressure();
 
 #ifndef CONFIG_2MIN
-	if (fabsf(cur_pres - old_pres) > PC10_HALF_RANGE/100000.0) {
+	/*
+	 * PC10_HALF_RANGE / 100000.0 = 0.08 (0.5% of 16bar)
+	 * PC10_HALF_RANGE / 50000.0 = 0.16 (1% of 16bar)
+	 * 0.2 (1.25% of 16bar)
+	*/
+	//if (fabsf(cur_pres - old_pres) > PC10_HALF_RANGE/50000.0) {
+	float dp = fabsf(cur_pres - old_pres);
+
+	if (dp >= DELTA_P) {
 
 		need_push = 0x5a;
 		tx_cause = DELTA_TX;
+
+	#ifdef ENABLE_P_TEST
+		cnt_01 = 0;
+	#endif
+
+		return;
 	}
+
+	#ifdef ENABLE_P_TEST
+	if (dp >= DELTA_P/2 && dp < DELTA_P) {
+
+		cnt_01++;
+
+		if (cnt_01 >= 3) {
+			need_push = 0x5a;
+			tx_cause = DELTA_TX;
+
+			cnt_01 = 0;
+		}
+
+	}
+	#endif
 
 #else
 
