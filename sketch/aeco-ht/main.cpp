@@ -25,10 +25,12 @@
 #include "math.h"
 #include "em_wdog.h"
 
+#define CONFIG_PROTO_V34		1
+
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 20;		/* 20s */
+static uint32_t sample_period = 18;		/* 20s */
 
 static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			6600
@@ -95,7 +97,15 @@ uint8_t tx_cause = RESET_TX;
 //#define WITH_ACK
 
 #ifdef CONFIG_V0
+
+#ifdef CONFIG_PROTO_V33
 uint8_t message[32] = { 0x47, 0x4F, 0x33 };
+#define TX_LEN			24
+#elif CONFIG_PROTO_V34
+uint8_t message[38] = { 0x47, 0x4F, 0x34 };
+#define TX_LEN			37
+#endif
+
 uint16_t tx_count = 0;
 #else
 uint8_t message[32];
@@ -381,10 +391,14 @@ void push_data()
 	ui16 = vbat * 1000;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
-	//pkt[15] = tx_cause;
+	// pkt[15] <--- tx_cause
+
+	#ifdef CONFIG_PROTO_V33
+	pkt[2] = 0x33;
 
 	p = (uint8_t *) &tx_count;
 	pkt[16] = p[1]; pkt[17] = p[0];
+
 	tx_count++;
 
 	ui16 = get_crc(pkt, 18);
@@ -405,6 +419,48 @@ void push_data()
 	// Internal current consumption
 	pkt[23] = (int8_t)roundf(cur_curr);
 
+	#elif CONFIG_PROTO_V34
+
+	pkt[2] = 0x34;
+
+	pkt[16] = pkt_len;
+
+	pkt[17] = 0;
+
+	pkt[18] = 8;			// dev_type
+
+	/* DTF: 0 00 101 10, realtime data, float, 4bytes */
+	pkt[19] = 0x16;
+
+	/* DUF: % */
+	pkt[20] = 0x15;
+
+	p = (uint8_t *) &cur_humi;
+	pkt[21] = p[3];
+	pkt[22] = p[2];
+	pkt[23] = p[1];
+	pkt[24] = p[0];
+
+
+	/* DTF: 0 00 101 10, realtime data, float, 4bytes */
+	pkt[25] = 0x16;
+
+	/* DUF: 'C */
+	pkt[26] = 0xB;
+
+	p = (uint8_t *) &cur_temp;
+	pkt[27] = p[3];
+	pkt[28] = p[2];
+	pkt[29] = p[1];
+	pkt[30] = p[0];
+
+	/* frame number */
+	p = (uint8_t *) &tx_count;
+	pkt[31] = p[1]; pkt[32] = p[0];
+	tx_count++;
+
+	pkt[33] = 0; pkt[34] = 0; pkt[35] = 0; pkt[36] = 0;
+	#endif
 #else
 	uint8_t r_size;
 
@@ -435,7 +491,7 @@ void push_data()
 #endif
 
 #ifdef CONFIG_V0
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, TX_LEN, TX_TIME);
 #else
 	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
