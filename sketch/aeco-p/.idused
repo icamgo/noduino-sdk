@@ -405,5 +405,6 @@
 12003273982
 12003319999
 
-12003339999 <--- no ptest, no count the delta0.1
-12003339998 <--- ptest, count the delta0.1
+12003339999 <--- delta0.12, no ptest, no count the delta0.1
+12003339998 <--- delta0.2, ptest, count the delta0.1
+12003339997 <--- delta0.2, ptest, count the delta0.1 continuously

@@ -32,6 +32,7 @@
 //#define ENABLE_P_TEST			1
 
 #define DELTA_P					0.12
+//#define DELTA_P					0.2
 
 #define ENABLE_CAD				1
 
@@ -248,6 +249,9 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			cnt_01 = 0;
 		}
 
+	} else if (dp < DELTA_P/2) {
+
+		cnt_01 = 0;
 	}
 	#endif
 
