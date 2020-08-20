@@ -70,7 +70,7 @@ $(ARDUINO_CORES)/WMath.cpp 								\
 $(ARDUINO_CORES)/WString.cpp 							\
 $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/SPI/src/SPI.cpp								\
-$(LIB_DIR)/SX126x/sx126x.cpp							\
+./sx126x.cpp							\
 
 
 CXX_APP = main.cpp
@@ -104,7 +104,6 @@ CINCS += -I  $(LIB_DIR)/SPI/src						\
 			-I $(LIB_DIR)/MCP342x/src				\
 			-I $(LIB_DIR)/Wire/src					\
 			-I $(LIB_DIR)/Wire/src/utility			\
-			-I $(LIB_DIR)/SX126x					\
 			-I .									
 
 CXXINCS += -I  $(LIB_DIR)/SPI/src					\
@@ -112,7 +111,6 @@ CXXINCS += -I  $(LIB_DIR)/SPI/src					\
 			-I $(LIB_DIR)/LowPower					\
 			-I $(LIB_DIR)/MCP342x/src				\
 			-I $(LIB_DIR)/Wire/src					\
-			-I $(LIB_DIR)/SX126x					\
 			-I .									
 
 # Compiler flag to set the C Standard level.
