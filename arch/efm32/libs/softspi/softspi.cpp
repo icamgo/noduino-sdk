@@ -48,7 +48,7 @@ void spi_end()
 	pinMode(_miso, INPUT);
 }
 
-static uint8_t spi_transfer(uint8_t data)
+uint8_t spi_transfer(uint8_t data)
 {
 	uint8_t i;
 	for (i = 0; i < 8; i++) {
