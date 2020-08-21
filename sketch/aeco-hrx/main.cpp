@@ -22,6 +22,11 @@
 #include <stdio.h>
 #include <stdint.h>
 
+/*
+ * make sure the payload len in sx127x.h:
+ *  MAX_LENGTH = 36;
+ *  MAX_PAYLOAD = 32;
+*/
 #define ENABLE_RX_INTERRUPT		1
 
 #ifdef ENABLE_RX_INTERRUPT
@@ -61,6 +66,7 @@ struct circ_buf g_cbuf;
 #define RECEIVE_ALL
 
 #define TXRX_CH				CH_01_472
+//#define TXRX_CH				CH_00_470
 #define RX_TIME				330
 
 uint8_t loraMode = 12;
@@ -101,8 +107,15 @@ uint8_t rx_err_cnt = 0;
 #define	MODE_RAW		2
 #define	MODE_ABC		3
 
+#define NUM_MODE		4
+
+#ifdef DEBUG_HEX_PKT
+int omode = MODE_RAW;
+int old_omode = MODE_RAW;
+#else
 int omode = MODE_KEY;
 int old_omode = MODE_KEY;
+#endif
 
 int key_time = 0;
 
@@ -157,7 +170,7 @@ void radio_setup()
 {
 
 #ifdef CONFIG_V0
-	sx1272.setup_v0(CH_01_472, 20);
+	sx1272.setup_v0(TXRX_CH, 20);
 	//sx1272.setPreambleLength(6);
 
 	#ifdef ENABLE_ABC
@@ -166,7 +179,7 @@ void radio_setup()
 	}
 	#endif
 #else
-	sx1272.sx1278_qsetup(CH_00_470, 20);
+	sx1272.sx1278_qsetup(TXRX_CH, 20);
 	sx1272._nodeAddress = loraAddr;
 
 	sx1272._enableCarrierSense = true;
@@ -600,7 +613,7 @@ void show_low_bat()
 void change_omode()
 {
 	omode++;
-	omode %= 4;
+	omode %= NUM_MODE;
 	INFO("%s", "omode: ");
 	INFOLN("%d", omode);
 }
@@ -759,9 +772,11 @@ void setup()
 	wInit.em3Run = true;
 	wInit.perSel = wdogPeriod_2k;	/* 2k 1kHz periods should give 2 seconds */
 
+#ifndef DEBUG_HEX_PKT
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, change_omode, FALLING);
+#endif
 
 #ifdef ENABLE_RX_INTERRUPT
 	// RF RX Interrupt pin
@@ -845,6 +860,7 @@ void loop(void)
 #endif
 		old_omode = omode;
 
+#ifdef ENABLE_ABC
 		switch (omode) {
 			case MODE_ALL:
 				sx1272.setSyncWord(SYNCWORD_DEFAULT);
@@ -859,8 +875,10 @@ void loop(void)
 				sx1272.setSyncWord(SYNCWORD_DEFAULT);
 				break;
 		}
+#endif
 	}
 
+#ifdef ENABLE_OLED
 	if (digitalRead(KEY_PIN) == 0) {
 		// x 200ms
 		key_time++;
@@ -875,9 +893,7 @@ void loop(void)
 		INFOLN("%s", "Key long time pressed, enter deep sleep...");
 		delay(300);
 
-#ifdef ENABLE_OLED
 		u8g2.setPowerSave(1);
-#endif
 		sx1272.setSleepMode();
 		digitalWrite(SX1272_RST, LOW);
 
@@ -901,6 +917,7 @@ void loop(void)
 
 		setup();
 	}
+#endif
 
 #if DEBUG > 1
 	if (status_counter == 60 || status_counter == 0) {
@@ -952,6 +969,7 @@ void loop(void)
 		uint8_t *p = sx1272.packet_received.data;
 		uint8_t p_len = sx1272.getPayloadLength();
 
+		int p_rssi = sx1272._RSSIpacket;
 #else
 	{
 		struct pkt d;
@@ -964,6 +982,7 @@ void loop(void)
 
 		uint8_t *p = d.data;
 		uint8_t p_len = d.plen;
+		int p_rssi = d.rssi;
 #endif
 
 #ifdef DEBUG_HEX_PKT
@@ -978,14 +997,17 @@ void loop(void)
 			INFO_S("%s", " ");
 		}
 
-		INFO_S("%d", "/");
-		INFO("%d", sx1272._RSSIpacket);
-		INFO_S("%s", "/");
-		INFOLN("%d", p_len);
+		if (p_len > 0) {
+			INFO_S("%d", "/");
+			INFO("%d", p_rssi);
+			INFO_S("%s", "/");
+			INFOLN("%d", p_len);
+		}
 #endif
 
+#ifndef DEBUG_HEX_PKT
 		if (p_len <= 11) return;
-
+#endif
 		status_counter = 0;
 
 		memset(p+p_len, 0, MAX_PAYLOAD-p_len);
@@ -1015,7 +1037,7 @@ void loop(void)
 				decode_sensor_data(p),
 				decode_cmd(p),
 				decode_ver(p),
-				d.rssi);
+				p_rssi);
 
 #ifdef ENABLE_OLED
 				sprintf(frame_buf[c % 2], "%s %4d",
@@ -1060,7 +1082,7 @@ void loop(void)
 
 				sprintf(cmd, "%s/rssi/%d",
 					dev_id,
-					d.rssi);
+					p_rssi);
 
 			#ifdef ENABLE_OLED
 				sprintf(frame_buf[0], "%s", dev_id);
@@ -1070,7 +1092,7 @@ void loop(void)
 					p_len,
 					check_crc(p, p_len),
 					decode_vbat(p),
-					d.rssi);
+					p_rssi);
 
 				show_frame(0, omode, false);
 				c++;
@@ -1092,7 +1114,7 @@ void loop(void)
 					decode_vbat(p),
 					decode_sensor_type(),
 					decode_sensor_data(p),
-					d.rssi);
+					p_rssi);
 
 #ifdef ENABLE_OLED
 				sprintf(frame_buf[0], "%s %4d",
