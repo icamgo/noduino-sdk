@@ -339,21 +339,25 @@ class SX126x {
  public:
 	SX126x(int spiSelect, int reset, int busy, int interrupt);
 
-	int16_t begin(uint8_t packetType, uint32_t frequencyInHz,
-		      int8_t txPowerInDbm);
+	int16_t begin(uint32_t freq_hz, int8_t dbm);
 	int16_t LoRaConfig(uint8_t spreadingFactor, uint8_t bandwidth,
 			   uint8_t codingRate, uint16_t preambleLength,
 			   uint8_t payloadLen, bool crcOn, bool invertIrq);
 	uint8_t Receive(uint8_t * pData, uint16_t len);
-	bool Send(uint8_t * pData, uint8_t len, uint8_t mode);
+
+	bool send(uint8_t *data, uint8_t len, uint8_t mode);
+
 	bool ReceiveMode(void);
 	void ReceiveStatus(uint8_t * rssiPacket, uint8_t * snrPacket);
-	void SetTxPower(int8_t txPowerInDbm);
+	void SetTxPower(int8_t dbm);
 
-	void Reset(void);
+	uint16_t get_dev_errors(void);
+	void set_tx_power(int8_t dbm);
+
+	void reset(void);
 
  private:
-	 uint8_t PacketParams[6];
+	uint8_t PacketParams[6];
 	bool txActive;
 
 	int SX126x_SPI_SELECT;
@@ -361,16 +365,18 @@ class SX126x {
 	int SX126x_BUSY;
 	int SX126x_INT0;
 
-	void SPIwriteCommand(uint8_t cmd, uint8_t * data, uint8_t numBytes,
-			     bool waitForBusy = true);
-	void SPIreadCommand(uint8_t cmd, uint8_t * data, uint8_t numBytes,
-			    bool waitForBusy = true);
+	void write_cmd(uint8_t cmd, uint8_t *data, uint8_t n, bool waitForBusy = true);
+	void read_cmd(uint8_t cmd, uint8_t *data, uint8_t n, bool waitForBusy = true);
 	void SPItransfer(uint8_t cmd, bool write, uint8_t * dataOut,
-			 uint8_t * dataIn, uint8_t numBytes, bool waitForBusy);
+			 uint8_t *dataIn, uint8_t n, bool waitForBusy);
+
+	void write_reg(uint16_t addr, uint8_t data);
+	void write_reg(uint16_t addr, uint8_t *data, uint8_t size);
 
 	void SetDio3AsTcxoCtrl(uint8_t tcxoVoltage, uint32_t timeout);
 	void SetDio2AsRfSwitchCtrl(uint8_t enable);
-	uint8_t GetStatus(void);
+
+	uint8_t get_status(void);
 	void SetStandby(uint8_t mode);
 	void WaitOnBusy(void);
 	void SetRfFrequency(uint32_t frequency);
@@ -380,18 +386,19 @@ class SX126x {
 	void SetBufferBaseAddress(uint8_t txBaseAddress, uint8_t rxBaseAddress);
 	void SetPowerConfig(int8_t power, uint8_t rampTime);
 	void SetOvercurrentProtection(uint8_t value);
-	void SetPaConfig(uint8_t paDutyCycle, uint8_t hpMax, uint8_t deviceSel,
+	void set_pa_config(uint8_t paDutyCycle, uint8_t hpMax, uint8_t deviceSel,
 			 uint8_t paLut);
-	void SetDioIrqParams(uint16_t irqMask, uint16_t dio1Mask,
+	void config_dio_irq(uint16_t irqMask, uint16_t dio1Mask,
 			     uint16_t dio2Mask, uint16_t dio3Mask);
 	void SetStopRxTimerOnPreambleDetect(bool enable);
 	void SetLoRaSymbNumTimeout(uint8_t SymbNum);
 	void SetPacketType(uint8_t packetType);
-	void SetModulationParams(uint8_t spreadingFactor, uint8_t bandwidth,
+	void set_modulation_params(uint8_t spreadingFactor, uint8_t bandwidth,
 				 uint8_t codingRate,
 				 uint8_t lowDataRateOptimize);
+
 	uint16_t GetIrqStatus(void);
-	void ClearIrqStatus(uint16_t irq);
+	void clear_irq_status(uint16_t irq);
 	void SetRx(uint32_t timeout);
 	void SetTx(uint32_t timeoutInMs);
 	void GetRxBufferStatus(uint8_t * payloadLength,
@@ -399,9 +406,14 @@ class SX126x {
 	void Wakeup(void);
 	uint8_t ReadBuffer(uint8_t * rxData, uint8_t * rxDataLen,
 			   uint8_t maxLen);
-	uint8_t WriteBuffer(uint8_t * txData, uint8_t txDataLen);
+	uint8_t write_buf(uint8_t * txData, uint8_t txDataLen);
 
 	void SetSyncWord(uint16_t syncw);
+
+	int _tx_power;
+	uint8_t _sf;
+	uint8_t _bw;
+	uint8_t _cr;
 };
 
 #endif
