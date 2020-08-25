@@ -275,11 +275,11 @@ void show_press(float p, float vb, bool show_bat)
 		} else if (p == -2.0) {
 			// out of low range
 
-			u8g2.drawXBM(32, 43, x_low_width, x_low_height, x_low_icon);
+			u8g2.drawXBM(30, 34, x_low_width, x_low_height, x_low_icon);
 
 		} else if (p == -3.0) {
 			// out of high range
-			u8g2.drawXBM(32, 43, x_high_width, x_high_height, x_high_icon);
+			u8g2.drawXBM(30, 34, x_high_width, x_high_height, x_high_icon);
 		} else {
 			u8g2.setFont(Futura_Medium_55px);
 			if (len <= 4) {
@@ -589,12 +589,12 @@ void setup()
 	show_press(cur_pres, vbat, true);
 	delay(1800);
 
-#if 0
+#if 1
 	show_press(-2.0, vbat, true);
-	delay(1800);
+	delay(3800);
 
 	show_press(-3.0, vbat, true);
-	delay(1800);
+	delay(3800);
 #endif
 
 	#endif
