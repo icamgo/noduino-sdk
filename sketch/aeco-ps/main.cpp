@@ -605,6 +605,8 @@ void setup()
 	/* bootup tx */
 	tx_cause = RESET_TX;
 	need_push = 0x5a;
+
+	mode = MODE_VER;
 }
 
 void qsetup()
@@ -886,6 +888,9 @@ void task_oled()
 
 	u8g2.setPowerSave(1);
 #endif
+
+	// reset the mode
+	mode = MODE_VER;
 }
 
 void loop()
