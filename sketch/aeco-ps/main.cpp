@@ -56,6 +56,8 @@ static float cur_pres = 0.0;
 static float max_pres = 0.0;
 static float min_pres = 0.0;
 
+static float cur_vbat = 0.0;
+
 #ifdef MONITOR_CURRENT
 static float cur_curr = 0.0;
 #endif
@@ -484,6 +486,8 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
+	cur_vbat = fetch_vbat();
+
 #ifndef CONFIG_2MIN
 	sample_count++;
 
@@ -546,6 +550,8 @@ void setup()
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 #endif
 
+	cur_vbat = fetch_vbat();
+
 	// init dev power ctrl pin
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 
@@ -579,21 +585,19 @@ void setup()
 	show_logo();
 	delay(800);
 
-	float vbat = fetch_vbat();
-
-	if (vbat < 2.92) {
+	if (cur_vbat < 2.92) {
 		show_low_bat();
 		delay(2700);
 	}
 
-	show_press(cur_pres, vbat, true);
+	show_press(cur_pres, cur_vbat, true);
 	delay(1800);
 
 #if 1
-	show_press(-2.0, vbat, true);
+	show_press(-2.0, cur_vbat, true);
 	delay(3800);
 
-	show_press(-3.0, vbat, true);
+	show_press(-3.0, cur_vbat, true);
 	delay(3800);
 #endif
 
@@ -651,8 +655,6 @@ void push_data()
 	long startSend;
 	long endSend;
 
-	float vbat = 0.0;
-
 	int e;
 
 #ifdef CONFIG_V0
@@ -675,8 +677,6 @@ void push_data()
 	pkt[15] = tx_cause;
 #endif
 	////////////////////////////////
-
-	vbat = fetch_vbat();
 
 	power_on_dev();		// turn on device power
 
@@ -702,7 +702,7 @@ void push_data()
 
 	pkt[11] = p[1]; pkt[12] = p[0];
 
-	ui16 = vbat * 1000;
+	ui16 = cur_vbat * 1000;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
 	p = (uint8_t *) &tx_count;
@@ -832,7 +832,7 @@ void task_oled()
 	// reset the key count
 	key_count = 0;
 
-	float vbat = fetch_vbat();
+	float vbat = cur_vbat;
 
 	pressure_init(SCL_PIN, SDA_PIN);
 
