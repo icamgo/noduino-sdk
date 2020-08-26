@@ -34,80 +34,47 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 		Serial.println("SX126x error, maybe no SPI connection?");
 		return ERR_INVALID_MODE;
 	}
-	SetStandby(SX126X_STANDBY_RC);
+	set_standby(SX126X_STANDBY_RC);
 
-	get_status();
-	get_dev_errors();
-
-	SetPacketType(SX126X_PACKET_TYPE_LORA);
-
-	get_status();
-	get_dev_errors();
+	set_packet_type(SX126X_PACKET_TYPE_LORA);
 
 	// convert from ms to SX126x time base
-	SetDio3AsTcxoCtrl(SX126X_DIO3_OUTPUT_3_3, RADIO_TCXO_SETUP_TIME << 6);
+	set_dio3_as_tcxo_ctrl(SX126X_DIO3_OUTPUT_3_0, RADIO_TCXO_SETUP_TIME << 6);
 
-	get_status();
-	get_dev_errors();
-
-	SetRfFrequency(freq_hz);
-
-	get_status();
-	get_dev_errors();
+	set_rf_freq(freq_hz);
 
 	set_pa_config(0x04, 0x07, 0x00, 0x01);
 
-
-	get_status();
-	get_dev_errors();
-
-	Calibrate(SX126X_CALIBRATE_IMAGE_ON
+	calibrate(SX126X_CALIBRATE_IMAGE_ON
 		| SX126X_CALIBRATE_ADC_BULK_P_ON
 		  | SX126X_CALIBRATE_ADC_BULK_N_ON
 		  | SX126X_CALIBRATE_ADC_PULSE_ON
 		  | SX126X_CALIBRATE_PLL_ON
 		  | SX126X_CALIBRATE_RC13M_ON | SX126X_CALIBRATE_RC64K_ON);
 
-	get_status();
-	get_dev_errors();
+	set_dio2_as_rfswitch_ctrl(true);
 
-	SetDio2AsRfSwitchCtrl(true);
+	set_standby(SX126X_STANDBY_RC);
 
-	get_status();
-	get_dev_errors();
+	set_regulator_mode(SX126X_REGULATOR_DC_DC);
 
-	SetStandby(SX126X_STANDBY_RC);
+	set_buffer_base_addr(0, 0);
 
-	get_dev_errors();
+	set_over_current_protect(0x38);	// set max current to 140mA 
 
-	SetRegulatorMode(SX126X_REGULATOR_DC_DC);
-
-	get_dev_errors();
-
-	SetBufferBaseAddress(0, 0);
-
-	get_dev_errors();
-
-	SetOvercurrentProtection(0x38);	// set max current to 140mA 
-
-	get_dev_errors();
-
-	//SetPowerConfig(dbm, SX126X_PA_RAMP_200U);	//0 fuer Empfaenger
-
+	/*
 	config_dio_irq(SX126X_IRQ_ALL,	//all interrupts enabled
 			(SX126X_IRQ_RX_DONE | SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT),	//interrupts on DIO1
 			SX126X_IRQ_NONE,	//interrupts on DIO2
 			SX126X_IRQ_NONE);	//interrupts on DIO3
+	*/
 
-	get_dev_errors();
-
-	SetSyncWord(0x1212);
-
-	get_dev_errors();
-
+	set_sync_word(0x1212);
+	//set_sync_word(0x3444);
+	//set_sync_word(0x1424);
 }
 
-int16_t SX126x::LoRaConfig(uint8_t sf, uint8_t bw,
+int16_t SX126x::lora_config(uint8_t sf, uint8_t bw,
 			   uint8_t cr, uint16_t preambleLength,
 			   uint8_t payloadLen, bool crcOn, bool invertIrq)
 {
@@ -115,10 +82,11 @@ int16_t SX126x::LoRaConfig(uint8_t sf, uint8_t bw,
 
 	_sf = sf; _bw = bw; _cr = cr;
 
-	SetStopRxTimerOnPreambleDetect(false);
-	SetLoRaSymbNumTimeout(0);
+	//////////////////////////////////////////
+	set_stop_rx_timer_on_preamble(false);
+	set_lora_symb_num_timeout(0);
 
-	SetPacketType(SX126X_PACKET_TYPE_LORA);
+	set_packet_type(SX126X_PACKET_TYPE_LORA);
 
 	set_modulation_params(sf, bw, cr, ldro);
 
@@ -151,17 +119,17 @@ int16_t SX126x::LoRaConfig(uint8_t sf, uint8_t bw,
 			SX126X_IRQ_NONE);
 
 	//receive state no receive timeoout
-	//SetRx(0xFFFFFF);
+	//set_rx(0xFFFFFF);
 }
 
 uint8_t SX126x::Receive(uint8_t * pData, uint16_t len)
 {
 	uint8_t rxLen = 0;
-	uint16_t irqRegs = GetIrqStatus();
+	uint16_t irqRegs = get_irq_status();
 
 	if (irqRegs & SX126X_IRQ_RX_DONE) {
 		clear_irq_status(SX126X_IRQ_RX_DONE);
-		ReadBuffer(pData, &rxLen, len);
+		read_buf(pData, &rxLen, len);
 	}
 
 	return rxLen;
@@ -195,18 +163,18 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 
 		write_buf(data, len);
 
-		//SetTx(0);
-		SetTx(100);		// timeout = 100ms
+		//set_tx(0);
+		set_tx(100);		// timeout = 100ms
 
 		if (mode & SX126x_TXMODE_SYNC) {
-			irq = GetIrqStatus();
+			irq = get_irq_status();
 			while ((!(irq & SX126X_IRQ_TX_DONE))
 			       && (!(irq & SX126X_IRQ_TIMEOUT))) {
-				irq = GetIrqStatus();
+				irq = get_irq_status();
 			}
 			txActive = false;
 
-			SetRx(0xFFFFFF);
+			set_rx(0xFFFFFF);
 
 			if (irq != SX126X_IRQ_TIMEOUT)
 				rv = true;
@@ -218,7 +186,7 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 	return rv;
 }
 
-bool SX126x::ReceiveMode(void)
+bool SX126x::rx_mode(void)
 {
 	uint16_t irq;
 	bool rv = false;
@@ -226,9 +194,9 @@ bool SX126x::ReceiveMode(void)
 	if (txActive == false) {
 		rv = true;
 	} else {
-		irq = GetIrqStatus();
+		irq = get_irq_status();
 		if (irq & (SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT)) {
-			SetRx(0xFFFFFF);
+			set_rx(0xFFFFFF);
 			txActive = false;
 			rv = true;
 		}
@@ -237,7 +205,7 @@ bool SX126x::ReceiveMode(void)
 	return rv;
 }
 
-void SX126x::ReceiveStatus(uint8_t * rssi, uint8_t * snr)
+void SX126x::rx_status(uint8_t * rssi, uint8_t * snr)
 {
 	uint8_t buf[3];
 
@@ -245,11 +213,6 @@ void SX126x::ReceiveStatus(uint8_t * rssi, uint8_t * snr)
 
 	(buf[1] < 128) ? (*snr = buf[1] >> 2) : (*snr = ((buf[1] - 256) >> 2));
 	*rssi = -buf[0] >> 1;
-}
-
-void SX126x::SetTxPower(int8_t dbm)
-{
-	SetPowerConfig(dbm, SX126X_PA_RAMP_200U);
 }
 
 void SX126x::reset(void)
@@ -262,12 +225,12 @@ void SX126x::reset(void)
 	while (digitalRead(SX126x_BUSY)) ;
 }
 
-void SX126x::Wakeup(void)
+void SX126x::wakeup(void)
 {
 	get_status();
 }
 
-void SX126x::SetStandby(uint8_t mode)
+void SX126x::set_standby(uint8_t mode)
 {
 	uint8_t data = mode;
 	write_cmd(SX126X_CMD_SET_STANDBY, &data, 1);
@@ -294,12 +257,12 @@ uint16_t SX126x::get_dev_errors(void)
 	return error;
 }
 
-void SX126x::WaitOnBusy(void)
+void SX126x::wait_on_busy(void)
 {
 	while (digitalRead(SX126x_BUSY) == 1) ;
 }
 
-void SX126x::SetDio3AsTcxoCtrl(uint8_t tcxoVoltage, uint32_t timeout)
+void SX126x::set_dio3_as_tcxo_ctrl(uint8_t tcxoVoltage, uint32_t timeout)
 {
 	uint8_t buf[4];
 
@@ -311,24 +274,24 @@ void SX126x::SetDio3AsTcxoCtrl(uint8_t tcxoVoltage, uint32_t timeout)
 	write_cmd(SX126X_CMD_SET_DIO3_AS_TCXO_CTRL, buf, 4);
 }
 
-void SX126x::Calibrate(uint8_t calibParam)
+void SX126x::calibrate(uint8_t calibParam)
 {
 	uint8_t data = calibParam;
 	write_cmd(SX126X_CMD_CALIBRATE, &data, 1);
 }
 
-void SX126x::SetDio2AsRfSwitchCtrl(uint8_t enable)
+void SX126x::set_dio2_as_rfswitch_ctrl(uint8_t enable)
 {
 	uint8_t data = enable;
 	write_cmd(SX126X_CMD_SET_DIO2_AS_RF_SWITCH_CTRL, &data, 1);
 }
 
-void SX126x::SetRfFrequency(uint32_t frequency)
+void SX126x::set_rf_freq(uint32_t frequency)
 {
 	uint8_t buf[4];
 	uint32_t freq = 0;
 
-	CalibrateImage(frequency);
+	calibrate_image(frequency);
 
 	freq = (uint32_t) ((double)frequency / (double)FREQ_STEP);
 	buf[0] = (uint8_t) ((freq >> 24) & 0xFF);
@@ -338,7 +301,7 @@ void SX126x::SetRfFrequency(uint32_t frequency)
 	write_cmd(SX126X_CMD_SET_RF_FREQUENCY, buf, 4);
 }
 
-void SX126x::CalibrateImage(uint32_t frequency)
+void SX126x::calibrate_image(uint32_t frequency)
 {
 	uint8_t calFreq[2];
 
@@ -361,13 +324,13 @@ void SX126x::CalibrateImage(uint32_t frequency)
 	write_cmd(SX126X_CMD_CALIBRATE_IMAGE, calFreq, 2);
 }
 
-void SX126x::SetRegulatorMode(uint8_t mode)
+void SX126x::set_regulator_mode(uint8_t mode)
 {
 	uint8_t data = mode;
 	write_cmd(SX126X_CMD_SET_REGULATOR_MODE, &data, 1);
 }
 
-void SX126x::SetBufferBaseAddress(uint8_t txBaseAddress, uint8_t rxBaseAddress)
+void SX126x::set_buffer_base_addr(uint8_t txBaseAddress, uint8_t rxBaseAddress)
 {
 	uint8_t buf[2];
 
@@ -376,7 +339,7 @@ void SX126x::SetBufferBaseAddress(uint8_t txBaseAddress, uint8_t rxBaseAddress)
 	write_cmd(SX126X_CMD_SET_BUFFER_BASE_ADDRESS, buf, 2);
 }
 
-void SX126x::SetSyncWord(uint16_t syncw)
+void SX126x::set_sync_word(uint16_t syncw)
 {
 	uint8_t buf[3];
 
@@ -394,21 +357,6 @@ void SX126x::SetSyncWord(uint16_t syncw)
 	write_cmd(SX126X_CMD_WRITE_REGISTER, buf, 3);
 }
 
-void SX126x::SetPowerConfig(int8_t power, uint8_t rampTime)
-{
-	uint8_t buf[2];
-
-	if (power > 22) {
-		power = 22;
-	} else if (power < -3) {
-		power = -3;
-	}
-
-	buf[0] = power;
-	buf[1] = (uint8_t) rampTime;
-	write_cmd(SX126X_CMD_SET_TX_PARAMS, buf, 2);
-}
-
 void SX126x::set_pa_config(uint8_t paDutyCycle, uint8_t hpMax, uint8_t deviceSel,
 			 uint8_t paLut)
 {
@@ -421,7 +369,7 @@ void SX126x::set_pa_config(uint8_t paDutyCycle, uint8_t hpMax, uint8_t deviceSel
 	write_cmd(SX126X_CMD_SET_PA_CONFIG, buf, 4);
 }
 
-void SX126x::SetOvercurrentProtection(uint8_t value)
+void SX126x::set_over_current_protect(uint8_t value)
 {
 	uint8_t buf[3];
 
@@ -447,19 +395,19 @@ void SX126x::config_dio_irq(uint16_t irqMask, uint16_t dio1Mask,
 	write_cmd(SX126X_CMD_SET_DIO_IRQ_PARAMS, buf, 8);
 }
 
-void SX126x::SetStopRxTimerOnPreambleDetect(bool enable)
+void SX126x::set_stop_rx_timer_on_preamble(bool enable)
 {
 	uint8_t data = (uint8_t) enable;
 	write_cmd(SX126X_CMD_STOP_TIMER_ON_PREAMBLE, &data, 1);
 }
 
-void SX126x::SetLoRaSymbNumTimeout(uint8_t SymbNum)
+void SX126x::set_lora_symb_num_timeout(uint8_t SymbNum)
 {
 	uint8_t data = SymbNum;
 	write_cmd(SX126X_CMD_SET_LORA_SYMB_NUM_TIMEOUT, &data, 1);
 }
 
-void SX126x::SetPacketType(uint8_t packetType)
+void SX126x::set_packet_type(uint8_t packetType)
 {
 	uint8_t data = packetType;
 	write_cmd(SX126X_CMD_SET_PACKET_TYPE, &data, 1);
@@ -478,7 +426,7 @@ void SX126x::set_modulation_params(uint8_t sf, uint8_t bw,
 	write_cmd(SX126X_CMD_SET_MODULATION_PARAMS, data, 4);
 }
 
-uint16_t SX126x::GetIrqStatus(void)
+uint16_t SX126x::get_irq_status(void)
 {
 	uint8_t data[2];
 	read_cmd(SX126X_CMD_GET_IRQ_STATUS, data, 2);
@@ -494,7 +442,7 @@ void SX126x::clear_irq_status(uint16_t irq)
 	write_cmd(SX126X_CMD_CLEAR_IRQ_STATUS, buf, 2);
 }
 
-void SX126x::SetRx(uint32_t timeout)
+void SX126x::set_rx(uint32_t timeout)
 {
 	uint8_t buf[3];
 
@@ -504,7 +452,7 @@ void SX126x::SetRx(uint32_t timeout)
 	write_cmd(SX126X_CMD_SET_RX, buf, 3);
 }
 
-void SX126x::SetTx(uint32_t timeoutInMs)
+void SX126x::set_tx(uint32_t timeoutInMs)
 {
 	uint8_t buf[3];
 	uint32_t tout = (uint32_t) (timeoutInMs / 0.015625);
@@ -514,7 +462,7 @@ void SX126x::SetTx(uint32_t timeoutInMs)
 	write_cmd(SX126X_CMD_SET_TX, buf, 3);
 }
 
-void SX126x::GetRxBufferStatus(uint8_t * payloadLength,
+void SX126x::get_rx_buf_status(uint8_t * payloadLength,
 			       uint8_t * rxStartBufferPointer)
 {
 	uint8_t buf[2];
@@ -525,12 +473,12 @@ void SX126x::GetRxBufferStatus(uint8_t * payloadLength,
 	*rxStartBufferPointer = buf[1];
 }
 
-uint8_t SX126x::ReadBuffer(uint8_t * rxData, uint8_t * rxDataLen,
+uint8_t SX126x::read_buf(uint8_t * rxData, uint8_t * rxDataLen,
 			   uint8_t maxLen)
 {
 	uint8_t offset = 0;
 
-	GetRxBufferStatus(rxDataLen, &offset);
+	get_rx_buf_status(rxDataLen, &offset);
 	if (*rxDataLen > maxLen) {
 		return 1;
 	}
@@ -581,16 +529,16 @@ uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
 void SX126x::write_cmd(uint8_t cmd, uint8_t *data, uint8_t len,
 			     bool waitForBusy)
 {
-	SPItransfer(cmd, true, data, NULL, len, waitForBusy);
+	spi_transfer(cmd, true, data, NULL, len, waitForBusy);
 }
 
 void SX126x::read_cmd(uint8_t cmd, uint8_t *data, uint8_t len,
 			    bool waitForBusy)
 {
-	SPItransfer(cmd, false, NULL, data, len, waitForBusy);
+	spi_transfer(cmd, false, NULL, data, len, waitForBusy);
 }
 
-void SX126x::SPItransfer(uint8_t cmd, bool write, uint8_t * dataOut,
+void SX126x::spi_transfer(uint8_t cmd, bool write, uint8_t * dataOut,
 			 uint8_t * dataIn, uint8_t len, bool waitForBusy)
 {
 
@@ -702,4 +650,14 @@ void SX126x::set_tx_power(int8_t dbm)
     //}
 
     write_cmd(SX126X_CMD_SET_TX_PARAMS, buf, 2);
+}
+
+int8_t SX126x::get_rssi()
+{
+    uint8_t buf;
+    int8_t rssi = 0;
+
+    write_cmd(SX126X_CMD_GET_RSSI_INST, &buf, 1);
+    rssi = -buf >> 1;
+    return rssi;
 }
