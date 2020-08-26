@@ -892,6 +892,9 @@ void task_oled()
 			key_count = 0;
 			u8g2.setPowerSave(1);
 
+			// reset the mode
+			mode = MODE_VER;
+
 			return ;
 
 		} else {
