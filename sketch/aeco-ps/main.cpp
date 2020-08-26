@@ -27,12 +27,21 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.2"
+#define FW_VER						"Ver 1.3"
 
 //#define CONFIG_2MIN					1
 
 #define ENABLE_OLED					1
 #define ENABLE_CAD					1
+
+#define ENABLE_P_TEST			1
+
+#ifdef ENABLE_P_TEST
+#define DELTA_P					0.2
+static uint32_t cnt_01 = 0;
+#else
+#define DELTA_P					0.12
+#endif
 
 #if 0
 #define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
@@ -510,11 +519,38 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	 * PC10_HALF_RANGE / 50000.0 = 0.16 (1% of 16bar)
 	 * 0.2 (1.25% of 16bar)
 	*/
-	if (fabsf(cur_pres - old_pres) > PC10_HALF_RANGE/100000.0) {
+	//if (fabsf(cur_pres - old_pres) > PC10_HALF_RANGE/100000.0) {
+	float dp = fabsf(cur_pres - old_pres);
+
+	if (dp >= DELTA_P) {
 
 		need_push = 0x5a;
 		tx_cause = DELTA_TX;
+
+	#ifdef ENABLE_P_TEST
+		cnt_01 = 0;
+	#endif
+
+		return;
 	}
+
+	#ifdef ENABLE_P_TEST
+	if (dp >= DELTA_P/2 && dp < DELTA_P) {
+
+		cnt_01++;
+
+		if (cnt_01 >= 3) {
+			need_push = 0x5a;
+			tx_cause = DELTA_TX;
+
+			cnt_01 = 0;
+		}
+
+	} else if (dp < DELTA_P/2) {
+
+		cnt_01 = 0;
+	}
+	#endif
 #else
 	// 2min fixed interval
 	need_push = 0x5a;
