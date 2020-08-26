@@ -27,7 +27,9 @@
 
 //#define	DEBUG					1
 
-#define CONFIG_2MIN					1
+#define FW_VER						"Ver 1.2"
+
+//#define CONFIG_2MIN					1
 
 #define ENABLE_OLED					1
 #define ENABLE_CAD					1
@@ -342,7 +344,7 @@ void show_ver(int txc)
 	do {
 		u8g2.setFont(Futura_Heavy_20px);
 		u8g2.setCursor(64, 23);
-		u8g2.print("Ver 1.0");
+		u8g2.print(FW_VER);
 
 		u8g2.setCursor(58, 116);
 		u8g2.print("1.6 MPa");
@@ -593,12 +595,12 @@ void setup()
 	show_press(cur_pres, cur_vbat, true);
 	delay(1800);
 
-#if 1
+#if 0
 	show_press(-2.0, cur_vbat, true);
-	delay(3800);
+	delay(1800);
 
 	show_press(-3.0, cur_vbat, true);
-	delay(3800);
+	delay(1800);
 #endif
 
 	#endif
