@@ -363,15 +363,15 @@ class SX126x {
 	uint8_t PacketParams[6];
 	bool txActive;
 
-	int SX126x_SPI_SELECT;
-	int SX126x_RESET;
-	int SX126x_BUSY;
-	int SX126x_INT0;
+	int _spi_cs;
+	int _pin_busy;
+	int _pin_reset;
+	int _pin_dio1;
 
 	void write_cmd(uint8_t cmd, uint8_t *data, uint8_t n, bool waitForBusy = true);
 	void read_cmd(uint8_t cmd, uint8_t *data, uint8_t n, bool waitForBusy = true);
 
-	void spi_transfer(uint8_t cmd, bool write, uint8_t * dataOut,
+	void spi_cmd(uint8_t cmd, bool write, uint8_t * dataOut,
 			 uint8_t *dataIn, uint8_t n, bool waitForBusy);
 
 	void write_reg(uint16_t addr, uint8_t data);

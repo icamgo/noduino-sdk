@@ -1,9 +1,9 @@
 
 #include <SX126x.h>
 
-#define RF_FREQ			472500000	// Hz center frequency
+//#define RF_FREQ			472500000	// Hz center frequency
 //#define RF_FREQ			470020000	// Hz center frequency
-//#define RF_FREQ			470020000	// Hz center frequency
+#define RF_FREQ			470000000	// Hz center frequency
 #define TX_PWR			22			// dBm tx output power
 #define LORA_BW			6
 #define LORA_SF			10			
@@ -33,11 +33,9 @@ void setup()
 	radio_init();
 }
 
-uint8_t i;
-
 uint8_t p[26] = {
 	0x47, 0x4F, 0x33,
-	0x22, 0x00, 0x00, 0x02, 0xCB, 0x63, 0x09, 0xE7,
+	0x22, 0x11, 0x00, 0x02, 0xCB, 0x63, 0x09, 0xE7,
 	0x0B, 0xB8, 0x0E, 0x45, 0x03, 0xC4,
 	0xD8, 0x05, 0x9E, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00
@@ -49,11 +47,7 @@ void loop()
 {
 	Serial.println("TX PKT...");
 
-	//lora.reset();
-	//radio_init();
 	lora.send(p, 18, SX126x_TXMODE_SYNC);
-
-	i++;
 
 	delay(3000);
 }
