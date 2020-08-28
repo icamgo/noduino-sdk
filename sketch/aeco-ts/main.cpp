@@ -34,12 +34,18 @@
 //#define ENABLE_RF					1
 
 #define ENABLE_T_TEST				1
+#define ENABLE_RT_TEST				1
 
 #ifdef ENABLE_T_TEST
 #define DELTA_T						1.5
 static uint32_t cnt_01 = 0;
 #else
 #define DELTA_T						1.0
+#endif
+
+#ifdef ENABLE_RT_TEST
+#define DELTA_RT_T					0.3
+static uint32_t cnt_rt_01 = 0;
 #endif
 
 #if 0
@@ -464,12 +470,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	cur_temp = pt1000_get_temp();
 
 #ifndef CONFIG_2MIN
-	/*
-	 * PC10_HALF_RANGE / 100000.0 = 0.08 (0.5% of 16bar)
-	 * PC10_HALF_RANGE / 50000.0 = 0.16 (1% of 16bar)
-	 * 0.2 (1.25% of 16bar)
-	*/
-	//if (fabsf(cur_temp - old_temp) > PC10_HALF_RANGE/100000.0) {
 	float dp = fabsf(cur_temp - old_temp);
 
 	if (dp >= DELTA_T) {
@@ -824,19 +824,57 @@ void task_oled()
 
 	float vbat = cur_vbat;
 
+#ifdef ENABLE_RT_TEST
+	float cur_t = 0.0, old_t = 0.0;
+#endif
+
 	pt1000_init();
 
 	for (i=0; i<30; i++) {
 
 		WDOG_Feed();
 
-		cur_temp = pt1000_get_temp();
+		cur_t = pt1000_get_temp();
+
+		#ifdef ENABLE_RT_TEST
+		float dt = fabsf(cur_t - old_t);
+
+		if (dt >= DELTA_RT_T) {
+
+			//need_show = 0x5a;
+			old_t = cur_t;
+
+			cnt_rt_01 = 0;
+
+		} else if (dt >= DELTA_RT_T/2 && dt < DELTA_RT_T) {
+
+			cnt_rt_01++;
+
+			if (cnt_rt_01 >= 3) {
+
+				//need_show = 0x5a;
+				old_t = cur_t;
+
+				cnt_rt_01 = 0;
+
+			} else {
+
+				cur_t = old_t;
+			}
+
+		} else if (dt < DELTA_RT_T/2) {
+
+			cnt_rt_01 = 0;
+
+			cur_t = old_t;
+		}
+		#endif
 
 		if (key_count == 2) {
 
 			// reset the min & max
-			min_temp = cur_temp;
-			max_temp = cur_temp;
+			min_temp = cur_t;
+			max_temp = cur_t;
 			key_count = 0;
 
 		} else if (key_count >= 3) {
@@ -853,17 +891,17 @@ void task_oled()
 			key_count = 0;
 		}
 
-		if (cur_temp > max_temp) {
-			max_temp = cur_temp;
+		if (cur_t > max_temp) {
+			max_temp = cur_t;
 		}
 
-		if (cur_temp < min_temp) {
-			min_temp = cur_temp;
+		if (cur_t < min_temp) {
+			min_temp = cur_t;
 		}
 
 		switch(mode) {
 			case MODE_P:
-				show_temp(cur_temp, vbat, i%2);
+				show_temp(cur_t, vbat, i%2);
 				break;
 
 			case MODE_MAX:
