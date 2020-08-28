@@ -27,7 +27,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.3"
+#define FW_VER						"Ver 1.4"
 
 //#define CONFIG_2MIN					1
 
@@ -601,7 +601,7 @@ void setup()
 
 	power_on_dev();
 
-	pinMode(KEY_PIN, INPUT);
+	pinMode(KEY_PIN, INPUT_PULLUP);
 	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
 	/* Initialize RTC timer. */
