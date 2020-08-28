@@ -453,6 +453,8 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	cur_vbat = fetch_vbat();
 
+#ifdef ENABLE_RF
+
 #ifndef CONFIG_2MIN
 	sample_count++;
 
@@ -468,6 +470,8 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	pt1000_init();	// initialization of the sensor
 
 	cur_temp = pt1000_get_temp();
+
+	power_off_dev();
 
 #ifndef CONFIG_2MIN
 	float dp = fabsf(cur_temp - old_temp);
@@ -505,6 +509,8 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	// 2min fixed interval
 	need_push = 0x5a;
 	tx_cause = TIMER_TX;
+#endif
+
 #endif
 }
 
@@ -545,7 +551,7 @@ void setup()
 
 	power_on_dev();
 
-	pinMode(KEY_PIN, INPUT);
+	pinMode(KEY_PIN, INPUT_PULLUP);
 	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
 	/* Initialize RTC timer. */
