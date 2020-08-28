@@ -35,12 +35,18 @@
 #define ENABLE_CAD					1
 
 #define ENABLE_P_TEST			1
+#define ENABLE_RTP_TEST			1
 
 #ifdef ENABLE_P_TEST
 #define DELTA_P					0.2
 static uint32_t cnt_01 = 0;
 #else
 #define DELTA_P					0.12
+#endif
+
+#ifdef ENABLE_RTP_TEST
+#define DELTA_RT_P				0.16
+static uint32_t cnt_rt_01 = 0;
 #endif
 
 #if 0
@@ -872,19 +878,57 @@ void task_oled()
 
 	float vbat = cur_vbat;
 
+#ifdef ENABLE_RTP_TEST
+	float cur_p = 0.0, old_p = 0.0;
+#endif
+
 	pressure_init(SCL_PIN, SDA_PIN);
 
 	for (i=0; i<30; i++) {
 
 		WDOG_Feed();
 
-		cur_pres = get_pressure();
+		cur_p = get_pressure();
+
+		#ifdef ENABLE_RTP_TEST
+		float dp = fabsf(cur_p - old_p);
+
+		if (dp >= DELTA_RT_P) {
+
+			//need_show = 0x5a;
+			old_p = cur_p;
+
+			cnt_rt_01 = 0;
+
+		} else if (dp >= DELTA_RT_P/2 && dp < DELTA_RT_P) {
+
+			cnt_rt_01++;
+
+			if (cnt_rt_01 >= 3) {
+
+				//need_show = 0x5a;
+				old_p = cur_p;
+
+				cnt_rt_01 = 0;
+
+			} else {
+
+				cur_p = old_p;
+			}
+
+		} else if (dp < DELTA_RT_P/2) {
+
+			cnt_rt_01 = 0;
+
+			cur_p = old_p;
+		}
+		#endif
 
 		if (key_count == 2) {
 
 			// reset the min & max
-			min_pres = cur_pres;
-			max_pres = cur_pres;
+			min_pres = cur_p;
+			max_pres = cur_p;
 			key_count = 0;
 
 		} else if (key_count >= 3) {
@@ -902,16 +946,16 @@ void task_oled()
 		}
 
 		if (cur_pres > max_pres) {
-			max_pres = cur_pres;
+			max_pres = cur_p;
 		}
 
 		if (cur_pres < min_pres) {
-			min_pres = cur_pres;
+			min_pres = cur_p;
 		}
 
 		switch(mode) {
 			case MODE_P:
-				show_press(cur_pres, vbat, i%2);
+				show_press(cur_p, vbat, i%2);
 				break;
 
 			case MODE_MAX:
