@@ -249,9 +249,9 @@ void show_temp(float p, float vb, bool show_bat)
 	char dev_vbat[6] = "00000";
 	char temps[6];
 
-	ftoa(temps, p, 1);
-
-	int len = strlen(temps);		/* 5 or 4 */
+	if (p > -99.99) {
+		ftoa(temps, p, 1);
+	}
 
 	ftoa(dev_vbat, vb, 2);
 	dev_vbat[4] = 'V';
@@ -298,17 +298,25 @@ void show_temp(float p, float vb, bool show_bat)
 			// out of high range
 			u8g2.drawXBM(30, 34, x_high_width, x_high_height, x_high_icon);
 		} else {
+
 			u8g2.setFont(Futura_Medium_55px);
-			if (len <= 4) {
+
+			if (p > -99.99 && p < 99.99) {
 
 				u8g2.setCursor(24, 80);
+				u8g2.print(temps);
 
-			} else if (len == 5) {
+			} else if (p >= 99.99) {
 
 				u8g2.setCursor(8, 80);
+				u8g2.print(temps);
+
+			} else if (p <= -99.99) {
+
+				u8g2.setCursor(20, 80);
+				u8g2.print((int)p);
 			}
 
-			u8g2.print(temps);
 		}
 
 	} while (u8g2.nextPage());
@@ -585,9 +593,28 @@ void setup()
 	}
 
 	show_temp(cur_temp, cur_vbat, true);
+#if 0
+	show_temp(-99.99, cur_vbat, true);
 	delay(1800);
 
-#if 0
+	show_temp(-100, cur_vbat, true);
+	delay(1800);
+
+	show_temp(500.23, cur_vbat, true);
+	delay(1800);
+
+	show_temp(-1.99, cur_vbat, true);
+	delay(1800);
+
+	show_temp(-11.99, cur_vbat, true);
+	delay(1800);
+
+	show_temp(1.99, cur_vbat, true);
+	delay(1800);
+
+	show_temp(11.99, cur_vbat, true);
+	delay(1800);
+
 	show_temp(-2.0, cur_vbat, true);
 	delay(1800);
 
