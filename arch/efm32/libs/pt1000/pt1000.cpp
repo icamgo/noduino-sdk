@@ -27,12 +27,19 @@ float cal_temp(uint32_t Rt)
 
 	uint8_t Bottom, Top;
 
+	if (Rt == 30000) {
+		// open
+		return 300.0;
+	}
+
 	if (Rt < PT100_TABLE[0]) {
-		return -274.0;
+		// less than the lowest value (-200)
+		return -275.0;
 	}
 
 	if (Rt > PT100_TABLE[99]) {
-		return 300.0;
+		// great than the highest value (300)
+		return -276.0;
 	}
 
 	Bottom = 0;
@@ -106,6 +113,7 @@ uint32_t pt1000_get_rt()
 
 	for (int i = 0; i < N_TRY; i++) {
 
+
 		a6 = adc.read(A6);
 		a7 = adc.read(A7);
 
@@ -116,7 +124,16 @@ uint32_t pt1000_get_rt()
 		Serial.print("ADC7 = ");
 		Serial.println(a7);
 	#endif
-		if (a6 == a7) return 30000;
+
+		if (a7 == 0) {
+			// short
+			return 0;
+		}
+
+		if (a6 <= a7) {
+			// open or hand touch the T
+			return 30000;
+		}
 
 		// 1.1K x 10
 		rt[i] = (uint32_t)(11000.0 / ((float)a6 / a7 - 1.0));
