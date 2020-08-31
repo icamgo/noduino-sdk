@@ -80,6 +80,8 @@ static float min_temp = 0.0;
 
 static float cur_vbat = 0.0;
 
+static float vbat_vec[5];
+
 #ifdef MONITOR_CURRENT
 static float cur_curr = 0.0;
 #endif
@@ -287,7 +289,7 @@ void show_temp(float p, float vb, bool show_bat)
 
 		if (p == 300.0) {
 			// no sensor connected
-			u8g2.drawXBM(27, 36, no_sensor_width, no_sensor_height, no_sensor_icon);
+			u8g2.drawXBM(20, 38, no_sensor_width, no_sensor_height, no_sensor_icon);
 
 		} else if (p == -2.0) {
 			// out of low range
@@ -593,6 +595,7 @@ void setup()
 	}
 
 	show_temp(cur_temp, cur_vbat, true);
+	delay(1800);
 #if 0
 	show_temp(-99.99, cur_vbat, true);
 	delay(1800);
