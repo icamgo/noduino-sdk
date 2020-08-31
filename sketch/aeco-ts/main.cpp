@@ -80,7 +80,9 @@ static float min_temp = 0.0;
 
 static float cur_vbat = 0.0;
 
-static float vbat_vec[5];
+static uint8_t cnt_vbat_3v3 = 0;
+static uint8_t cnt_vbat_low = 0;
+static bool vbat_low = false;
 
 #ifdef MONITOR_CURRENT
 static float cur_curr = 0.0;
@@ -265,7 +267,7 @@ void show_temp(float p, float vb, bool show_bat)
 	uint64_to_str(get_devid());
 
 	do {
-		if (vb < 3.0) {
+		if (vbat_low == true) {
 
 			if (show_bat)
 				u8g2.drawXBM(59, 8, low_battery_width, low_battery_height, low_battery_icon);
@@ -391,6 +393,13 @@ void show_ver(int txc)
 
 		u8g2.print(txc);
 
+	#if 1
+		u8g2.setFont(Futura_Heavy_20px);
+		u8g2.setCursor(66, 118);
+		u8g2.print(sample_period);
+		u8g2.print(" S");
+	#endif
+
 	} while (u8g2.nextPage());
 }
 
@@ -462,6 +471,55 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
 	cur_vbat = fetch_vbat();
+
+	if (cur_vbat >= 3.27 && cur_vbat < 3.34) {
+
+		cnt_vbat_3v3++;
+
+		if (cnt_vbat_3v3 >= 3) {
+			// 3v3 power
+
+			sample_period = 2;
+
+			cnt_vbat_3v3 = 0;
+		}
+
+		sample_period = 18;
+
+		cnt_vbat_low = 0;
+		vbat_low = false;
+
+	} else if (cur_vbat < 3.27 && cur_vbat >= 2.92) {
+
+		cnt_vbat_3v3 = 0;
+		sample_period = 25;
+
+		cnt_vbat_low = 0;
+		vbat_low = false;
+
+	} else if (cur_vbat < 2.92) {
+
+		cnt_vbat_low++;
+
+		if (cnt_vbat_low >= 15) {
+
+			sample_period = 25;
+
+			vbat_low = true;
+			cnt_vbat_low = 0;
+		}
+
+		vbat_low = false;
+
+	} else if (cur_vbat >= 3.34) {
+
+		// battery supply
+		cnt_vbat_3v3 = 0;
+		sample_period = 18;
+
+		cnt_vbat_low = 0;
+		vbat_low = false;
+	}
 
 #ifdef ENABLE_RF
 
@@ -589,7 +647,7 @@ void setup()
 	show_logo();
 	delay(800);
 
-	if (cur_vbat < 2.92) {
+	if (vbat_low) {
 		show_low_bat();
 		delay(2700);
 	}
@@ -858,8 +916,6 @@ void task_oled()
 	// reset the key count
 	key_count = 0;
 
-	float vbat = cur_vbat;
-
 #ifdef ENABLE_RT_TEST
 	float cur_t = 0.0, old_t = 0.0;
 #endif
@@ -937,7 +993,7 @@ void task_oled()
 
 		switch(mode) {
 			case MODE_P:
-				show_temp(cur_t, vbat, i%2);
+				show_temp(cur_t, cur_vbat, i%2);
 				break;
 
 			case MODE_MAX:
