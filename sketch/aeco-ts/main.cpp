@@ -291,12 +291,12 @@ void show_temp(float p, float vb, bool show_bat)
 			// no sensor connected
 			u8g2.drawXBM(20, 38, no_sensor_width, no_sensor_height, no_sensor_icon);
 
-		} else if (p == -2.0) {
+		} else if (p == -275.0) {
 			// out of low range
 
 			u8g2.drawXBM(30, 34, x_low_width, x_low_height, x_low_icon);
 
-		} else if (p == -3.0) {
+		} else if (p == -276.0) {
 			// out of high range
 			u8g2.drawXBM(30, 34, x_high_width, x_high_height, x_high_icon);
 		} else {
