@@ -16,6 +16,8 @@ ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 #ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
+DEFS := -DPC10_HALF_RANGE=8000.0
+
 MCU = cortex-m0plus
 #F_CPU = 7000000
 F_CPU = 14000000
@@ -23,8 +25,8 @@ F_CPU = 14000000
 VERSION=187
 
 ifeq ($(OS),Windows_NT)
-TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/arm-none-eabi-2017q4/bin
-OPENOCD = $(SDK_BASE)/toolchain/openocd/bin/openocd
+TOOLCHAIN_DIR = $(SDK_BASE)/toolchain/gcc-arm-none-eabi/bin
+OPENOCD = $(SDK_BASE)/toolchain/openocd-nt/bin/openocd
 PORT = COM7
 else
 TOOLCHAIN_DIR = /usr/share/arduino
