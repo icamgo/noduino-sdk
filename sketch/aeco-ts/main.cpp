@@ -24,7 +24,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.0"
+#define FW_VER						"Ver 1.2"
 
 //#define CONFIG_2MIN					1
 
@@ -64,7 +64,8 @@ static uint32_t cnt_rt_01 = 0;
 RTCDRV_TimerID_t xTimerForWakeUp;
 
 #ifndef CONFIG_2MIN
-static uint32_t sample_period = 18;			/* 20s */
+//static uint32_t sample_period = 18;			/* 20s */
+static uint32_t sample_period = 2;			/* 20s */
 static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			6600	/* 120min */
 static float old_temp = 0.0;
@@ -80,8 +81,8 @@ static float min_temp = 0.0;
 
 static float cur_vbat = 0.0;
 
-static uint8_t cnt_vbat_3v3 = 0;
-static uint8_t cnt_vbat_low = 0;
+static uint32_t cnt_vbat_3v3 = 0;
+static uint32_t cnt_vbat_low = 0;
 static bool vbat_low = false;
 
 #ifdef MONITOR_CURRENT
@@ -484,32 +485,22 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			cnt_vbat_3v3 = 0;
 		}
 
-		sample_period = 18;
-
 		cnt_vbat_low = 0;
 		vbat_low = false;
 
-	} else if (cur_vbat < 3.27 && cur_vbat >= 2.92) {
-
-		cnt_vbat_3v3 = 0;
-		sample_period = 25;
-
-		cnt_vbat_low = 0;
-		vbat_low = false;
-
-	} else if (cur_vbat < 2.92) {
+	} else if (cur_vbat < 3.27) {
 
 		cnt_vbat_low++;
 
-		if (cnt_vbat_low >= 15) {
+		if (cnt_vbat_low >= 3) {
 
-			sample_period = 25;
+			sample_period = 28;
 
 			vbat_low = true;
 			cnt_vbat_low = 0;
 		}
 
-		vbat_low = false;
+		cnt_vbat_3v3 = 0;
 
 	} else if (cur_vbat >= 3.34) {
 
