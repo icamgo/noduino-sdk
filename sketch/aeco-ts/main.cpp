@@ -610,7 +610,7 @@ void setup()
 
 	power_on_dev();
 
-	pinMode(KEY_PIN, INPUT_PULLUP);
+	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
 	/* Initialize RTC timer. */
