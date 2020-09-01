@@ -24,7 +24,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.2"
+#define FW_VER						"Ver 1.3"
 
 //#define CONFIG_2MIN					1
 
@@ -64,8 +64,8 @@ static uint32_t cnt_rt_01 = 0;
 RTCDRV_TimerID_t xTimerForWakeUp;
 
 #ifndef CONFIG_2MIN
-//static uint32_t sample_period = 18;			/* 20s */
-static uint32_t sample_period = 2;			/* 20s */
+static uint32_t sample_period = 18;			/* 20s */
+//static uint32_t sample_period = 2;			/* 20s */
 static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			6600	/* 120min */
 static float old_temp = 0.0;
@@ -488,7 +488,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		cnt_vbat_low = 0;
 		vbat_low = false;
 
-	} else if (cur_vbat < 3.27) {
+	} else if (cur_vbat < 3.0) {
 
 		cnt_vbat_low++;
 
@@ -913,7 +913,7 @@ void task_oled()
 
 	pt1000_init();
 
-	for (i=0; i<30; i++) {
+	for (i=0; i<150; i++) {
 
 		WDOG_Feed();
 
@@ -982,6 +982,10 @@ void task_oled()
 			min_temp = cur_t;
 		}
 
+		if (cur_vbat > 3.0) {
+			vbat_low = false;
+		}
+
 		switch(mode) {
 			case MODE_P:
 				show_temp(cur_t, cur_vbat, i%2);
@@ -997,7 +1001,7 @@ void task_oled()
 				break;
 		}
 
-		delay(1000);
+		delay(200);
 	}
 
 	u8g2.setPowerSave(1);
@@ -1028,12 +1032,12 @@ void loop()
 	u8g2.setPowerSave(1);
 #endif
 
+	power_off_dev();
+
 #ifdef ENABLE_RF
 	digitalWrite(SX1272_RST, LOW);
 	spi_end();
 #endif
-
-	power_off_dev();
 
 	/*
 	 * Enable rtc timer before enter deep sleep

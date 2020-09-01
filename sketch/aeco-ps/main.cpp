@@ -27,7 +27,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.5"
+#define FW_VER						"Ver 1.6"
 
 //#define CONFIG_2MIN					1
 
@@ -531,7 +531,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		cnt_vbat_low = 0;
 		vbat_low = false;
 
-	} else if (cur_vbat < 3.27) {
+	} else if (cur_vbat < 3.0) {
 
 		cnt_vbat_low++;
 
@@ -1002,6 +1002,10 @@ void task_oled()
 
 		if (cur_p < min_pres) {
 			min_pres = cur_p;
+		}
+
+		if (vbat > 3.0) {
+			vbat_low = false;
 		}
 
 		switch(mode) {
