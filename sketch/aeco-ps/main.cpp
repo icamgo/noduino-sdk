@@ -35,7 +35,7 @@
 #define ENABLE_CAD					1
 
 #define ENABLE_P_TEST			1
-#define ENABLE_RTP_TEST			1
+//#define ENABLE_RTP_TEST			1
 
 #ifdef ENABLE_P_TEST
 #define DELTA_P					0.2
@@ -59,7 +59,7 @@ static uint32_t cnt_rt_01 = 0;
 RTCDRV_TimerID_t xTimerForWakeUp;
 
 #ifndef CONFIG_2MIN
-static uint32_t sample_period = 18;			/* 20s */
+static uint32_t sample_period = 2;			/* 20s */
 static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			6600	/* 120min */
 static float old_pres = 0.0;
@@ -928,8 +928,9 @@ void task_oled()
 
 	float vbat = cur_vbat;
 
+	float cur_p = 0.0;
 #ifdef ENABLE_RTP_TEST
-	float cur_p = 0.0, old_p = 0.0;
+	float old_p = 0.0;
 #endif
 
 	pressure_init(SCL_PIN, SDA_PIN);
@@ -995,11 +996,11 @@ void task_oled()
 			key_count = 0;
 		}
 
-		if (cur_pres > max_pres) {
+		if (cur_p > max_pres) {
 			max_pres = cur_p;
 		}
 
-		if (cur_pres < min_pres) {
+		if (cur_p < min_pres) {
 			min_pres = cur_p;
 		}
 
