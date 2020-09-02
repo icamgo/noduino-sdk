@@ -24,7 +24,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.3"
+#define FW_VER						"Ver 1.5"
 
 //#define CONFIG_2MIN					1
 
@@ -84,6 +84,10 @@ static float cur_vbat = 0.0;
 static uint32_t cnt_vbat_3v3 = 0;
 static uint32_t cnt_vbat_low = 0;
 static bool vbat_low = false;
+
+static uint32_t oled_on_time = 30;			/* s */
+static uint32_t oled_refresh_time = 500;	/* ms */
+static int oled_i;
 
 #ifdef MONITOR_CURRENT
 static float cur_curr = 0.0;
@@ -584,6 +588,11 @@ void trig_check_sensor()
 
 	mode++;
 	mode %= 3;
+
+	if (2 == sample_period || 18 == sample_period) {
+		// usb power & battery power, reset the oled_i
+		oled_i = 0;
+	}
 }
 
 void setup()
@@ -735,6 +744,8 @@ void push_data()
 #ifdef CONFIG_V0
 	uint8_t *pkt = message;
 #endif
+
+	WDOG_Feed();
 
 	////////////////////////////////
 #ifdef MONITOR_CURRENT
@@ -901,7 +912,6 @@ void push_data()
 void task_oled()
 {
 #ifdef ENABLE_OLED
-	int i;
 	char temp_s[6];
 
 	// reset the key count
@@ -911,9 +921,27 @@ void task_oled()
 	float cur_t = 0.0, old_t = 0.0;
 #endif
 
+	if (2 == sample_period) {
+		// usb power
+		oled_on_time = 60;
+		oled_refresh_time = 200;
+
+	} else if (28 == sample_period) {
+
+		// low battery
+		oled_on_time = 15;
+		oled_refresh_time = 1500;
+
+	} else if (18 == sample_period) {
+
+		// battery supply
+		oled_on_time = 30;
+		oled_refresh_time = 500;
+	}
+
 	pt1000_init();
 
-	for (i=0; i<150; i++) {
+	for (oled_i=0; oled_i<oled_on_time*1000/oled_refresh_time; oled_i++) {
 
 		WDOG_Feed();
 
@@ -988,7 +1016,7 @@ void task_oled()
 
 		switch(mode) {
 			case MODE_P:
-				show_temp(cur_t, cur_vbat, i%2);
+				show_temp(cur_t, cur_vbat, oled_i%2);
 				break;
 
 			case MODE_MAX:
@@ -1001,7 +1029,7 @@ void task_oled()
 				break;
 		}
 
-		delay(200);
+		delay(oled_refresh_time);
 	}
 
 	u8g2.setPowerSave(1);
