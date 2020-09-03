@@ -24,7 +24,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.5"
+#define FW_VER						"Ver 1.6"
 
 //#define CONFIG_2MIN					1
 
@@ -913,6 +913,8 @@ void task_oled()
 {
 #ifdef ENABLE_OLED
 	char temp_s[6];
+
+	RTCDRV_StopTimer(xTimerForWakeUp);
 
 	// reset the key count
 	key_count = 0;
