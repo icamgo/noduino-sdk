@@ -396,7 +396,8 @@ void show_ver(int txc)
 
 	#if 1
 		u8g2.setFont(Futura_Heavy_20px);
-		u8g2.setCursor(10, 116);
+	//	u8g2.setCursor(10, 116);
+		u8g2.setCursor(66, 118);
 		u8g2.print(sample_period);
 		u8g2.print(" S");
 	#endif
