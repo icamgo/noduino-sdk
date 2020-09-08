@@ -24,14 +24,14 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.6"
+#define FW_VER						"Ver 1.7"
 
 //#define CONFIG_2MIN					1
 
 #define ENABLE_OLED					1
 #define ENABLE_CAD					1
 
-//#define ENABLE_RF					1
+#define ENABLE_RF					1
 
 #define ENABLE_T_TEST				1
 #define ENABLE_RT_TEST				1

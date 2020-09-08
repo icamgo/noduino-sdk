@@ -27,7 +27,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.0"
+#define FW_VER						"Ver 1.1"
 
 //#define CONFIG_2MIN					1
 
