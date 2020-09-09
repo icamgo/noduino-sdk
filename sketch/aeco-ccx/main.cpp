@@ -1,4 +1,4 @@
-/* 
+/*
  *  Copyright (c) 2019 - 2029 MaiKe Labs
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -65,12 +65,10 @@ uint8_t loraMode = 12;
 
 #endif
 
-// be careful, max command length is 60 characters
+#ifdef DEBUG
 #define MAX_CMD_LENGTH			100
 char cmd[MAX_CMD_LENGTH];
-
-// number of retries to unlock remote configuration feature
-bool withAck = false;
+#endif
 
 int status_counter = 0;
 uint8_t rx_err_cnt = 0;
@@ -675,16 +673,61 @@ uint16_t update_crc(uint8_t *p, int len)
 	return hh;
 }
 
-bool process_pkt(uint8_t *p, int len)
+bool process_pkt(uint8_t *p, int *len)
 {
 	p[0] = 0x49;
 
 	// p[15] is the cmd type
-	// try to extend the p[15][7:4] as the pkt re-tx counter
 
-	if (check_ctrl_fno(&g_cfifo, p, len) == true) {
+	if (p[2] == 0x33) {
 
-		update_crc(p, len);
+		//extend the 0x33
+
+		if (*len == 24 || *len == 28) {
+			//TODO: extend the pkt to 32Bytes, add the relay_cnt
+
+			/* move the frame no. to p[24:25] */
+			//p[24] = p[16];
+			//p[25] = p[17];
+			p[24] = p[*len-8];
+			p[25] = p[*len-7];
+
+			p[16] = 0; p[17] = 0; p[18] = 0; p[19] = 0;
+
+			// p[26:27] as the crc
+			// p[28:31] as the reserved crc
+			p[28] = 0; p[29] = 0; p[30] = 0; p[31] = 0;
+
+			*len = 32;
+		}
+
+		if (*len == 32) {
+
+			if (p[15] & 0x80) {
+				// new cc relayed pkt
+
+				if (p[17] >= 5) {
+
+					// cc relayed times
+					return false;
+
+				} else {
+					p[17] += 1;
+				}
+
+			} else {
+				// device pkt
+				p[15] |= 0x80;		// mark as cc-relayed
+				p[17] = 1;			// increment the cc-relayed-cnt
+			}
+
+		}
+
+	}
+
+	if (check_ctrl_fno(&g_cfifo, p, *len) == true) {
+
+		update_crc(p, *len);
 
 		return true;
 
@@ -848,7 +891,7 @@ void loop(void)
 	if (ret != 0) return;
 
 	uint8_t *p = d.data;
-	uint8_t p_len = d.plen;
+	int p_len = d.plen;
 
 #ifdef DEBUG_HEX_PKT
 	int a = 0, b = 0;
@@ -955,7 +998,7 @@ void loop(void)
 		}
 	}
 
-	if (process_pkt(p, p_len) == true) {
+	if (process_pkt(p, &p_len) == true) {
 
 		tx_cnt++;
 
