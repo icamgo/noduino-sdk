@@ -580,13 +580,20 @@ bool check_crc(uint8_t *p, int plen)
 
 bool is_our_pkt(uint8_t *p, int len)
 {
+
+	if (len < 24) return false;
+
 	if (p[0] != 0x47 || p[1] != 0x4F) {
 
 		// invalide pkt header
 		return false;
 	}
 
-	if (len < 24) return false;
+	if (p[3] != 0 || p[4] != 0 || p[5] != 0 || p[6] > 0x15) {
+
+		// invalid devid
+		return false;
+	}
 
 	if (p[2] < 0x33 || p[2] > 0x36) {
 
@@ -596,12 +603,6 @@ bool is_our_pkt(uint8_t *p, int len)
 
 	if (check_crc(p, len) == false) {
 
-		return false;
-	}
-
-	if (p[3] != 0 || p[4] != 0 || p[5] != 0) {
-
-		// invalid devid
 		return false;
 	}
 
@@ -688,6 +689,32 @@ bool process_pkt(uint8_t *p, int *len)
 	}
 }
 
+bool is_cc_ok(uint8_t *p, int len)
+{
+	if (p[2] == 0x33 && len == 32) {
+
+		if (p[15] & 0x80) {
+
+			// new cc relayed pkt
+
+			if (p[17] < 5) {
+				return true;
+			} else {
+				return false;
+			}
+
+		} else {
+			// no cc relayed
+			return true;
+		}
+
+	} else {
+
+		// other version pkt
+		return true;
+	}
+}
+
 void rx_irq_handler()
 {
 	int8_t e = 0;
@@ -701,11 +728,12 @@ void rx_irq_handler()
 		uint8_t plen = sx1272._payloadlength;
 		uint8_t *p = sx1272.packet_received.data;
 
-		if (plen > 32) plen = 32;
+		if (plen > 40) return;
 
 		rx_cnt++;
 
-		if (is_our_pkt(p, plen)) {
+		if (is_our_pkt(p, plen) && is_cc_ok(p, plen) &&
+			is_pkt_in_ctrl(&g_cfifo, p, plen) == false) {
 
 			// push into the tx queue buffer
 			push_pkt(&g_cbuf, sx1272.packet_received.data, sx1272._RSSIpacket, plen);
