@@ -22,8 +22,21 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "rtcdriver.h"
 #include "tx_ctrl.h"
 #include "circ_buf.h"
+
+/* Timer used for bringing the system back to EM0. */
+RTCDRV_TimerID_t xTimerForWakeUp;
+static uint32_t report_period = 1100;	/* 1200s */
+static uint8_t need_push = 0;
+static uint16_t tx_count = 0;
+#if 0
+#define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
+#else
+#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
+#endif
+
 
 struct circ_buf g_cbuf;
 #define OLED_DELAY_TIME			3600000		/* oled is on about 35s */
@@ -764,6 +777,76 @@ int tx_pkt(uint8_t *p, int len)
 	return e;
 }
 
+uint8_t rpt_pkt[32] = { 0x47, 0x4F, 0x33 };
+
+uint64_t get_devid()
+{
+	uint64_t *p;
+
+	p = (uint64_t *)0x0FE00008;
+
+	return *p;
+}
+
+float fetch_mcu_temp()
+{
+	float temp = 0.0;
+	for(int i=0; i<3; i++) {
+		temp += adc.temperatureCelsius();
+	}
+	temp /= 3.0;
+
+	return temp;
+}
+
+uint16_t get_crc(uint8_t *pp, int len)
+{
+	int i;
+	uint16_t hh = 0;
+
+	for (i = 0; i < len; i++) {
+		hh += pp[i];
+	}
+	return hh;
+}
+
+void report_status(RTCDRV_TimerID_t id, void *user)
+{
+	uint8_t *pkt = rpt_pkt;
+
+	uint64_t devid = get_devid();
+
+	uint8_t *p = (uint8_t *) &devid;
+
+	// set devid
+	int i = 0;
+	for(i = 0; i < 8; i++) {
+		pkt[3+i] = p[7-i];
+	}
+
+	float chip_temp = fetch_mcu_temp();
+	int16_t ui16 = (int16_t)(chip_temp * 10);
+	p = (uint8_t *) &ui16;
+	pkt[11] = p[1]; pkt[12] = p[0];
+
+	float vbat = adc.readVbat();
+	ui16 = vbat * 1000;
+	pkt[13] = p[1]; pkt[14] = p[0];
+
+	// tx_cause = TIMER_TX
+	pkt[15] = 2;
+
+	p = (uint8_t *) &tx_count;
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
+	tx_count++;
+
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
+	p = (uint8_t *) &ui16;
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
+	need_push = 0x55;
+}
+
 void setup()
 {
 	int e;
@@ -815,6 +898,12 @@ void setup()
 
 	/* Start watchdog */
 	WDOG_Init(&wInit);
+
+	/* Initialize RTC timer. */
+	RTCDRV_Init();
+	RTCDRV_AllocateTimer(&xTimerForWakeUp);
+
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, report_period * 1000, report_status, NULL);
 }
 
 void loop(void)
@@ -975,6 +1064,18 @@ void loop(void)
 
 			show_frame(0, omode, p[15] & 0x04);
 		#endif
+		}
+	}
+
+	if (0x55 == need_push) {
+
+		int e = tx_pkt(rpt_pkt, 32);
+
+		sx1272.rx_v0();
+
+		if (!e) {
+			// send success
+			need_push = 0;
 		}
 	}
 
