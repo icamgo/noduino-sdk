@@ -733,7 +733,7 @@ void rx_irq_handler()
 		rx_cnt++;
 
 		if (is_our_pkt(p, plen) && is_cc_ok(p, plen) &&
-			is_pkt_in_ctrl(&g_cfifo, p, plen) == false) {
+			is_pkt_in_ctrl(&g_cfifo, p, plen, seconds()) == false) {
 
 			// push into the tx queue buffer
 			push_pkt(&g_cbuf, sx1272.packet_received.data, sx1272._RSSIpacket, plen);
