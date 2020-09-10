@@ -235,6 +235,7 @@ char *decode_vbat(uint8_t *pkt)
 		case 0x31:
 		case 0x32:
 		case 0x33:
+		case 0x34:
 			vbat = pkt[13] << 8 | pkt[14];
 			break;
 	}
@@ -385,6 +386,7 @@ uint8_t decode_cmd(uint8_t *pkt)
 	switch(pkt[2]) {
 
 		case 0x33:
+		case 0x34:
 			cmd = pkt[15];
 			break;
 		default:
@@ -912,7 +914,7 @@ void loop(void)
 
 		if (MODE_ALL == omode) {
 			// show all message
-			if (p[0] != 0x47 || p[1] != 0x4F || p[2] != 0x33) {
+			if (p[0] != 0x47 || p[1] != 0x4F) {
 				return;
 			}
 
@@ -965,11 +967,11 @@ void loop(void)
 		} else if (MODE_KEY == omode) {
 			// only show trigged message
 
-			if (p[0] != 0x47 || p[1] != 0x4F || p[2] != 0x33) {
+			if (p[0] != 0x47 || p[1] != 0x4F) {
 				return;
 			}
 
-			if (p[2] == 0x33 && (p[15] == 0x03 || p[15] == 0x04 || p[15] == 0x05)) {
+			if ((p[2] == 0x33 || p[2] == 0x34) && (p[15] == 0x03 || p[15] == 0x04 || p[15] == 0x05)) {
 
 				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
 					dev_id,
