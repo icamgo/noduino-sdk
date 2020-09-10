@@ -46,22 +46,19 @@ struct ctrl_fifo g_cfifo;
 #define	BEEP_PIN				10		/* PIN13_PD06_D10 */
 #define	RX_INT_PIN				3		/* PIN8_PB11_D3 */
 
-#define SYNCWORD_DEFAULT		0x12
-#define SYNCWORD_LORAWAN		0x34
-
-// use the dynamic ACK feature of our modified SX1272 lib
-//#define GW_AUTO_ACK
 
 #ifdef CONFIG_V0
 
-#define ENABLE_CAD				1
-
+//#define ENABLE_CAD				1
 #define DEST_ADDR				1
-#define	TX_TIME					600			// 600ms
+
+#ifdef ENABLE_CAD
+#define	TX_TIME					800		// 800ms
+#else
+#define	TX_TIME					220			// 220ms
+#endif
 
 #define TXRX_CH					CH_01_472
-#define RX_TIME					330
-uint8_t loraMode = 12;
 
 #endif
 
@@ -568,53 +565,8 @@ bool check_crc(uint8_t *p, int plen)
 	int i, len = 0;
 	uint16_t hh = 0, sum = 0;
 
-#if 0
-	switch (p[2]) {
-
-		case 0x31:
-			len = 15;
-			sum = p[15] << 8 | p[16];
-			break;
-
-		case 0x32:
-			len = 17;
-			sum = p[17] << 8 | p[18];
-			break;
-
-		case 0x33:
-			len = 18;
-			sum = p[18] << 8 | p[19];
-			break;
-		default:
-			len = 0;
-			sum = 1;
-			break;
-	}
-#endif
-#if 0
-	switch (plen) {
-		case 24:
-			len = 18;
-			sum = p[18] << 8 | p[19];
-			break;
-		case 23:
-			len = 17;
-			sum = p[17] << 8 | p[18];
-			break;
-		case 21:
-			len = 15;
-			sum = p[15] << 8 | p[16];
-			break;
-		default:
-			len = 0;
-			sum = 1;
-			break;
-	}
-#else
 	len = plen - 6;
 	sum = p[len] << 8 | p[len+1];
-#endif
-
 
 	for (i = 0; i < len; i++) {
 		hh += p[i];
@@ -776,7 +728,7 @@ int tx_pkt(uint8_t *p, int len)
 
 	int e = sx1272.sendPacketTimeout(DEST_ADDR, p, len, TX_TIME);
 
-	if (!e) {
+	if (0 == e) {
 		// send message succesful,
 		INFOLN("%s", "TX OK");
 	}
@@ -1000,9 +952,9 @@ void loop(void)
 
 	if (process_pkt(p, &p_len) == true) {
 
-		tx_cnt++;
-
 		tx_pkt(p, p_len);
+
+		tx_cnt++;
 
 		sx1272.rx_v0();
 	}
