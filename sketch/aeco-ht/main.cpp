@@ -102,8 +102,10 @@ uint8_t tx_cause = RESET_TX;
 uint8_t message[32] = { 0x47, 0x4F, 0x33 };
 #define TX_LEN			24
 #elif CONFIG_PROTO_V34
-uint8_t message[38] = { 0x47, 0x4F, 0x34 };
-#define TX_LEN			38
+
+#define TX_LEN			42
+uint8_t message[TX_LEN] = { 0x47, 0x4F, 0x34 };
+
 #endif
 
 uint16_t tx_count = 0;
@@ -427,41 +429,53 @@ void push_data()
 
 	pkt[17] = 0;			// dev_type
 
-	/* DTF: 0 00 101 10, realtime data, float, 4bytes */
-	pkt[18] = 0x16;
+	/* DTF: 0 00 001 00, realtime data, int8 */
+	pkt[18] = 0x04;
 
 	/* DUF: % */
 	pkt[19] = 0x15;
-
-	p = (uint8_t *) &cur_humi;
-	pkt[20] = p[1];
-	pkt[21] = p[0];
-	pkt[22] = p[3];
-	pkt[23] = p[2];
-
+	pkt[20] = (int8_t) roundf(cur_humi);
 
 	/* DTF: 0 00 101 10, realtime data, float, 4bytes */
-	pkt[24] = 0x16;
+	pkt[21] = 0x16;
 
 	/* DUF: 'C */
-	pkt[25] = 0xB;
+	pkt[22] = 0xB;
 
 	p = (uint8_t *) &cur_temp;
-	pkt[26] = p[1];
-	pkt[27] = p[0];
-	pkt[28] = p[3];
-	pkt[29] = p[2];
+	pkt[23] = p[1];
+	pkt[24] = p[0];
+	pkt[25] = p[3];
+	pkt[26] = p[2];
+
+	/* DTF: 0 00 001 00, realtime data, int8 */
+	pkt[27] = 0x04;
+	/* DUF: % */
+	pkt[28] = 0x15;
+	pkt[29] = (int8_t) roundf(cur_curr);
+
+	/* DTF: 0 00 001 00, realtime data, int16 */
+	pkt[30] = 0x05;
+	/* DUF: 'C */
+	pkt[31] = 0x0B;
+
+	float chip_temp = fetch_mcu_temp();
+
+	ui16 = (int16_t)(chip_temp * 10);
+	p = (uint8_t *) &ui16;
+
+	pkt[32] = p[1]; pkt[33] = p[0];
 
 	/* frame number */
 	p = (uint8_t *) &tx_count;
-	pkt[30] = p[1]; pkt[31] = p[0];
+	pkt[34] = p[1]; pkt[35] = p[0];
 	tx_count++;
 
-	ui16 = get_crc(pkt, 32);
+	ui16 = get_crc(pkt, TX_LEN-6);
 	p = (uint8_t *) &ui16;
-	pkt[32] = p[1]; pkt[33] = p[0];
+	pkt[36] = p[1]; pkt[37] = p[0];
 
-	pkt[34] = 0; pkt[35] = 0; pkt[36] = 0; pkt[37] = 0;
+	pkt[38] = 0; pkt[39] = 0; pkt[40] = 0; pkt[41] = 0;
 	#endif
 #else
 	uint8_t r_size;
