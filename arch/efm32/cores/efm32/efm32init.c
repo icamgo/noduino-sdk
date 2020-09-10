@@ -25,6 +25,9 @@ uint16_t CRC_calc(uint8_t *start, uint8_t *end);
 
 volatile uint32_t msTicks;
 
+volatile uint32_t msTicks_cnt;
+volatile uint32_t secTicks;
+
 void systicCallback(void)  __attribute__ ((weak));
 void systicCallback(void){}
 
@@ -32,6 +35,15 @@ void systicCallback(void){}
 void SysTick_Handler(void)
 {
 	++msTicks;
+
+	++msTicks_cnt;
+
+	if (msTicks_cnt >= 1000) {
+
+		secTicks++;
+
+		msTicks_cnt = 0;
+	}
 	systicCallback();   
 }
 #endif

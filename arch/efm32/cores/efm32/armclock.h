@@ -30,9 +30,14 @@ extern "C"{
 #endif // __cplusplus
 
 extern volatile uint32_t msTicks;
+extern volatile uint32_t secTicks;
 
 inline uint32_t millis() {
    return msTicks;	
+}
+
+inline uint32_t seconds() {
+	return secTicks;
 }
 
 inline uint32_t micros() {
