@@ -728,7 +728,7 @@ void rx_irq_handler()
 		uint8_t plen = sx1272._payloadlength;
 		uint8_t *p = sx1272.packet_received.data;
 
-		if (plen > 40) return;
+		if (plen > 44) return;
 
 		rx_cnt++;
 
