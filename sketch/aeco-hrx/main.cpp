@@ -24,8 +24,8 @@
 
 /*
  * make sure the payload len in sx127x.h:
- *  MAX_LENGTH = 36;
- *  MAX_PAYLOAD = 32;
+ *  MAX_LENGTH = 48;
+ *  MAX_PAYLOAD = 44;
 */
 #define ENABLE_RX_INTERRUPT		1
 
@@ -739,7 +739,7 @@ void rx_irq_handler()
 		uint8_t plen = sx1272._payloadlength;
 		uint8_t *p = sx1272.packet_received.data;
 
-		if (plen > 32) plen = 32;
+		if (plen > PKT_LEN) return;
 
 		if (omode == MODE_RAW ||
 			(omode == MODE_KEY && is_our_pkt(p, plen) && (p[15]&0x0F) >= 3) ||

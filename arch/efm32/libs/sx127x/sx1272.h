@@ -357,8 +357,13 @@ const uint8_t NOISE_FIGURE = 6.0;
 const uint8_t NOISE_ABSOLUTE_ZERO = 174.0;
 
 #ifdef CONFIG_V0
+#if 1
+const uint8_t MAX_LENGTH = 48;
+const uint8_t MAX_PAYLOAD = 44;
+#else
 const uint8_t MAX_LENGTH = 36;
 const uint8_t MAX_PAYLOAD = 32;
+#endif
 const uint16_t MAX_TIMEOUT = 800;	// 800 msec = 0.8 sec
 const uint16_t MAX_WAIT = 810;		// 810 msec = 0.81 sec
 #else

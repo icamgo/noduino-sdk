@@ -4,10 +4,10 @@
 #ifdef EFM32HG110F64
 #define	CIRC_BUF_SIZE		16
 #else
-#define	CIRC_BUF_SIZE		8
+#define	CIRC_BUF_SIZE		6
 #endif
 
-#define	PKT_LEN				32
+#define	PKT_LEN				44
 
 /* Return count in buffer.  */
 #define CIRC_CNT(head,tail,size) (((head) - (tail)) & ((size)-1))
