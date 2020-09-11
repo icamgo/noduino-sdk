@@ -28,7 +28,7 @@
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
-static uint32_t report_period = 1100;	/* 1200s */
+static uint32_t report_period = 600;	/* 600s */
 static uint8_t need_push = 0;
 static uint16_t tx_count = 0;
 #if 0
@@ -39,11 +39,11 @@ static uint16_t tx_count = 0;
 
 
 struct circ_buf g_cbuf;
-#define OLED_DELAY_TIME			3600000		/* oled is on about 35s */
+#define OLED_DELAY_TIME				35		/* oled is on about 35s */
 
 struct ctrl_fifo g_cfifo;
 
-#if 0
+#if 1
 #define	DEBUG					1
 //#define DEBUG_TX					1
 #define DEBUG_HEX_PKT			1
@@ -82,7 +82,7 @@ struct ctrl_fifo g_cfifo;
 char cmd[MAX_CMD_LENGTH];
 #endif
 
-int status_counter = 0;
+int oled_on_time = 0;
 uint8_t rx_err_cnt = 0;
 
 uint32_t rx_cnt = 0;
@@ -560,6 +560,7 @@ void change_omode()
 	omode %= MODE_NUM;
 
 	oled_on = true;
+	oled_on_time = seconds() + OLED_DELAY_TIME;
 
 	INFO("%s", "omode: ");
 	INFOLN("%d", omode);
@@ -851,6 +852,43 @@ void report_status(RTCDRV_TimerID_t id, void *user)
 	need_push = 0x55;
 }
 
+void key_report_status()
+{
+	uint8_t *pkt = rpt_pkt;
+
+	uint64_t devid = get_devid();
+
+	uint8_t *p = (uint8_t *) &devid;
+
+	// set devid
+	int i = 0;
+	for(i = 0; i < 8; i++) {
+		pkt[3+i] = p[7-i];
+	}
+
+	float chip_temp = fetch_mcu_temp();
+	int16_t ui16 = (int16_t)(chip_temp * 10);
+	p = (uint8_t *) &ui16;
+	pkt[11] = p[1]; pkt[12] = p[0];
+
+	float vbat = adc.readVbat();
+	ui16 = vbat * 1000;
+	pkt[13] = p[1]; pkt[14] = p[0];
+
+	// tx_cause = KEY_TX
+	pkt[15] = 3;
+
+	p = (uint8_t *) &tx_count;
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
+	tx_count++;
+
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
+	p = (uint8_t *) &ui16;
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
+	need_push = 0x55;
+}
+
 void setup()
 {
 	int e;
@@ -869,7 +907,7 @@ void setup()
 #endif
 
 #ifdef EFM32ZG110F32
-	attachInterrupt(KEY_PIN, report_status, FALLING);
+	attachInterrupt(KEY_PIN, key_report_status, FALLING);
 #endif
 
 
@@ -924,9 +962,7 @@ void loop(void)
 
 	WDOG_Feed();
 
-	status_counter++;
-
-	if (rx_err_cnt > 50) {
+	if (rx_err_cnt > 45) {
 
 		sx1272.reset();
 		INFO_S("%s", "Resetting lora module\n");
@@ -949,12 +985,9 @@ void loop(void)
 		old_omode = omode;
 	}
 
-	if (status_counter > OLED_DELAY_TIME) {
+	if (seconds() > oled_on_time) {
 
-		status_counter = 0;
-
-		INFOLN("%s", "Time is over, turn off the oled...");
-
+		oled_on_time = 0;
 		oled_on = false;
 
 #ifdef ENABLE_OLED
