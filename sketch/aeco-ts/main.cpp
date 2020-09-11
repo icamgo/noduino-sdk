@@ -24,7 +24,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.7"
+#define FW_VER						"Ver 1.8"
 
 //#define CONFIG_2MIN					1
 
@@ -782,7 +782,7 @@ void push_data()
 		pkt[3+i] = p[7-i];
 	}
 
-	int16_t ui16 = (int16_t)(cur_temp * 100);
+	int16_t ui16 = (int16_t)(cur_temp * 10);
 	p = (uint8_t *) &ui16;
 
 	pkt[11] = p[1]; pkt[12] = p[0];
