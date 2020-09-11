@@ -18,7 +18,7 @@
 
 #include "sx1272.h"
 
-#include "softi2c.h"
+//#include "softi2c.h"
 
 //#define	sx_delay(x)			i2c_delay(14*1000*x)
 #define	sx_delay(x)				delay(x)
@@ -357,8 +357,11 @@ void SX1272::sx1278_qsetup(uint32_t freq, uint8_t dbm)
 
 void SX1272::init_rx_int()
 {
+	// only allow RxDone, TxDone & crc interrupts
+	writeRegister(REG_IRQ_FLAGS_MASK, 0x97);
+
 	// only allow RxDone & crc interrupts
-	writeRegister(REG_IRQ_FLAGS_MASK, 0x9F);
+	//writeRegister(REG_IRQ_FLAGS_MASK, 0x9F);
 
 	//writeRegister(REG_DIO_MAPPING1, 0x00);
 }
