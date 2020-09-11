@@ -45,13 +45,15 @@ struct ctrl_fifo g_cfifo;
 
 #if 0
 #define	DEBUG					1
+//#define DEBUG_TX					1
 #define DEBUG_HEX_PKT			1
-#else
-#define ENABLE_OLED					1
-#define ENABLE_SH1106				1
 #endif
 
+#ifdef EFM32HG110F64
+#define ENABLE_OLED					1
+#define ENABLE_SH1106				1
 //#define ENABLE_SSD1306			1
+#endif
 
 ////////////////////////////////////////////////////////////
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
@@ -771,7 +773,9 @@ int tx_pkt(uint8_t *p, int len)
 
 	if (0 == e) {
 		// send message succesful,
+		#ifdef DEBUG_TX
 		INFOLN("%s", "TX OK");
+		#endif
 	}
 
 	return e;
@@ -860,7 +864,14 @@ void setup()
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
+#ifdef EFM32HG110F64
 	attachInterrupt(KEY_PIN, change_omode, FALLING);
+#endif
+
+#ifdef EFM32ZG110F32
+	attachInterrupt(KEY_PIN, report_status, FALLING);
+#endif
+
 
 	// RF RX Interrupt pin
 	pinMode(RX_INT_PIN, INPUT);
@@ -1071,12 +1082,12 @@ void loop(void)
 
 		int e = tx_pkt(rpt_pkt, 32);
 
-		sx1272.rx_v0();
-
-		if (!e) {
-			// send success
+		if (0 == e) {
+			// tx successful
 			need_push = 0;
 		}
+
+		sx1272.rx_v0();
 	}
 
 	if (process_pkt(p, &p_len) == true) {
