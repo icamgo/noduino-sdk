@@ -30,6 +30,8 @@
 RTCDRV_TimerID_t xTimerForWakeUp;
 static uint32_t report_period = 600;	/* 600s */
 static uint8_t need_push = 0;
+static uint8_t need_push_mac = 0;
+static uint8_t mac_cmd = 0;
 static uint16_t tx_count = 0;
 #if 0
 #define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
@@ -37,6 +39,7 @@ static uint16_t tx_count = 0;
 #define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
 #endif
 
+uint8_t rpt_pkt[32] = { 0x47, 0x4F, 0x33 };
 
 struct circ_buf g_cbuf;
 #define OLED_DELAY_TIME				55		/* oled is on about 55s */
@@ -87,6 +90,8 @@ uint8_t rx_err_cnt = 0;
 
 uint32_t rx_cnt = 0;
 uint32_t tx_cnt = 0;
+
+bool tx_on = true;
 
 /*
  * Output Mode:
@@ -605,9 +610,9 @@ bool is_our_pkt(uint8_t *p, int len)
 		return false;
 	}
 
-	if (p[3] != 0 || p[4] != 0 || p[5] != 0 || p[6] > 0x15) {
+	if (p[3] != 0 || p[4] != 0 || p[5] != 0 || p[6] > 0x17) {
 
-		// invalid devid
+		// invalid devid. max_id = 0x17 ff ff ff ff (1_030.79.21.5103)
 		return false;
 	}
 
@@ -731,6 +736,85 @@ bool is_cc_ok(uint8_t *p, int len)
 	}
 }
 
+uint64_t get_devid()
+{
+	uint64_t *p;
+
+	p = (uint64_t *)0x0FE00008;
+
+	return *p;
+}
+
+inline void turn_tx_off(uint8_t cmd)
+{
+	mac_cmd = cmd;
+	tx_on = false;
+
+	need_push_mac = 0x55;
+}
+
+inline void turn_tx_on(uint8_t cmd)
+{
+	mac_cmd = cmd;
+	tx_on = true;
+
+	need_push_mac = 0x55;
+}
+
+inline void set_the_epoch(uint32_t *ep, uint8_t cmd)
+{
+	extern uint32_t secTicks;
+	secTicks = *ep;
+
+	mac_cmd = cmd;
+
+	need_push_mac = 0x55;
+}
+
+void process_mac_cmds(uint8_t *p, int len)
+{
+	uint8_t cmd = p[11];
+	uint8_t vcmd = p[12];
+
+	uint8_t fctrl = p[16];
+	// fopts: p[18:19], 20..23
+
+	uint64_t did = 0;
+	uint8_t *pd = (uint8_t *) &did;
+
+	if (~cmd != vcmd) {
+		// invalid cmd
+		return;
+	}
+
+	for(int i = 0; i < 8; i++) {
+		pd[7-i] = p[3+i];
+	}
+
+	// check the dev_id
+	// 0x174876E7FF	= 999.99.99.9999
+	if (did == 99999999999ULL || did == get_devid()) {
+
+		switch(cmd) {
+			case 0x80:
+				turn_tx_off(cmd);
+				break;
+			case 0x81:
+				turn_tx_on(cmd);
+				break;
+			case 0x82:
+				//set_the_epoch((uint32_t *)(p+18), cmd)
+				break;
+		}
+	}
+
+	if (did == 99999999999ULL) {
+		// need to cc this pkt
+		memcpy(rpt_pkt, p, 32);
+		need_push = 0x55;
+	}
+}
+
 void rx_irq_handler()
 {
 	int8_t e = 0;
@@ -748,11 +832,21 @@ void rx_irq_handler()
 
 		rx_cnt++;
 
-		if (is_our_pkt(p, plen) && is_cc_ok(p, plen) &&
-			is_pkt_in_ctrl(&g_cfifo, p, plen, seconds()) == false) {
+		if (is_our_pkt(p, plen) == true) {
 
-			// push into the tx queue buffer
-			push_pkt(&g_cbuf, sx1272.packet_received.data, sx1272._RSSIpacket, plen);
+			uint8_t mtype = p[15] & 0x60;
+
+			if (0x33 == p[2] && 32 == plen && (0x20 == mtype || 0x60 == mtype)) {
+				// data down pkt (from gw/ctrl_client)
+				process_mac_cmds(p, plen);
+			}
+
+			if (is_cc_ok(p, plen) &&
+				is_pkt_in_ctrl(&g_cfifo, p, plen, seconds()) == false) {
+
+				// need to push into the tx queue buffer
+				push_pkt(&g_cbuf, sx1272.packet_received.data, sx1272._RSSIpacket, plen);
+			}
 		}
 
 	} else {
@@ -782,17 +876,6 @@ int tx_pkt(uint8_t *p, int len)
 	return e;
 }
 
-uint8_t rpt_pkt[32] = { 0x47, 0x4F, 0x33 };
-
-uint64_t get_devid()
-{
-	uint64_t *p;
-
-	p = (uint64_t *)0x0FE00008;
-
-	return *p;
-}
-
 float fetch_mcu_temp()
 {
 	float temp = 0.0;
@@ -813,6 +896,48 @@ uint16_t get_crc(uint8_t *pp, int len)
 		hh += pp[i];
 	}
 	return hh;
+}
+
+void report_mac_status()
+{
+	uint8_t *pkt = rpt_pkt;
+	int16_t ui16 = 0;
+
+	memset(pkt, 0, 32);
+
+	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
+
+	uint64_t devid = get_devid();
+
+	uint8_t *p = (uint8_t *) &devid;
+
+	// set devid
+	int i = 0;
+	for(i = 0; i < 8; i++) {
+		pkt[3+i] = p[7-i];
+	}
+
+	//float chip_temp = fetch_mcu_temp();
+	//ui16 = (int16_t)(chip_temp * 10);
+	//p = (uint8_t *) &ui16;
+	pkt[11] = mac_cmd; pkt[12] = 0;
+
+	float vbat = adc.readVbat();
+	ui16 = vbat * 1000;
+	pkt[13] = p[1]; pkt[14] = p[0];
+
+	// tx_cause = KEY_TX
+	pkt[15] = 1;
+
+	p = (uint8_t *) &tx_count;
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
+	tx_count++;
+
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
+	p = (uint8_t *) &ui16;
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
+	need_push_mac = 0x55;
 }
 
 void report_status(RTCDRV_TimerID_t id, void *user)
@@ -1115,24 +1240,42 @@ void loop(void)
 		}
 	}
 
-	if (0x55 == need_push) {
+	if (tx_on) {
 
-		int e = tx_pkt(rpt_pkt, 32);
+		if (0x55 == need_push) {
 
-		if (0 == e) {
-			// tx successful
-			need_push = 0;
+			int e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
+
+			if (0 == e) {
+				// tx successful
+				need_push = 0;
+			}
+
+			sx1272.rx_v0();
 		}
 
-		sx1272.rx_v0();
-	}
+		if (0x55 == need_push_mac) {
 
-	if (process_pkt(p, &p_len) == true) {
+			report_mac_status();
 
-		tx_pkt(p, p_len);
+			int e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
 
-		tx_cnt++;
+			if (0 == e) {
+				// tx successful
+				need_push_mac = 0;
+			}
 
-		sx1272.rx_v0();
+			sx1272.rx_v0();
+
+		}
+
+		if (process_pkt(p, &p_len) == true) {
+
+			tx_pkt(p, p_len);
+
+			tx_cnt++;
+
+			sx1272.rx_v0();
+		}
 	}
 }
