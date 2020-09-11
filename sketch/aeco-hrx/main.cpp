@@ -336,7 +336,7 @@ char *decode_sensor_type()
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
 
-		strcpy(dev_type, "GOCC");
+		strcpy(dev_type, "CC");
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '1') {
 
@@ -403,6 +403,12 @@ char *decode_sensor_data(uint8_t *pkt)
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
 		sprintf(dev_data, "%s ", dev_data);
+
+	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
+		// Internal Temprature of ECC
+		dd = (float)(data / 10.0);
+		ftoa(dev_data, dd, 1);
+		sprintf(dev_data, "%s", dev_data);
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '1') {
 		// Internal Temprature of ABC Sensor
