@@ -39,11 +39,11 @@ static uint16_t tx_count = 0;
 
 
 struct circ_buf g_cbuf;
-#define OLED_DELAY_TIME				35		/* oled is on about 35s */
+#define OLED_DELAY_TIME				55		/* oled is on about 55s */
 
 struct ctrl_fifo g_cfifo;
 
-#if 1
+#if 0
 #define	DEBUG					1
 //#define DEBUG_TX					1
 #define DEBUG_HEX_PKT			1
@@ -852,6 +852,7 @@ void report_status(RTCDRV_TimerID_t id, void *user)
 	need_push = 0x55;
 }
 
+#ifdef EFM32ZG110F32
 void key_report_status()
 {
 	uint8_t *pkt = rpt_pkt;
@@ -888,6 +889,7 @@ void key_report_status()
 
 	need_push = 0x55;
 }
+#endif
 
 void setup()
 {
@@ -993,6 +995,8 @@ void loop(void)
 #ifdef ENABLE_OLED
 		u8g2.setPowerSave(1);
 #endif
+		omode = MODE_DECODE;
+		old_omode = omode;
 	}
 
 	struct pkt d;
