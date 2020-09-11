@@ -3,7 +3,7 @@
 
 #define	CIRC_BUF_SIZE		12
 
-#define	PKT_LEN				32
+#define	PKT_LEN				44
 
 /* Return count in buffer.  */
 #define CIRC_CNT(head,tail,size) (((head) - (tail)) & ((size)-1))

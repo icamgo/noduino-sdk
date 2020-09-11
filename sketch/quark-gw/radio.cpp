@@ -95,7 +95,7 @@ void rx_irq_handler()
 		uint8_t plen = sx1272._payloadlength;
 		uint8_t *p = sx1272.packet_received.data;
 
-		if (plen > 32) plen = 32;
+		if (plen > 48) return;
 
 		if (is_our_pkt(p, plen)) {
 
@@ -344,6 +344,7 @@ char *decode_vbat(uint8_t *pkt)
 		case 0x31:
 		case 0x32:
 		case 0x33:
+		case 0x34:
 			vbat = pkt[13] << 8 | pkt[14];
 			break;
 	}
@@ -416,6 +417,12 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 		ftoa(data_buf, dd, 1);
 		sprintf(dev_data, "T/%s/WL/%d/iT/%d/iH/%d/iC/%d", data_buf, (int8_t)pkt[20], (int8_t)(pkt[21]), (int8_t)(pkt[22]), (int8_t)(pkt[23]));
 
+	} else if (id[3] == '2' && id[4] == '0') {
+		// Internal Temprature of ECC
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+		sprintf(dev_data, "T/%s", data_buf);
+
 	} else if (id[3] == '2' && id[4] == '1') {
 		// Internal Temprature of ABC Sensor
 		dd = (float)(data / 10.0);
@@ -432,6 +439,7 @@ uint8_t decode_cmd(uint8_t *pkt)
 	switch(pkt[2]) {
 
 		case 0x33:
+		case 0x34:
 			cmd = pkt[15];
 			break;
 		default:
