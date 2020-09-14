@@ -21,8 +21,8 @@ ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
 ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
-DEFS := -DCONFIG_V0 -DUSE_SOFTSPI -DUSE_SOFTI2C
-#DEFS = -DUSE_SOFTSPI
+DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
+#DEFS = -DUSE_SOFTI2C
 
 MCU = cortex-m0plus
 #F_CPU = 7000000
@@ -306,7 +306,7 @@ coff: build/main.elf
 	$(NM) -n $< > $@
 
 ############################################################
-dev_type	:= 21
+dev_type	:= 20
 year		:= $(shell date +%y)
 week		:= $(shell date +%V)
 
