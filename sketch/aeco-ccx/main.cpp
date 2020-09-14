@@ -811,11 +811,13 @@ void process_mac_cmds(uint8_t *p, int len)
 		}
 	}
 
+#if 0
 	if (did == 99999999999ULL) {
 		// need to cc this pkt
 		memcpy(rpt_pkt, p, 32);
 		need_push = 0x55;
 	}
+#endif
 }
 
 void rx_irq_handler()
