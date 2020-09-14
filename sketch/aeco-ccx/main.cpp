@@ -944,7 +944,6 @@ void report_mac_status()
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 
-	need_push_mac = 0x55;
 }
 
 void period_report_status(RTCDRV_TimerID_t id, void *user)
@@ -999,6 +998,8 @@ void period_report_status(RTCDRV_TimerID_t id, void *user)
 
 		cnt_10min = 0;	/* reset the counter */
 	}
+
+	need_push_mac = 0x55;
 }
 
 #ifdef EFM32ZG110F32
