@@ -91,6 +91,9 @@ uint8_t rx_err_cnt = 0;
 uint32_t rx_cnt = 0;
 uint32_t tx_cnt = 0;
 
+uint32_t old_rx_cnt = 0;
+uint32_t cnt_10min = 0;
+
 bool tx_on = true;
 
 /*
@@ -940,7 +943,7 @@ void report_mac_status()
 	need_push_mac = 0x55;
 }
 
-void report_status(RTCDRV_TimerID_t id, void *user)
+void period_report_status(RTCDRV_TimerID_t id, void *user)
 {
 	uint8_t *pkt = rpt_pkt;
 
@@ -975,6 +978,23 @@ void report_status(RTCDRV_TimerID_t id, void *user)
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 
 	need_push = 0x55;
+
+	++cnt_10min;
+
+	if (cnt_10min >= 6) {
+		// 1h
+
+		if (rx_cnt == old_rx_cnt) {
+			// no rx pkt, wait the watchdog to reset
+			while(1);
+
+		} else {
+
+			old_rx_cnt = rx_cnt;
+		}
+
+		cnt_10min = 0;	/* reset the counter */
+	}
 }
 
 #ifdef EFM32ZG110F32
@@ -1079,7 +1099,7 @@ void setup()
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
 
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, report_period * 1000, report_status, NULL);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, report_period * 1000, period_report_status, NULL);
 }
 
 void loop(void)
