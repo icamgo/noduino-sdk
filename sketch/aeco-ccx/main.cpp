@@ -47,9 +47,9 @@ struct circ_buf g_cbuf;
 struct ctrl_fifo g_cfifo;
 
 #if 0
-#define	DEBUG					1
+#define	DEBUG						1
 //#define DEBUG_TX					1
-#define DEBUG_HEX_PKT			1
+#define DEBUG_HEX_PKT				1
 #endif
 
 #ifdef EFM32HG110F64
@@ -785,8 +785,9 @@ void process_mac_cmds(uint8_t *p, int len)
 	uint64_t did = 0;
 	uint8_t *pd = (uint8_t *) &did;
 
-	if (~cmd != vcmd) {
+	if ((~cmd & 0xFF) != vcmd) {
 		// invalid cmd
+		//Serial.println(cmd);
 		return;
 	}
 
@@ -798,6 +799,7 @@ void process_mac_cmds(uint8_t *p, int len)
 	// 0x174876E7FF	= 999.99.99.9999
 	if (did == 99999999999ULL || did == get_devid()) {
 
+		//Serial.println("ok");
 		switch(cmd) {
 			case 0x80:
 				turn_tx_off(cmd);
