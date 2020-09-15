@@ -48,7 +48,7 @@ struct ctrl_fifo g_cfifo;
 
 #if 1
 #define	DEBUG						1
-#define DEBUG_TX					1
+//#define DEBUG_TX					1
 #define DEBUG_HEX_PKT				1
 #endif
 
@@ -602,11 +602,13 @@ bool check_crc(uint8_t *p, int plen)
 		return false;
 }
 
+// check the devid not in interrupt contex
 bool is_our_did(uint8_t *p)
 {
 	if (p[3] != 0 || p[4] != 0 || p[5] != 0 || p[6] > 0x17) {
 
 		// invalid devid. max_id = 0x17 ff ff ff ff (1_030.79.21.5103)
+		Serial.println("ivd0");
 		return false;
 	}
 
@@ -620,6 +622,7 @@ bool is_our_did(uint8_t *p)
 	}
 
 	if (99999999999ULL == devid) {
+		Serial.println("999 ok");
 		return true;
 	}
 
@@ -628,6 +631,8 @@ bool is_our_did(uint8_t *p)
 	uint32_t wk_yr = (tt - (uint32_t)tt) * 100;
 
 	if (wk_yr > 52) {
+
+		Serial.println("ivd1");
 
 		return false;
 	}
@@ -638,9 +643,11 @@ bool is_our_did(uint8_t *p)
 
 	if (wk_yr > 30 || wk_yr < 18) {
 
+		Serial.println("ivd2");
 		return false;
 	}
 
+	Serial.println("did ok");
 	return true;
 }
 
@@ -655,8 +662,10 @@ bool is_our_pkt(uint8_t *p, int len)
 		return false;
 	}
 
-	if (is_our_did(p)) {
+	// check the devid quickly in interrupt contex
+	if (p[3] != 0 || p[4] != 0 || p[5] != 0 || p[6] > 0x17) {
 
+		// invalid devid. max_id = 0x17 ff ff ff ff (1_030.79.21.5103)
 		return false;
 	}
 
@@ -908,7 +917,7 @@ int tx_pkt(uint8_t *p, int len)
 {
 	//radio_setup();
 
-	if (is_our_did(p) == false) {
+	if (false == is_our_did(p)) {;
 
 		return 5;
 	}
@@ -1209,6 +1218,8 @@ void loop(void)
 
 	uint8_t *p = d.data;
 	int p_len = d.plen;
+
+	if (false == is_our_did(p)) return;
 
 #ifdef DEBUG_HEX_PKT
 	int a = 0, b = 0;
