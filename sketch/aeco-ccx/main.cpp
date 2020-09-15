@@ -911,7 +911,6 @@ void report_mac_status()
 	int16_t ui16 = 0;
 
 	memset(pkt, 0, 32);
-
 	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
 
 	uint64_t devid = get_devid();
@@ -931,9 +930,10 @@ void report_mac_status()
 
 	float vbat = adc.readVbat();
 	ui16 = vbat * 1000;
+	p = (uint8_t *) &ui16;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
-	// tx_cause = KEY_TX
+	// tx_cause = CHANGE_TX
 	pkt[15] = 1;
 
 	p = (uint8_t *) &tx_count;
@@ -949,6 +949,9 @@ void report_mac_status()
 void period_report_status(RTCDRV_TimerID_t id, void *user)
 {
 	uint8_t *pkt = rpt_pkt;
+
+	memset(pkt, 0, 32);
+	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
 
 	uint64_t devid = get_devid();
 
@@ -967,6 +970,7 @@ void period_report_status(RTCDRV_TimerID_t id, void *user)
 
 	float vbat = adc.readVbat();
 	ui16 = vbat * 1000;
+	p = (uint8_t *) &ui16;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
 	// tx_cause = TIMER_TX
