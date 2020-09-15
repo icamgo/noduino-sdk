@@ -46,9 +46,9 @@ struct circ_buf g_cbuf;
 
 struct ctrl_fifo g_cfifo;
 
-#if 0
+#if 1
 #define	DEBUG						1
-//#define DEBUG_TX					1
+#define DEBUG_TX					1
 #define DEBUG_HEX_PKT				1
 #endif
 
@@ -602,6 +602,48 @@ bool check_crc(uint8_t *p, int plen)
 		return false;
 }
 
+bool is_our_did(uint8_t *p)
+{
+	if (p[3] != 0 || p[4] != 0 || p[5] != 0 || p[6] > 0x17) {
+
+		// invalid devid. max_id = 0x17 ff ff ff ff (1_030.79.21.5103)
+		return false;
+	}
+
+	int a = 0, b = 0;
+
+	uint64_t devid = 0UL;
+
+	for (a = 3; a < 11; a++, b++) {
+
+		*(((uint8_t *)&devid) + 7 - b) = p[a];
+	}
+
+	if (99999999999ULL == devid) {
+		return true;
+	}
+
+	uint32_t temp = devid / 10000;
+	float tt = temp / 100.0;
+	uint32_t wk_yr = (tt - (uint32_t)tt) * 100;
+
+	if (wk_yr > 52) {
+
+		return false;
+	}
+
+    temp = devid / 100000000;
+    tt = temp / 100.0;
+	wk_yr = (tt - (uint32_t)tt) * 100;
+
+	if (wk_yr > 30 || wk_yr < 18) {
+
+		return false;
+	}
+
+	return true;
+}
+
 bool is_our_pkt(uint8_t *p, int len)
 {
 
@@ -613,9 +655,8 @@ bool is_our_pkt(uint8_t *p, int len)
 		return false;
 	}
 
-	if (p[3] != 0 || p[4] != 0 || p[5] != 0 || p[6] > 0x17) {
+	if (is_our_did(p)) {
 
-		// invalid devid. max_id = 0x17 ff ff ff ff (1_030.79.21.5103)
 		return false;
 	}
 
@@ -652,7 +693,7 @@ uint16_t update_crc(uint8_t *p, int len)
 
 bool process_pkt(uint8_t *p, int *len)
 {
-	p[0] = 0x49;
+	p[0] = 0x46;
 
 	// p[15] is the cmd type
 
@@ -866,6 +907,11 @@ void rx_irq_handler()
 int tx_pkt(uint8_t *p, int len)
 {
 	//radio_setup();
+
+	if (is_our_did(p) == false) {
+
+		return 5;
+	}
 
 #ifdef ENABLE_CAD
 	sx1272.CarrierSense();
@@ -1273,7 +1319,7 @@ void loop(void)
 
 		if (0x55 == need_push) {
 
-			int e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
+			e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
 
 			if (0 == e) {
 				// tx successful
@@ -1287,7 +1333,7 @@ void loop(void)
 
 			report_mac_status();
 
-			int e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
+			e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
 
 			if (0 == e) {
 				// tx successful
@@ -1295,14 +1341,16 @@ void loop(void)
 			}
 
 			sx1272.rx_v0();
-
 		}
 
 		if (process_pkt(p, &p_len) == true) {
 
-			tx_pkt(p, p_len);
+			e = tx_pkt(p, p_len);
 
-			tx_cnt++;
+			if (0 == e) {
+
+				tx_cnt++;
+			}
 
 			sx1272.rx_v0();
 		}
