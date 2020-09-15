@@ -822,10 +822,14 @@ inline void turn_tx_on(uint8_t cmd)
 	need_push_mac = 0x55;
 }
 
-inline void set_the_epoch(uint32_t *ep, uint8_t cmd)
+inline void set_the_epoch(uint8_t *ep, uint8_t cmd)
 {
 	extern uint32_t secTicks;
-	secTicks = *ep;
+	uint8_t *st_p = (uint8_t *)&secTicks;
+	st_p[0] = ep[3];
+	st_p[1] = ep[2];
+	st_p[2] = ep[1];
+	st_p[3] = ep[0];
 
 	mac_cmd = cmd;
 
@@ -866,7 +870,7 @@ void process_mac_cmds(uint8_t *p, int len)
 				turn_tx_on(cmd);
 				break;
 			case 0x82:
-				//set_the_epoch((uint32_t *)(p+18), cmd)
+				set_the_epoch((p+18), cmd)
 				break;
 		}
 	}
@@ -999,6 +1003,13 @@ void report_mac_status()
 	// tx_cause = CHANGE_TX
 	pkt[15] = 1;
 
+	extern uint32_t secTicks;
+	uint8_t *ep = (uint8_t *)&secTicks;
+	pkt[18] = ep[3];
+	pkt[19] = ep[2];
+	pkt[20] = ep[1];
+	pkt[21] = ep[0];
+
 	p = (uint8_t *) &tx_count;
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
 	tx_count++;
@@ -1006,7 +1017,6 @@ void report_mac_status()
 	ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
-
 }
 
 void period_report_status(RTCDRV_TimerID_t id, void *user)
