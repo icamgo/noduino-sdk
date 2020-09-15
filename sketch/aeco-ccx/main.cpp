@@ -990,9 +990,11 @@ void report_mac_status()
 		pkt[3+i] = p[7-i];
 	}
 
-	//float chip_temp = fetch_mcu_temp();
-	//ui16 = (int16_t)(chip_temp * 10);
-	//p = (uint8_t *) &ui16;
+	/*
+	 * 0x80 00 = -3276.8
+	 * 0x81 00 = -3251.2
+	 * 0x82 00 = -3225.6
+	*/
 	pkt[11] = mac_cmd; pkt[12] = 0;
 
 	float vbat = adc.readVbat();
