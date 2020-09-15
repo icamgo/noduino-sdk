@@ -115,15 +115,15 @@ int old_omode = MODE_STATIS;
 bool oled_on = true;
 
 #ifdef DEBUG
-#define INFO_S(fmt,param)			Serial.print(F(param))
-#define INFO_HEX(fmt,param)			Serial.print(param,HEX)
-#define INFO(fmt,param)				Serial.print(param)
-#define INFOLN(fmt,param)			Serial.println(param)
+#define INFO_S(param)			Serial.print(F(param))
+#define INFO_HEX(param)			Serial.print(param,HEX)
+#define INFO(param)				Serial.print(param)
+#define INFOLN(param)			Serial.println(param)
 #define FLUSHOUTPUT					Serial.flush();
 #else
-#define INFO_S(fmt,param)
-#define INFO(fmt,param)
-#define INFOLN(fmt,param)
+#define INFO_S(param)
+#define INFO(param)
+#define INFOLN(param)
 #define FLUSHOUTPUT
 #endif
 
@@ -570,8 +570,8 @@ void change_omode()
 	oled_on = true;
 	oled_on_time = seconds() + OLED_DELAY_TIME;
 
-	INFO("%s", "omode: ");
-	INFOLN("%d", omode);
+	INFO("omode: ");
+	INFOLN(omode);
 }
 
 void power_on_dev()
@@ -608,7 +608,7 @@ bool is_our_did(uint8_t *p)
 	if (p[3] != 0 || p[4] != 0 || p[5] != 0 || p[6] > 0x17) {
 
 		// invalid devid. max_id = 0x17 ff ff ff ff (1_030.79.21.5103)
-		Serial.println("ivd0");
+		INFOLN("ivd0");
 		return false;
 	}
 
@@ -622,7 +622,7 @@ bool is_our_did(uint8_t *p)
 	}
 
 	if (99999999999ULL == devid) {
-		Serial.println("999 ok");
+		INFOLN("999 ok");
 		return true;
 	}
 
@@ -632,7 +632,7 @@ bool is_our_did(uint8_t *p)
 
 	if (wk_yr > 52) {
 
-		Serial.println("ivd1");
+		INFOLN("ivd1");
 
 		return false;
 	}
@@ -643,11 +643,11 @@ bool is_our_did(uint8_t *p)
 
 	if (wk_yr > 30 || wk_yr < 18) {
 
-		Serial.println("ivd2");
+		INFOLN("ivd2");
 		return false;
 	}
 
-	Serial.println("did ok");
+	INFOLN("did ok");
 	return true;
 }
 
@@ -931,7 +931,7 @@ int tx_pkt(uint8_t *p, int len)
 	if (0 == e) {
 		// send message succesful,
 		#ifdef DEBUG_TX
-		INFOLN("%s", "TX OK");
+		INFOLN("TX OK");
 		#endif
 	}
 
@@ -1176,7 +1176,7 @@ void loop(void)
 	if (rx_err_cnt > 45) {
 
 		sx1272.reset();
-		INFO_S("%s", "Resetting lora module\n");
+		INFO_S("Resetting lora module\n");
 		radio_setup();
 
 		sx1272.init_rx_int();
@@ -1227,16 +1227,16 @@ void loop(void)
 	for (; a < p_len; a++, b++) {
 
 		if ((uint8_t) p[a] < 16)
-			INFO_S("%s", "0");
+			INFO_S("0");
 
-		INFO_HEX("%X", (uint8_t) p[a]);
-		INFO_S("%s", " ");
+		INFO_HEX((uint8_t) p[a]);
+		INFO_S(" ");
 	}
 
-	INFO_S("%d", "/");
-	INFO("%d", sx1272._RSSIpacket);
-	INFO_S("%s", "/");
-	INFOLN("%d", p_len);
+	INFO_S("/");
+	INFO(sx1272._RSSIpacket);
+	INFO_S("/");
+	INFOLN(p_len);
 #endif
 
 
@@ -1270,7 +1270,7 @@ void loop(void)
 				decode_ver(p),
 				d.rssi);
 
-				INFOLN("%s", cmd);
+				INFOLN(cmd);
 		#endif
 
 		} else if (MODE_RAW == omode) {
