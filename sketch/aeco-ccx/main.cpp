@@ -26,6 +26,8 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
+#define	FW_VER						"V1.2"
+
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 static uint32_t report_period = 600;	/* 600s */
@@ -102,12 +104,13 @@ bool tx_on = true;
  *   0x0: rx all messages
  *   0x1: show the raw message
 */
-#define MODE_NUM		4
+#define MODE_NUM		5
 
 #define	MODE_ALL		0
 #define	MODE_RAW		1
 #define	MODE_DECODE		2
 #define MODE_STATIS		3
+#define MODE_VER		4
 
 int omode = MODE_STATIS;
 int old_omode = MODE_STATIS;
@@ -1148,7 +1151,7 @@ void setup()
 		delay(2700);
 	}
 
-	show_mode(omode);
+	//show_mode(omode);
 #endif
 
 #ifdef DEBUG
@@ -1165,6 +1168,9 @@ void setup()
 	WDOG_Init(&wInit);
 
 	/* Initialize RTC timer. */
+	extern uint32_t secTicks;
+	secTicks = 1600155579;
+
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
 
@@ -1193,7 +1199,7 @@ void loop(void)
 	if (omode != old_omode) {
 #ifdef ENABLE_OLED
 		// show mode and clean buffer
-		show_mode(omode);
+		//show_mode(omode);
 
 		frame_buf[0][0] = '\0';
 		frame_buf[1][0] = '\0';
@@ -1327,6 +1333,14 @@ void loop(void)
 			}
 
 			show_frame(0, omode, p[15] & 0x04);
+		#endif
+		} else if (MODE_VER == omode) {
+		#ifdef ENABLE_OLED
+			sprintf(frame_buf[0], " FW: %s", FW_VER);
+			sprintf(frame_buf[1], " EP: %d", seconds());
+
+			show_frame(0, omode, false);
+
 		#endif
 		}
 	}
