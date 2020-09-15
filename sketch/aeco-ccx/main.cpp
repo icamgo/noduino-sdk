@@ -46,7 +46,7 @@ struct circ_buf g_cbuf;
 
 struct ctrl_fifo g_cfifo;
 
-#if 1
+#if 0
 #define	DEBUG						1
 //#define DEBUG_TX					1
 #define DEBUG_HEX_PKT				1
@@ -624,6 +624,11 @@ bool is_our_did(uint8_t *p)
 	if (99999999999ULL == devid) {
 		INFOLN("999 ok");
 		return true;
+	}
+
+	if (devid > 99999999999ULL) {
+		INFOLN("ivd3");
+		return false;
 	}
 
 	uint32_t temp = devid / 10000;
