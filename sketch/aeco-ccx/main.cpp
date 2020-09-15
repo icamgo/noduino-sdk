@@ -1253,7 +1253,7 @@ void loop(void)
 
 	if (oled_on == true) {
 
-		memset(p+p_len, 0, MAX_PAYLOAD-p_len);
+		//memset(p+p_len, 0, MAX_PAYLOAD-p_len);
 		decode_devid(p);
 
 		if (MODE_ALL == omode) {
@@ -1347,32 +1347,6 @@ void loop(void)
 
 	if (tx_on) {
 
-		if (0x55 == need_push) {
-
-			e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
-
-			if (0 == e) {
-				// tx successful
-				need_push = 0;
-			}
-
-			sx1272.rx_v0();
-		}
-
-		if (0x55 == need_push_mac) {
-
-			report_mac_status();
-
-			e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
-
-			if (0 == e) {
-				// tx successful
-				need_push_mac = 0;
-			}
-
-			sx1272.rx_v0();
-		}
-
 		if (process_pkt(p, &p_len) == true) {
 
 			e = tx_pkt(p, p_len);
@@ -1384,5 +1358,31 @@ void loop(void)
 
 			sx1272.rx_v0();
 		}
+	}
+
+	if (0x55 == need_push) {
+
+		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
+
+		if (0 == e) {
+			// tx successful
+			need_push = 0;
+		}
+
+		sx1272.rx_v0();
+	}
+
+	if (0x55 == need_push_mac) {
+
+		report_mac_status();
+
+		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
+
+		if (0 == e) {
+			// tx successful
+			need_push_mac = 0;
+		}
+
+		sx1272.rx_v0();
 	}
 }
