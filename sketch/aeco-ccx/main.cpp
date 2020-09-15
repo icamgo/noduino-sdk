@@ -870,7 +870,7 @@ void process_mac_cmds(uint8_t *p, int len)
 				turn_tx_on(cmd);
 				break;
 			case 0x82:
-				set_the_epoch((p+18), cmd)
+				set_the_epoch((p+18), cmd);
 				break;
 		}
 	}
