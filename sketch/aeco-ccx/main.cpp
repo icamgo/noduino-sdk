@@ -30,11 +30,25 @@
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
-static uint32_t report_period = 600;	/* 600s */
+static uint32_t check_period = 54;	/* 60s */
+
 static uint8_t need_push = 0;
 static uint8_t need_push_mac = 0;
+static uint8_t need_reset_sx1272 = 0;
 static uint8_t mac_cmd = 0;
 static uint16_t tx_count = 0;
+
+#define	RESET_TX			0
+#define	DELTA_TX			1
+#define	TIMER_TX			2
+#define	KEY_TX				3
+static uint8_t tx_cause = RESET_TX;
+
+#define MAC_CCTX_OFF				0x80
+#define MAC_CCTX_ON					0x81
+#define MAC_SET_EPOCH				0x82
+#define MAC_GET_EPOCH				0x83
+
 #if 0
 #define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
 #else
@@ -94,7 +108,7 @@ uint32_t rx_cnt = 0;
 uint32_t tx_cnt = 0;
 
 uint32_t old_rx_cnt = 0;
-uint32_t cnt_10min = 0;
+uint32_t cnt_1min = 0;
 
 bool tx_on = true;
 
@@ -811,6 +825,7 @@ inline void turn_tx_off(uint8_t cmd)
 	mac_cmd = cmd;
 	tx_on = false;
 
+	tx_cause = DELTA_TX;
 	need_push_mac = 0x55;
 }
 
@@ -819,6 +834,7 @@ inline void turn_tx_on(uint8_t cmd)
 	mac_cmd = cmd;
 	tx_on = true;
 
+	tx_cause = DELTA_TX;
 	need_push_mac = 0x55;
 }
 
@@ -833,6 +849,7 @@ inline void set_the_epoch(uint8_t *ep, uint8_t cmd)
 
 	mac_cmd = cmd;
 
+	tx_cause = DELTA_TX;
 	need_push_mac = 0x55;
 }
 
@@ -863,13 +880,13 @@ void process_mac_cmds(uint8_t *p, int len)
 
 		//Serial.println("ok");
 		switch(cmd) {
-			case 0x80:
+			case MAC_CCTX_OFF:
 				turn_tx_off(cmd);
 				break;
-			case 0x81:
+			case MAC_CCTX_ON:
 				turn_tx_on(cmd);
 				break;
-			case 0x82:
+			case MAC_SET_EPOCH:
 				set_the_epoch((p+18), cmd);
 				break;
 		}
@@ -890,6 +907,7 @@ void rx_irq_handler()
 
 	sx1272.getRSSIpacket();
 
+	/* 0: ok; 1: crc error; 2: >max_len */
 	e = sx1272.get_pkt_v0();
 
 	if (!e) {
@@ -972,7 +990,7 @@ uint16_t get_crc(uint8_t *pp, int len)
 	return hh;
 }
 
-void report_mac_status()
+void set_mac_status_pkt()
 {
 	uint8_t *pkt = rpt_pkt;
 	int16_t ui16 = 0;
@@ -1002,8 +1020,7 @@ void report_mac_status()
 	p = (uint8_t *) &ui16;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
-	// tx_cause = CHANGE_TX
-	pkt[15] = 1;
+	pkt[15] = tx_cause;
 
 	extern uint32_t secTicks;
 	uint8_t *ep = (uint8_t *)&secTicks;
@@ -1021,7 +1038,7 @@ void report_mac_status()
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 }
 
-void period_report_status(RTCDRV_TimerID_t id, void *user)
+void set_temp_pkt()
 {
 	uint8_t *pkt = rpt_pkt;
 
@@ -1049,7 +1066,7 @@ void period_report_status(RTCDRV_TimerID_t id, void *user)
 	pkt[13] = p[1]; pkt[14] = p[0];
 
 	// tx_cause = TIMER_TX
-	pkt[15] = 2;
+	pkt[15] = tx_cause;
 
 	p = (uint8_t *) &tx_count;
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
@@ -1058,27 +1075,48 @@ void period_report_status(RTCDRV_TimerID_t id, void *user)
 	ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+}
 
-	need_push = 0x55;
+void period_check_status(RTCDRV_TimerID_t id, void *user)
+{
+	/* reset the watchdog */
+	WDOG_Feed();
 
-	++cnt_10min;
+	//////////////////////////////////////////////////////
+	if (rx_err_cnt > 65) {
 
-	if (cnt_10min >= 6) {
+		need_reset_sx1272 = 0x55;
+	}
+
+	rx_err_cnt = 0;
+
+	++cnt_1min;
+
+	if (cnt_1min % 10 == 0) {
+		// 10min
+		tx_cause = TIMER_TX;
+		need_push = 0x55;
+	}
+
+	if (mac_cmd == 0x80 && (cnt_1min % 5 == 0)) {
+		// if cc-off, 5min report
+		tx_cause = TIMER_TX;
+		need_push_mac = 0x55;
+	}
+
+	if (cnt_1min % 60 == 0) {
 		// 1h
 
 		if (rx_cnt == old_rx_cnt) {
 			// no rx pkt, wait the watchdog to reset
-			while(1);
+			//while(1);
+			NVIC_SystemReset();
 
 		} else {
 
 			old_rx_cnt = rx_cnt;
 		}
-
-		cnt_10min = 0;	/* reset the counter */
 	}
-
-	need_push_mac = 0x55;
 }
 
 #ifdef EFM32ZG110F32
@@ -1116,6 +1154,7 @@ void key_report_status()
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 
+	tx_cause = KEY_TX;
 	need_push = 0x55;
 }
 #endif
@@ -1129,7 +1168,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_2k;	/* 2k 1kHz periods should give 2 seconds */
+	wInit.perSel = wdogPeriod_64k;	/* 64k 1kHz periods should give 64 seconds */
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
@@ -1140,7 +1179,6 @@ void setup()
 #ifdef EFM32ZG110F32
 	attachInterrupt(KEY_PIN, key_report_status, FALLING);
 #endif
-
 
 	// RF RX Interrupt pin
 	pinMode(RX_INT_PIN, INPUT);
@@ -1172,7 +1210,6 @@ void setup()
 #endif
 
 	radio_setup();
-
 	sx1272.init_rx_int();
 	sx1272.rx_v0();
 
@@ -1185,8 +1222,10 @@ void setup()
 
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, check_period * 1000, period_check_status, NULL);
 
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, report_period * 1000, period_report_status, NULL);
+	need_push = 0x55;
+	tx_cause = RESET_TX;
 }
 
 void loop(void)
@@ -1194,9 +1233,7 @@ void loop(void)
 	int e = 1;
 	static int c = 0;
 
-	WDOG_Feed();
-
-	if (rx_err_cnt > 45) {
+	if (0x55 == need_reset_sx1272) {
 
 		sx1272.reset();
 		INFO_S("Resetting lora module\n");
@@ -1205,7 +1242,7 @@ void loop(void)
 		sx1272.init_rx_int();
 		sx1272.rx_v0();
 
-		rx_err_cnt = 0;
+		need_reset_sx1272 = 0;
 	}
 
 	if (omode != old_omode) {
@@ -1261,7 +1298,6 @@ void loop(void)
 	INFO_S("/");
 	INFOLN(p_len);
 #endif
-
 
 	if (oled_on == true) {
 
@@ -1374,6 +1410,8 @@ void loop(void)
 
 	if (0x55 == need_push) {
 
+		set_temp_pkt();
+
 		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
 
 		if (0 == e) {
@@ -1386,7 +1424,7 @@ void loop(void)
 
 	if (0x55 == need_push_mac) {
 
-		report_mac_status();
+		set_mac_status_pkt();
 
 		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
 
