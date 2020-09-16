@@ -25,6 +25,7 @@
 #include "rtcdriver.h"
 #include "tx_ctrl.h"
 #include "circ_buf.h"
+#include "crypto.h"
 
 #define	FW_VER						"V1.2"
 
@@ -67,6 +68,8 @@ struct ctrl_fifo g_cfifo;
 //#define DEBUG_TX					1
 #define DEBUG_HEX_PKT				1
 #endif
+
+#define ENABLE_CRYPTO				1
 
 #ifdef EFM32HG110F64
 #define ENABLE_OLED					1
@@ -705,6 +708,57 @@ bool is_our_pkt(uint8_t *p, int len)
 	return true;
 }
 
+
+#ifdef ENABLE_CRYPTO
+uint8_t key[] __attribute__ ((aligned(4))) = {
+	0x01, 0x02, 0x02, 0x03, 0x05, 0x07, 0x08, 0x08,
+	0x02, 0x01, 0x02, 0x03, 0x05, 0x07, 0x08, 0x09
+};
+
+bool check_pkt_mic(uint8_t *p, int len)
+{
+	uint32_t mic = 0;
+	uint8_t *p_mic = (uint8_t *)&mic;
+
+	if (p[2] == 0x33 && len == 32) {
+
+		compute_mic(p, len, key, &mic);
+
+		if (p_mic[0] == p[len-4] && p_mic[1] == p[len-3] &&
+			p_mic[2] == p[len-2] && p_mic[3] == p[len-1]) {
+
+			return true;
+		} else {
+			return false;
+		}
+
+	} else {
+
+		return true;
+	}
+}
+
+bool set_pkt_mic(uint8_t *p, int len)
+{
+	uint32_t mic = 0;
+	uint8_t *p_mic = (uint8_t *)&mic;
+
+	if (p[2] == 0x33 && len == 32) {
+
+		compute_mic(p, len, key, &mic);
+
+		p[len-4] = p_mic[0]; p[len-3] = p_mic[1];
+		p[len-2] = p_mic[2]; p[len-1] = p_mic[3];
+
+		return true;
+
+	} else {
+
+		return false;
+	}
+}
+#endif
+
 uint16_t update_crc(uint8_t *p, int len)
 {
 	int i, pos = len - 6;;
@@ -1098,7 +1152,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 		need_push = 0x55;
 	}
 
-	if (mac_cmd == 0x80 && (cnt_1min % 5 == 0)) {
+	if (MAC_CCTX_OFF == mac_cmd && (cnt_1min % 5 == 0)) {
 		// if cc-off, 5min report
 		tx_cause = TIMER_TX;
 		need_push_mac = 0x55;
@@ -1162,6 +1216,10 @@ void key_report_status()
 void setup()
 {
 	int e;
+
+#ifdef ENABLE_CRYPTO
+	CMU_ClockEnable(cmuClock_AES, true);
+#endif
 
 	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
 
@@ -1281,6 +1339,10 @@ void loop(void)
 
 	if (false == is_our_did(p)) return;
 
+#ifdef ENABLE_CRYPTO
+	if (false == check_pkt_mic(p, p_len)) return;
+#endif
+
 #ifdef DEBUG_HEX_PKT
 	int a = 0, b = 0;
 
@@ -1396,6 +1458,10 @@ void loop(void)
 	if (tx_on) {
 
 		if (process_pkt(p, &p_len) == true) {
+
+		#ifdef ENABLE_CRYPTO
+			set_pkt_mic(p, p_len);
+		#endif
 
 			e = tx_pkt(p, p_len);
 
