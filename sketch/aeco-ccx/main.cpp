@@ -44,6 +44,7 @@ static uint8_t need_push = 0;
 static uint8_t need_push_mac = 0;
 static uint8_t need_reset_sx1272 = 0;
 static uint8_t mac_cmd = 0;
+static uint32_t mac_cmd_sec = 0;
 static uint16_t tx_count = 0;
 
 #define	RESET_TX			0
@@ -880,7 +881,7 @@ void process_mac_cmds(uint8_t *p, int len)
 	uint8_t cmd = p[11];
 	uint8_t vcmd = p[12];
 
-	uint8_t fctrl = p[16];
+	//uint8_t fctrl = p[16];
 	// fopts: p[18:19], 20..23
 
 	uint64_t did = 0;
@@ -899,6 +900,17 @@ void process_mac_cmds(uint8_t *p, int len)
 	// check the dev_id
 	// 0x174876E7FF	= 999.99.99.9999
 	if (did == 99999999999ULL || did == get_devid()) {
+
+		uint32_t sec = 0;
+		pd = (uint8_t *) &sec;
+		pd[0] = p[21]; pd[1] = p[20]; pd[2] = p[19]; pd[3] = p[18];
+
+		if (sec == mac_cmd_sec) {
+			// invalide mac ctrl pkt
+			return;
+		} else {
+			mac_cmd_sec = sec;
+		}
 
 		Serial.println("ok");
 		switch(cmd) {

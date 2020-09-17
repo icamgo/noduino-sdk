@@ -406,13 +406,9 @@ int send_cmd(uint8_t cmd)
 	// 18:21
 	uint32_t ep = seconds();
 	p = (uint8_t *) &ep;
-	p[18] = p[3]; p[19] = p[2]; p[20] = p[1]; p[21] = p[0];
+	pkt[18] = p[3]; pkt[19] = p[2]; pkt[20] = p[1]; pkt[21] = p[0];
 
-	// Humidity Sensor data	or Water Leak Sensor data
-	pkt[20] = 0;
-
-	// Internal Temperature of the chip
-	pkt[21] = 0;
+	INFOLN("%d", ep);
 
 	// Internal humidity to detect water leak of the shell
 	pkt[22] = 0;
