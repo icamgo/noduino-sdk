@@ -26,7 +26,15 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-#define	FW_VER						"V1.2"
+#if 1
+#define	DEBUG						1
+#define DEBUG_TX					1
+#define DEBUG_HEX_PKT				1
+#endif
+
+#define ENABLE_CRYPTO				1
+
+#define	FW_VER						"V1.3"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -62,13 +70,6 @@ struct circ_buf g_cbuf;
 
 struct ctrl_fifo g_cfifo;
 
-#if 0
-#define	DEBUG						1
-//#define DEBUG_TX					1
-#define DEBUG_HEX_PKT				1
-#endif
-
-#define ENABLE_CRYPTO				1
 #ifdef ENABLE_CRYPTO
 #include "crypto.h"
 #endif
@@ -707,6 +708,11 @@ bool is_our_pkt(uint8_t *p, int len)
 		return false;
 	}
 
+#ifdef ENABLE_CRYPTO
+	// (p[2] == 0x33 && 32 == len)
+	return check_pkt_mic(p, len);
+#endif
+
 	return true;
 }
 
@@ -780,6 +786,17 @@ bool process_pkt(uint8_t *p, int *len)
 	}
 
 	if (check_ctrl_fno(&g_cfifo, p, *len) == true) {
+
+	#ifdef ENABLE_CRYPTO
+		uint8_t mtype = p[15] & 0x60;
+
+		if (0x33 == p[2] && 32 == plen && (0x20 == mtype || 0x60 == mtype) &&
+			(10 == (p[15] & 0x1F))) {
+
+			// data down pkt (from gw/ctrl_client)
+			payload_encrypt(p, *len, ae33kk);
+		}
+	#endif
 
 		update_crc(p, *len);
 
@@ -871,7 +888,7 @@ void process_mac_cmds(uint8_t *p, int len)
 
 	if ((~cmd & 0xFF) != vcmd) {
 		// invalid cmd
-		//Serial.println(cmd);
+		Serial.println(cmd);
 		return;
 	}
 
@@ -883,7 +900,7 @@ void process_mac_cmds(uint8_t *p, int len)
 	// 0x174876E7FF	= 999.99.99.9999
 	if (did == 99999999999ULL || did == get_devid()) {
 
-		//Serial.println("ok");
+		Serial.println("ok");
 		switch(cmd) {
 			case MAC_CCTX_OFF:
 				turn_tx_off(cmd);
@@ -928,9 +945,13 @@ void rx_irq_handler()
 
 			uint8_t mtype = p[15] & 0x60;
 
-			if (0x33 == p[2] && 32 == plen && (0x20 == mtype || 0x60 == mtype)) {
+			if (0x33 == p[2] && 32 == plen && (0x20 == mtype || 0x60 == mtype) &&
+				(10 == (p[15] & 0x1F))) {
+
 				// data down pkt (from gw/ctrl_client)
+				payload_decrypt(p, plen, ae33kk);
 				process_mac_cmds(p, plen);
+
 			}
 
 			if (is_cc_ok(p, plen) &&
@@ -1290,10 +1311,6 @@ void loop(void)
 
 	if (false == is_our_did(p)) return;
 
-#ifdef ENABLE_CRYPTO
-	if (false == check_pkt_mic(p, p_len)) return;
-#endif
-
 #ifdef DEBUG_HEX_PKT
 	int a = 0, b = 0;
 
@@ -1409,6 +1426,8 @@ void loop(void)
 	if (tx_on) {
 
 		if (process_pkt(p, &p_len) == true) {
+
+			uint8_t mtype = p[15] & 0x60;
 
 		#ifdef ENABLE_CRYPTO
 			set_pkt_mic(p, p_len);
