@@ -25,6 +25,12 @@
 //#define	DEBUG					1
 //#define DEBUG_HEX_PKT			1
 
+#define ENABLE_CRYPTO				1
+
+#ifdef ENABLE_CRYPTO
+#include "crypto.h"
+#endif
+
 #define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
 
 #define ENABLE_OLED					1
@@ -414,13 +420,29 @@ int send_cmd(uint8_t cmd)
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
 	tx_count++;
 
+	/////////////////////////////////////////////////////////
+	/*
+	 * 1. encrypt
+	 * 2. crc
+	 * 3. set mic
+	*/
+#ifdef ENABLE_CRYPTO
+	payload_encrypt(pkt, 32, ae33kk);
+#endif
+
 	ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 
+#ifdef ENABLE_CRYPTO
+	set_pkt_mic(pkt, 32);
+#endif
+	/////////////////////////////////////////////////////////
+
 #ifdef ENABLE_CAD
 	sx1272.CarrierSense();
 #endif
+
 	// here we resend the received data to the next gateway
 	e = sx1272.sendPacketTimeout(DEST_ADDR, pkt, PAYLOAD_LEN+6, TX_TIME);
 
@@ -436,6 +458,10 @@ int send_cmd(uint8_t cmd)
 void setup()
 {
 	int e;
+
+#ifdef ENABLE_CRYPTO
+	CMU_ClockEnable(cmuClock_AES, true);
+#endif
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
