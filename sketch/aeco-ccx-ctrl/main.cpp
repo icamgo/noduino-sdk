@@ -403,7 +403,10 @@ int send_cmd(uint8_t cmd)
 
 	pkt[15] = tx_cause | 0x20;						/* unconfirmed down data */
 
-	//float chip_temp = fetch_mcu_temp();
+	// 18:21
+	uint32_t ep = seconds();
+	p = (uint8_t *) &ep;
+	p[18] = p[3]; p[19] = p[2]; p[20] = p[1]; p[21] = p[0];
 
 	// Humidity Sensor data	or Water Leak Sensor data
 	pkt[20] = 0;
@@ -463,6 +466,10 @@ void setup()
 #ifdef ENABLE_CRYPTO
 	CMU_ClockEnable(cmuClock_AES, true);
 #endif
+
+	/* Initialize RTC timer. */
+	extern uint32_t secTicks;
+	secTicks = 1600155579;
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
