@@ -25,7 +25,6 @@
 #include "rtcdriver.h"
 #include "tx_ctrl.h"
 #include "circ_buf.h"
-#include "crypto.h"
 
 #define	FW_VER						"V1.2"
 
@@ -70,6 +69,9 @@ struct ctrl_fifo g_cfifo;
 #endif
 
 #define ENABLE_CRYPTO				1
+#ifdef ENABLE_CRYPTO
+#include "crypto.h"
+#endif
 
 #ifdef EFM32HG110F64
 #define ENABLE_OLED					1
@@ -707,57 +709,6 @@ bool is_our_pkt(uint8_t *p, int len)
 
 	return true;
 }
-
-
-#ifdef ENABLE_CRYPTO
-uint8_t key[] __attribute__ ((aligned(4))) = {
-	0x01, 0x02, 0x02, 0x03, 0x05, 0x07, 0x08, 0x08,
-	0x02, 0x01, 0x02, 0x03, 0x05, 0x07, 0x08, 0x09
-};
-
-bool check_pkt_mic(uint8_t *p, int len)
-{
-	uint32_t mic = 0;
-	uint8_t *p_mic = (uint8_t *)&mic;
-
-	if (p[2] == 0x33 && len == 32) {
-
-		compute_mic(p, len, key, &mic);
-
-		if (p_mic[0] == p[len-4] && p_mic[1] == p[len-3] &&
-			p_mic[2] == p[len-2] && p_mic[3] == p[len-1]) {
-
-			return true;
-		} else {
-			return false;
-		}
-
-	} else {
-
-		return true;
-	}
-}
-
-bool set_pkt_mic(uint8_t *p, int len)
-{
-	uint32_t mic = 0;
-	uint8_t *p_mic = (uint8_t *)&mic;
-
-	if (p[2] == 0x33 && len == 32) {
-
-		compute_mic(p, len, key, &mic);
-
-		p[len-4] = p_mic[0]; p[len-3] = p_mic[1];
-		p[len-2] = p_mic[2]; p[len-1] = p_mic[3];
-
-		return true;
-
-	} else {
-
-		return false;
-	}
-}
-#endif
 
 uint16_t update_crc(uint8_t *p, int len)
 {
