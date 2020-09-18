@@ -26,7 +26,7 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-#if 1
+#if 0
 #define	DEBUG						1
 #define DEBUG_TX					1
 #define DEBUG_HEX_PKT				1
@@ -1422,7 +1422,10 @@ void loop(void)
 		} else if (MODE_VER == omode) {
 		#ifdef ENABLE_OLED
 			sprintf(frame_buf[0], " FW: %s", FW_VER);
-			sprintf(frame_buf[1], " EP: %d", seconds());
+			//sprintf(frame_buf[1], " EP: %d", seconds());
+
+			uint64_to_str(get_devid());
+			sprintf(frame_buf[1], " ID: %s", dev_id);
 
 			show_frame(0, omode, false);
 
