@@ -26,7 +26,7 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-#if 1
+#if 0
 #define	DEBUG						1
 #define DEBUG_TX					1
 #define DEBUG_HEX_PKT				1
@@ -735,7 +735,7 @@ uint64_t get_devid();
 
 bool process_pkt(uint8_t *p, int *len)
 {
-	//p[0] = 0x95;
+	//p[0] = 0x22;
 
 	// p[15] is the cmd type
 
