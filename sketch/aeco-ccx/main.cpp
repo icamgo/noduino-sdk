@@ -34,7 +34,7 @@
 
 #define ENABLE_CRYPTO				1
 
-#define	FW_VER						"V1.4"
+#define	FW_VER						"V1.5"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -733,7 +733,7 @@ uint16_t update_crc(uint8_t *p, int len)
 
 bool process_pkt(uint8_t *p, int *len)
 {
-	p[0] = 0x46;
+	//p[0] = 0x95;
 
 	// p[15] is the cmd type
 
@@ -788,6 +788,21 @@ bool process_pkt(uint8_t *p, int *len)
 				p[17] = 1;			// increment the cc-relayed-cnt
 			}
 
+			uint64_t devid = get_devid();
+			uint8_t *pd = (uint8_t *) &devid;
+
+			uint8_t mtype = p[27] & 0xE0;
+			if (0x20 != mtype && 0x60 != mtype) {
+
+				// pkt is not the down pkt
+				p[26] = pd[0];
+				p[25] = pd[1];
+				p[24] = pd[2];
+
+				p[19] = pd[3];
+				p[18] = pd[4];
+
+			}
 		}
 
 	}
