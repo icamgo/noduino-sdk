@@ -1,4 +1,4 @@
-/* 
+/*
  *  Copyright (c) 2019 - 2029 MaiKe Labs
  *
  *  This program is free software: you can redistribute it and/or modify
@@ -31,7 +31,8 @@
 #include "crypto.h"
 #endif
 
-#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
+#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
+//#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
 
 #define ENABLE_OLED					1
 #define ENABLE_SH1106				1
@@ -64,7 +65,7 @@
 #define	TX_TIME				1600			// 800ms
 uint8_t loraMode = 12;
 
-uint8_t pkt[32] = { 0x47, 0x4F, 0x33 };
+uint8_t pkt[PAYLOAD_LEN+6] = { 0x47, 0x4F, 0x33 };
 uint8_t tx_cause = CTRL_TX;
 uint16_t tx_count = 0;
 
@@ -382,7 +383,8 @@ int send_cmd(uint8_t cmd)
 	int e = 0;
 	int16_t ui16 = 0;
 
-	memset(pkt, 0, 32);
+	memset(pkt, 0, PAYLOAD_LEN+6);
+
 	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
 
 	uint64_t devid = 99999999999;					/* 0x17 48 76 E7 FF */
@@ -395,13 +397,13 @@ int send_cmd(uint8_t cmd)
 		pkt[3+i] = p[7-i];
 	}
 
-	pkt[11] = cmd; pkt[12] = ~cmd; 
+	pkt[11] = cmd; pkt[12] = ~cmd;
 
 	float vbat = adc.readVbat();
 	ui16 = vbat * 1000;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
-	pkt[15] = tx_cause | 0x20;						/* unconfirmed down data */
+	pkt[15] = tx_cause;
 
 	// 18:21
 	uint32_t ep = seconds();
@@ -416,6 +418,17 @@ int send_cmd(uint8_t cmd)
 	// Internal current consumption
 	pkt[23] = 0;
 
+	// pkt[24:27]
+
+	/*
+	 * Unconfirmed down data
+	 * no-cc relayed
+	 * Encrypt data
+	 *
+	 */
+	pkt[27] = 0x28;
+
+	// pkt[28:29]: frame no.
 	p = (uint8_t *) &tx_count;
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
 	tx_count++;
@@ -427,15 +440,18 @@ int send_cmd(uint8_t cmd)
 	 * 3. set mic
 	*/
 #ifdef ENABLE_CRYPTO
-	payload_encrypt(pkt, 32, ae33kk);
+	payload_encrypt(pkt, PAYLOAD_LEN+6, ae33kk);
 #endif
 
+	p[15] = tx_cause;
+
+	// pkt[30:31]: crc
 	ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 
 #ifdef ENABLE_CRYPTO
-	set_pkt_mic(pkt, 32);
+	set_pkt_mic(pkt, PAYLOAD_LEN+6);
 #endif
 	/////////////////////////////////////////////////////////
 
