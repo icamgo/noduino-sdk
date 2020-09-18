@@ -45,7 +45,7 @@ bool set_pkt_mic(uint8_t *p, int len)
 
 	if (NULL == p) return false;
 
-	if (p[2] == 0x33 && len == 32) {
+	if (p[2] == 0x33 && len == 36) {
 
 		compute_mic(p, len, ae33kk, &mic);
 
@@ -67,7 +67,7 @@ bool check_pkt_mic(const uint8_t *p, int len)
 
 	if (NULL == p) return false;
 
-	if (p[2] == 0x33 && len == 32) {
+	if (p[2] == 0x33 && len == 36) {
 
 		compute_mic(p, len, ae33kk, &mic);
 
