@@ -980,7 +980,7 @@ int tx_pkt(uint8_t *p, int len)
 {
 	//radio_setup();
 
-	if (false == is_our_did(p)) {;
+	if (false == is_our_did(p)) {
 
 		return 5;
 	}
@@ -1434,8 +1434,6 @@ void loop(void)
 
 		if (process_pkt(p, &p_len) == true) {
 
-			uint8_t mtype = p[15] & 0x60;
-
 		#ifdef ENABLE_CRYPTO
 			set_pkt_mic(p, p_len);
 		#endif
@@ -1455,7 +1453,11 @@ void loop(void)
 
 		set_temp_pkt();
 
-		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
+	#ifdef ENABLE_CRYPTO
+		set_pkt_mic(p, p_len);
+	#endif
+
+		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 32B */
 
 		if (0 == e) {
 			// tx successful
@@ -1469,7 +1471,11 @@ void loop(void)
 
 		set_mac_status_pkt();
 
-		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
+	#ifdef ENABLE_CRYPTO
+		set_pkt_mic(p, p_len);
+	#endif
+
+		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 32B */
 
 		if (0 == e) {
 			// tx successful

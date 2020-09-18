@@ -31,6 +31,8 @@ uint8_t pld_outin[16] __attribute__((aligned(4)));
 void compute_mic(const uint8_t *p, uint16_t plen, const uint8_t *kk,
 					uint32_t *mic)
 {
+	// NOTE: plen >=32 !!
+
 	blk_b0[5] = p[6];
 	blk_b0[6] = p[7];
 	blk_b0[7] = p[8];
@@ -57,6 +59,8 @@ bool check_pkt_mic(const uint8_t *p, int len)
 	uint32_t mic = 0;
 	uint8_t *p_mic = (uint8_t *)&mic;
 
+	if (NULL == p) return false;
+
 	if (p[2] == 0x33 && len == 32) {
 
 		compute_mic(p, len, ae33kk, &mic);
@@ -79,6 +83,8 @@ bool set_pkt_mic(uint8_t *p, int len)
 {
 	uint32_t mic = 0;
 	uint8_t *p_mic = (uint8_t *)&mic;
+
+	if (NULL == p) return false;
 
 	if (p[2] == 0x33 && len == 32) {
 
