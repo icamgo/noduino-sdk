@@ -636,13 +636,11 @@ bool is_our_did(uint8_t *p)
 		return false;
 	}
 
-	int a = 0, b = 0;
-
 	uint64_t devid = 0UL;
+	uint8_t *pd = (uint8_t *) &devid;
 
-	for (a = 3; a < 11; a++, b++) {
-
-		*(((uint8_t *)&devid) + 7 - b) = p[a];
+	for(int i = 0; i < 8; i++) {
+		pd[7-i] = p[3+i];
 	}
 
 	if (99999999999ULL == devid) {
@@ -791,7 +789,7 @@ bool process_pkt(uint8_t *p, int *len)
 	#ifdef ENABLE_CRYPTO
 		uint8_t mtype = p[15] & 0x60;
 
-		if (0x33 == p[2] && 32 == plen && (0x20 == mtype || 0x60 == mtype) &&
+		if (0x33 == p[2] && 32 == *len && (0x20 == mtype || 0x60 == mtype) &&
 			(10 == (p[15] & 0x1F))) {
 
 			// data down pkt (from gw/ctrl_client)
@@ -1321,8 +1319,6 @@ void loop(void)
 	uint8_t *p = d.data;
 	int p_len = d.plen;
 
-	if (false == is_our_did(p)) return;
-
 #ifdef DEBUG_HEX_PKT
 	int a = 0, b = 0;
 
@@ -1340,6 +1336,8 @@ void loop(void)
 	INFO_S("/");
 	INFOLN(p_len);
 #endif
+
+	if (false == is_our_did(p)) return;
 
 	if (oled_on == true) {
 
