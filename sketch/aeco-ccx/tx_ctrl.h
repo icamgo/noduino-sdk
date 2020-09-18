@@ -70,7 +70,7 @@ bool is_pkt_in_ctrl(struct ctrl_fifo *cfifo, uint8_t *p, int plen, uint32_t ts)
 
 	uint64_t devid = 0UL;
 
-	uint8_t mtype = p[15] & 0x60;
+	uint8_t mtype = p[plen-9] & 0xE0;
 
 	for (a = 3; a < 11; a++, b++) {
 
@@ -88,7 +88,7 @@ bool is_pkt_in_ctrl(struct ctrl_fifo *cfifo, uint8_t *p, int plen, uint32_t ts)
 				return true;
 			}
 
-			if ((mtype == 0x00 || mtype == 0x40) && (ts - cfifo->ctrl[a].ts < 10)) {
+			if ((mtype == 0x00 || mtype == 0x40) && (ts - cfifo->ctrl[a].ts < 20)) {
 				// data up pkt, 10s
 				return true;
 			}

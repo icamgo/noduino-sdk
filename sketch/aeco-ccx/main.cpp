@@ -26,7 +26,7 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-#if 0
+#if 1
 #define	DEBUG						1
 #define DEBUG_TX					1
 #define DEBUG_HEX_PKT				1
@@ -58,10 +58,11 @@ static uint8_t tx_cause = RESET_TX;
 #define MAC_SET_EPOCH				0x82
 #define MAC_GET_EPOCH				0x83
 
-#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
+#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
+//#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
 //#define PAYLOAD_LEN					18		/* 18+2+4 = 24B */
 
-uint8_t rpt_pkt[32] = { 0x47, 0x4F, 0x33 };
+uint8_t rpt_pkt[PAYLOAD_LEN+6] = { 0x47, 0x4F, 0x33 };
 
 struct circ_buf g_cbuf;
 #define OLED_DELAY_TIME				55		/* oled is on about 55s */
@@ -418,6 +419,7 @@ uint8_t decode_cmd(uint8_t *pkt)
 	switch(pkt[2]) {
 
 		case 0x33:
+		case 0x34:
 			cmd = pkt[15];
 			break;
 		default:
@@ -705,7 +707,7 @@ bool is_our_pkt(uint8_t *p, int len)
 	}
 
 #ifdef ENABLE_CRYPTO
-	// (p[2] == 0x33 && 32 == len)
+	// (p[2] == 0x33 && 36 == len)
 	return check_pkt_mic(p, len);
 #endif
 
@@ -739,27 +741,36 @@ bool process_pkt(uint8_t *p, int *len)
 
 		//extend the 0x33
 
-		if (*len == 24 || *len == 28) {
-			//TODO: extend the pkt to 32Bytes, add the relay_cnt
+		if (*len == 24 || *len == 28 || *len == 32) {
+			//TODO: extend the pkt to 36Bytes, add the relay_cnt
 
-			/* move the frame no. to p[24:25] */
-			//p[24] = p[16];
-			//p[25] = p[17];
-			p[24] = p[*len-8];
-			p[25] = p[*len-7];
+			//p[16] = 0; p[17] = 0; p[18] = 0; p[19] = 0;
+			/*
+			 * p[16]: fctrl
+			 * p[17]: cc relayed counter
+			 * p[18:19]: Fopts
+			*/
+			memset(p+16, 0, 4);
 
-			p[16] = 0; p[17] = 0; p[18] = 0; p[19] = 0;
+			//p[20:23]: extend data
 
-			// p[26:27] as the crc
-			// p[28:31] as the reserved crc
-			p[28] = 0; p[29] = 0; p[30] = 0; p[31] = 0;
+			p[24] = 0; p[25] = 0; p[26] = 0; p[27] = 0;
 
-			*len = 32;
+			/* move the frame no. to p[28:29] */
+			//p[28] = p[16];
+			//p[29] = p[17];
+			p[28] = p[*len-8];
+			p[29] = p[*len-7];
+
+			// p[30:31] as the crc
+			// p[32:35] as the reserved crc
+
+			*len = 36;
 		}
 
-		if (*len == 32) {
+		if (*len == 36) {
 
-			if (p[15] & 0x80) {
+			if (p[27] & 0x10) {
 				// new cc relayed pkt
 
 				if (p[17] >= 5) {
@@ -773,7 +784,7 @@ bool process_pkt(uint8_t *p, int *len)
 
 			} else {
 				// device pkt
-				p[15] |= 0x80;		// mark as cc-relayed
+				p[27] |= 0x10;		// mark as cc-relayed
 				p[17] = 1;			// increment the cc-relayed-cnt
 			}
 
@@ -784,10 +795,9 @@ bool process_pkt(uint8_t *p, int *len)
 	if (check_ctrl_fno(&g_cfifo, p, *len) == true) {
 
 	#ifdef ENABLE_CRYPTO
-		uint8_t mtype = p[15] & 0x60;
+		uint8_t mtype = p[27] & 0xE0;
 
-		if (0x33 == p[2] && 32 == *len && (0x20 == mtype || 0x60 == mtype) &&
-			(10 == (p[15] & 0x1F))) {
+		if (0x33 == p[2] && 36 == *len && (0x20 == mtype || 0x60 == mtype)) {
 
 			// data down pkt (from gw/ctrl_client)
 			payload_encrypt(p, *len, ae33kk);
@@ -805,9 +815,9 @@ bool process_pkt(uint8_t *p, int *len)
 
 bool is_cc_ok(uint8_t *p, int len)
 {
-	if (p[2] == 0x33 && len == 32) {
+	if (p[2] == 0x33 && len == 36) {
 
-		if (p[15] & 0x80) {
+		if (p[27] & 0x10) {
 
 			// new cc relayed pkt
 
@@ -899,7 +909,7 @@ void process_mac_cmds(uint8_t *p, int len)
 		 * check the sec-ts
 		 *
 		*/
-		if (sec <= mac_cmd_sec) {
+		if (sec == mac_cmd_sec) {
 			// invalide mac ctrl pkt
 			return;
 		} else {
@@ -954,15 +964,17 @@ void rx_irq_handler()
 
 		if (is_our_pkt(p, plen) == true) {
 
-			uint8_t mtype = p[15] & 0x60;
+			uint8_t mtype = p[27] & 0xE0;
 
-			if (0x33 == p[2] && 32 == plen && (0x20 == mtype || 0x60 == mtype) &&
-				(10 == (p[15] & 0x1F))) {
+			if (0x33 == p[2] && 36 == plen && (0x20 == mtype || 0x60 == mtype)) {
 
 				// data down pkt (from gw/ctrl_client)
-				payload_decrypt(p, plen, ae33kk);
-				process_mac_cmds(p, plen);
 
+				if (p[27] & 0x08) {
+					payload_decrypt(p, plen, ae33kk);
+				}
+
+				process_mac_cmds(p, plen);
 			}
 
 			if (is_cc_ok(p, plen) &&
@@ -1461,10 +1473,10 @@ void loop(void)
 		set_temp_pkt();
 
 	#ifdef ENABLE_CRYPTO
-		set_pkt_mic(p, p_len);
+		set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
 	#endif
 
-		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 32B */
+		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
 
 		if (0 == e) {
 			// tx successful
@@ -1479,10 +1491,10 @@ void loop(void)
 		set_mac_status_pkt();
 
 	#ifdef ENABLE_CRYPTO
-		set_pkt_mic(p, p_len);
+		set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
 	#endif
 
-		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 32B */
+		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
 
 		if (0 == e) {
 			// tx successful
