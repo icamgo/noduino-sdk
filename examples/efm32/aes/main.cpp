@@ -122,6 +122,7 @@ void loop()
 	compute_mic(msg, 32, key, &mic);
 
 	print_msg((uint8_t *)&mic, 4);
+	Serial.println("");
 	//////////////////////////////////////////
 
 
