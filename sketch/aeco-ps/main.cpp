@@ -27,7 +27,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.9"
+#define FW_VER						"Ver 2.0"
 
 //#define CONFIG_2MIN					1
 
@@ -52,7 +52,12 @@ static uint32_t cnt_rt_01 = 0;
 #if 0
 #define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
 #else
+#define ENABLE_CRYPTO				1
 #define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
+#endif
+
+#ifdef ENABLE_CRYPTO
+#include "crypto.h"
 #endif
 
 /* Timer used for bringing the system back to EM0. */
@@ -366,8 +371,10 @@ void show_ver(int txc)
 
 	do {
 		u8g2.setFont(Futura_Heavy_20px);
-		u8g2.setCursor(64, 23);
+		u8g2.setCursor(50, 23);
 		u8g2.print(FW_VER);
+		u8g2.print(".");
+		u8g2.print(sample_period);
 
 		u8g2.setCursor(58, 116);
 		u8g2.print("1.6 MPa");
@@ -390,7 +397,7 @@ void show_ver(int txc)
 
 		u8g2.print(txc);
 
-	#if 1
+	#if 0
 		u8g2.setFont(Futura_Heavy_20px);
 		u8g2.setCursor(10, 116);
 		u8g2.print(sample_period);
@@ -646,6 +653,10 @@ void setup()
 	wInit.em2Run = true;
 	wInit.em3Run = true;
 
+#ifdef ENABLE_CRYPTO
+	crypto_init();
+#endif
+
 #ifdef CONFIG_2MIN
 	//wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
@@ -833,11 +844,20 @@ void push_data()
 	pkt[23] = 0;
 #endif
 
-
+	/////////////////////////////////////////////////////////
+	/*
+	 * 2. crc
+	 * 3. set mic
+	*/
 	ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
+#ifdef ENABLE_CRYPTO
+	set_pkt_mic(pkt, 32);
+#endif
+	/////////////////////////////////////////////////////////
 #else
 	uint8_t r_size;
 
