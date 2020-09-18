@@ -34,7 +34,7 @@
 
 #define ENABLE_CRYPTO				1
 
-#define	FW_VER						"V1.3"
+#define	FW_VER						"V1.4"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -856,7 +856,7 @@ inline void turn_tx_on(uint8_t cmd)
 	need_push_mac = 0x55;
 }
 
-inline void set_the_epoch(uint8_t *ep, uint8_t cmd)
+inline void set_the_epoch(uint8_t *ep)
 {
 	extern uint32_t secTicks;
 	uint8_t *st_p = (uint8_t *)&secTicks;
@@ -864,11 +864,6 @@ inline void set_the_epoch(uint8_t *ep, uint8_t cmd)
 	st_p[1] = ep[2];
 	st_p[2] = ep[1];
 	st_p[3] = ep[0];
-
-	mac_cmd = cmd;
-
-	tx_cause = DELTA_TX;
-	need_push_mac = 0x55;
 }
 
 void process_mac_cmds(uint8_t *p, int len)
@@ -900,7 +895,11 @@ void process_mac_cmds(uint8_t *p, int len)
 		pd = (uint8_t *) &sec;
 		pd[0] = p[21]; pd[1] = p[20]; pd[2] = p[19]; pd[3] = p[18];
 
-		if (sec == mac_cmd_sec) {
+		/*
+		 * check the sec-ts
+		 *
+		*/
+		if (sec <= mac_cmd_sec) {
 			// invalide mac ctrl pkt
 			return;
 		} else {
@@ -911,12 +910,17 @@ void process_mac_cmds(uint8_t *p, int len)
 		switch(cmd) {
 			case MAC_CCTX_OFF:
 				turn_tx_off(cmd);
+				set_the_epoch(p+18);
 				break;
 			case MAC_CCTX_ON:
 				turn_tx_on(cmd);
+				set_the_epoch(p+18);
 				break;
 			case MAC_SET_EPOCH:
-				set_the_epoch((p+18), cmd);
+				set_the_epoch(p+18);
+				mac_cmd = cmd;
+				tx_cause = DELTA_TX;
+				need_push_mac = 0x55;
 				break;
 		}
 	}
