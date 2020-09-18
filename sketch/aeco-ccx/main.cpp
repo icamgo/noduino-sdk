@@ -58,11 +58,8 @@ static uint8_t tx_cause = RESET_TX;
 #define MAC_SET_EPOCH				0x82
 #define MAC_GET_EPOCH				0x83
 
-#if 0
-#define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
-#else
 #define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
-#endif
+//#define PAYLOAD_LEN					18		/* 18+2+4 = 24B */
 
 uint8_t rpt_pkt[32] = { 0x47, 0x4F, 0x33 };
 
@@ -1134,8 +1131,8 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 		need_push = 0x55;
 	}
 
-	if (MAC_CCTX_OFF == mac_cmd && (cnt_1min % 5 == 0)) {
-		// if cc-off, 5min report
+	if (MAC_CCTX_OFF == mac_cmd && (cnt_1min % 2 == 0)) {
+		// if cc-off, 2min report
 		tx_cause = TIMER_TX;
 		need_push_mac = 0x55;
 	}
