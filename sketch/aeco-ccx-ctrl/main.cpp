@@ -567,7 +567,7 @@ void loop(void)
 		key_time = 0;
 	}
 
-	if (key_time > 8) {
+	if (key_time > 6) {
 
 		key_time = 0;
 
