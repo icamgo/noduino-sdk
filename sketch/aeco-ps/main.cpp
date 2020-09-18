@@ -53,7 +53,8 @@ static uint32_t cnt_rt_01 = 0;
 #define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
 #else
 #define ENABLE_CRYPTO				1
-#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
+#define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
+//#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
 #endif
 
 #ifdef ENABLE_CRYPTO
@@ -855,7 +856,7 @@ void push_data()
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 
 #ifdef ENABLE_CRYPTO
-	set_pkt_mic(pkt, 32);
+	set_pkt_mic(pkt, PAYLOAD_LEN+6);
 #endif
 	/////////////////////////////////////////////////////////
 #else
