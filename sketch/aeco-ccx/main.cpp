@@ -731,6 +731,8 @@ uint16_t update_crc(uint8_t *p, int len)
 	return hh;
 }
 
+uint64_t get_devid();
+
 bool process_pkt(uint8_t *p, int *len)
 {
 	//p[0] = 0x95;
