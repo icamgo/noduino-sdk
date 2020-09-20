@@ -34,7 +34,7 @@
 
 #define ENABLE_CRYPTO				1
 
-#define	FW_VER						"V1.6"
+#define	FW_VER						"V1.7"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -51,12 +51,13 @@ static uint16_t tx_count = 0;
 #define	DELTA_TX			1
 #define	TIMER_TX			2
 #define	KEY_TX				3
+#define	MAC_TX				10
 static uint8_t tx_cause = RESET_TX;
 
 #define MAC_CCTX_OFF				0x80
 #define MAC_CCTX_ON				0x81
 #define MAC_SET_EPOCH				0x82
-#define MAC_GET_EPOCH				0x83
+#define MAC_GET_CMD				0x83
 #define MAC_CAD_OFF				0x84
 #define MAC_CAD_ON				0x85
 
@@ -876,7 +877,7 @@ inline void turn_tx_off(uint8_t cmd)
 	mac_cmd = cmd;
 	tx_on = false;
 
-	tx_cause = DELTA_TX;
+	tx_cause = MAC_TX;
 	need_push_mac = 0x55;
 }
 
@@ -885,7 +886,7 @@ inline void turn_tx_on(uint8_t cmd)
 	mac_cmd = cmd;
 	tx_on = true;
 
-	tx_cause = DELTA_TX;
+	tx_cause = MAC_TX;
 	need_push_mac = 0x55;
 }
 
@@ -953,20 +954,24 @@ void process_mac_cmds(uint8_t *p, int len)
 			case MAC_SET_EPOCH:
 				set_the_epoch(p+18);
 				mac_cmd = cmd;
-				tx_cause = DELTA_TX;
+				tx_cause = MAC_TX;
+				need_push_mac = 0x55;
+				break;
+			case MAC_GET_CMD:
+				tx_cause = MAC_TX;
 				need_push_mac = 0x55;
 				break;
 			#ifdef ENABLE_CAD
 			case MAC_CAD_OFF:
 				mac_cmd = cmd;
 				cad_on = false;
-				tx_cause = DELTA_TX;
+				tx_cause = MAC_TX;
 				need_push_mac = 0x55;
 				break;
 			case MAC_CAD_ON:
 				mac_cmd = cmd;
 				cad_on = true;
-				tx_cause = DELTA_TX;
+				tx_cause = MAC_TX;
 				need_push_mac = 0x55;
 				break;
 			#endif
@@ -1101,7 +1106,7 @@ void set_mac_status_pkt()
 	 * 0x81 00 = -3251.2
 	 * 0x82 00 = -3225.6
 	*/
-	pkt[11] = mac_cmd; pkt[12] = 0;
+	pkt[11] = mac_cmd; pkt[12] = cad_on;
 
 	float vbat = adc.readVbat();
 	ui16 = vbat * 1000;
