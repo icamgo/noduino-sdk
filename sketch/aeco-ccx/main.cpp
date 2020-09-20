@@ -54,9 +54,11 @@ static uint16_t tx_count = 0;
 static uint8_t tx_cause = RESET_TX;
 
 #define MAC_CCTX_OFF				0x80
-#define MAC_CCTX_ON					0x81
+#define MAC_CCTX_ON				0x81
 #define MAC_SET_EPOCH				0x82
 #define MAC_GET_EPOCH				0x83
+#define MAC_CAD_OFF				0x84
+#define MAC_CAD_ON				0x85
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 //#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
@@ -88,11 +90,13 @@ struct ctrl_fifo g_cfifo;
 
 #ifdef CONFIG_V0
 
-//#define ENABLE_CAD				1
+#define ENABLE_CAD				1
+
 #define DEST_ADDR				1
 
 #ifdef ENABLE_CAD
-#define	TX_TIME					800		// 800ms
+bool cad_on = false;
+#define	TX_TIME					1000			// 800ms
 #else
 #define	TX_TIME					220			// 220ms
 #endif
@@ -928,6 +932,7 @@ void process_mac_cmds(uint8_t *p, int len)
 		 * check the sec-ts
 		 *
 		*/
+		//if (sec <= mac_cmd_sec) {
 		if (sec == mac_cmd_sec) {
 			// invalide mac ctrl pkt
 			return;
@@ -951,6 +956,20 @@ void process_mac_cmds(uint8_t *p, int len)
 				tx_cause = DELTA_TX;
 				need_push_mac = 0x55;
 				break;
+			#ifdef ENABLE_CAD
+			case MAC_CAD_OFF:
+				mac_cmd = cmd;
+				cad_on = false;
+				tx_cause = DELTA_TX;
+				need_push_mac = 0x55;
+				break;
+			case MAC_CAD_ON:
+				mac_cmd = cmd;
+				cad_on = true;
+				tx_cause = DELTA_TX;
+				need_push_mac = 0x55;
+				break;
+			#endif
 		}
 	}
 
@@ -1021,9 +1040,10 @@ int tx_pkt(uint8_t *p, int len)
 	}
 
 #ifdef ENABLE_CAD
-	sx1272.CarrierSense();
+	if (cad_on) {
+		sx1272.CarrierSense();
+	}
 #endif
-
 	int e = sx1272.sendPacketTimeout(DEST_ADDR, p, len, TX_TIME);
 
 	if (0 == e) {
