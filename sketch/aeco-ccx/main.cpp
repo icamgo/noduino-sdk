@@ -33,6 +33,7 @@
 #endif
 
 #define ENABLE_CRYPTO				1
+#define ENABLE_CAD					1
 
 #define	FW_VER						"V1.7"
 
@@ -90,20 +91,14 @@ struct ctrl_fifo g_cfifo;
 
 
 #ifdef CONFIG_V0
-
-#define ENABLE_CAD				1
-
 #define DEST_ADDR				1
 
-#ifdef ENABLE_CAD
 bool cad_on = false;
-#define	TX_TIME					1000			// 800ms
-#else
-#define	TX_TIME					220			// 220ms
-#endif
+#define	CAD_TX_TIME					1000			// 1000ms
+#define	NOCAD_TX_TIME				220				// 220ms
+int tx_time = NOCAD_TX_TIME;
 
 #define TXRX_CH					CH_01_472
-
 #endif
 
 #ifdef DEBUG
@@ -965,12 +960,14 @@ void process_mac_cmds(uint8_t *p, int len)
 			case MAC_CAD_OFF:
 				mac_cmd = cmd;
 				cad_on = false;
+				tx_time = NOCAD_TX_TIME;
 				tx_cause = MAC_TX;
 				need_push_mac = 0x55;
 				break;
 			case MAC_CAD_ON:
 				mac_cmd = cmd;
 				cad_on = true;
+				tx_time = CAD_TX_TIME;
 				tx_cause = MAC_TX;
 				need_push_mac = 0x55;
 				break;
@@ -1049,7 +1046,7 @@ int tx_pkt(uint8_t *p, int len)
 		sx1272.CarrierSense();
 	}
 #endif
-	int e = sx1272.sendPacketTimeout(DEST_ADDR, p, len, TX_TIME);
+	int e = sx1272.sendPacketTimeout(DEST_ADDR, p, len, tx_time);
 
 	if (0 == e) {
 		// send message succesful,
