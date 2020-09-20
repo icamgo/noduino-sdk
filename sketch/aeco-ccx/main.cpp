@@ -34,7 +34,7 @@
 
 #define ENABLE_CRYPTO				1
 
-#define	FW_VER						"V1.5"
+#define	FW_VER						"V1.6"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -744,9 +744,13 @@ bool process_pkt(uint8_t *p, int *len)
 		//extend the 0x33
 
 		if (*len == 24 || *len == 28 || *len == 32) {
-			//TODO: extend the pkt to 36Bytes, add the relay_cnt
 
-			//p[16] = 0; p[17] = 0; p[18] = 0; p[19] = 0;
+			/* move the frame no. to p[28:29] */
+			//p[28] = p[16];
+			//p[29] = p[17];
+			p[28] = p[*len-8];
+			p[29] = p[*len-7];
+
 			/*
 			 * p[16]: fctrl
 			 * p[17]: cc relayed counter
@@ -756,13 +760,11 @@ bool process_pkt(uint8_t *p, int *len)
 
 			//p[20:23]: extend data
 
+			// p[24:26]: low 3B of cc-devid
+			// p[27]: MType
 			p[24] = 0; p[25] = 0; p[26] = 0; p[27] = 0;
 
-			/* move the frame no. to p[28:29] */
-			//p[28] = p[16];
-			//p[29] = p[17];
-			p[28] = p[*len-8];
-			p[29] = p[*len-7];
+			// p[28:29]: frame no.
 
 			// p[30:31] as the crc
 			// p[32:35] as the reserved crc
