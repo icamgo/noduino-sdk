@@ -35,7 +35,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V1.8"
+#define	FW_VER						"V1.9"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -1157,6 +1157,13 @@ void set_temp_pkt()
 
 	// tx_cause = TIMER_TX
 	pkt[15] = tx_cause;
+
+	extern uint32_t secTicks;
+	uint8_t *ep = (uint8_t *)&secTicks;
+	pkt[20] = ep[3];
+	pkt[21] = ep[2];
+	pkt[22] = ep[1];
+	pkt[23] = ep[0];
 
 	p = (uint8_t *) &tx_count;
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
