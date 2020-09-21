@@ -207,15 +207,26 @@ char *decode_ccid(uint8_t *pkt)
 	return uint64_to_str(devid);
 }
 
-uint32_t decode_sensor_epoch(uint8_t *p)
+uint32_t decode_cc2_epoch(uint8_t *p)
 {
 	uint32_t epoch = 0;
 	uint8_t *ep = (uint8_t *)&epoch;
 
-	ep[3] = p[18];
-	ep[2] = p[19];
-	ep[1] = p[20];
-	ep[0] = p[21];
+	if (p[11] & 0x80) {
+		// mac cmds
+
+		ep[3] = p[18];
+		ep[2] = p[19];
+		ep[1] = p[20];
+		ep[0] = p[21];
+	} else {
+		// normal temperature
+
+		ep[3] = p[20];
+		ep[2] = p[21];
+		ep[1] = p[22];
+		ep[0] = p[23];
+	}
 
 	return epoch;
 }
@@ -1031,7 +1042,7 @@ void loop(void)
 					decode_devid(p),
 					p[11],	/* mac cmd */
 					p[12],	/* cad_on */
-					decode_sensor_epoch(),
+					decode_cc2_epoch(p),
 					decode_ccid(p),
 					d.rssi);
 			#endif
@@ -1048,7 +1059,7 @@ void loop(void)
 					check_pkt_mic(p, p_len),
 					p[11],
 					p[12],
-					decode_sensor_epoch(p),
+					decode_cc2_epoch(p),
 					decode_ccid(p)+5);
 
 				show_frame(fi, omode, false);
