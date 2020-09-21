@@ -928,8 +928,8 @@ void process_mac_cmds(uint8_t *p, int len)
 		 * check the sec-ts
 		 *
 		*/
-		//if (sec <= mac_cmd_sec) {
-		if (sec == mac_cmd_sec) {
+		if (sec <= mac_cmd_sec) {
+		//if (sec == mac_cmd_sec) {
 			// invalide mac ctrl pkt
 			return;
 		} else {
