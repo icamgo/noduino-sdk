@@ -61,7 +61,7 @@ uint8_t need_push = 0;
 
 ///////////////////////////////////////////////////////////////////
 // CHANGE HERE THE TIME IN SECONDS BETWEEN 2 READING & TRANSMISSION
-uint32_t idlePeriod = 20;	// 20 seconds
+uint32_t idlePeriod = 32;	// 32 seconds
 ///////////////////////////////////////////////////////////////////
 
 #ifdef WITH_APPKEY
@@ -75,10 +75,17 @@ uint8_t my_appKey[4] = { 5, 6, 8, 8 };
 uint8_t message[50];
 ///////////////////////////////////////////////////////////////////
 
+#ifdef DEBUG
 #define INFO_S(fmt,param)			Serial.print(F(param))
 #define INFO(fmt,param)				Serial.print(param)
 #define INFOLN(fmt,param)			Serial.println(param)
 #define FLUSHOUTPUT					Serial.flush();
+#else
+#define INFO_S(fmt,param)
+#define INFO(fmt,param)
+#define INFOLN(fmt,param)
+#define FLUSHOUTPUT
+#endif
 
 #ifdef WITH_EEPROM
 #include <EEPROM.h>
@@ -187,7 +194,9 @@ void setup()
 	pinMode(7, OUTPUT);
 #endif
 
+#ifdef DEBUG
 	Serial.begin(115200);
+#endif
 
 	//INFO_S("%s", "Noduino Quark LoRa Node\n");
 
@@ -264,8 +273,8 @@ void loop(void)
 		INFO("%s", "Pressure = ");
 		INFOLN("%f", pres);
 
-		// 160.0 hPa(mbar) = 0.16 bar
-		if (fabsf(pres - g_param.old_pres) > 160.0) {
+		// 200.0 hPa(mbar) = 0.20 bar
+		if (fabsf(pres - g_param.old_pres) > 200.0) {
 
 			need_push = 0x5a;
 			g_param.tx_cause = DELTA_TX;
