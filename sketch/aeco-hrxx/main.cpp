@@ -90,8 +90,9 @@ char frame_buf[8][24];
 */
 #define	MODE_ALL		0
 #define	MODE_KEY		1
-#define	MODE_ABC		2
-#define	MODE_RAW		3
+#define	MODE_CC2		2
+#define	MODE_MAC		3
+#define	MODE_RAW		4
 
 int omode = MODE_KEY;
 int old_omode = MODE_KEY;
@@ -204,6 +205,19 @@ char *decode_ccid(uint8_t *pkt)
 	id_p[0] = pkt[26];
 
 	return uint64_to_str(devid);
+}
+
+uint32_t decode_sensor_epoch(uint8_t *p)
+{
+	uint32_t epoch = 0;
+	uint8_t *ep = (uint8_t *)&epoch;
+
+	ep[3] = p[18];
+	ep[2] = p[19];
+	ep[1] = p[20];
+	ep[0] = p[21];
+
+	return epoch;
 }
 
 /* only support .0001 */
@@ -452,7 +466,7 @@ void show_frame(int l, int mode, bool alarm)
 
 			u8g2.drawGlyph(120, 12+16*l, 81);
 
-		} else if (MODE_ABC == mode || MODE_RAW == mode) {
+		} else if (MODE_CC2 == mode || MODE_RAW == mode || MODE_MAC == mode) {
 
 			// Bell icon. notice the message tagged for testing
 			//u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
@@ -527,11 +541,19 @@ void show_mode(int mode)
 
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
 			u8g2.drawGlyph(112, 61, 81);
-		} else if (MODE_ABC == mode) {
+		} else if (MODE_CC2 == mode) {
 			// notice the message tagged for testing
 			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
 			u8g2.setCursor(12, 64);
 			u8g2.print(" CC - 2.0 ");
+
+			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
+			u8g2.drawGlyph(112, 61, 65);
+		} else if (MODE_MAC == mode) {
+			// notice the message tagged for testing
+			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
+			u8g2.setCursor(12, 64);
+			u8g2.print(" CC - CMD ");
 
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
 			u8g2.drawGlyph(112, 61, 65);
@@ -572,7 +594,7 @@ void show_low_bat()
 void change_omode()
 {
 	omode++;
-	omode %= 4;
+	omode %= 5;
 	INFO("%s", "omode: ");
 	INFOLN("%d", omode);
 }
@@ -677,7 +699,7 @@ void rx_irq_handler()
 
 		if (omode == MODE_RAW ||
 			(omode == MODE_KEY && is_our_pkt(p, plen) && (p[15]&0x0F) >= 3) ||
-			((omode == MODE_ABC || omode == MODE_ALL) && is_our_pkt(p, plen))) {
+			((omode == MODE_CC2 || omode == MODE_ALL || omode == MODE_MAC) && is_our_pkt(p, plen))) {
 
 			push_pkt(&g_cbuf, p, sx1272._RSSIpacket, plen);
 
@@ -967,7 +989,7 @@ void loop(void)
 			#endif
 
 				INFOLN("%s", cmd);
-		} else if (MODE_ABC == omode) {
+		} else if (MODE_CC2 == omode) {
 			// only show the cc2.0 message
 			if (p_len == 36) {
 
@@ -1000,6 +1022,41 @@ void loop(void)
 			#endif
 				INFOLN("%s", cmd);
 			}
+		} else if (MODE_MAC == omode) {
+
+			if (dev_id[3] == '2' && dev_id[4] == '0' && p_len == 36) {
+
+			#ifdef DEBUG
+				sprintf(cmd, "%s/%02X/%d/%d/ccid/%s/rssi/%d",
+					decode_devid(p),
+					p[11],	/* mac cmd */
+					p[12],	/* cad_on */
+					decode_sensor_epoch(),
+					decode_ccid(p),
+					d.rssi);
+			#endif
+
+			#ifdef ENABLE_OLED
+				int fi = (c % 4) * 2;
+
+				sprintf(frame_buf[fi], "%s %1d %4d",
+					dev_id,
+					p[17],
+					d.rssi);
+
+				sprintf(frame_buf[fi + 1], "%d %02X %02X %d %s",
+					check_pkt_mic(p, p_len),
+					p[11],
+					p[12],
+					decode_sensor_epoch(p),
+					decode_ccid(p)+5);
+
+				show_frame(fi, omode, false);
+				c++;
+			#endif
+				INFOLN("%s", cmd);
+			}
+
 		} else if (MODE_KEY == omode) {
 			// only show trigged message
 
