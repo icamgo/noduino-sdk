@@ -404,8 +404,11 @@ char *get_vbat(float *fv)
 {
 #ifdef USE_MCP342X_MON_VBAT
 	int uv = mcp342x_get_uv();
-	//float vbat = uv * (99.985 + 219.35) / 99.985 / 1000000.0;
+	#ifdef CONFIG_OLD_DEV
+	float vbat = uv * (99.985 + 219.35) / 99.985 / 1000000.0;
+	#else
 	float vbat = uv * (200.0 + 1008.5) / 200.0 / 1000000.0;
+	#endif
 #else
 	int ad = system_adc_read();
 	float delta = 82.0 + (ad - 639.0) * (22.0/172.0);
