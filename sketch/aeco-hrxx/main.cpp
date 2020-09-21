@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "crypto.h"
+
 #define ENABLE_RX_INTERRUPT		1
 
 #ifdef ENABLE_RX_INTERRUPT
@@ -162,6 +164,8 @@ char *uint64_to_str(uint64_t n)
 {
 	char *dest = dev_id;
 
+	memset(dev_id, 0, 24);
+
 	dest += 20;
 	*dest-- = 0;
 	while (n) {
@@ -171,7 +175,7 @@ char *uint64_to_str(uint64_t n)
 
 	strcpy(dev_id, dest+1);
 
-	return dest + 1;
+	return dev_id;
 }
 
 char *decode_devid(uint8_t *pkt)
@@ -184,6 +188,20 @@ char *decode_devid(uint8_t *pkt)
 
 		*(((uint8_t *)&devid) + 7 - b) = pkt[a];
 	}
+
+	return uint64_to_str(devid);
+}
+
+char *decode_ccid(uint8_t *pkt)
+{
+	uint64_t devid = 0UL;
+	uint8_t *id_p = (uint8_t *)&devid;
+
+	id_p[4] = pkt[18];
+	id_p[3] = pkt[19];
+	id_p[2] = pkt[24];
+	id_p[1] = pkt[25];
+	id_p[0] = pkt[26];
 
 	return uint64_to_str(devid);
 }
@@ -322,14 +340,14 @@ char *decode_sensor_data(uint8_t *pkt)
 		// Temperature
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
-		sprintf(dev_data, "%s ", dev_data);
+		sprintf(dev_data, "%s", dev_data);
 
 	} else if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3')) {
 
 		// Pressure
 		dd = (float)(data / 100.0);
 		ftoa(dev_data, dd, 2);
-		sprintf(dev_data, "%s  ", dev_data);
+		sprintf(dev_data, "%s", dev_data);
 
 	} else if (dev_id[3] == '0' && dev_id[4] == '7') {
 
@@ -362,13 +380,13 @@ char *decode_sensor_data(uint8_t *pkt)
 		// Float & Temp Sensor
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
-		sprintf(dev_data, "%s ", dev_data);
+		sprintf(dev_data, "%s", dev_data);
 
 	} else if (dev_id[3] == '1' && dev_id[4] == '4') {
 		// Water Leak Sensor
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
-		sprintf(dev_data, "%s ", dev_data);
+		sprintf(dev_data, "%s", dev_data);
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
 		// Internal Temprature of ECC
@@ -510,10 +528,10 @@ void show_mode(int mode)
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
 			u8g2.drawGlyph(112, 61, 81);
 		} else if (MODE_ABC == mode) {
-			// Bell icon. notice the message tagged for testing
+			// notice the message tagged for testing
 			u8g2.setFont(u8g2_font_freedoomr10_tu);	// choose a suitable font
 			u8g2.setCursor(12, 64);
-			u8g2.print(" T2 - EXP ");
+			u8g2.print(" CC - 2.0 ");
 
 			u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
 			u8g2.drawGlyph(112, 61, 65);
@@ -736,6 +754,8 @@ void setup()
 
 	/* Start watchdog */
 	WDOG_Init(&wInit);
+
+	crypto_init();
 }
 
 void loop(void)
@@ -911,19 +931,22 @@ void loop(void)
 		if (strcmp(dev_id, "") == 0) {
 			// lora module unexpected error
 			sx1272.reset();
-#if DEBUG > 1
+		#if DEBUG > 1
 			INFO_S("%s", "Resetting lora module\n");
-#endif
+		#endif
 			radio_setup();
 		}
 #endif
 
 		if (MODE_ALL == omode) {
 			// show all message
+#ifndef ENABLE_RX_INTERRUPT
 			if (p[0] != 0x47 || p[1] != 0x4F) {
 				return;
 			}
+#endif
 
+			#ifdef DEBUG
 			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
 				dev_id,
 				decode_vbat(p),
@@ -932,61 +955,72 @@ void loop(void)
 				decode_cmd(p),
 				decode_ver(p),
 				d.rssi);
+			#endif
 
-#ifdef ENABLE_OLED
+			#ifdef ENABLE_OLED
 				sprintf(frame_buf[c % 8], "%s %4d",
 					dev_id,
 					d.rssi);
 
 				show_frame(c % 8, omode, false);
 				c++;
-#endif
+			#endif
 
 				INFOLN("%s", cmd);
 		} else if (MODE_ABC == omode) {
-			// only show exception message
-			if (p[0] == 0x47 && p[1] == 0x4F && (p[3] != 0 || p[4] != 0 || p[5] != 0
-				|| (p[2] == 0x31 && p_len != 21) || (p[2] == 0x32 && p_len != 23)
-				|| check_crc(p, p_len) == false) || p[2] > 0x36 || p[2] < 0x31) {
+			// only show the cc2.0 message
+			if (p_len == 36) {
 
-				sprintf(cmd, "%s/rssi/%d",
-					dev_id,
+			#ifdef DEBUG
+				sprintf(cmd, "%s/U/%s/%s/%s/ccid/%s/rssi/%d",
+					decode_devid(p),
+					decode_vbat(p),
+					decode_sensor_type(),
+					decode_sensor_data(p),
+					decode_ccid(p),
 					d.rssi);
+			#endif
 
-#ifdef ENABLE_OLED
+			#ifdef ENABLE_OLED
 				int fi = (c % 4) * 2;
 
-				sprintf(frame_buf[fi], "%s", dev_id);
-
-				sprintf(frame_buf[fi + 1], "%02X %d %d %s%4d",
-					p[2],
-					p_len,
-					check_crc(p, p_len),
-					decode_vbat(p),
+				sprintf(frame_buf[fi], "%s %1d %4d",
+					dev_id,
+					p[17],
 					d.rssi);
+
+				sprintf(frame_buf[fi + 1], "%d %s %s %s",
+					check_pkt_mic(p, p_len),
+					decode_vbat(p),
+					decode_sensor_data(p),
+					decode_ccid(p)+5);
 
 				show_frame(fi, omode, false);
 				c++;
-#endif
+			#endif
 				INFOLN("%s", cmd);
 			}
 		} else if (MODE_KEY == omode) {
 			// only show trigged message
 
+#ifndef ENABLE_RX_INTERRUPT
 			if (p[0] != 0x47 || p[1] != 0x4F) {
 				return;
 			}
+#endif
 
 			if ((p[2] == 0x33 || p[2] == 0x34) && (p[15] == 0x03 || p[15] == 0x04 || p[15] == 0x05)) {
 
+			#ifdef DEBUG
 				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
 					dev_id,
 					decode_vbat(p),
 					decode_sensor_type(),
 					decode_sensor_data(p),
 					d.rssi);
+			#endif
 
-#ifdef ENABLE_OLED
+			#ifdef ENABLE_OLED
 				int fi = (c % 4) * 2;
 				sprintf(frame_buf[fi], "%s %4d",
 					dev_id,
@@ -995,28 +1029,28 @@ void loop(void)
 				if (dev_id[3] == '0' && (dev_id[4] == '8')) {
 
 					sprintf(frame_buf[fi + 1], "%s %s %s",
-						dev_type,
-						dev_data,
-						dev_vbat
+						decode_sensor_type(),
+						decode_sensor_data(p),
+						decode_vbat(p)
 						);
 				} else {
 					sprintf(frame_buf[fi + 1], " %s %s %s",
-						dev_type,
-						dev_data,
-						dev_vbat
+						decode_sensor_type(),
+						decode_sensor_data(p),
+						decode_vbat(p)
 						);
 				}
 
 				show_frame(fi, omode, p[15] & 0x04);
 				c++;
-#endif
+			#endif
 
 				INFOLN("%s", cmd);
 			}
 		} else if (MODE_RAW == omode) {
 
 			// only show raw message, <= 32bytes
-#ifdef ENABLE_OLED
+			#ifdef ENABLE_OLED
 				int fi = (c % 4) * 2;
 				sprintf(frame_buf[fi], "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 					p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
@@ -1026,7 +1060,7 @@ void loop(void)
 
 				show_frame(fi, omode, false);
 				c++;
-#endif
+			#endif
 		}
 	}
 }
