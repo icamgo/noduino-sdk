@@ -35,7 +35,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V1.7"
+#define	FW_VER						"V1.8"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -93,10 +93,10 @@ struct ctrl_fifo g_cfifo;
 #ifdef CONFIG_V0
 #define DEST_ADDR				1
 
-bool cad_on = false;
-#define	CAD_TX_TIME					1000			// 1000ms
-#define	NOCAD_TX_TIME				220				// 220ms
-int tx_time = NOCAD_TX_TIME;
+bool cad_on = true;
+#define	CAD_TX_TIME					900			// 900ms
+#define	NOCAD_TX_TIME				220			// 220ms
+int tx_time = CAD_TX_TIME;
 
 #define TXRX_CH					CH_01_472
 #endif
@@ -1036,7 +1036,7 @@ int tx_pkt(uint8_t *p, int len)
 {
 	//radio_setup();
 
-	if (false == is_our_did(p)) {
+	if (false == is_our_did(p) || p[2] < 0x33) {
 
 		return 5;
 	}
@@ -1503,6 +1503,10 @@ void loop(void)
 			if (0 == e) {
 
 				tx_cnt++;
+
+			} else if (5 != e) {
+				// valide pkt, other tx failed issue
+				push_pkt(&g_cbuf, p, d.rssi, p_len);
 			}
 
 			sx1272.rx_v0();
