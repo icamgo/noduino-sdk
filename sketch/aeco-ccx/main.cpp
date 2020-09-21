@@ -1506,7 +1506,9 @@ void loop(void)
 
 			} else if (5 != e) {
 				// valide pkt, other tx failed issue
+				noInterrupts();
 				push_pkt(&g_cbuf, p, d.rssi, p_len);
+				interrupts();
 			}
 
 			sx1272.rx_v0();
