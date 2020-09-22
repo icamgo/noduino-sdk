@@ -753,8 +753,8 @@ uint32_t get_ccid_low2(uint8_t *pkt)
 	id_p[1] = pkt[25];
 	id_p[0] = pkt[26];
 
-	double tt = devid / 100.0;
-	uint32_t ret = (tt - (uint32_t)tt) * 100;
+	uint64_t tt = (uint64_t)(devid / 100) * 100;
+	uint32_t ret = (uint32_t)(devid - tt);
 
 	return ret;
 }
