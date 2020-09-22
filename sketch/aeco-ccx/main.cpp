@@ -661,8 +661,8 @@ bool is_our_did(uint8_t *p)
 	}
 
 	uint32_t temp = devid / 10000;
-	float tt = temp / 100.0;
-	uint32_t wk_yr = (tt - (uint32_t)tt) * 100;
+	uint32_t tt = (uint32_t)(temp / 100);
+	uint32_t wk_yr = (uint32_t)(temp - tt * 100);
 
 	if (wk_yr > 52) {
 
@@ -672,8 +672,8 @@ bool is_our_did(uint8_t *p)
 	}
 
     temp = devid / 100000000;
-    tt = temp / 100.0;
-	wk_yr = (tt - (uint32_t)tt) * 100;
+    tt = (uint32_t)(temp / 100);
+	wk_yr = (uint32_t)(temp - tt * 100);
 
 	if (wk_yr > 30 || wk_yr < 18) {
 
@@ -1145,7 +1145,9 @@ void rx_irq_handler()
 				// data down pkt (from gw/ctrl_client)
 
 				if (p[27] & 0x08) {
+			#ifdef ENABLE_CRYPTO
 					payload_decrypt(p, plen, ae33kk);
+			#endif
 				}
 
 				process_mac_cmds(p, plen);
