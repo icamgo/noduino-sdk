@@ -93,7 +93,7 @@ static int oled_i;
 static float cur_curr = 0.0;
 #endif
 
-static uint8_t need_push = 0;
+static uint32_t need_push = 0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
@@ -150,8 +150,7 @@ uint32_t tx_ok_cnt = 0;
 
 int mode = MODE_P;
 int old_mode = MODE_P;
-
-uint8_t key_count = 0;
+uint32_t key_count = 0;
 
 #ifdef DEBUG
 
@@ -1087,6 +1086,7 @@ void loop()
 	if (key_count >= 1) {
 
 		power_on_dev();
+		u8g2.begin();
 		task_oled();
 
 	}
