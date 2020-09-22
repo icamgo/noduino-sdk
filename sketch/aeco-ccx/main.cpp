@@ -32,10 +32,12 @@
 #define DEBUG_HEX_PKT				1
 #endif
 
+#define ENABLE_EXP_CC				1
+
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V2.0"
+#define	FW_VER						"V2.1"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -739,6 +741,104 @@ uint16_t update_crc(uint8_t *p, int len)
 
 uint64_t get_devid();
 
+#ifdef ENABLE_EXP_CC
+uint32_t get_ccid_low2(uint8_t *pkt)
+{
+	uint64_t devid = 0UL;
+	uint8_t *id_p = (uint8_t *)&devid;
+
+	id_p[4] = pkt[18];
+	id_p[3] = pkt[19];
+	id_p[2] = pkt[24];
+	id_p[1] = pkt[25];
+	id_p[0] = pkt[26];
+
+	double tt = devid / 100.0;
+	uint32_t ret = (tt - (uint32_t)tt) * 100;
+
+	return ret;
+}
+
+void encode_temp_vbat(uint8_t *pkt)
+{
+	float dd, vb;
+
+	decode_devid(pkt);
+
+	if ('2' == dev_id[3] && '0' == dev_id[4]) {
+		// do not encode the cc rpt pkt
+		return;
+	}
+
+	// encode the vbat
+	uint16_t vbat = pkt[13] << 8 | pkt[14];
+
+	vb = (float)(vbat / 1000.0);
+	uint16_t ui16 = vb * 10;
+
+	ui16 *= 100;
+	ui16 += (uint16_t)get_ccid_low2(pkt);
+
+	uint8_t *pb = (uint8_t *) &ui16;
+	pkt[13] = pb[1]; pkt[14] = pb[0];
+	///////////////////
+
+	// encode the temp
+	int16_t data = (pkt[11]  << 8) | pkt[12];
+
+	if ('0' == dev_id[3] && ('2' == dev_id[4] || '8' == dev_id[4])) {
+		// 0.1
+		dd = (float)(data / 10.0);
+
+		if (dd >= 0 && dd < 130) {
+
+			data = (dd + 0.5) * 10;
+
+		} else {
+
+			return;
+		}
+
+	} else if ('0' == dev_id[3] && '3' == dev_id[4]) {
+		// 0.01
+		dd = (float)(data / 100.0);
+
+		if (dd >= 0 && dd < 18) {
+
+			data = (dd + 0.05) * 100;
+
+		} else {
+
+			return;
+		}
+
+	} else if ('1' == dev_id[3] && '3' == dev_id[4]) {
+		// 0.1
+		dd = (float)(data / 10.0);
+
+		if (dd > 1 && dd <= 100) {
+
+			data = (dd + 0.5) * 10;
+
+		} else {
+
+			return;
+		}
+	}
+
+	if (pkt[17] < 9) {
+		data += pkt[17];
+	} else {
+		data += 9;
+	}
+
+	pb = (uint8_t *) &data;
+	pkt[11] = pb[1];
+	pkt[12] = pb[0];
+
+}
+#endif
+
 bool process_pkt(uint8_t *p, int *len)
 {
 	//p[0] = 0x22;
@@ -798,11 +898,12 @@ bool process_pkt(uint8_t *p, int *len)
 				p[17] = 1;			// increment the cc-relayed-cnt
 			}
 
+
 			//uint8_t mtype = p[27] & 0xE0;
 			//if (0x20 != mtype && 0x60 != mtype) {
 			// pkt is not the down pkt
 
-			if ((first_ccid && (1 == p[17]))
+			if ((1 == p[17])
 				|| (false == first_ccid && p[17] > 1)) {
 
 				uint64_t devid = get_devid();
@@ -816,6 +917,13 @@ bool process_pkt(uint8_t *p, int *len)
 				p[18] = pd[4];
 			}
 			//}
+
+		#ifdef ENABLE_EXP_CC
+			if (p[27] & 0x10) {
+				// has ccid
+				encode_temp_vbat(p);
+			}
+		#endif
 		}
 
 	}
