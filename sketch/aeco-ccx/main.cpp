@@ -773,7 +773,7 @@ void encode_temp_vbat(uint8_t *pkt)
 	// encode the vbat
 	uint16_t vbat = pkt[13] << 8 | pkt[14];
 
-	vb = (float)(vbat / 1000.0);
+	vb = (float)(vbat / 1000.0 + 0.05);
 	uint16_t ui16 = vb * 10;
 
 	ui16 *= 100;
@@ -826,7 +826,7 @@ void encode_temp_vbat(uint8_t *pkt)
 		}
 	}
 
-	if (pkt[17] < 9) {
+	if (pkt[17] < 6) {
 		data += pkt[17];
 	} else {
 		data += 9;
