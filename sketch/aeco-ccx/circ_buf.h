@@ -2,7 +2,7 @@
 #define __CIRC_BUF_H__
 
 #ifdef EFM32HG110F64
-#define	CIRC_BUF_SIZE		12
+#define	CIRC_BUF_SIZE		16
 #else
 #define	CIRC_BUF_SIZE		8
 #endif
