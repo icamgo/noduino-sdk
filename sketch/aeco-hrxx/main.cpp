@@ -212,21 +212,10 @@ uint32_t decode_cc2_epoch(uint8_t *p)
 	uint32_t epoch = 0;
 	uint8_t *ep = (uint8_t *)&epoch;
 
-	if (p[11] & 0x80) {
-		// mac cmds
-
-		ep[3] = p[18];
-		ep[2] = p[19];
-		ep[1] = p[20];
-		ep[0] = p[21];
-	} else {
-		// normal temperature
-
-		ep[3] = p[20];
-		ep[2] = p[21];
-		ep[1] = p[22];
-		ep[0] = p[23];
-	}
+	ep[3] = p[20];
+	ep[2] = p[21];
+	ep[1] = p[22];
+	ep[0] = p[23];
 
 	return epoch;
 }

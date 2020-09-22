@@ -1114,10 +1114,12 @@ void set_mac_status_pkt()
 
 	extern uint32_t secTicks;
 	uint8_t *ep = (uint8_t *)&secTicks;
-	pkt[18] = ep[3];
-	pkt[19] = ep[2];
-	pkt[20] = ep[1];
-	pkt[21] = ep[0];
+	pkt[20] = ep[3];
+	pkt[21] = ep[2];
+	pkt[22] = ep[1];
+	pkt[23] = ep[0];
+
+	// pkt[27] = 0;		/* data up pkt, no crypto */
 
 	p = (uint8_t *) &tx_count;
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
