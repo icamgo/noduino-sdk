@@ -63,6 +63,7 @@ static uint8_t tx_cause = RESET_TX;
 #define MAC_CAD_ON				0x85
 #define MAC_FIRST_CCID			0x86
 #define MAC_LATEST_CCID			0x87
+#define MAC_RESET_CC			0x88
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 //#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
@@ -993,6 +994,11 @@ void process_mac_cmds(uint8_t *p, int len)
 				tx_cause = MAC_TX;
 				need_push_mac = 0x55;
 				break;
+			case MAC_RESET_CC:
+				mac_cmd = cmd;
+				tx_cause = MAC_TX;
+				need_push_mac = 0x55;
+				break;
 		}
 	}
 
@@ -1155,8 +1161,7 @@ void set_mac_status_pkt()
 	*/
 	pkt[11] = mac_cmd; pkt[12] = cad_on;
 
-	float vbat = adc.readVbat();
-	ui16 = vbat * 1000;
+	ui16 = get_encode_vbat();
 	p = (uint8_t *) &ui16;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
@@ -1609,6 +1614,10 @@ void loop(void)
 		if (0 == e) {
 			// tx successful
 			need_push_mac = 0;
+
+			if (MAC_RESET_CC == mac_cmd) {
+				NVIC_SystemReset();
+			}
 		}
 
 		sx1272.rx_v0();
