@@ -55,12 +55,14 @@ static uint16_t tx_count = 0;
 #define	MAC_TX				10
 static uint8_t tx_cause = RESET_TX;
 
-#define MAC_CCTX_OFF				0x80
+#define MAC_CCTX_OFF			0x80
 #define MAC_CCTX_ON				0x81
-#define MAC_SET_EPOCH				0x82
+#define MAC_SET_EPOCH			0x82
 #define MAC_GET_CMD				0x83
 #define MAC_CAD_OFF				0x84
 #define MAC_CAD_ON				0x85
+#define MAC_FIRST_CCID			0x86
+#define MAC_LATEST_CCID			0x87
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 //#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
@@ -915,7 +917,7 @@ void process_mac_cmds(uint8_t *p, int len)
 
 	if ((~cmd & 0xFF) != vcmd) {
 		// invalid cmd
-		Serial.println(cmd);
+		INFOLN(cmd);
 		return;
 	}
 
@@ -943,7 +945,7 @@ void process_mac_cmds(uint8_t *p, int len)
 			mac_cmd_sec = sec;
 		}
 
-		Serial.println("ok");
+		INFOLN("ok");
 		switch(cmd) {
 			case MAC_CCTX_OFF:
 				turn_tx_off(cmd);
@@ -979,6 +981,18 @@ void process_mac_cmds(uint8_t *p, int len)
 				need_push_mac = 0x55;
 				break;
 			#endif
+			case MAC_FIRST_CCID:
+				mac_cmd = cmd;
+				first_ccid = true;
+				tx_cause = MAC_TX;
+				need_push_mac = 0x55;
+				break;
+			case MAC_LATEST_CCID:
+				mac_cmd = cmd;
+				first_ccid = false;
+				tx_cause = MAC_TX;
+				need_push_mac = 0x55;
+				break;
 		}
 	}
 
