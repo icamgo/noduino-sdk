@@ -798,25 +798,24 @@ bool process_pkt(uint8_t *p, int *len)
 				p[17] = 1;			// increment the cc-relayed-cnt
 			}
 
-			uint8_t mtype = p[27] & 0xE0;
-			if (0x20 != mtype && 0x60 != mtype) {
+			//uint8_t mtype = p[27] & 0xE0;
+			//if (0x20 != mtype && 0x60 != mtype) {
+			// pkt is not the down pkt
 
-				// pkt is not the down pkt
+			if ((first_ccid && (1 == p[17]))
+				|| (false == first_ccid && p[17] > 1)) {
 
-				if ((first_ccid && (1 == p[17]))
-					|| (false == first_ccid && p[17] > 1)) {
+				uint64_t devid = get_devid();
+				uint8_t *pd = (uint8_t *) &devid;
 
-					uint64_t devid = get_devid();
-					uint8_t *pd = (uint8_t *) &devid;
+				p[26] = pd[0];
+				p[25] = pd[1];
+				p[24] = pd[2];
 
-					p[26] = pd[0];
-					p[25] = pd[1];
-					p[24] = pd[2];
-
-					p[19] = pd[3];
-					p[18] = pd[4];
-				}
+				p[19] = pd[3];
+				p[18] = pd[4];
 			}
+			//}
 		}
 
 	}
@@ -932,7 +931,7 @@ void process_mac_cmds(uint8_t *p, int len)
 
 		uint32_t sec = 0;
 		pd = (uint8_t *) &sec;
-		pd[0] = p[21]; pd[1] = p[20]; pd[2] = p[19]; pd[3] = p[18];
+		pd[0] = p[23]; pd[1] = p[22]; pd[2] = p[21]; pd[3] = p[20];
 
 		/*
 		 * check the sec-ts

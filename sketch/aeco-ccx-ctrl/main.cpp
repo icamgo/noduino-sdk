@@ -405,18 +405,14 @@ int send_cmd(uint8_t cmd)
 
 	pkt[15] = tx_cause;
 
-	// 18:21
+	// 18:19
+
+	// 20:23
 	uint32_t ep = seconds();
 	p = (uint8_t *) &ep;
-	pkt[18] = p[3]; pkt[19] = p[2]; pkt[20] = p[1]; pkt[21] = p[0];
+	pkt[20] = p[3]; pkt[21] = p[2]; pkt[22] = p[1]; pkt[23] = p[0];
 
 	INFOLN("%d", ep);
-
-	// Internal humidity to detect water leak of the shell
-	pkt[22] = 0;
-
-	// Internal current consumption
-	pkt[23] = 0;
 
 	// pkt[24:27]
 
