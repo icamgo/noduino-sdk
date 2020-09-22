@@ -35,7 +35,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V1.9"
+#define	FW_VER						"V2.0"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -111,11 +111,14 @@ uint8_t rx_err_cnt = 0;
 
 uint32_t rx_cnt = 0;
 uint32_t tx_cnt = 0;
+uint32_t old_tx_cnt = 0;
+uint32_t tx_cnt_1min = 0;
 
 uint32_t old_rx_cnt = 0;
 uint32_t cnt_1min = 0;
 
 bool tx_on = true;
+bool first_ccid = false;
 
 /*
  * Output Mode:
@@ -792,20 +795,24 @@ bool process_pkt(uint8_t *p, int *len)
 				p[17] = 1;			// increment the cc-relayed-cnt
 			}
 
-			uint64_t devid = get_devid();
-			uint8_t *pd = (uint8_t *) &devid;
-
 			uint8_t mtype = p[27] & 0xE0;
 			if (0x20 != mtype && 0x60 != mtype) {
 
 				// pkt is not the down pkt
-				p[26] = pd[0];
-				p[25] = pd[1];
-				p[24] = pd[2];
 
-				p[19] = pd[3];
-				p[18] = pd[4];
+				if ((first_ccid && (1 == p[17]))
+					|| (false == first_ccid && p[17] > 1)) {
 
+					uint64_t devid = get_devid();
+					uint8_t *pd = (uint8_t *) &devid;
+
+					p[26] = pd[0];
+					p[25] = pd[1];
+					p[24] = pd[2];
+
+					p[19] = pd[3];
+					p[18] = pd[4];
+				}
 			}
 		}
 
@@ -1058,7 +1065,7 @@ int tx_pkt(uint8_t *p, int len)
 	return e;
 }
 
-float fetch_mcu_temp()
+int16_t get_encode_mcu_temp()
 {
 	float temp = 0.0;
 	for(int i=0; i<3; i++) {
@@ -1066,7 +1073,36 @@ float fetch_mcu_temp()
 	}
 	temp /= 3.0;
 
-	return temp;
+	int16_t ret = (int16_t)(temp + 0.5) * 10;
+
+	/*
+	 * x_bit0: tx_on
+	 * x_bit1: cad_on
+	 * x_bit2: first_ccid
+	*/
+	uint8_t xbit = first_ccid << 2 | cad_on << 1 | tx_on;
+
+	return ret + xbit;
+}
+
+uint16_t get_encode_vbat()
+{
+	/*
+	 *  1: encode the tx_cnt/min
+	 * 10: encode the tx_cnt/min
+	*/
+	float vbat = adc.readVbat();
+	uint16_t ui16 = vbat * 10;
+
+	ui16 *= 100;
+
+	if (tx_cnt_1min > 99) {
+		tx_cnt_1min = 99;
+	}
+
+	ui16 += (uint16_t)tx_cnt_1min;
+
+	return ui16;
 }
 
 uint16_t get_crc(uint8_t *pp, int len)
@@ -1120,6 +1156,7 @@ void set_mac_status_pkt()
 	pkt[23] = ep[0];
 
 	// pkt[27] = 0;		/* data up pkt, no crypto */
+	pkt[27] = (uint8_t)(first_ccid << 2 | cad_on << 1 | tx_on);
 
 	p = (uint8_t *) &tx_count;
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
@@ -1147,13 +1184,11 @@ void set_temp_pkt()
 		pkt[3+i] = p[7-i];
 	}
 
-	float chip_temp = fetch_mcu_temp();
-	int16_t ui16 = (int16_t)(chip_temp * 10);
+	int16_t ui16 = get_encode_mcu_temp();
 	p = (uint8_t *) &ui16;
 	pkt[11] = p[1]; pkt[12] = p[0];
 
-	float vbat = adc.readVbat();
-	ui16 = vbat * 1000;
+	ui16 = get_encode_vbat();
 	p = (uint8_t *) &ui16;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
@@ -1166,6 +1201,9 @@ void set_temp_pkt()
 	pkt[21] = ep[2];
 	pkt[22] = ep[1];
 	pkt[23] = ep[0];
+
+	// pkt[27] = 0;		/* data up pkt, no crypto */
+	pkt[27] = (uint8_t)(first_ccid << 2 | cad_on << 1 | tx_on);
 
 	p = (uint8_t *) &tx_count;
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
@@ -1192,7 +1230,11 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 	++cnt_1min;
 
 	if (cnt_1min % 10 == 0) {
-		// 10min
+		// 10min timer
+
+		tx_cnt_1min = (tx_cnt - old_tx_cnt) / 10;
+		old_tx_cnt = tx_cnt;
+
 		tx_cause = TIMER_TX;
 		need_push = 0x55;
 	}
@@ -1233,17 +1275,15 @@ void key_report_status()
 		pkt[3+i] = p[7-i];
 	}
 
-	float chip_temp = fetch_mcu_temp();
-	int16_t ui16 = (int16_t)(chip_temp * 10);
+	int16_t ui16 = get_encode_mcu_temp();
 	p = (uint8_t *) &ui16;
 	pkt[11] = p[1]; pkt[12] = p[0];
 
-	float vbat = adc.readVbat();
-	ui16 = vbat * 1000;
+	ui16 = get_encode_vbat();
 	pkt[13] = p[1]; pkt[14] = p[0];
 
 	// tx_cause = KEY_TX
-	pkt[15] = 3;
+	pkt[15] = KEY_TX;
 
 	p = (uint8_t *) &tx_count;
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
