@@ -129,13 +129,12 @@ static uint8_t need_push = 0;
 
 #define MAX_DBM					20
 
+uint8_t message[PAYLOAD_LEN+6];
+
 #ifdef CONFIG_V0
-uint8_t message[32] = { 0x47, 0x4F, 0x33 };
 uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 uint32_t tx_ok_cnt = 0;
-#else
-uint8_t message[32];
 #endif
 
 /*
@@ -767,16 +766,19 @@ uint16_t get_crc(uint8_t *pp, int len)
 
 void push_data()
 {
-	long startSend;
-	long endSend;
-
+	long start;
+	long end;
 	int e;
+
+	WDOG_Feed();
 
 #ifdef CONFIG_V0
 	uint8_t *pkt = message;
-#endif
 
-	WDOG_Feed();
+	memset(pkt, 0, PAYLOAD_LEN+6);
+
+	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
+#endif
 
 	////////////////////////////////
 #ifdef MONITOR_CURRENT
@@ -804,13 +806,10 @@ void push_data()
 
 
 #ifdef CONFIG_V0
-	uint64_t devid = get_devid();
-
-	uint8_t *p = (uint8_t *) &devid;
-
 	// set devid
-	int i = 0;
-	for(i = 0; i < 8; i++) {
+	uint64_t devid = get_devid();
+	uint8_t *p = (uint8_t *) &devid;
+	for(int i = 0; i < 8; i++) {
 		pkt[3+i] = p[7-i];
 	}
 
@@ -882,7 +881,7 @@ void push_data()
 #endif
 
 #ifdef DEBUG
-	startSend = millis();
+	start = millis();
 #endif
 
 #ifdef CONFIG_V0
@@ -929,13 +928,13 @@ void push_data()
 	}
 
 #ifdef DEBUG
-	endSend = millis();
+	end = millis();
 
 	INFO("LoRa Sent in ");
-	INFOLN(endSend - startSend);
+	INFOLN(end - start);
 
 	INFO("LoRa Sent w/CAD in ");
-	INFOLN(endSend - sx1272._startDoCad);
+	INFOLN(end - sx1272._startDoCad);
 
 	INFO("Packet sent, state ");
 	INFOLN(e);
