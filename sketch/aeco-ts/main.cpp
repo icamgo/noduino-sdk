@@ -24,9 +24,11 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.8"
+#define FW_VER						"Ver 1.9"
 
 //#define CONFIG_2MIN					1
+
+#define ENABLE_CRYPTO				1
 
 #define ENABLE_OLED					1
 #define ENABLE_CAD					1
@@ -50,14 +52,18 @@ static uint32_t cnt_rt_01 = 0;
 
 #if 0
 #define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
-#else
 #define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
 #endif
 
+#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
+
 #ifdef ENABLE_RF
 #include "softspi.h"
-
 #include "sx1272.h"
+#endif
+
+#ifdef ENABLE_CRYPTO
+#include "crypto.h"
 #endif
 
 /* Timer used for bringing the system back to EM0. */
@@ -121,13 +127,12 @@ static uint8_t need_push = 0;
 
 #define MAX_DBM					20
 
+uint8_t message[PAYLOAD_LEN+6] = { 0x47, 0x4F, 0x33 };
+
 #ifdef CONFIG_V0
-uint8_t message[32] = { 0x47, 0x4F, 0x33 };
 uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 uint32_t tx_ok_cnt = 0;
-#else
-uint8_t message[32];
 #endif
 
 /*
@@ -605,6 +610,10 @@ void setup()
 	wInit.em2Run = true;
 	wInit.em3Run = true;
 
+#ifdef ENABLE_CRYPTO
+	crypto_init();
+#endif
+
 #ifdef CONFIG_2MIN
 	//wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
@@ -736,13 +745,16 @@ uint16_t get_crc(uint8_t *pp, int len)
 #ifdef ENABLE_RF
 void push_data()
 {
-	long startSend;
-	long endSend;
+	long start;
+	long end;
 
 	int e;
 
 #ifdef CONFIG_V0
 	uint8_t *pkt = message;
+
+	memset(pkt, 0, PAYLOAD_LEN+6);
+	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
 #endif
 
 	WDOG_Feed();
@@ -790,11 +802,6 @@ void push_data()
 	ui16 = cur_vbat * 1000;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
-	p = (uint8_t *) &tx_count;
-	//pkt[16] = p[1]; pkt[17] = p[0];
-	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
-	tx_count++;
-
 	float chip_temp = fetch_mcu_temp();
 
 	// Humidity Sensor data	or Water Leak Sensor data
@@ -813,11 +820,24 @@ void push_data()
 	pkt[23] = 0;
 #endif
 
+	p = (uint8_t *) &tx_count;
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
+	tx_count++;
 
+	/////////////////////////////////////////////////////////
+	/*
+	 * 2. crc
+	 * 3. set mic
+	*/
 	ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
+#ifdef ENABLE_CRYPTO
+	set_pkt_mic(pkt, PAYLOAD_LEN+6);
+#endif
+	/////////////////////////////////////////////////////////
 #else
 	uint8_t r_size;
 
@@ -841,7 +861,7 @@ void push_data()
 #endif
 
 #ifdef DEBUG
-	startSend = millis();
+	start = millis();
 #endif
 
 #ifdef CONFIG_V0
@@ -888,13 +908,13 @@ void push_data()
 	}
 
 #ifdef DEBUG
-	endSend = millis();
+	end = millis();
 
 	INFO("LoRa Sent in ");
-	INFOLN(endSend - startSend);
+	INFOLN(end - start);
 
 	INFO("LoRa Sent w/CAD in ");
-	INFOLN(endSend - sx1272._startDoCad);
+	INFOLN(end - sx1272._startDoCad);
 
 	INFO("Packet sent, state ");
 	INFOLN(e);
