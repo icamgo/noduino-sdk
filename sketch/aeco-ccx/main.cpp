@@ -37,7 +37,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V2.2"
+#define	FW_VER						"V2.3"
 
 #define LOW_BAT_THRESHOLD			2.9
 
@@ -1812,40 +1812,62 @@ void loop(void)
 
 			set_temp_pkt();
 
-		#ifdef ENABLE_CRYPTO
-			set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
-		#endif
+			if (tx_on) {
+				noInterrupts();
+				push_pkt(&g_cbuf, rpt_pkt, 0, PAYLOAD_LEN+6);
+				interrupts();
 
-			e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
-
-			if (0 == e) {
-				// tx successful
 				need_push = 0;
-			}
+			} else {
 
-			sx1272.rx_v0();
+			#ifdef ENABLE_CRYPTO
+				set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
+			#endif
+
+				e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
+
+				if (0 == e) {
+					need_push = 0;
+				}
+
+				sx1272.rx_v0();
+			}
 		}
 
 		if (0x55 == need_push_mac) {
 
 			set_mac_status_pkt();
 
-		#ifdef ENABLE_CRYPTO
-			set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
-		#endif
+			if (tx_on) {
+				noInterrupts();
+				push_pkt(&g_cbuf, rpt_pkt, 0, PAYLOAD_LEN+6);
+				interrupts();
 
-			e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
-
-			if (0 == e) {
-				// tx successful
-				need_push_mac = 0;
+				need_push = 0;
 
 				if (MAC_RESET_CC == mac_cmd) {
 					NVIC_SystemReset();
 				}
-			}
 
-			sx1272.rx_v0();
+			} else {
+
+			#ifdef ENABLE_CRYPTO
+				set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
+			#endif
+
+				e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
+
+				if (0 == e) {
+					// tx successful
+					need_push_mac = 0;
+
+					if (MAC_RESET_CC == mac_cmd) {
+						NVIC_SystemReset();
+					}
+				}
+
+				sx1272.rx_v0();
+			}
 		}
 	}
 }
