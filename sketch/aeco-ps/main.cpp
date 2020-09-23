@@ -129,11 +129,11 @@ static uint32_t need_push = 0;
 
 #define MAX_DBM					20
 
-uint8_t message[PAYLOAD_LEN+6];
+uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 
 #ifdef CONFIG_V0
-uint8_t tx_cause = RESET_TX;
-uint16_t tx_count = 0;
+uint32_t tx_cause = RESET_TX;
+uint16_t tx_count __attribute__((aligned(4))) = 0;
 uint32_t tx_ok_cnt = 0;
 #endif
 
