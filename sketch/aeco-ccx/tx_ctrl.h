@@ -64,13 +64,19 @@ bool check_ctrl_fno(struct ctrl_fifo *cfifo, uint8_t *p, int plen)
 	return true;
 }
 
+void reset_ctrl_ts(struct ctrl_fifo *cfifo, uint32_t ts)
+{
+	for (int a = 0; a < CTRL_FIFO_SIZE-1; a++) {
+
+		cfifo->ctrl[a].ts = ts;
+	}
+}
+
 bool is_pkt_in_ctrl(struct ctrl_fifo *cfifo, uint8_t *p, int plen, uint32_t ts)
 {
 	int a = 0, b = 0;
 
 	uint64_t devid = 0UL;
-
-	uint8_t mtype = p[plen-9] & 0xE0;
 
 	for (a = 3; a < 11; a++, b++) {
 
@@ -84,17 +90,26 @@ bool is_pkt_in_ctrl(struct ctrl_fifo *cfifo, uint8_t *p, int plen, uint32_t ts)
 		if (cfifo->ctrl[a].devid == devid) {
 
 			if (cfifo->ctrl[a].fno == fno) {
-
+				// same pkt -> drop the pkt
 				return true;
 			}
 
-			if ((mtype == 0x00 || mtype == 0x40) && (ts - cfifo->ctrl[a].ts < 20)) {
-				// data up pkt, 10s
+		#if 0
+			uint8_t mtype = p[plen-9] & 0xE0;
+			if (0x33 == p[2] && 36 == plen && (mtype == 0x20 || mtype == 0x60)) {
+				// data down pkt, no limit
+				return false;
+			}
+		#endif
+
+			if ((ts - cfifo->ctrl[a].ts < 20)) {
+				// no data up/down flag, < 20s -> drop the pkt
 				return true;
 			}
 		}
 	}
 
+	// ok
 	return false;
 }
 

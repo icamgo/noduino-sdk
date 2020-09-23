@@ -1020,6 +1020,8 @@ inline void set_the_epoch(uint8_t *ep)
 	st_p[1] = ep[2];
 	st_p[2] = ep[1];
 	st_p[3] = ep[0];
+
+	reset_ctrl_ts(&g_cfifo, secTicks);
 }
 
 void process_mac_cmds(uint8_t *p, int len)
@@ -1067,14 +1069,14 @@ void process_mac_cmds(uint8_t *p, int len)
 		switch(cmd) {
 			case MAC_CCTX_OFF:
 				turn_tx_off(cmd);
-				set_the_epoch(p+18);
+				//set_the_epoch(p+20);
 				break;
 			case MAC_CCTX_ON:
 				turn_tx_on(cmd);
-				set_the_epoch(p+18);
+				//set_the_epoch(p+20);
 				break;
 			case MAC_SET_EPOCH:
-				set_the_epoch(p+18);
+				set_the_epoch(p+20);
 				mac_cmd = cmd;
 				tx_cause = MAC_TX;
 				need_push_mac = 0x55;
@@ -1185,7 +1187,7 @@ void rx_irq_handler()
 				is_pkt_in_ctrl(&g_cfifo, p, plen, seconds()) == false) {
 
 				// need to push into the tx queue buffer
-				push_pkt(&g_cbuf, sx1272.packet_received.data, sx1272._RSSIpacket, plen);
+				push_pkt(&g_cbuf, p, sx1272._RSSIpacket, plen);
 			}
 		}
 
@@ -1561,6 +1563,8 @@ void setup()
 	/* Initialize RTC timer. */
 	extern uint32_t secTicks;
 	secTicks = 1600155579;
+
+	reset_ctrl_ts(&g_cfifo, secTicks);
 
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
