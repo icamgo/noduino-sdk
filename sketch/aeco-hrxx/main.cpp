@@ -1011,11 +1011,22 @@ void loop(void)
 					p[17],
 					d.rssi);
 
-				sprintf(frame_buf[fi + 1], "%d %s %s %s",
-					check_pkt_mic(p, p_len),
-					decode_vbat(p),
-					decode_sensor_data(p),
-					decode_ccid(p)+5);
+				if (strncmp(dev_id+3, "20", 2) == 0 && (p[11] & 0x80)) {
+
+					sprintf(frame_buf[fi + 1], "%d %s %02X %s",
+						check_pkt_mic(p, p_len),
+						decode_vbat(p),
+						p[11],
+						decode_ccid(p)+5);
+
+				} else {
+
+					sprintf(frame_buf[fi + 1], "%d %s %s %s",
+						check_pkt_mic(p, p_len),
+						decode_vbat(p),
+						decode_sensor_data(p),
+						decode_ccid(p)+5);
+				}
 
 				show_frame(fi, omode, false);
 				c++;
@@ -1044,12 +1055,11 @@ void loop(void)
 					p[17],
 					d.rssi);
 
-				sprintf(frame_buf[fi + 1], "%d %02X %02X %d %s",
+				sprintf(frame_buf[fi + 1], "%1d %02X %d %s",
 					check_pkt_mic(p, p_len),
 					p[11],
-					p[12],
 					decode_cc2_epoch(p),
-					decode_ccid(p)+5);
+					decode_ccid(p)+8);
 
 				show_frame(fi, omode, false);
 				c++;
