@@ -99,7 +99,7 @@ static int oled_i;
 static float cur_curr = 0.0;
 #endif
 
-static uint8_t need_push = 0;
+static uint32_t need_push = 0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
@@ -127,11 +127,11 @@ static uint8_t need_push = 0;
 
 #define MAX_DBM					20
 
-uint8_t message[PAYLOAD_LEN+6] = { 0x47, 0x4F, 0x33 };
+uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4))) = { 0x47, 0x4F, 0x33 };
 
 #ifdef CONFIG_V0
-uint8_t tx_cause = RESET_TX;
-uint16_t tx_count = 0;
+uint32_t tx_cause = RESET_TX;
+uint16_t tx_count __attribute__((aligned(4))) = 0;
 uint32_t tx_ok_cnt = 0;
 #endif
 
@@ -149,7 +149,7 @@ uint32_t tx_ok_cnt = 0;
 int mode = MODE_P;
 int old_mode = MODE_P;
 
-uint8_t key_count = 0;
+uint32_t key_count = 0;
 
 #ifdef DEBUG
 
