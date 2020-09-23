@@ -39,23 +39,25 @@
 
 #define	FW_VER						"V2.2"
 
+#define LOW_BAT_THRESHOLD			3.3
+
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 static uint32_t check_period = 54;	/* 60s */
 
-static uint8_t need_push = 0;
-static uint8_t need_push_mac = 0;
-static uint8_t need_reset_sx1272 = 0;
-static uint8_t mac_cmd = 0;
+static uint32_t need_push = 0;
+static uint32_t need_push_mac = 0;
+static uint32_t need_reset_sx1272 = 0;
+static uint32_t mac_cmd = 0;
 static uint32_t mac_cmd_sec = 0;
-static uint16_t tx_count = 0;
+static uint16_t tx_count __attribute__((aligned(4))) = 0;
 
 #define	RESET_TX			0
 #define	DELTA_TX			1
 #define	TIMER_TX			2
 #define	KEY_TX				3
 #define	MAC_TX				10
-static uint8_t tx_cause = RESET_TX;
+static uint8_t tx_cause __attribute__((aligned(4))) = RESET_TX;
 
 #define MAC_CCTX_OFF			0x80
 #define MAC_CCTX_ON				0x81
@@ -71,12 +73,12 @@ static uint8_t tx_cause = RESET_TX;
 //#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
 //#define PAYLOAD_LEN					18		/* 18+2+4 = 24B */
 
-uint8_t rpt_pkt[PAYLOAD_LEN+6] = { 0x47, 0x4F, 0x33 };
+uint8_t rpt_pkt[PAYLOAD_LEN+6] __attribute__((aligned(4))) = { 0x47, 0x4F, 0x33 };
 
-struct circ_buf g_cbuf;
+struct circ_buf g_cbuf __attribute__((aligned(4)));
 #define OLED_DELAY_TIME				55		/* oled is on about 55s */
 
-struct ctrl_fifo g_cfifo;
+struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
 
 #ifdef ENABLE_CRYPTO
 #include "crypto.h"
@@ -98,7 +100,7 @@ struct ctrl_fifo g_cfifo;
 #ifdef CONFIG_V0
 #define DEST_ADDR				1
 
-bool cad_on = true;
+bool cad_on __attribute__((aligned(4))) = true;
 #define	CAD_TX_TIME					900			// 900ms
 #define	NOCAD_TX_TIME				220			// 220ms
 int tx_time = CAD_TX_TIME;
@@ -112,7 +114,7 @@ char cmd[MAX_CMD_LENGTH];
 #endif
 
 int oled_on_time = 0;
-uint8_t rx_err_cnt = 0;
+uint8_t rx_err_cnt __attribute__((aligned(4))) = 0;
 
 uint32_t rx_cnt = 0;
 uint32_t tx_cnt = 0;
@@ -122,8 +124,8 @@ uint32_t tx_cnt_1min = 0;
 uint32_t old_rx_cnt = 0;
 uint32_t cnt_1min = 0;
 
-bool tx_on = true;
-bool first_ccid = false;
+bool tx_on __attribute__((aligned(4))) = true;
+bool first_ccid __attribute__((aligned(4))) = false;
 
 /*
  * Output Mode:
@@ -142,7 +144,7 @@ bool first_ccid = false;
 int omode = MODE_STATIS;
 int old_omode = MODE_STATIS;
 
-bool oled_on = true;
+bool oled_on __attribute__((aligned(4))) = true;
 
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
@@ -161,7 +163,7 @@ bool oled_on = true;
 #include "U8g2lib.h"
 #include "logo.h"
 
-char frame_buf[2][24];
+char frame_buf[2][24] __attribute__((aligned(4)));
 
 #ifdef ENABLE_SSD1306
 U8G2_SSD1306_128X32_UNIVISION_1_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
@@ -186,6 +188,11 @@ U8G2_SH1106_128X32_NONAME_1_HW_I2C u8g2(U8G2_R2, SH1106_RESET);
 #endif // ENABLE_SH1106
 
 #endif // ENABLE_OLED
+
+float cur_vbat __attribute__((aligned(4))) = 0.0;
+bool vbat_low __attribute__((aligned(4))) = false;
+int cnt_vbat_low __attribute__((aligned(4))) = 0;
+//__attribute__((aligned(4)))
 
 void radio_setup()
 {
@@ -1363,49 +1370,92 @@ void set_temp_pkt()
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 }
 
+float fetch_vbat()
+{
+	float vbat = 0;
+
+	for (int i = 0; i < 3; i++) {
+		vbat += adc.readVbat();
+	}
+
+	return vbat/3.0;
+}
+
 void period_check_status(RTCDRV_TimerID_t id, void *user)
 {
 	/* reset the watchdog */
 	WDOG_Feed();
 
-	//////////////////////////////////////////////////////
-	if (rx_err_cnt > 65) {
+	if (false == vbat_low) {
 
-		need_reset_sx1272 = 0x55;
-	}
+		//////////////////////////////////////////////////////
+		if (rx_err_cnt > 65) {
 
-	rx_err_cnt = 0;
-
-	++cnt_1min;
-
-	if (cnt_1min % 10 == 0) {
-		// 10min timer
-
-		tx_cnt_1min = (tx_cnt - old_tx_cnt) / 10;
-		old_tx_cnt = tx_cnt;
-
-		tx_cause = TIMER_TX;
-		need_push = 0x55;
-	}
-
-	if (MAC_CCTX_OFF == mac_cmd && (cnt_1min % 2 == 0)) {
-		// if cc-off, 2min report
-		tx_cause = TIMER_TX;
-		need_push_mac = 0x55;
-	}
-
-	if (cnt_1min % 60 == 0) {
-		// 1h
-
-		if (rx_cnt == old_rx_cnt) {
-			// no rx pkt, wait the watchdog to reset
-			//while(1);
-			NVIC_SystemReset();
-
-		} else {
-
-			old_rx_cnt = rx_cnt;
+			need_reset_sx1272 = 0x55;
 		}
+
+		rx_err_cnt = 0;
+
+		++cnt_1min;
+
+		if (cnt_1min % 10 == 0) {
+			// 10min timer
+
+			tx_cnt_1min = (tx_cnt - old_tx_cnt) / 10;
+			old_tx_cnt = tx_cnt;
+
+			tx_cause = TIMER_TX;
+			need_push = 0x55;
+		}
+
+		if (MAC_CCTX_OFF == mac_cmd && (cnt_1min % 2 == 0)) {
+			// if cc-off, 2min report
+			tx_cause = TIMER_TX;
+			need_push_mac = 0x55;
+		}
+
+		if (cnt_1min % 60 == 0) {
+			// 1h
+
+			if (rx_cnt == old_rx_cnt) {
+				// no rx pkt, wait the watchdog to reset
+				//while(1);
+				NVIC_SystemReset();
+
+			} else {
+
+				old_rx_cnt = rx_cnt;
+			}
+		}
+	}
+
+	////////////////////////////////////////////////////
+	// check the low vbat
+	cur_vbat = fetch_vbat();
+
+	if (cur_vbat <= LOW_BAT_THRESHOLD) {
+
+		cnt_vbat_low++;
+
+		if (cnt_vbat_low >= 5) {
+			// my battery is low
+
+			vbat_low = true;
+			cnt_vbat_low = 0;
+
+			need_push = 0x55;
+			tx_cause = DELTA_TX;
+		}
+	} else {
+
+		if (vbat_low) {
+			// need to reset the system
+			//NVIC_SystemReset();
+			need_reset_sx1272 = 0x55;
+		}
+
+		cnt_vbat_low = 0;
+		vbat_low = false;
 	}
 }
 
@@ -1525,231 +1575,261 @@ void loop(void)
 	int e = 1;
 	static int c = 0;
 
-	if (0x55 == need_reset_sx1272) {
+	if (vbat_low) {
 
-		sx1272.reset();
-		INFO_S("Resetting lora module\n");
-		radio_setup();
+		// sleep to waitting for recharge the battery
 
-		sx1272.init_rx_int();
-		sx1272.rx_v0();
+		if (omode != old_omode) {
 
-		need_reset_sx1272 = 0;
-	}
+			show_low_bat();
+			delay(2000);
 
-	if (omode != old_omode) {
-#ifdef ENABLE_OLED
-		// show mode and clean buffer
-		//show_mode(omode);
+			old_omode = omode;
+		}
 
-		frame_buf[0][0] = '\0';
-		frame_buf[1][0] = '\0';
-#endif
-		old_omode = omode;
-	}
+		sx1272.setSleepMode();
 
-	if (seconds() > oled_on_time) {
-
-		oled_on_time = 0;
-		oled_on = false;
-
-#ifdef ENABLE_OLED
+	#ifdef ENABLE_OLED
 		u8g2.setPowerSave(1);
-#endif
-		omode = MODE_DECODE;
-		old_omode = omode;
-	}
+	#endif
 
-	struct pkt d;
+		power_off_dev();
+		digitalWrite(SX1272_RST, LOW);
+		spi_end();
 
-	noInterrupts();
-	int ret = get_pkt(&g_cbuf, &d);
-	interrupts();
+		EMU_EnterEM2(true);
 
-	if (ret != 0) return;
+	} else {
 
-	uint8_t *p = d.data;
-	int p_len = d.plen;
+		if (0x55 == need_reset_sx1272) {
 
-#ifdef DEBUG_HEX_PKT
-	int a = 0, b = 0;
+			power_on_dev();
+			u8g2.begin();
 
-	for (; a < p_len; a++, b++) {
+			sx1272.reset();
+			INFO_S("Resetting lora module\n");
+			radio_setup();
 
-		if ((uint8_t) p[a] < 16)
-			INFO_S("0");
+			sx1272.init_rx_int();
+			sx1272.rx_v0();
 
-		INFO_HEX((uint8_t) p[a]);
-		INFO_S(" ");
-	}
+			need_reset_sx1272 = 0;
+		}
 
-	INFO_S("/");
-	INFO(sx1272._RSSIpacket);
-	INFO_S("/");
-	INFOLN(p_len);
-#endif
+		if (omode != old_omode) {
+	#ifdef ENABLE_OLED
+			// show mode and clean buffer
+			//show_mode(omode);
 
-	if (false == is_our_did(p)) return;
+			frame_buf[0][0] = '\0';
+			frame_buf[1][0] = '\0';
+	#endif
+			old_omode = omode;
+		}
 
-	if (oled_on == true) {
+		if (seconds() > oled_on_time) {
 
-		//memset(p+p_len, 0, MAX_PAYLOAD-p_len);
-		decode_devid(p);
+			oled_on_time = 0;
+			oled_on = false;
 
-		if (MODE_ALL == omode) {
-			// show all message
-			if (p[0] != 0x47 || p[1] != 0x4F || p[2] != 0x33) {
-				return;
-			}
+	#ifdef ENABLE_OLED
+			u8g2.setPowerSave(1);
+	#endif
+			omode = MODE_STATIS;
+			old_omode = omode;
+		}
 
-		#ifdef ENABLE_OLED
-				sprintf(frame_buf[c % 2], "%s %4d",
+		struct pkt d;
+
+		noInterrupts();
+		int ret = get_pkt(&g_cbuf, &d);
+		interrupts();
+
+		if (ret != 0) return;
+
+		uint8_t *p = d.data;
+		int p_len = d.plen;
+
+	#ifdef DEBUG_HEX_PKT
+		int a = 0, b = 0;
+
+		for (; a < p_len; a++, b++) {
+
+			if ((uint8_t) p[a] < 16)
+				INFO_S("0");
+
+			INFO_HEX((uint8_t) p[a]);
+			INFO_S(" ");
+		}
+
+		INFO_S("/");
+		INFO(sx1272._RSSIpacket);
+		INFO_S("/");
+		INFOLN(p_len);
+	#endif
+
+		if (false == is_our_did(p)) return;
+
+		if (oled_on == true) {
+
+			//memset(p+p_len, 0, MAX_PAYLOAD-p_len);
+			decode_devid(p);
+
+			if (MODE_ALL == omode) {
+				// show all message
+				if (p[0] != 0x47 || p[1] != 0x4F || p[2] != 0x33) {
+					return;
+				}
+
+			#ifdef ENABLE_OLED
+					sprintf(frame_buf[c % 2], "%s %4d",
+						dev_id,
+						d.rssi);
+
+					show_frame(c % 2, omode, false);
+					c++;
+			#endif
+
+			#ifdef DEBUG
+				sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
+					dev_id,
+					decode_vbat(p),
+					decode_sensor_type(),
+					decode_sensor_data(p),
+					decode_cmd(p),
+					decode_ver(p),
+					d.rssi);
+
+					INFOLN(cmd);
+			#endif
+
+			} else if (MODE_RAW == omode) {
+
+				// only show raw message, <= 32bytes
+			#ifdef ENABLE_OLED
+				sprintf(frame_buf[0], "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+					p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
+
+				sprintf(frame_buf[1], "%02X%02X %d %d %s%4d",
+					p[9], p[10], p_len, check_crc(p, p_len), decode_vbat(p), d.rssi);
+
+				show_frame(0, omode, false);
+			#endif
+
+			} else if (MODE_STATIS == omode) {
+
+			#ifdef ENABLE_OLED
+				sprintf(frame_buf[0], " RX: %4d", rx_cnt);
+				sprintf(frame_buf[1], " TX: %4d", tx_cnt);
+
+				show_frame(0, omode, false);
+			#endif
+
+			} else if (MODE_DECODE == omode) {
+
+			#ifdef ENABLE_OLED
+				sprintf(frame_buf[0], "%s %4d",
 					dev_id,
 					d.rssi);
 
-				show_frame(c % 2, omode, false);
-				c++;
-		#endif
+				decode_vbat(p);
+				decode_sensor_type();
+				decode_sensor_data(p);
 
-		#ifdef DEBUG
-			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
-				dev_id,
-				decode_vbat(p),
-				decode_sensor_type(),
-				decode_sensor_data(p),
-				decode_cmd(p),
-				decode_ver(p),
-				d.rssi);
+				if (dev_id[3] == '0' && (dev_id[4] == '8')) {
 
-				INFOLN(cmd);
-		#endif
+					sprintf(frame_buf[1], "%s %s %s",
+						dev_type,
+						dev_data,
+						dev_vbat
+						);
+				} else {
+					sprintf(frame_buf[1], " %s %s %s",
+						dev_type,
+						dev_data,
+						dev_vbat
+						);
+				}
 
-		} else if (MODE_RAW == omode) {
+				show_frame(0, omode, p[15] & 0x04);
+			#endif
+			} else if (MODE_VER == omode) {
+			#ifdef ENABLE_OLED
+				sprintf(frame_buf[0], " FW: %s", FW_VER);
+				//sprintf(frame_buf[1], " EP: %d", seconds());
 
-			// only show raw message, <= 32bytes
-		#ifdef ENABLE_OLED
-			sprintf(frame_buf[0], "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-				p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
+				uint64_to_str(get_devid());
+				sprintf(frame_buf[1], " ID: %s", dev_id);
 
-			sprintf(frame_buf[1], "%02X%02X %d %d %s%4d",
-				p[9], p[10], p_len, check_crc(p, p_len), decode_vbat(p), d.rssi);
+				show_frame(0, omode, false);
 
-			show_frame(0, omode, false);
-		#endif
-
-		} else if (MODE_STATIS == omode) {
-
-		#ifdef ENABLE_OLED
-			sprintf(frame_buf[0], " RX: %4d", rx_cnt);
-			sprintf(frame_buf[1], " TX: %4d", tx_cnt);
-
-			show_frame(0, omode, false);
-		#endif
-
-		} else if (MODE_DECODE == omode) {
-
-		#ifdef ENABLE_OLED
-			sprintf(frame_buf[0], "%s %4d",
-				dev_id,
-				d.rssi);
-
-			decode_vbat(p);
-			decode_sensor_type();
-			decode_sensor_data(p);
-
-			if (dev_id[3] == '0' && (dev_id[4] == '8')) {
-
-				sprintf(frame_buf[1], "%s %s %s",
-					dev_type,
-					dev_data,
-					dev_vbat
-					);
-			} else {
-				sprintf(frame_buf[1], " %s %s %s",
-					dev_type,
-					dev_data,
-					dev_vbat
-					);
+			#endif
 			}
-
-			show_frame(0, omode, p[15] & 0x04);
-		#endif
-		} else if (MODE_VER == omode) {
-		#ifdef ENABLE_OLED
-			sprintf(frame_buf[0], " FW: %s", FW_VER);
-			//sprintf(frame_buf[1], " EP: %d", seconds());
-
-			uint64_to_str(get_devid());
-			sprintf(frame_buf[1], " ID: %s", dev_id);
-
-			show_frame(0, omode, false);
-
-		#endif
 		}
-	}
 
-	if (tx_on) {
+		if (tx_on) {
 
-		if (process_pkt(p, &p_len) == true) {
+			if (process_pkt(p, &p_len) == true) {
+
+			#ifdef ENABLE_CRYPTO
+				set_pkt_mic(p, p_len);
+			#endif
+
+				e = tx_pkt(p, p_len);
+
+				if (0 == e) {
+
+					tx_cnt++;
+
+				} else if (5 != e) {
+					// valide pkt, other tx failed issue
+					noInterrupts();
+					push_pkt(&g_cbuf, p, d.rssi, p_len);
+					interrupts();
+				}
+
+				sx1272.rx_v0();
+			}
+		}
+
+		if (0x55 == need_push) {
+
+			set_temp_pkt();
 
 		#ifdef ENABLE_CRYPTO
-			set_pkt_mic(p, p_len);
+			set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
 		#endif
 
-			e = tx_pkt(p, p_len);
+			e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
 
 			if (0 == e) {
-
-				tx_cnt++;
-
-			} else if (5 != e) {
-				// valide pkt, other tx failed issue
-				noInterrupts();
-				push_pkt(&g_cbuf, p, d.rssi, p_len);
-				interrupts();
+				// tx successful
+				need_push = 0;
 			}
 
 			sx1272.rx_v0();
 		}
-	}
 
-	if (0x55 == need_push) {
+		if (0x55 == need_push_mac) {
 
-		set_temp_pkt();
+			set_mac_status_pkt();
 
-	#ifdef ENABLE_CRYPTO
-		set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
-	#endif
+		#ifdef ENABLE_CRYPTO
+			set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
+		#endif
 
-		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
+			e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
 
-		if (0 == e) {
-			// tx successful
-			need_push = 0;
-		}
+			if (0 == e) {
+				// tx successful
+				need_push_mac = 0;
 
-		sx1272.rx_v0();
-	}
-
-	if (0x55 == need_push_mac) {
-
-		set_mac_status_pkt();
-
-	#ifdef ENABLE_CRYPTO
-		set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
-	#endif
-
-		e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
-
-		if (0 == e) {
-			// tx successful
-			need_push_mac = 0;
-
-			if (MAC_RESET_CC == mac_cmd) {
-				NVIC_SystemReset();
+				if (MAC_RESET_CC == mac_cmd) {
+					NVIC_SystemReset();
+				}
 			}
-		}
 
-		sx1272.rx_v0();
+			sx1272.rx_v0();
+		}
 	}
 }
