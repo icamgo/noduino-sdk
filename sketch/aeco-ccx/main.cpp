@@ -792,7 +792,8 @@ void encode_temp_vbat(uint8_t *pkt)
 
 		if (dd >= 0 && dd < 130) {
 
-			data = (dd + 0.5) * 10;
+			data = (int16_t)(dd + 0.5);
+			data *= 10;
 
 		} else {
 
@@ -805,7 +806,8 @@ void encode_temp_vbat(uint8_t *pkt)
 
 		if (dd >= 0 && dd < 18) {
 
-			data = (dd + 0.05) * 100;
+			data = (int16_t)(dd + 0.05);
+			data *= 100;
 
 		} else {
 
@@ -818,7 +820,8 @@ void encode_temp_vbat(uint8_t *pkt)
 
 		if (dd > 1 && dd <= 100) {
 
-			data = (dd + 0.5) * 10;
+			data = (int16_t)(dd + 0.5);
+			data *= 10;
 
 		} else {
 
