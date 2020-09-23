@@ -37,7 +37,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V2.1"
+#define	FW_VER						"V2.2"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -1118,6 +1118,23 @@ void process_mac_cmds(uint8_t *p, int len)
 #endif
 }
 
+bool is_my_did(uint8_t *p)
+{
+	uint64_t pkt_did = 0UL;
+	uint8_t *pd = (uint8_t *) &pkt_did;
+
+	for(int i = 0; i < 8; i++) {
+		pd[7-i] = p[3+i];
+	}
+
+	uint64_t devid = get_devid();
+
+	if (pkt_did == devid)
+		return true;
+	else
+		return false;
+}
+
 void rx_irq_handler()
 {
 	int8_t e = 0;
@@ -1154,6 +1171,7 @@ void rx_irq_handler()
 			}
 
 			if (is_cc_ok(p, plen) &&
+				false == is_my_did(p) &&
 				is_pkt_in_ctrl(&g_cfifo, p, plen, seconds()) == false) {
 
 				// need to push into the tx queue buffer
