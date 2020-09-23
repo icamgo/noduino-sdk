@@ -1548,7 +1548,7 @@ void setup()
 #ifdef ENABLE_OLED
 	u8g2.begin();
 
-	delay(2);
+	delay(1);
 	show_logo();
 	delay(800);
 
@@ -1565,22 +1565,26 @@ void setup()
 	Serial.begin(115200);
 #endif
 
-	radio_setup();
-	sx1272.init_rx_int();
-	sx1272.rx_v0();
-
 	/* Start watchdog */
 	WDOG_Init(&wInit);
 
-	/* Initialize RTC timer. */
+	/* reset epoch */
 	extern uint32_t secTicks;
 	secTicks = 1600155579;
-
 	reset_ctrl_ts(&g_cfifo, secTicks);
 
+	/* Initialize RTC timer. */
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
 	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, check_period * 1000, period_check_status, NULL);
+
+	radio_setup();
+
+	sx1272.init_rx_int();
+	sx1272.rx_v0();
+
+	oled_on = true;
+	oled_on_time = seconds() + OLED_DELAY_TIME;
 
 	need_push = 0x55;
 	tx_cause = RESET_TX;
