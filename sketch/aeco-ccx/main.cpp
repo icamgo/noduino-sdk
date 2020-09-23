@@ -39,7 +39,7 @@
 
 #define	FW_VER						"V2.2"
 
-#define LOW_BAT_THRESHOLD			3.3
+#define LOW_BAT_THRESHOLD			2.9
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -695,7 +695,12 @@ bool is_our_did(uint8_t *p)
 bool is_our_pkt(uint8_t *p, int len)
 {
 
-	if (len < 24) return false;
+	/*
+	 * 31: 17
+	 * 32: 19
+	 * 33: 20
+	*/
+	if (len < 23) return false;
 
 	if (p[0] != 0x47 || p[1] != 0x4F) {
 
@@ -710,7 +715,7 @@ bool is_our_pkt(uint8_t *p, int len)
 		return false;
 	}
 
-	if (p[2] < 0x33 || p[2] > 0x36) {
+	if (p[2] < 0x32 || p[2] > 0x36) {
 
 		// support only the 0x33/34/35/36 version
 		return false;
@@ -855,11 +860,11 @@ bool process_pkt(uint8_t *p, int *len)
 
 	// p[15] is the cmd type
 
-	if (p[2] == 0x33) {
+	if (p[2] == 0x33 || p[2] == 0x32) {
 
-		//extend the 0x33
+		//crc ok, len=36 mic ok, extend the 0x33
 
-		if (*len == 24 || *len == 28 || *len == 32) {
+		if (*len < 36) {
 
 			/* move the frame no. to p[28:29] */
 			//p[28] = p[16];
@@ -867,6 +872,13 @@ bool process_pkt(uint8_t *p, int *len)
 			p[28] = p[*len-8];
 			p[29] = p[*len-7];
 
+			if (0x32 == p[2]) {
+				// plen is 23
+				p[2] = 0x33;
+				p[15] = 0;
+
+				p[*len-3] = 0; p[*len-2] = 0; p[*len-1] = 0;
+			}
 			/*
 			 * p[16]: fctrl
 			 * p[17]: cc relayed counter
@@ -878,7 +890,8 @@ bool process_pkt(uint8_t *p, int *len)
 
 			// p[24:26]: low 3B of cc-devid
 			// p[27]: MType
-			p[24] = 0; p[25] = 0; p[26] = 0; p[27] = 0;
+			//p[24] = 0; p[25] = 0; p[26] = 0; p[27] = 0;
+			memset(p+24, 0, 4);
 
 			// p[28:29]: frame no.
 
@@ -887,8 +900,9 @@ bool process_pkt(uint8_t *p, int *len)
 
 			*len = 36;
 		}
+	}
 
-		if (*len == 36) {
+	if (0x33 == p[2] && (*len == 36)) {
 
 			if (p[27] & 0x10) {
 				// new cc relayed pkt
@@ -934,8 +948,6 @@ bool process_pkt(uint8_t *p, int *len)
 				encode_temp_vbat(p);
 			}
 		#endif
-		}
-
 	}
 
 	if (check_ctrl_fno(&g_cfifo, p, *len) == true) {
@@ -1442,11 +1454,11 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 		if (cnt_vbat_low >= 5) {
 			// my battery is low
 
-			vbat_low = true;
-			cnt_vbat_low = 0;
+			//vbat_low = true;
+			//cnt_vbat_low = 0;
 
-			need_push = 0x55;
-			tx_cause = DELTA_TX;
+			//need_push = 0x55;
+			//tx_cause = DELTA_TX;
 		}
 	} else {
 
