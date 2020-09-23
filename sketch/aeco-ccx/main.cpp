@@ -1428,7 +1428,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 			need_push_mac = 0x55;
 		}
 
-		if (cnt_1min % 60 == 0) {
+		if (cnt_1min % 20 == 0) {
 			// 1h
 
 			if (rx_cnt == old_rx_cnt) {
