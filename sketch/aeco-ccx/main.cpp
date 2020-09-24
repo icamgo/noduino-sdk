@@ -1044,93 +1044,85 @@ void process_mac_cmds(uint8_t *p, int len)
 	//uint8_t fctrl = p[16];
 	// fopts: p[18:19], 20..23
 
-	uint64_t did = 0;
-	uint8_t *pd = (uint8_t *) &did;
-
 	if ((~cmd & 0xFF) != vcmd) {
 		// invalid cmd
 		INFOLN(cmd);
 		return;
 	}
 
-	for(int i = 0; i < 8; i++) {
-		pd[7-i] = p[3+i];
+	uint32_t sec = 0;
+	uint8_t *pd = (uint8_t *) &sec;
+
+	pd[0] = p[23];
+	pd[1] = p[22];
+	pd[2] = p[21];
+	pd[3] = p[20];
+
+	/*
+	 * check the sec-ts
+	 *
+	*/
+	if (sec <= mac_cmd_sec) {
+	//if (sec == mac_cmd_sec) {
+		// invalide mac ctrl pkt
+		return;
+	} else {
+		mac_cmd_sec = sec;
 	}
 
-	// check the dev_id
-	// 0x174876E7FF	= 999.99.99.9999
-	if (did == 99999999999ULL || did == get_devid()) {
-
-		uint32_t sec = 0;
-		pd = (uint8_t *) &sec;
-		pd[0] = p[23]; pd[1] = p[22]; pd[2] = p[21]; pd[3] = p[20];
-
-		/*
-		 * check the sec-ts
-		 *
-		*/
-		if (sec <= mac_cmd_sec) {
-		//if (sec == mac_cmd_sec) {
-			// invalide mac ctrl pkt
-			return;
-		} else {
-			mac_cmd_sec = sec;
-		}
-
-		INFOLN("ok");
-		switch(cmd) {
-			case MAC_CCTX_OFF:
-				turn_tx_off(cmd);
-				//set_the_epoch(p+20);
-				break;
-			case MAC_CCTX_ON:
-				turn_tx_on(cmd);
-				//set_the_epoch(p+20);
-				break;
-			case MAC_SET_EPOCH:
-				set_the_epoch(p+20);
-				mac_cmd = cmd;
-				tx_cause = MAC_TX;
-				need_push_mac = 0x55;
-				break;
-			case MAC_GET_CMD:
-				tx_cause = MAC_TX;
-				need_push_mac = 0x55;
-				break;
-			#ifdef ENABLE_CAD
-			case MAC_CAD_OFF:
-				mac_cmd = cmd;
-				cad_on = false;
-				tx_time = NOCAD_TX_TIME;
-				tx_cause = MAC_TX;
-				need_push_mac = 0x55;
-				break;
-			case MAC_CAD_ON:
-				mac_cmd = cmd;
-				cad_on = true;
-				tx_time = CAD_TX_TIME;
-				tx_cause = MAC_TX;
-				need_push_mac = 0x55;
-				break;
-			#endif
-			case MAC_FIRST_CCID:
-				mac_cmd = cmd;
-				first_ccid = true;
-				tx_cause = MAC_TX;
-				need_push_mac = 0x55;
-				break;
-			case MAC_LATEST_CCID:
-				mac_cmd = cmd;
-				first_ccid = false;
-				tx_cause = MAC_TX;
-				need_push_mac = 0x55;
-				break;
-			case MAC_RESET_CC:
-				mac_cmd = cmd;
-				tx_cause = MAC_TX;
-				need_push_mac = 0x55;
-				break;
-		}
+	INFOLN("ok");
+	switch(cmd) {
+		case MAC_CCTX_OFF:
+			turn_tx_off(cmd);
+			//set_the_epoch(p+20);
+			break;
+		case MAC_CCTX_ON:
+			turn_tx_on(cmd);
+			//set_the_epoch(p+20);
+			break;
+		case MAC_SET_EPOCH:
+			set_the_epoch(p+20);
+			mac_cmd = cmd;
+			tx_cause = MAC_TX;
+			need_push_mac = 0x55;
+			break;
+		case MAC_GET_CMD:
+			tx_cause = MAC_TX;
+			need_push_mac = 0x55;
+			break;
+		#ifdef ENABLE_CAD
+		case MAC_CAD_OFF:
+			mac_cmd = cmd;
+			cad_on = false;
+			tx_time = NOCAD_TX_TIME;
+			tx_cause = MAC_TX;
+			need_push_mac = 0x55;
+			break;
+		case MAC_CAD_ON:
+			mac_cmd = cmd;
+			cad_on = true;
+			tx_time = CAD_TX_TIME;
+			tx_cause = MAC_TX;
+			need_push_mac = 0x55;
+			break;
+		#endif
+		case MAC_FIRST_CCID:
+			mac_cmd = cmd;
+			first_ccid = true;
+			tx_cause = MAC_TX;
+			need_push_mac = 0x55;
+			break;
+		case MAC_LATEST_CCID:
+			mac_cmd = cmd;
+			first_ccid = false;
+			tx_cause = MAC_TX;
+			need_push_mac = 0x55;
+			break;
+		case MAC_RESET_CC:
+			mac_cmd = cmd;
+			tx_cause = MAC_TX;
+			need_push_mac = 0x55;
+			break;
 	}
 
 #if 0
@@ -1159,6 +1151,27 @@ bool is_my_did(uint8_t *p)
 		return false;
 }
 
+bool is_did_for_me(uint8_t *p)
+{
+	// check the dev_id
+
+	uint64_t pkt_did = 0UL;
+	uint8_t *pd = (uint8_t *) &pkt_did;
+
+	for(int i = 0; i < 8; i++) {
+		pd[7-i] = p[3+i];
+	}
+
+	// 0x174876E7FF	= 999.99.99.9999
+	if (get_devid() == pkt_did || 99999999999ULL == pkt_did) {
+
+		return true;
+
+	} else {
+		return false;
+	}
+}
+
 void rx_irq_handler()
 {
 	int8_t e = 0;
@@ -1173,9 +1186,9 @@ void rx_irq_handler()
 		uint8_t plen = sx1272._payloadlength;
 		uint8_t *p = sx1272.packet_received.data;
 
-		if (plen > 44) return;
-
 		rx_cnt++;
+
+		if (plen > 44) return;
 
 		if (is_our_pkt(p, plen) == true) {
 
@@ -1191,7 +1204,9 @@ void rx_irq_handler()
 			#endif
 				}
 
-				process_mac_cmds(p, plen);
+				if (is_did_for_me(p)) {
+					process_mac_cmds(p, plen);
+				}
 			}
 
 			if (is_cc_ok(p, plen) &&
