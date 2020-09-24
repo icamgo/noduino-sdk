@@ -796,9 +796,9 @@ void loop(void)
 		rx_hung_cnt++;
 	}
 
-	if (rx_hung_cnt > 5) show_low_bat();
+	if (rx_hung_cnt > 3) show_low_bat();
 
-	if (rx_err_cnt > RX_ERR_THRESHOLD || rx_hung_cnt > 5) {
+	if (rx_err_cnt > RX_ERR_THRESHOLD || rx_hung_cnt > 3) {
 
 		sx1272.reset();
 		INFO_S("%s", "Resetting lora module\n");
@@ -808,6 +808,7 @@ void loop(void)
 		sx1272.rx_v0();
 
 		rx_err_cnt = 0;
+		rx_hung_cnt = 0;
 	}
 #endif
 
