@@ -115,6 +115,7 @@ char cmd[MAX_CMD_LENGTH];
 
 int oled_on_time = 0;
 uint8_t rx_err_cnt __attribute__((aligned(4))) = 0;
+uint8_t rx_hung_cnt __attribute__((aligned(4))) = 0;
 
 uint32_t rx_cnt = 0;
 uint32_t tx_cnt = 0;
@@ -841,11 +842,15 @@ void encode_temp_vbat(uint8_t *pkt)
 		}
 	}
 
+#if 1
 	if (pkt[17] < 6) {
 		data += pkt[17];
 	} else {
 		data += 9;
 	}
+#else
+	data += rx_hung_cnt;
+#endif
 
 	pb = (uint8_t *) &data;
 	pkt[11] = pb[1];
@@ -1232,7 +1237,6 @@ void rx_irq_handler()
 	} else {
 
 		rx_err_cnt++;
-
 	}
 }
 
@@ -1430,11 +1434,10 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 		//////////////////////////////////////////////////////
 		/* check the rx_err in 1min */
-		if (rx_err_cnt > tx_cnt_1min) {
+		if (rx_err_cnt > tx_cnt_1min || rx_hung_cnt > 3) {
 
 			need_reset_sx1272 = 0x55;
 		}
-		rx_err_cnt = 0;
 
 		++cnt_1min;
 
@@ -1647,6 +1650,11 @@ void loop(void)
 
 	} else {
 
+		if (sx1272.getRSSI() <= -155) {
+
+			rx_hung_cnt++;
+		}
+
 		if (0x55 == need_reset_sx1272) {
 
 			power_on_dev();
@@ -1660,6 +1668,8 @@ void loop(void)
 			sx1272.rx_v0();
 
 			need_reset_sx1272 = 0;
+
+			rx_err_cnt = 0;
 		}
 
 		if (omode != old_omode) {

@@ -2887,8 +2887,9 @@ int16_t SX1272::getRSSI()
 		 * sx1276/78 HF (868M) is -157
 		 * sx1276/78 LF (470M) is -164
 		*/
-		_RSSI = -(139 + (_board == SX1276Chip ? 18 : 0)) +
-				readRegister(REG_RSSI_VALUE_LORA);
+		_RSSI = -(139 + (_board == SX1276Chip ? 18 : 0)
+				+ (_channel < CH_04_868 ? 7 : 0))
+				+ readRegister(REG_RSSI_VALUE_LORA);
 		rssi_mean += _RSSI;
 	}
 
