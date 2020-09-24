@@ -37,7 +37,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V2.3"
+#define	FW_VER						"V2.4"
 
 #define LOW_BAT_THRESHOLD			2.9
 
@@ -818,8 +818,8 @@ void encode_temp_vbat(uint8_t *pkt)
 
 		if (dd >= 0 && dd < 18) {
 
-			data = (int16_t)(dd + 0.05);
-			data *= 100;
+			data = (dd + 0.05)*10;
+			data *= 10;
 
 		} else {
 
