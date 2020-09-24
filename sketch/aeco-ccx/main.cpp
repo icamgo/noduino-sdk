@@ -1192,20 +1192,20 @@ void rx_irq_handler()
 
 		if (is_our_pkt(p, plen) == true) {
 
-			uint8_t mtype = p[27] & 0xE0;
+			if (0x33 == p[2] && 36 == plen) {
 
-			if (0x33 == p[2] && 36 == plen && (0x20 == mtype || 0x60 == mtype)) {
+				uint8_t mtype = p[27] & 0xE8;
+				if (0x28 == mtype || 0x68 == mtype) {
 
-				// data down pkt (from gw/ctrl_client)
-
-				if (p[27] & 0x08) {
+					// down & crypto pkt
 			#ifdef ENABLE_CRYPTO
 					payload_decrypt(p, plen, ae33kk);
 			#endif
-				}
 
-				if (is_did_for_me(p)) {
-					process_mac_cmds(p, plen);
+					if (is_did_for_me(p)) {
+						process_mac_cmds(p, plen);
+
+					}
 				}
 			}
 
