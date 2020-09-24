@@ -1403,11 +1403,11 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 	if (false == vbat_low) {
 
 		//////////////////////////////////////////////////////
-		if (rx_err_cnt > 65) {
+		/* check the rx_err in 1min */
+		if (rx_err_cnt > tx_cnt_1min) {
 
 			need_reset_sx1272 = 0x55;
 		}
-
 		rx_err_cnt = 0;
 
 		++cnt_1min;
@@ -1428,8 +1428,8 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 			need_push_mac = 0x55;
 		}
 
-		if (cnt_1min % 20 == 0) {
-			// 1h
+		if (cnt_1min % 10 == 0) {
+			// 10min
 
 			if (rx_cnt == old_rx_cnt) {
 				// no rx pkt, wait the watchdog to reset
