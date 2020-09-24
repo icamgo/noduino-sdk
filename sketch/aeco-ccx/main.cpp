@@ -1437,6 +1437,8 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 		if (rx_err_cnt > tx_cnt_1min || rx_hung_cnt > 3) {
 
 			need_reset_sx1272 = 0x55;
+
+			rx_hung_cnt = 0;
 		}
 
 		++cnt_1min;
@@ -1469,6 +1471,11 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 				old_rx_cnt = rx_cnt;
 			}
+		}
+
+		if (cnt_1min % 1440 == 0) {
+			// 24h
+			NVIC_SystemReset();
 		}
 	}
 
