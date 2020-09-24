@@ -873,18 +873,29 @@ bool process_pkt(uint8_t *p, int *len)
 			p[29] = p[*len-7];
 
 			if (0x32 == p[2]) {
-				// plen is 23
+				/*
+				 * plen is 23
+				 * p[15:16] is the fno.
+				 * p[17:18] is the crc
+				 * p[19:22] RFU
+				*/
 				p[2] = 0x33;
 				p[15] = 0;
 
-				p[*len-3] = 0; p[*len-2] = 0; p[*len-1] = 0;
+				/* p[17:18, 19:22] = 0 */
+				memset(p+16, 0, *len-16);
+
+				/* p[20:22] */
+				//p[*len-3] = 0; p[*len-2] = 0; p[*len-1] = 0;
+
+			} else {
+				/*
+				 * p[16]: fctrl
+				 * p[17]: cc relayed counter
+				 * p[18:19]: Fopts
+				*/
+				memset(p+16, 0, 4);
 			}
-			/*
-			 * p[16]: fctrl
-			 * p[17]: cc relayed counter
-			 * p[18:19]: Fopts
-			*/
-			memset(p+16, 0, 4);
 
 			//p[20:23]: extend data
 
@@ -953,9 +964,9 @@ bool process_pkt(uint8_t *p, int *len)
 	if (check_ctrl_fno(&g_cfifo, p, *len) == true) {
 
 	#ifdef ENABLE_CRYPTO
-		uint8_t mtype = p[27] & 0xE0;
+		uint8_t mtype = p[27] & 0xE8;
 
-		if (0x33 == p[2] && 36 == *len && (0x20 == mtype || 0x60 == mtype)) {
+		if (0x33 == p[2] && 36 == *len && (0x28 == mtype || 0x68 == mtype)) {
 
 			// data down pkt (from gw/ctrl_client)
 			payload_encrypt(p, *len, ae33kk);
