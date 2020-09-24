@@ -2860,138 +2860,62 @@ int8_t SX1272::setNodeAddress(uint8_t addr)
 
 int8_t SX1272::getSNR()
 {
-	int8_t state = 2;
 	byte value;
 
-#if (DEBUG_MODE > 1)
-	INFO_LN(F("Starting 'getSNR'"));
-#endif
+	value = readRegister(REG_PKT_SNR_VALUE);
+	_rawSNR = value;
 
-	if (_modem == LORA) {	// LoRa mode
-		state = 1;
-		value = readRegister(REG_PKT_SNR_VALUE);
-		_rawSNR = value;
-
-		if (value & 0x80) {
-			// Invert and divide by 4
-			value = ((~value + 1) & 0xFF) >> 2;
-			_SNR = -value;
-		} else {
-			// Divide by 4
-			_SNR = (value & 0xFF) >> 2;
-		}
-		state = 0;
-#if (DEBUG_MODE > 0)
-		INFO(F("SNR value is "));
-		INFO_LN(_SNR);
-#endif
-	} else {		// forbidden command if FSK mode
-		state = -1;
-#if (DEBUG_MODE > 0)
-		INFO_LN(F("** SNR does not exist in FSK mode **"));
-#endif
+	if (value & 0x80) {
+		// Invert and divide by 4
+		value = ((~value + 1) & 0xFF) >> 2;
+		_SNR = -value;
+	} else {
+		// Divide by 4
+		_SNR = (value & 0xFF) >> 2;
 	}
-	return state;
+
+	return _SNR;
 }
 
-uint8_t SX1272::getRSSI()
+int16_t SX1272::getRSSI()
 {
-	uint8_t state = 2;
 	int rssi_mean = 0;
 	int total = 5;
 
-#if (DEBUG_MODE > 1)
-	INFO_LN(F("Starting 'getRSSI'"));
-#endif
-
-	if (_modem == LORA) {
-		// get mean value of RSSI
-
-		for (int i = 0; i < total; i++) {
-			// with SX1276 we have to add 18 to OFFSET_RSSI to obtain -157
-			_RSSI =
-			    -(OFFSET_RSSI + (_board == SX1276Chip ? 18 : 0)) +
-			    readRegister(REG_RSSI_VALUE_LORA);
-			rssi_mean += _RSSI;
-		}
-
-		rssi_mean = rssi_mean / total;
-		_RSSI = rssi_mean;
-
-		state = 0;
-#if (DEBUG_MODE > 0)
-		INFO(F("RSSI value is "));
-		INFO_LN(_RSSI);
-#endif
-
-#ifdef ENABLE_FSK
-	} else {
-		/// FSK mode
-		// get mean value of RSSI
-		for (int i = 0; i < total; i++) {
-			_RSSI = (readRegister(REG_RSSI_VALUE_FSK) >> 1);
-			rssi_mean += _RSSI;
-		}
-		rssi_mean = rssi_mean / total;
-		_RSSI = rssi_mean;
-
-		state = 0;
-
-#if (DEBUG_MODE > 0)
-		INFO(F("RSSI value is "));
-		INFO_LN(_RSSI);
-#endif
-#endif
+	for (int i = 0; i < total; i++) {
+		/*
+		 * sx1276/78 HF (868M) is -157
+		 * sx1276/78 LF (470M) is -164
+		*/
+		_RSSI = -(139 + (_board == SX1276Chip ? 18 : 0)) +
+				readRegister(REG_RSSI_VALUE_LORA);
+		rssi_mean += _RSSI;
 	}
-	return state;
+
+	rssi_mean = rssi_mean / total;
+	_RSSI = rssi_mean;
+
+	return _RSSI;
 }
 
 int16_t SX1272::getRSSIpacket()
 {
-	int8_t state = 2;
+	getSNR();
 
-#if (DEBUG_MODE > 1)
-	INFO_LN(F("Starting 'getRSSIpacket'"));
-#endif
+	_RSSIpacket = readRegister(REG_PKT_RSSI_VALUE);
 
-	state = 1;
-	if (_modem == LORA) {
+	if (_SNR < 0) {
 
-		state = getSNR();
-
-		if (state == 0) {
-
-			_RSSIpacket = readRegister(REG_PKT_RSSI_VALUE);
-
-			if (_SNR < 0) {
-				// commented by C. Pham
-				//_RSSIpacket = -NOISE_ABSOLUTE_ZERO + 10.0 * SignalBwLog[_bandwidth] + NOISE_FIGURE + ( double )_SNR;
-
-				// for SX1272 we use -139, for SX1276, we use -157
-				// then for SX1276 when using low-frequency (i.e. 433MHz) then we use -164
-				_RSSIpacket = -(OFFSET_RSSI + (_board == SX1276Chip ? 18 : 0)
-					+ (_channel < CH_04_868 ? 7 : 0))
-					+ (double)_RSSIpacket + (double)_SNR *0.25;
-				state = 0;
-			} else {
-				//_RSSIpacket = readRegister(REG_PKT_RSSI_VALUE);
-				_RSSIpacket = -(OFFSET_RSSI + (_board == SX1276Chip ? 18 : 0)
-					+ (_channel < CH_04_868 ? 7 : 0))
-					+ (double)_RSSIpacket *16.0 / 15.0;
-				state = 0;
-			}
-#if (DEBUG_MODE > 0)
-			INFO(F("RSSI packet value is "));
-			INFO_LN(_RSSIpacket);
-#endif
-		}
+		_RSSIpacket = -(139 + (_board == SX1276Chip ? 18 : 0)
+			+ (_channel < CH_04_868 ? 7 : 0))
+			+ (double)_RSSIpacket + (double)_SNR *0.25;
 	} else {
-		state = -1;
-#if (DEBUG_MODE > 0)
-		INFO_LN(F("RSSI packet does not exist in FSK mode"));
-#endif
+		_RSSIpacket = -(139 + (_board == SX1276Chip ? 18 : 0)
+			+ (_channel < CH_04_868 ? 7 : 0))
+			+ (double)_RSSIpacket *16.0 / 15.0;
 	}
-	return state;
+
+	return _RSSIpacket;
 }
 
 uint8_t SX1272::getMaxCurrent()
@@ -4645,11 +4569,9 @@ uint8_t SX1272::doCAD(uint8_t counter)
 			       && (millis() < exitTime)) {
 				// only one reading per CAD
 				if (micros() - startRSSI > ts + 240 && !hasRSSI) {
-					_RSSI =
-					    -(OFFSET_RSSI +
-					      (_board ==
-					       SX1276Chip ? 18 : 0)) +
-					    readRegister(REG_RSSI_VALUE_LORA);
+
+					_RSSI = -(139 + (_board == SX1276Chip ? 18 : 0)) +
+							readRegister(REG_RSSI_VALUE_LORA);
 					rssi_mean += _RSSI;
 					rssi_count++;
 					hasRSSI = true;
@@ -4925,20 +4847,16 @@ void SX1272::CarrierSense()
 			// CAD is OK, but need to check RSSI
 			if (_RSSIonSend) {
 
-				e = getRSSI();
+				getRSSI();
 				uint8_t rssi_retry_count = 8;
 
-				if (!e) {
-
-					do {
-						getRSSI();
-						INFO(F("--> RSSI "));
-						INFO_LN(_RSSI);
-						rssi_retry_count--;
-						sx_delay(1);
-					} while (_RSSI > -90 && rssi_retry_count);
-				} else
-					INFO(F("--> RSSI error\n"));
+				do {
+					getRSSI();
+					INFO(F("--> RSSI "));
+					INFO_LN(_RSSI);
+					rssi_retry_count--;
+					sx_delay(1);
+				} while (_RSSI > -90 && rssi_retry_count);
 
 				if (!rssi_retry_count)
 					carrierSenseRetry = true;

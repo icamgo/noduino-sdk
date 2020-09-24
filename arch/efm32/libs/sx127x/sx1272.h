@@ -352,7 +352,6 @@ const uint8_t net_key_1 = 0x34;
 #else
 const uint8_t OFFSET_PAYLOADLENGTH = 4;
 #endif
-const uint8_t OFFSET_RSSI = 139;
 const uint8_t NOISE_FIGURE = 6.0;
 const uint8_t NOISE_ABSOLUTE_ZERO = 174.0;
 
@@ -492,9 +491,7 @@ class SX1272 {
 	int8_t setNodeAddress(uint8_t addr);
 
 	int8_t getSNR();
-
-	uint8_t getRSSI();
-
+	int16_t getRSSI();
 	int16_t getRSSIpacket();
 
 	uint8_t getMaxCurrent();
@@ -706,16 +703,16 @@ class SX1272 {
 	int8_t _SNR;
 
 	// RSSI current value.
-	int8_t _RSSI;
+	int16_t _RSSI;
 
 	// RSSI from the last packet received in LoRa mode.
-	int16_t _RSSIpacket;
+	int16_t _RSSIpacket __attribute__((aligned(4)));
 
 	// preamble length sent/received.
 	uint16_t _preamblelength;
 
 	// payload length sent/received.
-	uint16_t _payloadlength;
+	uint16_t _payloadlength __attribute__((aligned(4)));
 
 	uint8_t _nodeAddress;
 
@@ -757,7 +754,7 @@ class SX1272 {
 	// array with all the information about a sent/received ack.
 	pack ACK;
 
-	uint8_t packet_data[MAX_PAYLOAD];
+	uint8_t packet_data[MAX_PAYLOAD] __attribute__((aligned(4)));
 	uint8_t ack_data[2];
 
 	// temperature module.

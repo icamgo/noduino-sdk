@@ -31,7 +31,10 @@
 struct circ_buf g_cbuf;
 
 uint8_t rx_err_cnt = 0;
+uint8_t rx_hung_cnt = 0;
 #define KEY_LONG_PRESS_TIME		60000
+
+#define RX_ERR_THRESHOLD		15
 
 #else
 #define KEY_LONG_PRESS_TIME		8
@@ -684,7 +687,6 @@ bool is_our_pkt(uint8_t *p, int len)
 
 void rx_irq_handler()
 {
-	noInterrupts();
 #ifdef ENABLE_RX_INTERRUPT
 	int8_t e = 0;
 
@@ -708,13 +710,12 @@ void rx_irq_handler()
 	} else {
 
 		rx_err_cnt++;
-
 	}
+
 	//INFOLN("%d", e);
 
 	//sx1272.rx_v0();
 #endif
-	interrupts();
 }
 
 void setup()
@@ -790,7 +791,14 @@ void loop(void)
 #ifdef ENABLE_RX_INTERRUPT
 	status_counter++;
 
-	if (rx_err_cnt > 50) {
+	if (sx1272.getRSSI() <= -155) {
+
+		rx_hung_cnt++;
+	}
+
+	if (rx_hung_cnt > 5) show_low_bat();
+
+	if (rx_err_cnt > RX_ERR_THRESHOLD || rx_hung_cnt > 5) {
 
 		sx1272.reset();
 		INFO_S("%s", "Resetting lora module\n");
