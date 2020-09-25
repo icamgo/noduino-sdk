@@ -25,7 +25,19 @@
 #include "math.h"
 #include "em_wdog.h"
 
-#define CONFIG_PROTO_V34		1
+#define CONFIG_PROTO_V33			1
+//#define CONFIG_PROTO_V34			1
+
+#ifdef CONFIG_PROTO_V33
+#define ENABLE_CRYPTO				1
+#define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
+#endif
+
+#ifdef ENABLE_CRYPTO
+#include "crypto.h"
+#endif
+
+#define FW_VER					"Ver 1.2"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -99,13 +111,11 @@ uint8_t tx_cause = RESET_TX;
 #ifdef CONFIG_V0
 
 #ifdef CONFIG_PROTO_V33
-uint8_t message[32] = { 0x47, 0x4F, 0x33 };
-#define TX_LEN			24
+uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
+
 #elif CONFIG_PROTO_V34
-
-#define TX_LEN			42
-uint8_t message[TX_LEN] = { 0x47, 0x4F, 0x34 };
-
+#define PAYLOAD_LEN			36		/* 36 + 6 = 42 */
+uint8_t message[PAYLOAD_LEN] = { 0x47, 0x4F, 0x34 };
 #endif
 
 uint16_t tx_count = 0;
@@ -263,6 +273,10 @@ void setup()
 	wInit.em3Run = true;
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 
+#ifdef ENABLE_CRYPTO
+	crypto_init();
+#endif
+
 	// init dev power ctrl pin
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 	power_off_dev();
@@ -335,6 +349,9 @@ void push_data()
 
 #ifdef CONFIG_V0
 	uint8_t *pkt = message;
+
+	memset(pkt, 0, PAYLOAD_LEN+6);
+	pkt[0] = 0x47; pkt[1] = 0x4F;
 #endif
 
 	////////////////////////////////
@@ -398,14 +415,6 @@ void push_data()
 	#ifdef CONFIG_PROTO_V33
 	pkt[2] = 0x33;
 
-	p = (uint8_t *) &tx_count;
-	pkt[16] = p[1]; pkt[17] = p[0];
-
-	tx_count++;
-
-	ui16 = get_crc(pkt, 18);
-	p = (uint8_t *) &ui16;
-	pkt[18] = p[1]; pkt[19] = p[0];
 
 	float chip_temp = fetch_mcu_temp();
 
@@ -421,8 +430,26 @@ void push_data()
 	// Internal current consumption
 	pkt[23] = (int8_t)roundf(cur_curr);
 
-	#elif CONFIG_PROTO_V34
+	p = (uint8_t *) &tx_count;
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
+	tx_count++;
 
+	/////////////////////////////////////////////////////////
+	/*
+	 * 2. crc
+	 * 3. set mic
+	*/
+
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
+	p = (uint8_t *) &ui16;
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
+#ifdef ENABLE_CRYPTO
+	set_pkt_mic(pkt, PAYLOAD_LEN+6);
+#endif
+	/////////////////////////////////////////////////////////
+
+	#elif CONFIG_PROTO_V34
 	pkt[2] = 0x34;
 
 	pkt[16] = 8;			// dev_type
@@ -467,15 +494,17 @@ void push_data()
 	pkt[32] = p[1]; pkt[33] = p[0];
 
 	/* frame number */
+	//pkt[34] = p[1]; pkt[35] = p[0];
 	p = (uint8_t *) &tx_count;
-	pkt[34] = p[1]; pkt[35] = p[0];
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
 	tx_count++;
 
-	ui16 = get_crc(pkt, TX_LEN-6);
+	//pkt[36] = p[1]; pkt[37] = p[0];
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
-	pkt[36] = p[1]; pkt[37] = p[0];
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 
-	pkt[38] = 0; pkt[39] = 0; pkt[40] = 0; pkt[41] = 0;
+	//pkt[38] = 0; pkt[39] = 0; pkt[40] = 0; pkt[41] = 0;
 	#endif
 #else
 	uint8_t r_size;
@@ -507,7 +536,7 @@ void push_data()
 #endif
 
 #ifdef CONFIG_V0
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, TX_LEN, TX_TIME);
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
 #else
 	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
