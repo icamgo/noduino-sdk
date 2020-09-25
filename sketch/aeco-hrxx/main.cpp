@@ -1030,11 +1030,23 @@ void loop(void)
 
 				} else {
 
-					sprintf(frame_buf[fi + 1], "%d %s %s %s",
-						check_pkt_mic(p, p_len),
-						decode_vbat(p),
-						decode_sensor_data(p),
-						decode_ccid(p)+5);
+					if ((p[27] & 0x10) && p[19] < 99 && p[24] < 99
+						&& p[25] < 99 && p[26] < 99) {
+
+						sprintf(frame_buf[fi + 1], "%d %2d %2d %2d %2d %2d",
+							check_pkt_mic(p, p_len),
+							p[18],
+							p[19],
+							p[24],
+							p[25],
+							p[26]);
+
+					} else {
+						sprintf(frame_buf[fi + 1], "%d %s %s",
+							check_pkt_mic(p, p_len),
+							decode_vbat(p),
+							decode_sensor_data(p));
+					}
 				}
 
 				show_frame(fi, omode, false);
