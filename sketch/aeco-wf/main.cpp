@@ -28,6 +28,15 @@
 //#define	ONLY_WATER_LEAK				1
 //#define	DEBUG					1
 
+#define FW_VER					"Ver 1.2"
+
+#define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
+#define ENABLE_CRYPTO				1
+
+#ifdef ENABLE_CRYPTO
+#include "crypto.h"
+#endif
+
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
@@ -96,7 +105,7 @@ static uint8_t need_push = 0;
 //#define WITH_ACK
 
 #ifdef CONFIG_V0
-uint8_t message[32] = { 0x47, 0x4F, 0x33 };
+uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 #else
@@ -126,6 +135,7 @@ uint8_t message[32];
 
 void push_data(bool al);
 
+#ifndef CONFIG_V0
 char *ftoa(char *a, double f, int precision)
 {
 	long p[] =
@@ -144,6 +154,7 @@ char *ftoa(char *a, double f, int precision)
 	itoa(desimal, a, 10);
 	return ret;
 }
+#endif
 
 void power_on_dev()
 {
@@ -377,6 +388,10 @@ void setup()
 	wInit.em3Run = true;
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 
+#ifdef ENABLE_CRYPTO
+	crypto_init();
+#endif
+
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 	power_off_dev();
@@ -471,6 +486,10 @@ void push_data(bool alarm)
 
 #ifdef CONFIG_V0
 	uint8_t *pkt = message;
+
+	memset(pkt, 0, PAYLOAD_LEN+6);
+	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
+
 	uint64_t devid = get_devid();
 
 	uint8_t *p = (uint8_t *) &devid;
@@ -511,14 +530,6 @@ void push_data(bool alarm)
 
 	pkt[15] = tx_cause;
 
-	p = (uint8_t *) &tx_count;
-	pkt[16] = p[1]; pkt[17] = p[0];
-	tx_count++;
-
-	ui16 = get_crc(pkt, 18);
-	p = (uint8_t *) &ui16;
-	pkt[18] = p[1]; pkt[19] = p[0];
-
 	float chip_temp = adc.temperatureCelsius();
 
 	// Humidity Sensor data	or Water Leak Sensor data
@@ -532,6 +543,26 @@ void push_data(bool alarm)
 
 	// Internal current consumption
 	pkt[23] = cur_water;
+
+	p = (uint8_t *) &tx_count;
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
+	tx_count++;
+
+	/////////////////////////////////////////////////////////
+	/*
+	 * 2. crc
+	 * 3. set mic
+	*/
+
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
+	p = (uint8_t *) &ui16;
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
+#ifdef ENABLE_CRYPTO
+	set_pkt_mic(pkt, PAYLOAD_LEN+6);
+#endif
+	/////////////////////////////////////////////////////////
+
 #else
 	char vbat_s[10], pres_s[10];
 	ftoa(vbat_s, vbat, 2);
@@ -556,7 +587,7 @@ void push_data(bool alarm)
 	startSend = millis();
 
 #ifdef CONFIG_V0
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
 #else
 	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
