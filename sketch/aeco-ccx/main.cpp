@@ -26,7 +26,7 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-#if 0
+#ifdef EFM32ZG110F32
 #define	DEBUG						1
 #define DEBUG_TX					1
 #define DEBUG_HEX_PKT				1
@@ -1506,11 +1506,10 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 		//////////////////////////////////////////////////////
 		/* check the rx_err in 1min */
-		if (rx_err_cnt > tx_cnt_1min || rx_hung_cnt > 3) {
+		if (rx_err_cnt > tx_cnt_1min) {
 
 			need_reset_sx1272 = 0x55;
 
-			rx_hung_cnt = 0;
 		}
 
 		++cnt_1min;
@@ -1521,6 +1520,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 			tx_cnt_1min = (tx_cnt - old_tx_cnt) / 10;
 			old_tx_cnt = tx_cnt;
 
+			// Timer report pkt
 			tx_cause = TIMER_TX;
 			need_push = 0x55;
 		}
@@ -1531,18 +1531,20 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 			need_push_mac = 0x55;
 		}
 
-		if (cnt_1min % 10 == 0) {
-			// 10min
+		if (cnt_1min % 12 == 0) {
+
+			// 12min tiemr
 
 			if (rx_cnt == old_rx_cnt) {
-				// no rx pkt, wait the watchdog to reset
-				//while(1);
-				NVIC_SystemReset();
+				// no rx pkt, wait reset the system
+				//NVIC_SystemReset();
+				need_reset_sx1272 = 0x55;
 
 			} else {
 
 				old_rx_cnt = rx_cnt;
 			}
+
 		}
 
 		if (cnt_1min % 1440 == 0) {
@@ -1709,7 +1711,9 @@ void loop(void)
 
 		if (omode != old_omode) {
 
+		#ifdef ENABLE_OLED
 			show_low_bat();
+		#endif
 			delay(2000);
 
 			old_omode = omode;
@@ -1734,7 +1738,7 @@ void loop(void)
 			rx_hung_cnt++;
 		}
 
-		if (0x55 == need_reset_sx1272) {
+		if (0x55 == need_reset_sx1272 || rx_hung_cnt > 3) {
 
 			//power_on_dev();
 			//u8g2.begin();
@@ -1747,8 +1751,8 @@ void loop(void)
 			sx1272.rx_v0();
 
 			need_reset_sx1272 = 0;
-
 			rx_err_cnt = 0;
+
 		}
 
 		if (omode != old_omode) {
