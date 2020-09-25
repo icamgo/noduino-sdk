@@ -768,6 +768,7 @@ uint16_t update_crc(uint8_t *p, int len)
 
 uint64_t get_devid();
 
+#ifdef ENCODE_FULL_CCID
 uint32_t get_ccid_low2(uint8_t *pkt)
 {
 	uint64_t devid = 0UL;
@@ -784,6 +785,19 @@ uint32_t get_ccid_low2(uint8_t *pkt)
 
 	return ret;
 }
+#else
+uint32_t get_ccid_low2(uint8_t *p)
+{
+	uint8_t ret = 0;
+
+	if (1 <= p[17]) {
+
+		ret = p[18];
+	}
+
+	return ret;
+}
+#endif
 
 #ifndef ENCODE_FULL_CCID
 uint8_t get_myid_low2()
