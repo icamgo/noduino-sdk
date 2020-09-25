@@ -1551,8 +1551,8 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 			if (rx_cnt == old_rx_cnt) {
 				// no rx pkt, wait reset the system
-				//NVIC_SystemReset();
-				need_reset_sx1272 = 0x55;
+				NVIC_SystemReset();
+				//need_reset_sx1272 = 0x55;
 
 			} else {
 
