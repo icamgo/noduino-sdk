@@ -141,9 +141,9 @@ void SX1272::RxChainCalibration()
 void SX1272::reset()
 {
 	digitalWrite(SX1272_RST, LOW);
-	sx_delay(200);
+	sx_delay(5);
 	digitalWrite(SX1272_RST, HIGH);
-	sx_delay(500);
+	sx_delay(50);
 }
 
 void SX1272::setup_v0(uint32_t freq, uint8_t dbm)
