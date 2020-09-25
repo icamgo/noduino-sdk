@@ -32,12 +32,10 @@
 #define DEBUG_HEX_PKT				1
 #endif
 
-#define ENABLE_EXP_CC				1
-
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V2.4"
+#define	FW_VER						"V2.5"
 
 #define LOW_BAT_THRESHOLD			2.9
 
@@ -65,8 +63,15 @@ static uint8_t tx_cause __attribute__((aligned(4))) = RESET_TX;
 #define MAC_GET_CMD				0x83
 #define MAC_CAD_OFF				0x84
 #define MAC_CAD_ON				0x85
+
+#ifdef ENCODE_FULL_CCID
 #define MAC_FIRST_CCID			0x86
 #define MAC_LATEST_CCID			0x87
+#else
+#define MAC_ENGMODE_ON			0x86
+#define MAC_ENGMODE_OFF			0x87
+#endif
+
 #define MAC_RESET_CC			0x88
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
@@ -126,7 +131,16 @@ uint32_t old_rx_cnt = 0;
 uint32_t cnt_1min = 0;
 
 bool tx_on __attribute__((aligned(4))) = true;
+
+#ifdef ENCODE_FULL_CCID
 bool first_ccid __attribute__((aligned(4))) = false;
+#endif
+
+/*
+ * If full ccid is enable, do not support to
+ * turn on/off the eng mode via mac cmd
+*/
+bool eng_mode_on __attribute__((aligned(4))) = true;
 
 /*
  * Output Mode:
@@ -754,7 +768,6 @@ uint16_t update_crc(uint8_t *p, int len)
 
 uint64_t get_devid();
 
-#ifdef ENABLE_EXP_CC
 uint32_t get_ccid_low2(uint8_t *pkt)
 {
 	uint64_t devid = 0UL;
@@ -772,6 +785,19 @@ uint32_t get_ccid_low2(uint8_t *pkt)
 	return ret;
 }
 
+#ifndef ENCODE_FULL_CCID
+uint8_t get_myid_low2()
+{
+	uint64_t devid = get_devid();
+
+	uint64_t tt = (uint64_t)(devid / 100) * 100;
+
+	uint8_t ret = (uint8_t)(devid - tt);
+
+	return ret;
+}
+#endif
+
 void encode_temp_vbat(uint8_t *pkt)
 {
 	float dd, vb;
@@ -786,7 +812,7 @@ void encode_temp_vbat(uint8_t *pkt)
 	// encode the vbat
 	uint16_t vbat = pkt[13] << 8 | pkt[14];
 
-	vb = (float)(vbat / 1000.0 + (p[17] == 1 ? 1 : 0) * 0.05);
+	vb = (float)(vbat / 1000.0 + (pkt[17] == 1 ? 1 : 0) * 0.05);
 	uint16_t ui16 = vb * 10;
 
 	ui16 *= 100;
@@ -805,7 +831,7 @@ void encode_temp_vbat(uint8_t *pkt)
 
 		if (dd >= 0 && dd < 130) {
 
-			data = (int16_t)(dd + (p[17] == 1 ? 1 : 0) * 0.5);
+			data = (int16_t)(dd + (pkt[17] == 1 ? 1 : 0) * 0.5);
 			data *= 10;
 
 		} else {
@@ -819,7 +845,7 @@ void encode_temp_vbat(uint8_t *pkt)
 
 		if (dd >= 0 && dd < 18) {
 
-			data = (dd + (p[17] == 1 ? 1 : 0) * 0.05) * 10;
+			data = (dd + (pkt[17] == 1 ? 1 : 0) * 0.05) * 10;
 			data *= 10;
 
 		} else {
@@ -833,7 +859,7 @@ void encode_temp_vbat(uint8_t *pkt)
 
 		if (dd > 1 && dd <= 100) {
 
-			data = (int16_t)(dd + (p[17] == 1 ? 1 : 0) * 0.5);
+			data = (int16_t)(dd + (pkt[17] == 1 ? 1 : 0) * 0.5);
 			data *= 10;
 
 		} else {
@@ -857,7 +883,6 @@ void encode_temp_vbat(uint8_t *pkt)
 	pkt[12] = pb[0];
 
 }
-#endif
 
 bool process_pkt(uint8_t *p, int *len)
 {
@@ -938,11 +963,11 @@ bool process_pkt(uint8_t *p, int *len)
 				p[17] = 1;			// increment the cc-relayed-cnt
 			}
 
-
 			//uint8_t mtype = p[27] & 0xE0;
 			//if (0x20 != mtype && 0x60 != mtype) {
 			// pkt is not the down pkt
 
+		#ifdef ENCODE_FULL_CCID
 			if ((1 == p[17])
 				|| (false == first_ccid && p[17] > 1)) {
 
@@ -957,13 +982,33 @@ bool process_pkt(uint8_t *p, int *len)
 				p[18] = pd[4];
 			}
 			//}
+		#else
+			if (1 == p[17]) {
 
-		#ifdef ENABLE_EXP_CC
-			if (p[27] & 0x10) {
+				p[18] = get_myid_low2();
+
+			} else if (2 == p[17]) {
+
+				p[19] = get_myid_low2();
+
+			} else if (3 == p[17]) {
+
+				p[24] = get_myid_low2();
+
+			} else if (4 == p[17]) {
+
+				p[25] = get_myid_low2();
+
+			} else if (5 == p[17]) {
+
+				p[26] = get_myid_low2();
+			}
+		#endif
+
+			if ((p[27] & 0x10) && eng_mode_on) {
 				// has ccid
 				encode_temp_vbat(p);
 			}
-		#endif
 	}
 
 	if (check_ctrl_fno(&g_cfifo, p, *len) == true) {
@@ -1122,6 +1167,7 @@ void process_mac_cmds(uint8_t *p, int len)
 			need_push_mac = 0x55;
 			break;
 		#endif
+		#ifdef ENCODE_FULL_CCID
 		case MAC_FIRST_CCID:
 			mac_cmd = cmd;
 			first_ccid = true;
@@ -1134,6 +1180,20 @@ void process_mac_cmds(uint8_t *p, int len)
 			tx_cause = MAC_TX;
 			need_push_mac = 0x55;
 			break;
+		#else
+		case MAC_ENGMODE_ON:
+			mac_cmd = cmd;
+			eng_mode_on = true;
+			tx_cause = MAC_TX;
+			need_push_mac = 0x55;
+			break;
+		case MAC_ENGMODE_OFF:
+			mac_cmd = cmd;
+			eng_mode_on = false;
+			tx_cause = MAC_TX;
+			need_push_mac = 0x55;
+			break;
+		#endif
 		case MAC_RESET_CC:
 			mac_cmd = cmd;
 			tx_cause = MAC_TX;
@@ -1276,12 +1336,16 @@ int16_t get_encode_mcu_temp()
 
 	int16_t ret = (int16_t)(temp + 0.5) * 10;
 
+#ifdef ENCODE_FULL_CCID
 	/*
 	 * x_bit0: tx_on
 	 * x_bit1: cad_on
 	 * x_bit2: first_ccid
 	*/
 	uint8_t xbit = first_ccid << 2 | cad_on << 1 | tx_on;
+#else
+	uint8_t xbit = eng_mode_on << 2 | cad_on << 1 | tx_on;
+#endif
 
 	return ret + xbit;
 }
@@ -1356,7 +1420,11 @@ void set_mac_status_pkt()
 	pkt[23] = ep[0];
 
 	// pkt[27] = 0;		/* data up pkt, no crypto */
+#ifdef ENCODE_FULL_CCID
 	pkt[27] = (uint8_t)(first_ccid << 2 | cad_on << 1 | tx_on);
+#else
+	pkt[27] = (uint8_t)(eng_mode_on << 2 | cad_on << 1 | tx_on);
+#endif
 
 	p = (uint8_t *) &tx_count;
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
@@ -1403,7 +1471,11 @@ void set_temp_pkt()
 	pkt[23] = ep[0];
 
 	// pkt[27] = 0;		/* data up pkt, no crypto */
+#ifdef ENCODE_FULL_CCID
 	pkt[27] = (uint8_t)(first_ccid << 2 | cad_on << 1 | tx_on);
+#else
+	pkt[27] = (uint8_t)(eng_mode_on << 2 | cad_on << 1 | tx_on);
+#endif
 
 	p = (uint8_t *) &tx_count;
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
