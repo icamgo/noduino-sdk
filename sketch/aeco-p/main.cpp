@@ -29,17 +29,28 @@
 
 //#define CONFIG_2MIN				1
 
-//#define ENABLE_P_TEST			1
+#define ENABLE_P_TEST			1
 
-#define DELTA_P					0.12
-//#define DELTA_P					0.2
+#define FW_VER					"Ver 1.2"
+
+#ifdef ENABLE_P_TEST
+#define DELTA_P					0.2			/* 3x0.1 count */
+#else
+#define DELTA_P					0.12		/* no 3-c count */
+#endif
 
 #define ENABLE_CAD				1
 
 #if 0
-#define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
-#else
 #define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
+//#define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
+#else
+#define ENABLE_CRYPTO				1
+#define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
+#endif
+
+#ifdef ENABLE_CRYPTO
+#include "crypto.h"
 #endif
 
 #ifdef ENABLE_P_TEST
@@ -103,8 +114,8 @@ static uint8_t need_push = 0;
 //#define WITH_ACK
 
 #ifdef CONFIG_V0
-uint8_t message[32] = { 0x47, 0x4F, 0x33 };
-uint8_t tx_cause = RESET_TX;
+uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
+int tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 #else
 uint8_t message[32];
@@ -282,6 +293,10 @@ void setup()
 	wInit.em2Run = true;
 	wInit.em3Run = true;
 
+#ifdef ENABLE_CRYPTO
+	crypto_init();
+#endif
+
 #ifndef CONFIG_2MIN
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 #else
@@ -360,6 +375,9 @@ void push_data()
 
 #ifdef CONFIG_V0
 	uint8_t *pkt = message;
+
+	memset(pkt, 0, PAYLOAD_LEN+6);
+	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
 #endif
 
 	////////////////////////////////
@@ -385,13 +403,10 @@ void push_data()
 	}
 
 #ifdef CONFIG_V0
-	uint64_t devid = get_devid();
-
-	uint8_t *p = (uint8_t *) &devid;
-
 	// set devid
-	int i = 0;
-	for(i = 0; i < 8; i++) {
+	uint64_t devid = get_devid();
+	uint8_t *p = (uint8_t *) &devid;
+	for(int i = 0; i < 8; i++) {
 		pkt[3+i] = p[7-i];
 	}
 
@@ -422,11 +437,20 @@ void push_data()
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
 	tx_count++;
 
+	/////////////////////////////////////////////////////////
+	/*
+	 * 2. crc
+	 * 3. set mic
+	*/
 
 	ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 
+#ifdef ENABLE_CRYPTO
+	set_pkt_mic(pkt, PAYLOAD_LEN+6);
+#endif
+	/////////////////////////////////////////////////////////
 #else
 	uint8_t r_size;
 
