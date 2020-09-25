@@ -971,12 +971,6 @@ void loop(void)
 
 		if (MODE_ALL == omode) {
 			// show all message
-#ifndef ENABLE_RX_INTERRUPT
-			if (p[0] != 0x47 || p[1] != 0x4F) {
-				return;
-			}
-#endif
-
 			#ifdef DEBUG
 			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
 				dev_id,
@@ -989,11 +983,39 @@ void loop(void)
 			#endif
 
 			#ifdef ENABLE_OLED
+				#if 0
 				sprintf(frame_buf[c % 8], "%s %4d",
 					dev_id,
 					d.rssi);
 
 				show_frame(c % 8, omode, false);
+				#endif
+				int fi = (c % 4) * 2;
+
+				sprintf(frame_buf[fi], "%s %4d",
+					dev_id,
+					d.rssi);
+
+				decode_vbat(p);
+				decode_sensor_type();
+				decode_sensor_data(p);
+
+				if (dev_id[3] == '0' && (dev_id[4] == '8')) {
+
+					sprintf(frame_buf[fi+1], "%s %s %s",
+						dev_type,
+						dev_data,
+						dev_vbat
+						);
+				} else {
+					sprintf(frame_buf[fi+1], " %s %s %s",
+						dev_type,
+						dev_data,
+						dev_vbat
+						);
+				}
+
+				show_frame(fi, omode, false);
 				c++;
 			#endif
 
