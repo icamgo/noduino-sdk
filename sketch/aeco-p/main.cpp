@@ -62,7 +62,7 @@ RTCDRV_TimerID_t xTimerForWakeUp;
 
 #ifndef CONFIG_2MIN
 static uint32_t sample_period = 18;		/* 20s */
-static uint32_t sample_count = 0;
+static uint32_t cnt_20s = 0;
 static float old_pres = 0.0;
 #define HEARTBEAT_TIME			6600	/* 120min */
 
@@ -142,6 +142,8 @@ uint8_t message[32];
 #define	NB_RETRIES			2
 #endif
 
+uint8_t tx_err_cnt = 0;
+
 void push_data();
 
 char *ftoa(char *a, double f, int precision)
@@ -214,12 +216,19 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
 #ifndef CONFIG_2MIN
-	sample_count++;
+	cnt_20s++;
 
-	if (sample_count >= HEARTBEAT_TIME/20) {
+	if (cnt_20s >= HEARTBEAT_TIME/20) {
+
+		// 2 hours
+
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
-		sample_count = 0;
+
+		cnt_20s = 0;
+
+		/* reset the cnt */
+		tx_err_cnt = 0;
 	}
 #endif
 
@@ -364,6 +373,29 @@ uint16_t get_crc(uint8_t *pp, int len)
 }
 #endif
 
+uint16_t get_encode_vbat()
+{
+	/*
+	 *  1: encode the tx_err_cnt/2h
+	 * 10: encode the tx_err_cnt/2h
+	*/
+	float vbat = adc.readVbat();
+	uint16_t ui16 = vbat * 100;
+
+	ui16 *= 10;
+
+	if (tx_err_cnt > 9) {
+
+		ui16 += 9;
+
+	} else {
+
+		ui16 += (uint16_t)tx_err_cnt;
+	}
+
+	return ui16;
+}
+
 void push_data()
 {
 	long startSend;
@@ -415,7 +447,8 @@ void push_data()
 
 	pkt[11] = p[1]; pkt[12] = p[0];
 
-	ui16 = vbat * 1000;
+	ui16 = get_encode_vbat();
+
 	pkt[13] = p[1]; pkt[14] = p[0];
 
 	float chip_temp = fetch_mcu_temp();
@@ -513,9 +546,14 @@ void push_data()
 #endif
 
 #ifndef CONFIG_2MIN
-	if (!e) {
-		// send message succesful, update the old_pres
+	if (0 == e) {
+
+		/* send message succesful, update the old_pres */
 		old_pres = cur_pres;
+
+	} else {
+
+		tx_err_cnt++;
 	}
 #endif
 
