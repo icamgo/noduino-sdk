@@ -786,7 +786,7 @@ void encode_temp_vbat(uint8_t *pkt)
 	// encode the vbat
 	uint16_t vbat = pkt[13] << 8 | pkt[14];
 
-	vb = (float)(vbat / 1000.0 + 0.05);
+	vb = (float)(vbat / 1000.0 + (p[17] == 1 ? 1 : 0) * 0.05);
 	uint16_t ui16 = vb * 10;
 
 	ui16 *= 100;
@@ -805,7 +805,7 @@ void encode_temp_vbat(uint8_t *pkt)
 
 		if (dd >= 0 && dd < 130) {
 
-			data = (int16_t)(dd + 0.5);
+			data = (int16_t)(dd + (p[17] == 1 ? 1 : 0) * 0.5);
 			data *= 10;
 
 		} else {
@@ -819,7 +819,7 @@ void encode_temp_vbat(uint8_t *pkt)
 
 		if (dd >= 0 && dd < 18) {
 
-			data = (dd + 0.05)*10;
+			data = (dd + (p[17] == 1 ? 1 : 0) * 0.05) * 10;
 			data *= 10;
 
 		} else {
@@ -833,7 +833,7 @@ void encode_temp_vbat(uint8_t *pkt)
 
 		if (dd > 1 && dd <= 100) {
 
-			data = (int16_t)(dd + 0.5);
+			data = (int16_t)(dd + (p[17] == 1 ? 1 : 0) * 0.5);
 			data *= 10;
 
 		} else {
@@ -1664,12 +1664,12 @@ void loop(void)
 
 		if (0x55 == need_reset_sx1272) {
 
-			power_on_dev();
-			u8g2.begin();
+			//power_on_dev();
+			//u8g2.begin();
 
-			sx1272.reset();
+			//sx1272.reset();
 			INFO_S("Resetting lora module\n");
-			radio_setup();
+			radio_setup();			/* reset and setup */
 
 			sx1272.init_rx_int();
 			sx1272.rx_v0();
