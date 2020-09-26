@@ -462,56 +462,60 @@ void show_frame(int l, int mode, bool alarm)
 			u8g2.print(frame_buf[i]);
 		}
 
-		if (MODE_ALL == mode) {
+		if (l != 7) {
+			// l == 7 is last 2 line, used by rssi
 
-			// Lora icon. notice rx all message
-			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
+			if (MODE_ALL == mode) {
 
-			u8g2.drawGlyph(120, 12+16*l, 81);
+				// Lora icon. notice rx all message
+				u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
 
-		} else if (MODE_CC2 == mode || MODE_RAW == mode || MODE_MAC == mode) {
+				u8g2.drawGlyph(120, 12+16*l, 81);
 
-			// Bell icon. notice the message tagged for testing
-			//u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
-			//u8g2.drawGlyph(120, 12+16*l*2, 65);
-			u8g2.setCursor(124, 25+17*l);
-			u8g2.print('.');
+			} else if (MODE_CC2 == mode || MODE_RAW == mode || MODE_MAC == mode) {
 
-		} else if (MODE_KEY == mode) {
-			// cycle icon. notice the message trigged by magnet
-			int ic = 64;
+				// Bell icon. notice the message tagged for testing
+				//u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
+				//u8g2.drawGlyph(120, 12+16*l*2, 65);
+				u8g2.setCursor(124, 25+17*l);
+				u8g2.print('.');
 
-			if (alarm == false) {
-				u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
+			} else if (MODE_KEY == mode) {
+				// cycle icon. notice the message trigged by magnet
+				int ic = 64;
 
-				u8g2.drawGlyph(120, 12+16*l, ic);
-			} else {
+				if (alarm == false) {
+					u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
 
-				// show alarm icon
-				if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3'
-					|| dev_id[4] == '7' || dev_id[4] == '8')) {
-					// Pressure & Level, Humidity digital sensor, showing lightning icon
-					u8g2.setFont(u8g2_font_open_iconic_embedded_2x_t);
-					ic = 67;
+					u8g2.drawGlyph(120, 12+16*l, ic);
+				} else {
 
-					u8g2.drawGlyph(116, 15+16*l, ic);
+					// show alarm icon
+					if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3'
+						|| dev_id[4] == '7' || dev_id[4] == '8')) {
+						// Pressure & Level, Humidity digital sensor, showing lightning icon
+						u8g2.setFont(u8g2_font_open_iconic_embedded_2x_t);
+						ic = 67;
 
-				} else if (dev_id[3] == '1' && dev_id[4] == '3') {
-					// Water Leak sensor, showing water drop icon
-					u8g2.setFont(u8g2_font_open_iconic_thing_1x_t);
-					ic = 72;
+						u8g2.drawGlyph(116, 15+16*l, ic);
 
-					u8g2.drawGlyph(118, 12+16*l, ic);
+					} else if (dev_id[3] == '1' && dev_id[4] == '3') {
+						// Water Leak sensor, showing water drop icon
+						u8g2.setFont(u8g2_font_open_iconic_thing_1x_t);
+						ic = 72;
 
-				} else if (dev_id[3] == '1' && dev_id[4] == '2') {
-					// Vibration sensor, showing pulse icon
-					u8g2.setFont(u8g2_font_open_iconic_embedded_2x_t);
+						u8g2.drawGlyph(118, 12+16*l, ic);
 
-					ic = 70;
+					} else if (dev_id[3] == '1' && dev_id[4] == '2') {
+						// Vibration sensor, showing pulse icon
+						u8g2.setFont(u8g2_font_open_iconic_embedded_2x_t);
 
-					u8g2.drawGlyph(116, 15+16*l, ic);
+						ic = 70;
+
+						u8g2.drawGlyph(116, 15+16*l, ic);
+					}
+
 				}
-
 			}
 		}
 
@@ -814,6 +818,9 @@ void deep_sleep()
 	pinMode(SH1107_SDA, INPUT);
 	digitalWrite(SH1107_RESET, LOW);
 #endif
+
+	// reset the mode
+	omode = MODE_ALL;
 
 	EMU_EnterEM2(true);
 
