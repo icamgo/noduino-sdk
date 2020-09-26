@@ -32,7 +32,7 @@ struct circ_buf g_cbuf;
 
 uint8_t rx_err_cnt = 0;
 uint8_t rx_hung_cnt = 0;
-#define KEY_LONG_PRESS_TIME		3000
+#define KEY_LONG_PRESS_TIME		2000
 
 #define RX_ERR_THRESHOLD		15
 
@@ -592,6 +592,13 @@ void show_low_bat()
 		u8g2.print(" LOW BATTERY ");
 	} while (u8g2.nextPage());
 }
+
+void show_rssi_err()
+{
+	sprintf(frame_buf[6], "RSSI: %d ERR: %d", sx1272.getRSSI(), rx_err_cnt);
+	sprintf(frame_buf[7], "MSOT: %02X HUN: %d", sx1272.get_modem_stat(), rx_hung_cnt);
+	show_frame(7, omode, false);
+}
 #endif
 
 void change_omode()
@@ -796,9 +803,11 @@ void loop(void)
 		rx_hung_cnt++;
 	}
 
-	if (rx_hung_cnt > 3) show_low_bat();
+	if (rx_hung_cnt > 3) show_rssi_err();
 
 	if (rx_err_cnt > RX_ERR_THRESHOLD || rx_hung_cnt > 3) {
+
+		show_rssi_err();
 
 		sx1272.reset();
 		INFO_S("%s", "Resetting lora module\n");
@@ -925,7 +934,10 @@ void loop(void)
 		int ret = get_pkt(&g_cbuf, &d);
 		interrupts();
 
-		if (ret != 0) return;
+		if (ret != 0) {
+			show_rssi_err();
+			return;
+		}
 
 		uint8_t *p = d.data;
 		uint8_t p_len = d.plen;
@@ -990,7 +1002,8 @@ void loop(void)
 
 				show_frame(c % 8, omode, false);
 				#endif
-				int fi = (c % 4) * 2;
+				int fi = (c % 3) * 2;
+				//int fi = (c % 4) * 2;
 
 				sprintf(frame_buf[fi], "%s %4d",
 					dev_id,
@@ -1035,7 +1048,8 @@ void loop(void)
 			#endif
 
 			#ifdef ENABLE_OLED
-				int fi = (c % 4) * 2;
+				int fi = (c % 3) * 2;
+				//int fi = (c % 4) * 2;
 
 				sprintf(frame_buf[fi], "%s %1d %4d",
 					dev_id,
@@ -1121,7 +1135,7 @@ void loop(void)
 			#endif
 
 			#ifdef ENABLE_OLED
-				int fi = (c % 4) * 2;
+				int fi = (c % 3) * 2;
 				sprintf(frame_buf[fi], "%s %4d",
 					dev_id,
 					d.rssi);
@@ -1151,7 +1165,7 @@ void loop(void)
 
 			// only show raw message, <= 32bytes
 			#ifdef ENABLE_OLED
-				int fi = (c % 4) * 2;
+				int fi = (c % 3) * 2;
 				sprintf(frame_buf[fi], "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 					p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
 
