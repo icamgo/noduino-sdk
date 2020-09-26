@@ -32,7 +32,7 @@ struct circ_buf g_cbuf;
 
 uint8_t rx_err_cnt = 0;
 uint8_t rx_hung_cnt = 0;
-#define KEY_LONG_PRESS_TIME		60000
+#define KEY_LONG_PRESS_TIME		3000
 
 #define RX_ERR_THRESHOLD		15
 
