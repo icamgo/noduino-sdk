@@ -465,14 +465,7 @@ void show_frame(int l, int mode, bool alarm)
 		if (l != 7) {
 			// l == 7 is last 2 line, used by rssi
 
-			if (MODE_ALL == mode) {
-
-				// Lora icon. notice rx all message
-				u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
-
-				u8g2.drawGlyph(120, 12+16*l, 81);
-
-			} else if (MODE_CC2 == mode || MODE_RAW == mode || MODE_MAC == mode) {
+			if (MODE_CC2 == mode || MODE_RAW == mode || MODE_MAC == mode) {
 
 				// Bell icon. notice the message tagged for testing
 				//u8g2.setFont(u8g2_font_open_iconic_embedded_1x_t);
@@ -480,7 +473,7 @@ void show_frame(int l, int mode, bool alarm)
 				u8g2.setCursor(124, 25+17*l);
 				u8g2.print('.');
 
-			} else if (MODE_KEY == mode) {
+			} else if (MODE_ALL == mode || MODE_KEY == mode) {
 				// cycle icon. notice the message trigged by magnet
 				int ic = 64;
 
@@ -599,8 +592,8 @@ void show_low_bat()
 
 void show_rssi_err()
 {
-	sprintf(frame_buf[6], "RSSI: %d ERR: %d", sx1272.getRSSI(), rx_err_cnt);
-	sprintf(frame_buf[7], "MSOT: %02X HUN: %d", sx1272.get_modem_stat(), rx_hung_cnt);
+	sprintf(frame_buf[6], "RSSI:%3d ERR: %1d", sx1272.getRSSI(), rx_err_cnt);
+	sprintf(frame_buf[7], "MDST: %02X  HUN: %1d", sx1272.get_modem_stat(), rx_hung_cnt);
 	show_frame(7, omode, false);
 }
 #endif
