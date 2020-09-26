@@ -433,6 +433,11 @@ int8_t SX1272::get_pkt_v0()
 	return state;
 }
 
+uint8_t SX1272::get_modem_stat()
+{
+	return readRegister(REG_MODEM_STAT);
+}
+
 uint8_t SX1272::ON()
 {
 	uint8_t state = 2;

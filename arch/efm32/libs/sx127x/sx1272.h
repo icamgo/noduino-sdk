@@ -430,6 +430,7 @@ class SX1272 {
 	void init_rx_int();
 	void rx_v0();
 	int8_t get_pkt_v0();
+	uint8_t get_modem_stat();
 
 	uint8_t setLORA();
 	uint8_t setFSK();
