@@ -26,7 +26,7 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-#ifdef EFM32ZG110F32
+#if 0
 #define	DEBUG						1
 #define DEBUG_TX					1
 #define DEBUG_HEX_PKT				1
@@ -148,13 +148,12 @@ bool eng_mode_on __attribute__((aligned(4))) = true;
  *   0x0: rx all messages
  *   0x1: show the raw message
 */
-#define MODE_NUM		5
+#define MODE_NUM		4
 
-#define	MODE_ALL		0
-#define	MODE_RAW		1
-#define	MODE_DECODE		2
-#define MODE_STATIS		3
-#define MODE_VER		4
+#define	MODE_RAW		0
+#define	MODE_DECODE		1
+#define MODE_STATIS		2
+#define MODE_VER		3
 
 int omode = MODE_STATIS;
 int old_omode = MODE_STATIS;
@@ -501,15 +500,7 @@ void show_frame(int l, int mode, bool alarm)
 		u8g2.setCursor(0, 32);
 		u8g2.print(frame_buf[1]);
 
-		if (MODE_ALL == mode) {
-			// Lora icon. notice rx all message
-			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
-			if (l == 0) {
-				u8g2.drawGlyph(120, 12, 81);
-			} else if (l == 1) {
-				u8g2.drawGlyph(120, 30, 81);
-			}
-		} else if (MODE_DECODE == mode) {
+		if (MODE_DECODE == mode) {
 			// cycle icon. notice the message trigged by magnet
 			int ic = 64;
 
@@ -572,15 +563,7 @@ void show_mode(int mode)
 	u8g2.firstPage();
 
 	do {
-		if (MODE_ALL == mode) {
-			// Lora icon. notice rx all message
-			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
-			u8g2.setCursor(12, 26);
-			u8g2.print(" CC - ALL ");
-
-			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
-			u8g2.drawGlyph(112, 23, 81);
-		} else if (MODE_RAW == mode) {
+		if (MODE_RAW == mode) {
 			// Lora icon. notice rx all raw message
 			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
 			u8g2.setCursor(12, 64);
@@ -615,17 +598,21 @@ void show_low_bat()
 }
 #endif
 
+#ifdef EFM32HG110F64
 void change_omode()
 {
 	omode++;
 	omode %= MODE_NUM;
 
+#ifdef ENABLE_OLED
 	oled_on = true;
 	oled_on_time = seconds() + OLED_DELAY_TIME;
+#endif
 
 	INFO("omode: ");
 	INFOLN(omode);
 }
+#endif
 
 void power_on_dev()
 {
@@ -1707,8 +1694,10 @@ void setup()
 	sx1272.init_rx_int();
 	sx1272.rx_v0();
 
+#ifdef ENABLE_OLED
 	oled_on = true;
 	oled_on_time = seconds() + OLED_DELAY_TIME;
+#endif
 
 	need_push = 0x55;
 	tx_cause = RESET_TX;
@@ -1758,7 +1747,12 @@ void loop(void)
 			//u8g2.begin();
 
 			//sx1272.reset();
-			INFO_S("Resetting lora module\n");
+			INFO_S("Reset lora module\n");
+			INFO("rx_err_cnt = ");
+			INFO(rx_err_cnt);
+			INFO(" rx_hung_cnt = ");
+			INFOLN(rx_hung_cnt);
+
 			radio_setup();			/* reset and setup */
 
 			sx1272.init_rx_int();
@@ -1769,28 +1763,28 @@ void loop(void)
 
 		}
 
-		if (omode != old_omode) {
 	#ifdef ENABLE_OLED
+		if (omode != old_omode) {
 			// show mode and clean buffer
 			//show_mode(omode);
 
 			frame_buf[0][0] = '\0';
 			frame_buf[1][0] = '\0';
-	#endif
 			old_omode = omode;
 		}
+
 
 		if (seconds() > oled_on_time) {
 
 			oled_on_time = 0;
 			oled_on = false;
 
-	#ifdef ENABLE_OLED
 			u8g2.setPowerSave(1);
-	#endif
+
 			omode = MODE_STATIS;
 			old_omode = omode;
 		}
+	#endif
 
 		struct pkt d;
 
@@ -1798,7 +1792,12 @@ void loop(void)
 		int ret = get_pkt(&g_cbuf, &d);
 		interrupts();
 
-		if (ret != 0) return;
+		if (ret != 0) {
+			// there is no pkt
+			INFO("No pkt, rssi = ");
+			INFOLN(sx1272.getRSSI());
+			return;
+		}
 
 		uint8_t *p = d.data;
 		int p_len = d.plen;
@@ -1823,43 +1822,28 @@ void loop(void)
 
 		if (false == is_our_did(p)) return;
 
+	#ifdef ENABLE_OLED
 		if (oled_on == true) {
 
 			//memset(p+p_len, 0, MAX_PAYLOAD-p_len);
 			decode_devid(p);
 
-			if (MODE_ALL == omode) {
-				// show all message
-				if (p[0] != 0x47 || p[1] != 0x4F || p[2] != 0x33) {
-					return;
-				}
+		#ifdef DEBUG
+			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
+				dev_id,
+				decode_vbat(p),
+				decode_sensor_type(),
+				decode_sensor_data(p),
+				decode_cmd(p),
+				decode_ver(p),
+				d.rssi);
 
-			#ifdef ENABLE_OLED
-					sprintf(frame_buf[c % 2], "%s %4d",
-						dev_id,
-						d.rssi);
+				INFOLN(cmd);
+		#endif
 
-					show_frame(c % 2, omode, false);
-					c++;
-			#endif
-
-			#ifdef DEBUG
-				sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
-					dev_id,
-					decode_vbat(p),
-					decode_sensor_type(),
-					decode_sensor_data(p),
-					decode_cmd(p),
-					decode_ver(p),
-					d.rssi);
-
-					INFOLN(cmd);
-			#endif
-
-			} else if (MODE_RAW == omode) {
+			if (MODE_RAW == omode) {
 
 				// only show raw message, <= 32bytes
-			#ifdef ENABLE_OLED
 				sprintf(frame_buf[0], "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
 					p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
 
@@ -1867,20 +1851,16 @@ void loop(void)
 					p[9], p[10], p_len, check_crc(p, p_len), decode_vbat(p), d.rssi);
 
 				show_frame(0, omode, false);
-			#endif
 
 			} else if (MODE_STATIS == omode) {
 
-			#ifdef ENABLE_OLED
 				sprintf(frame_buf[0], " RX: %4d", rx_cnt);
 				sprintf(frame_buf[1], " TX: %4d", tx_cnt);
 
 				show_frame(0, omode, false);
-			#endif
 
 			} else if (MODE_DECODE == omode) {
 
-			#ifdef ENABLE_OLED
 				sprintf(frame_buf[0], "%s %4d",
 					dev_id,
 					d.rssi);
@@ -1905,9 +1885,8 @@ void loop(void)
 				}
 
 				show_frame(0, omode, p[15] & 0x04);
-			#endif
+
 			} else if (MODE_VER == omode) {
-			#ifdef ENABLE_OLED
 				sprintf(frame_buf[0], " FW: %s", FW_VER);
 				//sprintf(frame_buf[1], " EP: %d", seconds());
 
@@ -1915,10 +1894,9 @@ void loop(void)
 				sprintf(frame_buf[1], " ID: %s", dev_id);
 
 				show_frame(0, omode, false);
-
-			#endif
 			}
 		}
+	#endif
 
 		if (tx_on) {
 
