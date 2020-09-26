@@ -32,7 +32,7 @@ struct circ_buf g_cbuf;
 
 uint8_t rx_err_cnt = 0;
 uint8_t rx_hung_cnt = 0;
-#define KEY_LONG_PRESS_TIME		2000
+#define KEY_LONG_PRESS_TIME		2
 
 #define RX_ERR_THRESHOLD		15
 
@@ -601,8 +601,10 @@ void show_rssi_err()
 }
 #endif
 
-void change_omode()
+void key_irq_handler()
 {
+	key_time = seconds();
+
 	omode++;
 	omode %= 5;
 	INFO("%s", "omode: ");
@@ -745,7 +747,7 @@ void setup()
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
-	attachInterrupt(KEY_PIN, change_omode, FALLING);
+	attachInterrupt(KEY_PIN, key_irq_handler, FALLING);
 
 #ifdef ENABLE_RX_INTERRUPT
 	// RF RX Interrupt pin
@@ -786,6 +788,36 @@ void setup()
 	WDOG_Init(&wInit);
 
 	crypto_init();
+}
+
+void deep_sleep()
+{
+
+#ifdef ENABLE_OLED
+	u8g2.setPowerSave(1);
+#endif
+	sx1272.setSleepMode();
+	digitalWrite(SX1272_RST, LOW);
+
+	spi_end();
+	digitalWrite(10, LOW);
+	digitalWrite(11, LOW);
+	digitalWrite(12, LOW);
+	digitalWrite(13, LOW);
+
+	// dev power off
+	power_off_dev();
+
+#ifdef ENABLE_SH1107
+	//wire_end();
+	pinMode(SH1107_SCL, INPUT);
+	pinMode(SH1107_SDA, INPUT);
+	digitalWrite(SH1107_RESET, LOW);
+#endif
+
+	EMU_EnterEM2(true);
+
+	setup();
 }
 
 void loop(void)
@@ -834,44 +866,17 @@ void loop(void)
 	}
 
 	if (digitalRead(KEY_PIN) == 0) {
-		// x 200ms
-		key_time++;
+
+		if (seconds() > (key_time + KEY_LONG_PRESS_TIME)) {
+
+			key_time = 0;
+			INFOLN("%s", "Key long time pressed, enter deep sleep...");
+
+			deep_sleep();
+		}
+
 	} else {
-		key_time = 0;
-	}
-
-	if (key_time > KEY_LONG_PRESS_TIME) {
-
-		key_time = 0;
-
-		INFOLN("%s", "Key long time pressed, enter deep sleep...");
-		delay(300);
-
-#ifdef ENABLE_OLED
-		u8g2.setPowerSave(1);
-#endif
-		sx1272.setSleepMode();
-		digitalWrite(SX1272_RST, LOW);
-
-		spi_end();
-		digitalWrite(10, LOW);
-		digitalWrite(11, LOW);
-		digitalWrite(12, LOW);
-		digitalWrite(13, LOW);
-
-		// dev power off
-		power_off_dev();
-
-#ifdef ENABLE_SH1107
-		//wire_end();
-		pinMode(SH1107_SCL, INPUT);
-		pinMode(SH1107_SDA, INPUT);
-		digitalWrite(SH1107_RESET, LOW);
-#endif
-
-		EMU_EnterEM2(true);
-
-		setup();
+		key_time = seconds();
 	}
 
 #if DEBUG > 1
