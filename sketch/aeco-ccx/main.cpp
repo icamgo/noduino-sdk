@@ -220,6 +220,9 @@ void radio_setup()
 
 	sx1272._enableCarrierSense = true;
 #endif
+
+	sx1272.init_rx_int();
+	sx1272.rx_v0();
 }
 
 #ifdef CONFIG_V0
@@ -1662,9 +1665,6 @@ void setup()
 
 	radio_setup();
 
-	sx1272.init_rx_int();
-	sx1272.rx_v0();
-
 #ifdef ENABLE_OLED
 	oled_on = true;
 	oled_on_time = seconds() + OLED_DELAY_TIME;
@@ -1697,7 +1697,8 @@ void deep_sleep()
 
 	EMU_EnterEM2(true);
 
-	setup();
+	power_on_dev();
+	radio_setup();
 }
 
 void loop(void)
@@ -1739,9 +1740,6 @@ void loop(void)
 			INFOLN(rx_hung_cnt);
 
 			radio_setup();			/* reset and setup */
-
-			sx1272.init_rx_int();
-			sx1272.rx_v0();
 
 			need_reset_sx1272 = 0;
 			rx_err_cnt = 0;
