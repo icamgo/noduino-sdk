@@ -28,6 +28,15 @@
 
 //#define	DEBUG					1
 
+#define FW_VER					"Ver 1.2"
+
+#define ENABLE_CRYPTO				1
+#define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
+
+#ifdef ENABLE_CRYPTO
+#include "crypto.h"
+#endif
+
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
@@ -85,7 +94,7 @@ static uint8_t need_push = 0;
 //#define WITH_ACK
 
 #ifdef CONFIG_V0
-uint8_t message[32] = { 0x47, 0x4F, 0x33 };
+uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 #else
@@ -231,6 +240,10 @@ void setup()
 	wInit.em3Run = true;
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 
+#ifdef ENABLE_CRYPTO
+	crypto_init();
+#endif
+
 	// init dev power ctrl pin
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 	power_off_dev();
@@ -303,6 +316,9 @@ void push_data()
 
 #ifdef CONFIG_V0
 	uint8_t *pkt = message;
+
+	memset(pkt, 0, PAYLOAD_LEN+6);
+	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
 #endif
 
 	////////////////////////////////
@@ -348,14 +364,6 @@ void push_data()
 
 	//pkt[15] = tx_cause;
 
-	p = (uint8_t *) &tx_count;
-	pkt[16] = p[1]; pkt[17] = p[0];
-	tx_count++;
-
-	ui16 = get_crc(pkt, 18);
-	p = (uint8_t *) &ui16;
-	pkt[18] = p[1]; pkt[19] = p[0];
-
 	float chip_temp = fetch_mcu_temp();
 
 	// Humidity Sensor data	or Water Leak Sensor data
@@ -369,6 +377,25 @@ void push_data()
 
 	// Internal current consumption
 	pkt[23] = (int8_t)roundf(cur_curr);
+
+	p = (uint8_t *) &tx_count;
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
+	tx_count++;
+
+	/////////////////////////////////////////////////////////
+	/*
+	 * 2. crc
+	 * 3. set mic
+	*/
+
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
+	p = (uint8_t *) &ui16;
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
+#ifdef ENABLE_CRYPTO
+	set_pkt_mic(pkt, PAYLOAD_LEN+6);
+#endif
+	/////////////////////////////////////////////////////////
 #else
 	uint8_t r_size;
 
