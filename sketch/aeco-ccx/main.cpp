@@ -35,9 +35,10 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V2.5"
+#define	FW_VER						"V2.6"
 
 #define LOW_BAT_THRESHOLD			2.9
+#define RX_ERR_THRESHOLD			15
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -156,7 +157,6 @@ bool eng_mode_on __attribute__((aligned(4))) = true;
 #define MODE_VER		3
 
 int omode = MODE_STATIS;
-int old_omode = MODE_STATIS;
 
 bool oled_on __attribute__((aligned(4))) = true;
 
@@ -553,34 +553,6 @@ void show_logo()
 
 	do {
 		u8g2.drawXBM(1, 4, logo_width, logo_height, logo_xbm);
-	} while (u8g2.nextPage());
-}
-
-void show_mode(int mode)
-{
-	u8g2.setPowerSave(0);
-
-	u8g2.firstPage();
-
-	do {
-		if (MODE_RAW == mode) {
-			// Lora icon. notice rx all raw message
-			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
-			u8g2.setCursor(12, 64);
-			u8g2.print(" CC - RAW ");
-
-			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
-			u8g2.drawGlyph(112, 61, 81);
-
-		} else if (MODE_STATIS == mode) {
-			// cycle icon. notice the message trigged by magnet
-			u8g2.setFont(u8g2_font_freedoomr10_mu);	// choose a suitable font
-			u8g2.setCursor(12, 26);
-			u8g2.print(" CC - STA ");
-
-			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
-			u8g2.drawGlyph(112, 23, 64);
-		}
 	} while (u8g2.nextPage());
 }
 
@@ -1507,7 +1479,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 		//////////////////////////////////////////////////////
 		/* check the rx_err in 1min */
-		if (rx_err_cnt > tx_cnt_1min) {
+		if (rx_err_cnt > (tx_cnt_1min + RX_ERR_THRESHOLD)) {
 
 			need_reset_sx1272 = 0x55;
 
@@ -1534,7 +1506,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 		if (cnt_1min % 12 == 0) {
 
-			// 12min tiemr
+			// 12min timer
 
 			if (rx_cnt == old_rx_cnt) {
 				// no rx pkt, wait reset the system
@@ -1565,11 +1537,11 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 		if (cnt_vbat_low >= 5) {
 			// my battery is low
 
-			//vbat_low = true;
-			//cnt_vbat_low = 0;
+			vbat_low = true;
+			cnt_vbat_low = 0;
 
-			//need_push = 0x55;
-			//tx_cause = DELTA_TX;
+			need_push = 0x55;
+			tx_cause = DELTA_TX;
 		}
 	} else {
 
@@ -1668,7 +1640,6 @@ void setup()
 		delay(2700);
 	}
 
-	//show_mode(omode);
 #endif
 
 #ifdef DEBUG
@@ -1703,6 +1674,32 @@ void setup()
 	tx_cause = RESET_TX;
 }
 
+void deep_sleep()
+{
+
+#ifdef ENABLE_OLED
+	u8g2.setPowerSave(1);
+#endif
+	sx1272.setSleepMode();
+	digitalWrite(SX1272_RST, LOW);
+
+	spi_end();
+	digitalWrite(10, LOW);
+	digitalWrite(11, LOW);
+	digitalWrite(12, LOW);
+	digitalWrite(13, LOW);
+
+	// dev power off
+	power_off_dev();
+
+	// reset the mode
+	omode = MODE_DECODE;
+
+	EMU_EnterEM2(true);
+
+	setup();
+}
+
 void loop(void)
 {
 	int e = 1;
@@ -1712,27 +1709,15 @@ void loop(void)
 
 		// sleep to waitting for recharge the battery
 
-		if (omode != old_omode) {
+		if (oled_on) {
 
 		#ifdef ENABLE_OLED
 			show_low_bat();
 		#endif
 			delay(2000);
-
-			old_omode = omode;
 		}
 
-		sx1272.setSleepMode();
-
-	#ifdef ENABLE_OLED
-		u8g2.setPowerSave(1);
-	#endif
-
-		power_off_dev();
-		digitalWrite(SX1272_RST, LOW);
-		spi_end();
-
-		EMU_EnterEM2(true);
+		deep_sleep();
 
 	} else {
 
@@ -1760,20 +1745,10 @@ void loop(void)
 
 			need_reset_sx1272 = 0;
 			rx_err_cnt = 0;
-
+			rx_hung_cnt = 0;
 		}
 
 	#ifdef ENABLE_OLED
-		if (omode != old_omode) {
-			// show mode and clean buffer
-			//show_mode(omode);
-
-			frame_buf[0][0] = '\0';
-			frame_buf[1][0] = '\0';
-			old_omode = omode;
-		}
-
-
 		if (seconds() > oled_on_time) {
 
 			oled_on_time = 0;
@@ -1781,8 +1756,7 @@ void loop(void)
 
 			u8g2.setPowerSave(1);
 
-			omode = MODE_STATIS;
-			old_omode = omode;
+			omode = MODE_DECODE;
 		}
 	#endif
 
