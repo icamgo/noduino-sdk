@@ -206,6 +206,7 @@ U8G2_SH1106_128X32_NONAME_1_HW_I2C u8g2(U8G2_R2, SH1106_RESET);
 float cur_vbat __attribute__((aligned(4))) = 0.0;
 bool vbat_low __attribute__((aligned(4))) = false;
 int cnt_vbat_low __attribute__((aligned(4))) = 0;
+int cnt_vbat_ok __attribute__((aligned(4))) = 0;
 //__attribute__((aligned(4)))
 
 void radio_setup()
@@ -1547,16 +1548,27 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 			need_push = 0x55;
 			tx_cause = DELTA_TX;
 		}
+
+		cnt_vbat_ok = 0;
+
 	} else {
 
-		if (vbat_low) {
-			// need to reset the system
-			//NVIC_SystemReset();
-			need_reset_sx1272 = 0x55;
+		cnt_vbat_ok++;
+
+		if (cnt_vbat_ok >= 10) {
+
+			if (vbat_low) {
+				// need to reset the system
+				//NVIC_SystemReset();
+				need_reset_sx1272 = 0x55;
+			}
+
+			vbat_low = false;
+			cnt_vbat_ok = 0;
+
 		}
 
 		cnt_vbat_low = 0;
-		vbat_low = false;
 	}
 }
 
