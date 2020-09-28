@@ -145,6 +145,8 @@ U8G2_SH1107_SEEED_128X128_1_HW_I2C u8g2(U8G2_R0, SH1107_RESET);
 
 #endif
 
+uint32_t rx_cnt = 0;
+
 void radio_setup()
 {
 
@@ -703,6 +705,8 @@ void rx_irq_handler()
 		uint8_t plen = sx1272._payloadlength;
 		uint8_t *p = sx1272.packet_received.data;
 
+		rx_cnt++;
+
 		if (plen > PKT_LEN) plen = PKT_LEN;
 
 		if (omode == MODE_RAW ||
@@ -830,7 +834,7 @@ void loop(void)
 #ifdef ENABLE_RX_INTERRUPT
 	status_counter++;
 
-	if (sx1272.getRSSI() <= -155) {
+	if (sx1272.getRSSI() <= -155 || (sx1272.get_modem_stat() & 0xB0)) {
 
 		rx_hung_cnt++;
 	}
@@ -841,8 +845,17 @@ void loop(void)
 
 		show_rssi_err();
 
-		sx1272.reset();
+		//sx1272.reset();
 		INFO_S("%s", "Resetting lora module\n");
+
+		if (rx_hung_cnt > 0) {
+			power_off_dev();
+			delay(5);
+			power_on_dev();
+
+			u8g2.begin();
+		}
+
 		radio_setup();
 
 		sx1272.init_rx_int();
@@ -850,6 +863,7 @@ void loop(void)
 
 		rx_err_cnt = 0;
 		rx_hung_cnt = 0;
+
 	}
 #endif
 
