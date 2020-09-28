@@ -35,7 +35,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V2.6"
+#define	FW_VER						"V2.7"
 
 #define LOW_BAT_THRESHOLD			2.9
 #define RX_ERR_THRESHOLD			15
@@ -1723,7 +1723,7 @@ void loop(void)
 
 	} else {
 
-		if (sx1272.getRSSI() <= -155) {
+		if (sx1272.getRSSI() <= -155 || (sx1272.get_modem_stat() & 0xB0)) {
 
 			rx_hung_cnt++;
 		}
@@ -1736,13 +1736,15 @@ void loop(void)
 			INFO(" rx_hung_cnt = ");
 			INFOLN(rx_hung_cnt);
 
-			power_off_dev();
-			delay(10);
-			power_on_dev();
+			if (rx_hung_cnt > 0) {
+				power_off_dev();
+				delay(10);
+				power_on_dev();
+
+				u8g2.begin();
+			}
 
 			radio_setup();			/* reset and setup */
-
-			u8g2.begin();
 
 			need_reset_sx1272 = 0;
 			rx_err_cnt = 0;
