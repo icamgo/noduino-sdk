@@ -1513,8 +1513,8 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 			if (rx_cnt == old_rx_cnt) {
 				// no rx pkt, wait reset the system
-				NVIC_SystemReset();
-				//need_reset_sx1272 = 0x55;
+				//NVIC_SystemReset();
+				need_reset_sx1272 = 0x55;
 
 			} else {
 
@@ -1525,6 +1525,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 		if (cnt_1min % 1440 == 0) {
 			// 24h
+			power_off_dev();
 			NVIC_SystemReset();
 		}
 	}
@@ -1729,17 +1730,19 @@ void loop(void)
 
 		if (0x55 == need_reset_sx1272 || rx_hung_cnt > 3) {
 
-			//power_on_dev();
-			//u8g2.begin();
-
-			//sx1272.reset();
 			INFO_S("Reset lora module\n");
 			INFO("rx_err_cnt = ");
 			INFO(rx_err_cnt);
 			INFO(" rx_hung_cnt = ");
 			INFOLN(rx_hung_cnt);
 
+			power_off_dev();
+			delay(10);
+			power_on_dev();
+
 			radio_setup();			/* reset and setup */
+
+			u8g2.begin();
 
 			need_reset_sx1272 = 0;
 			rx_err_cnt = 0;
