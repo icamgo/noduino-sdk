@@ -28,7 +28,9 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-#if 1
+//#define ENABLE_ENG_MODE				1
+
+#if 0
 #define	DEBUG						1
 #define DEBUG_TX					1
 //#define DEBUG_RSSI					1
@@ -119,9 +121,8 @@ int tx_time = CAD_TX_TIME;
 #define TXRX_CH					CH_01_472
 #endif
 
-#ifdef DEBUG
-#define MAX_CMD_LENGTH			100
-char cmd[MAX_CMD_LENGTH];
+#ifdef ENABLE_OLED && DEBUG
+char cmd[128];
 #endif
 
 int oled_on_time = 0;
@@ -142,11 +143,15 @@ bool tx_on __attribute__((aligned(4))) = true;
 bool first_ccid __attribute__((aligned(4))) = false;
 #endif
 
+#ifdef ENABLE_ENG_MODE
 /*
  * If full ccid is enable, do not support to
  * turn on/off the eng mode via mac cmd
 */
 bool eng_mode_on __attribute__((aligned(4))) = true;
+#else
+bool eng_mode_on __attribute__((aligned(4))) = false;
+#endif
 
 /*
  * Output Mode:
