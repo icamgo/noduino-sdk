@@ -594,8 +594,9 @@ void show_low_bat()
 
 void show_rssi_err()
 {
-	sprintf(frame_buf[6], "RSSI:%3d ERR: %1d", sx1272.getRSSI(), rx_err_cnt);
-	sprintf(frame_buf[7], "MDST: %02X  HUN: %1d", sx1272.get_modem_stat(), rx_hung_cnt);
+	sprintf(frame_buf[6], "RSSI:%3d ERR: %1d %1d", sx1272.getRSSI(), rx_err_cnt, rx_hung_cnt);
+	//sprintf(frame_buf[7], "MDST: %02X  HUN: %1d", sx1272.get_modem_stat(), rx_hung_cnt);
+	sprintf(frame_buf[7], "MDST: %02X RX: %d", sx1272.get_modem_stat(), rx_cnt);
 	show_frame(7, omode, false);
 }
 #endif
@@ -834,28 +835,32 @@ void loop(void)
 #ifdef ENABLE_RX_INTERRUPT
 	status_counter++;
 
-	if (sx1272.getRSSI() <= -155 || (sx1272.get_modem_stat() & 0xB0)) {
+	int rssi = sx1272.getRSSI();
+	if (rssi <= -155 ||
+		rssi == 0 ||
+		(sx1272.get_modem_stat() & 0xB0)) {
 
 		rx_hung_cnt++;
 	}
 
-	if (rx_hung_cnt > 3) show_rssi_err();
+	if (rx_hung_cnt >= 1) show_rssi_err();
 
-	if (rx_err_cnt > RX_ERR_THRESHOLD || rx_hung_cnt > 3) {
+	if (rx_err_cnt > RX_ERR_THRESHOLD || rx_hung_cnt >= 2) {
 
 		show_rssi_err();
 
-		//sx1272.reset();
 		INFO_S("%s", "Resetting lora module\n");
 
-		if (rx_hung_cnt > 0) {
+		if (rx_hung_cnt >= 1) {
+
 			power_off_dev();
-			delay(5);
+			delay(100);
 			power_on_dev();
 
 			u8g2.begin();
 		}
 
+		sx1272.reset();
 		radio_setup();
 
 		sx1272.init_rx_int();
@@ -863,7 +868,6 @@ void loop(void)
 
 		rx_err_cnt = 0;
 		rx_hung_cnt = 0;
-
 	}
 #endif
 
