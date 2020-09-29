@@ -22,13 +22,17 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "softi2c.h"
+
 #include "rtcdriver.h"
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-#if 0
+#if 1
 #define	DEBUG						1
 #define DEBUG_TX					1
+//#define DEBUG_RSSI					1
+//#define DEBUG_DEVID					1
 #define DEBUG_HEX_PKT				1
 #endif
 
@@ -78,13 +82,14 @@ static uint8_t tx_cause __attribute__((aligned(4))) = RESET_TX;
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 //#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
 //#define PAYLOAD_LEN					18		/* 18+2+4 = 24B */
+#define OLED_DELAY_TIME				55		/* oled is on about 55s */
 
 uint8_t rpt_pkt[PAYLOAD_LEN+6] __attribute__((aligned(4))) = { 0x47, 0x4F, 0x33 };
 
 struct circ_buf g_cbuf __attribute__((aligned(4)));
-#define OLED_DELAY_TIME				55		/* oled is on about 55s */
 
 struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
+
 
 #ifdef ENABLE_CRYPTO
 #include "crypto.h"
@@ -624,7 +629,9 @@ bool is_our_did(uint8_t *p)
 	if (p[3] != 0 || p[4] != 0 || p[5] != 0 || p[6] > 0x17) {
 
 		// invalid devid. max_id = 0x17 ff ff ff ff (1_030.79.21.5103)
+		#ifdef DEBUG_DEVID
 		INFOLN("ivd0");
+		#endif
 		return false;
 	}
 
@@ -636,12 +643,16 @@ bool is_our_did(uint8_t *p)
 	}
 
 	if (99999999999ULL == devid) {
+		#ifdef DEBUG_DEVID
 		INFOLN("999 ok");
+		#endif
 		return true;
 	}
 
 	if (devid > 99999999999ULL) {
+		#ifdef DEBUG_DEVID
 		INFOLN("ivd3");
+		#endif
 		return false;
 	}
 
@@ -651,7 +662,9 @@ bool is_our_did(uint8_t *p)
 
 	if (wk_yr > 52) {
 
+		#ifdef DEBUG_DEVID
 		INFOLN("ivd1");
+		#endif
 
 		return false;
 	}
@@ -662,11 +675,15 @@ bool is_our_did(uint8_t *p)
 
 	if (wk_yr > 30 || wk_yr < 18) {
 
+		#ifdef DEBUG_DEVID
 		INFOLN("ivd2");
+		#endif
 		return false;
 	}
 
+	#ifdef DEBUG_DEVID
 	INFOLN("did ok");
+	#endif
 	return true;
 }
 
@@ -1527,6 +1544,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 		if (cnt_1min % 1440 == 0) {
 			// 24h
 			power_off_dev();
+			i2c_delay(14*1000*2);	/* delay 2ms */
 			NVIC_SystemReset();
 		}
 	}
@@ -1558,14 +1576,23 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 		if (cnt_vbat_ok >= 10) {
 
 			if (vbat_low) {
-				// need to reset the system
-				//NVIC_SystemReset();
+			#if 1
+				/* Reset the system */
+				power_off_dev();
+				i2c_delay(14*1000*2);	/* delay 2ms */
+				NVIC_SystemReset();
+			#else
+				/*
+				 * Recover from low vbat state
+				 * Set the flag to reset the lora
+				*/
 				need_reset_sx1272 = 0x55;
+				rx_hung_cnt = 4;
+			#endif
 			}
 
 			vbat_low = false;
 			cnt_vbat_ok = 0;
-
 		}
 
 		cnt_vbat_low = 0;
@@ -1613,6 +1640,9 @@ void key_report_status()
 void setup()
 {
 	int e;
+
+	memset(&g_cbuf, 0, sizeof(struct circ_buf));
+	memset(&g_cfifo, 0, sizeof(struct ctrl_fifo));
 
 #ifdef ENABLE_CRYPTO
 	CMU_ClockEnable(cmuClock_AES, true);
@@ -1709,10 +1739,9 @@ void deep_sleep()
 	omode = MODE_DECODE;
 
 	EMU_EnterEM2(true);
-
-	power_on_dev();
-	radio_setup();
 }
+
+struct pkt d;
 
 void loop(void)
 {
@@ -1722,6 +1751,8 @@ void loop(void)
 	if (vbat_low) {
 
 		// sleep to waitting for recharge the battery
+
+		INFOLN("Enter into the deep sleep....");
 
 		if (oled_on) {
 
@@ -1752,8 +1783,9 @@ void loop(void)
 				power_off_dev();
 				delay(10);
 				power_on_dev();
-
+			#ifdef ENABLE_OLED
 				u8g2.begin();
+			#endif
 			}
 
 			radio_setup();			/* reset and setup */
@@ -1775,16 +1807,16 @@ void loop(void)
 		}
 	#endif
 
-		struct pkt d;
-
 		noInterrupts();
 		int ret = get_pkt(&g_cbuf, &d);
 		interrupts();
 
 		if (ret != 0) {
 			// there is no pkt
+		#ifdef DEBUG_RSSI
 			INFO("No pkt, rssi = ");
 			INFOLN(sx1272.getRSSI());
+		#endif
 			return;
 		}
 
@@ -1804,7 +1836,7 @@ void loop(void)
 		}
 
 		INFO_S("/");
-		INFO(sx1272._RSSIpacket);
+		INFO(d.rssi);
 		INFO_S("/");
 		INFOLN(p_len);
 	#endif
