@@ -30,7 +30,7 @@
 
 //#define ENABLE_ENG_MODE				1
 
-#if 0
+#if 1
 #define	DEBUG						1
 #define DEBUG_TX					1
 //#define DEBUG_RSSI					1
@@ -1570,7 +1570,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 		if (cnt_1min % 1440 == 0) {
 			// 24h
 			power_off_dev();
-			i2c_delay(14*1000*2);	/* delay 2ms */
+			i2c_delay(14*1000*600);	/* delay 600ms */
 			NVIC_SystemReset();
 		}
 	}
@@ -1605,7 +1605,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 			#if 1
 				/* Reset the system */
 				power_off_dev();
-				i2c_delay(14*1000*2);	/* delay 2ms */
+				i2c_delay(14*1000*600);	/* delay 600ms */
 				NVIC_SystemReset();
 			#else
 				/*
@@ -1712,6 +1712,9 @@ void setup()
 		delay(2700);
 	}
 
+	sprintf(frame_buf[0], " RX: %4d", rx_cnt);
+	sprintf(frame_buf[1], " TX: %4d", tx_cnt);
+	show_frame(0, omode, false);
 #endif
 
 #ifdef DEBUG
@@ -1792,12 +1795,15 @@ void loop(void)
 
 	} else {
 
-		if (sx1272.getRSSI() <= -155 || (sx1272.get_modem_stat() & 0xB0)) {
+		int rssi = sx1272.getRSSI();
+		if (rssi <= -155 ||
+			rssi == 0 ||
+			(sx1272.get_modem_stat() & 0xB0)) {
 
 			rx_hung_cnt++;
 		}
 
-		if (0x55 == need_reset_sx1272 || rx_hung_cnt > 3) {
+		if (0x55 == need_reset_sx1272 || rx_hung_cnt >= 1) {
 
 			INFO_S("Reset lora module\n");
 			INFO("rx_err_cnt = ");
@@ -1805,15 +1811,16 @@ void loop(void)
 			INFO(" rx_hung_cnt = ");
 			INFOLN(rx_hung_cnt);
 
-			if (rx_hung_cnt > 0) {
+			if (rx_hung_cnt >= 1) {
 				power_off_dev();
-				delay(10);
+				delay(600);
 				power_on_dev();
 			#ifdef ENABLE_OLED
 				u8g2.begin();
 			#endif
 			}
 
+			sx1272.reset();
 			radio_setup();			/* reset and setup */
 
 			need_reset_sx1272 = 0;
