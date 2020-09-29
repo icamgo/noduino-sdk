@@ -28,7 +28,7 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-//#define ENABLE_ENG_MODE				1
+#define ENABLE_ENG_MODE				1
 
 #if 1
 #define	DEBUG						1
@@ -41,7 +41,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V2.7"
+#define	FW_VER						"V2.8"
 
 #define LOW_BAT_THRESHOLD			2.9
 #define RX_ERR_THRESHOLD			15
@@ -1556,9 +1556,10 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 			// 12min timer
 
 			if (rx_cnt == old_rx_cnt) {
-				// no rx pkt, wait reset the system
-				//NVIC_SystemReset();
-				need_reset_sx1272 = 0x55;
+				// no rx pkt, reset the system
+				power_off_dev();
+				i2c_delay(14*1000*2000);	/* delay 2000ms */
+				NVIC_SystemReset();
 
 			} else {
 
@@ -1570,7 +1571,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 		if (cnt_1min % 1440 == 0) {
 			// 24h
 			power_off_dev();
-			i2c_delay(14*1000*600);	/* delay 600ms */
+			i2c_delay(14*1000*2000);	/* delay 2000ms */
 			NVIC_SystemReset();
 		}
 	}
@@ -1605,7 +1606,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 			#if 1
 				/* Reset the system */
 				power_off_dev();
-				i2c_delay(14*1000*600);	/* delay 600ms */
+				i2c_delay(14*1000*2000);	/* delay 2000ms */
 				NVIC_SystemReset();
 			#else
 				/*
@@ -1813,7 +1814,7 @@ void loop(void)
 
 			if (rx_hung_cnt >= 1) {
 				power_off_dev();
-				delay(600);
+				delay(1000);
 				power_on_dev();
 			#ifdef ENABLE_OLED
 				u8g2.begin();
