@@ -1031,6 +1031,24 @@ bool process_pkt(uint8_t *p, int *len)
 	}
 }
 
+bool is_route_ok(uint8_t *p)
+{
+	uint8_t id = get_myid_low2();
+
+	switch (p[17]) {
+		case 4:
+			if (p[25] == id) return false;
+		case 3:
+			if (p[24] == id) return false;
+		case 2:
+			if (p[19] == id) return false;
+		case 1:
+			if (p[18] == id) return false;
+	}
+
+	return true;
+}
+
 bool is_cc_ok(uint8_t *p, int len)
 {
 	if (p[2] == 0x33 && len == 36) {
@@ -1039,11 +1057,14 @@ bool is_cc_ok(uint8_t *p, int len)
 
 			// new cc relayed pkt
 
-			if (p[17] < 5) {
-				return true;
+			if (4 >= p[17] && 1 <= p[17]) {
+
+				return is_route_ok(p);
+
 			} else {
 				return false;
 			}
+
 
 		} else {
 			// no cc relayed
