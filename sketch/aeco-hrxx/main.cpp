@@ -596,7 +596,7 @@ void show_rssi_err()
 {
 	sprintf(frame_buf[6], "RSSI:%3d ERR: %1d %1d", sx1272.getRSSI(), rx_err_cnt, rx_hung_cnt);
 	//sprintf(frame_buf[7], "MDST: %02X  HUN: %1d", sx1272.get_modem_stat(), rx_hung_cnt);
-	sprintf(frame_buf[7], "MDST: %02X RX: %d", sx1272.get_modem_stat(), rx_cnt);
+	sprintf(frame_buf[7], "MDST: %02X RX:%d", sx1272.get_modem_stat(), rx_cnt);
 	show_frame(7, omode, false);
 }
 #endif
@@ -854,7 +854,7 @@ void loop(void)
 		if (rx_hung_cnt >= 1) {
 
 			power_off_dev();
-			delay(100);
+			delay(800);
 			power_on_dev();
 
 			u8g2.begin();
