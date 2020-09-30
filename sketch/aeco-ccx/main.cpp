@@ -43,7 +43,7 @@
 
 #define	FW_VER						"V2.8"
 
-#define LOW_BAT_THRESHOLD			2.9
+#define LOW_BAT_THRESHOLD			3.0
 #define RX_ERR_THRESHOLD			15
 
 /* Timer used for bringing the system back to EM0. */
