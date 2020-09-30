@@ -30,7 +30,7 @@
 
 #define ENABLE_ENG_MODE				1
 
-#if 1
+#if 0
 #define	DEBUG						1
 #define DEBUG_TX					1
 //#define DEBUG_RSSI					1
@@ -777,6 +777,18 @@ uint32_t get_ccid_low2(uint8_t *p)
 
 	return ret;
 }
+
+uint32_t get_ccid_low1(uint8_t *p)
+{
+	uint8_t ret = 0;
+
+	if (1 <= p[17]) {
+
+		ret = p[18];
+	}
+
+	return (ret - 10 * (ret / 10));
+}
 #endif
 
 #ifndef ENCODE_FULL_CCID
@@ -792,7 +804,21 @@ uint8_t get_myid_low2()
 }
 #endif
 
-void encode_temp_vbat(uint8_t *pkt)
+int map_rssi_val(int si)
+{
+	if (si <= -125) return 0;
+	else if (si > -125 && si <= -120) return 1;
+	else if (si > -120 && si <= -115) return 2;
+	else if (si > -115 && si <= -110) return 3;
+	else if (si > -110 && si <= -105) return 4;
+	else if (si > -105 && si <= -100) return 5;
+	else if (si > -100 && si <= -90) return 6;
+	else if (si > -90 && si <= -80) return 7;
+	else if (si > -80 && si <= -70) return 8;
+	else if (si > -70) return 9;
+}
+
+void encode_temp_vbat(uint8_t *pkt, int rssi)
 {
 	float dd, vb;
 
@@ -810,7 +836,7 @@ void encode_temp_vbat(uint8_t *pkt)
 	uint16_t ui16 = vb * 10;
 
 	ui16 *= 100;
-	ui16 += (uint16_t)get_ccid_low2(pkt);
+	ui16 += (uint16_t)get_ccid_low1(pkt);
 
 	uint8_t *pb = (uint8_t *) &ui16;
 	pkt[13] = pb[1]; pkt[14] = pb[0];
@@ -862,14 +888,14 @@ void encode_temp_vbat(uint8_t *pkt)
 		}
 	}
 
-#if 1
+#if 0
 	if (pkt[17] < 6) {
 		data += pkt[17];
 	} else {
 		data += 9;
 	}
 #else
-	data += rx_hung_cnt;
+	data += map_rssi_val(rssi);
 #endif
 
 	pb = (uint8_t *) &data;
@@ -878,7 +904,7 @@ void encode_temp_vbat(uint8_t *pkt)
 
 }
 
-bool process_pkt(uint8_t *p, int *len)
+bool process_pkt(uint8_t *p, int *len, int rssi)
 {
 	//p[0] = 0x22;
 
@@ -999,9 +1025,9 @@ bool process_pkt(uint8_t *p, int *len)
 			}
 		#endif
 
-			if ((p[27] & 0x10) && eng_mode_on) {
+			if ((p[27] & 0x10) && eng_mode_on && (1 == p[17])) {
 				// has ccid
-				encode_temp_vbat(p);
+				encode_temp_vbat(p, rssi);
 			}
 	}
 
@@ -1977,7 +2003,7 @@ void loop(void)
 
 		if (tx_on) {
 
-			if (process_pkt(p, &p_len) == true) {
+			if (process_pkt(p, &p_len, d.rssi) == true) {
 
 			#ifdef ENABLE_CRYPTO
 				set_pkt_mic(p, p_len);
