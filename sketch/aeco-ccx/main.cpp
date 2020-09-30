@@ -41,7 +41,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V2.8"
+#define	FW_VER						"V2.9"
 
 #define LOW_BAT_THRESHOLD			3.0
 #define RX_ERR_THRESHOLD			15
@@ -726,11 +726,6 @@ bool is_our_pkt(uint8_t *p, int len)
 		return false;
 	}
 
-#ifdef ENABLE_CRYPTO
-	// (p[2] == 0x33 && 36 == len)
-	return check_pkt_mic(p, len);
-#endif
-
 	return true;
 }
 
@@ -1288,30 +1283,8 @@ void rx_irq_handler()
 
 		if (is_our_pkt(p, plen) == true) {
 
-			if (0x33 == p[2] && 36 == plen) {
-
-				uint8_t mtype = p[27] & 0xE8;
-				if (0x28 == mtype || 0x68 == mtype) {
-
-					// down & crypto pkt
-			#ifdef ENABLE_CRYPTO
-					payload_decrypt(p, plen, ae33kk);
-			#endif
-
-					if (is_did_for_me(p)) {
-						process_mac_cmds(p, plen);
-
-					}
-				}
-			}
-
-			if (is_cc_ok(p, plen) &&
-				false == is_my_did(p) &&
-				is_pkt_in_ctrl(&g_cfifo, p, plen, seconds()) == false) {
-
-				// need to push into the tx queue buffer
-				push_pkt(&g_cbuf, p, sx1272._RSSIpacket, plen);
-			}
+			// need to push into the tx queue buffer
+			push_pkt(&g_cbuf, p, sx1272._RSSIpacket, plen);
 		}
 
 	} else {
@@ -1875,7 +1848,56 @@ void loop(void)
 		INFOLN(p_len);
 	#endif
 
-		if (false == is_our_did(p)) return;
+	#ifdef ENABLE_CRYPTO
+		// (p[2] == 0x33 && 36 == len)
+		if (false == check_pkt_mic(p, p_len)) {
+			/* check the mic of pkt */
+			return;
+		}
+	#endif
+
+		// filter the pkt
+		if (0x33 == p[2] && 36 == p_len) {
+
+			uint8_t mtype = p[27] & 0xE8;
+			if (0x28 == mtype || 0x68 == mtype) {
+
+				// down & crypto pkt
+		#ifdef ENABLE_CRYPTO
+				payload_decrypt(p, p_len, ae33kk);
+		#endif
+
+				if (is_did_for_me(p)) {
+					process_mac_cmds(p, p_len);
+
+				}
+			}
+		}
+
+		/* Is need to re-tx ? */
+		if (is_cc_ok(p, p_len) == false) {
+
+			/* cc flag and count is not ok */
+			return;
+		}
+
+		if (true == is_my_did(p)) {
+			/*
+			 * is only for me or send by me
+			 * no need to re-tx or show
+			*/
+			return;
+		}
+
+		if (true == is_pkt_in_ctrl(&g_cfifo, p, p_len, seconds())) {
+			/* cc ctrl is not passed */
+			return;
+		}
+
+		if (false == is_our_did(p)) {
+			/* filter the did */
+			return;
+		}
 
 	#ifdef ENABLE_OLED
 		if (oled_on == true) {
