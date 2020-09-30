@@ -144,6 +144,8 @@ bool first_ccid __attribute__((aligned(4))) = false;
 #endif
 
 #ifdef ENABLE_ENG_MODE
+
+#define ENCODE_CCID_LOW1								1
 /*
  * If full ccid is enable, do not support to
  * turn on/off the eng mode via mac cmd
@@ -218,6 +220,8 @@ bool vbat_low __attribute__((aligned(4))) = false;
 int cnt_vbat_low __attribute__((aligned(4))) = 0;
 int cnt_vbat_ok __attribute__((aligned(4))) = 0;
 //__attribute__((aligned(4)))
+
+bool is_my_did(uint8_t *p);
 
 void radio_setup()
 {
@@ -836,7 +840,12 @@ void encode_temp_vbat(uint8_t *pkt, int rssi)
 	uint16_t ui16 = vb * 10;
 
 	ui16 *= 100;
+
+	#ifdef ENCODE_CCID_LOW1
 	ui16 += (uint16_t)get_ccid_low1(pkt);
+	#else
+	ui16 += (uint16_t)get_ccid_low2(pkt);
+	#endif
 
 	uint8_t *pb = (uint8_t *) &ui16;
 	pkt[13] = pb[1]; pkt[14] = pb[0];
@@ -910,6 +919,11 @@ bool process_pkt(uint8_t *p, int *len, int rssi)
 
 	// p[15] is the cmd type
 
+	if (true == is_my_did(p)) {
+		/* No need to cc my own pkt */
+		return true;
+	}
+
 	if (p[2] == 0x33 || p[2] == 0x32) {
 
 		//crc ok, len=36 mic ok, extend the 0x33
@@ -965,6 +979,12 @@ bool process_pkt(uint8_t *p, int *len, int rssi)
 
 	if (0x33 == p[2] && (*len == 36)) {
 
+		/*
+		 * 1. mark the cc flag
+		 * 2. increment the cc cnt
+		 * 3. fill the ccid
+		 * 4. encode the did and rssi of the d
+		*/
 			if (p[27] & 0x10) {
 				// new cc relayed pkt
 
@@ -1307,7 +1327,7 @@ void rx_irq_handler()
 
 		if (plen > 44) return;
 
-		if (is_our_pkt(p, plen) == true) {
+		if (is_our_pkt(p, plen) == true && (false == is_my_did(p))) {
 
 			// need to push into the tx queue buffer
 			push_pkt(&g_cbuf, p, sx1272._RSSIpacket, plen);
@@ -1895,7 +1915,14 @@ void loop(void)
 
 				if (is_did_for_me(p)) {
 					process_mac_cmds(p, p_len);
+				}
 
+				if (true == is_my_did(p)) {
+					/*
+					 * is only for me or send by me
+					 * no need to re-tx or show
+					*/
+					return;
 				}
 			}
 		}
@@ -1904,14 +1931,6 @@ void loop(void)
 		if (is_cc_ok(p, p_len) == false) {
 
 			/* cc flag and count is not ok */
-			return;
-		}
-
-		if (true == is_my_did(p)) {
-			/*
-			 * is only for me or send by me
-			 * no need to re-tx or show
-			*/
 			return;
 		}
 
@@ -2029,6 +2048,9 @@ void loop(void)
 		if (0x55 == need_push) {
 
 			set_temp_pkt();
+		#ifdef ENABLE_CRYPTO
+			set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
+		#endif
 
 			if (tx_on) {
 				noInterrupts();
@@ -2055,6 +2077,10 @@ void loop(void)
 		if (0x55 == need_push_mac) {
 
 			set_mac_status_pkt();
+
+		#ifdef ENABLE_CRYPTO
+			set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
+		#endif
 
 			if (tx_on) {
 				noInterrupts();
