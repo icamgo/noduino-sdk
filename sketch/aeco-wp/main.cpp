@@ -20,7 +20,6 @@
 #include "sx1272.h"
 #include "softi2c.h"
 #include "pc10.h"
-//#include "U8g2lib.h"
 
 #include "rtcdriver.h"
 #include "math.h"
@@ -36,6 +35,16 @@
 #ifdef ENABLE_CRYPTO
 #include "crypto.h"
 #endif
+
+#define ENABLE_P_TEST			1
+
+#ifdef ENABLE_P_TEST
+#define DELTA_P					0.1
+static uint32_t cnt_01 = 0;
+#else
+#define DELTA_P					0.05
+#endif
+
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -203,21 +212,57 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	pressure_init(SCL_PIN, SDA_PIN);	// initialization of the sensor
 
+	/*
+	 * Return value:
+	 *
+	 *   unit is 'm'
+	 *
+	 *   183.673469 m: Max valid value (16383)
+	 *  -1.53061224 m: Min valid value (1501)
+	 *  -1 m: Bus error, no sensor connected, not wakeup
+	 *  -2 m: Out of low range
+	 *  -3 m: Out of high range
+	*/
 	cur_water_h = get_water_h();
 
 #ifdef TX_TESTING
 	need_push = 0x5a;
 	tx_cause = TIMER_TX;
 #else
-	if (fabsf(cur_water_h - old_water_h) > 0.05) {
+	//if (fabsf(cur_water_h - old_water_h) > 0.05) {
+	/* 1/200 or 1/100 */
+	float dp = fabsf(cur_water_h - old_water_h);
 
-		/* 1/200 or 1/100 */
+	if (dp >= DELTA_P) {
 
 		need_push = 0x5a;
-#ifdef CONFIG_V0
 		tx_cause = DELTA_TX;
-#endif
+
+	#ifdef ENABLE_P_TEST
+		cnt_01 = 0;
+	#endif
+
+		return;
 	}
+
+	#ifdef ENABLE_P_TEST
+	if (dp >= DELTA_P/2 && dp < DELTA_P) {
+
+		cnt_01++;
+
+		if (cnt_01 >= 3) {
+			need_push = 0x5a;
+			tx_cause = DELTA_TX;
+
+			cnt_01 = 0;
+		}
+
+	} else if (dp < DELTA_P/2) {
+
+		cnt_01 = 0;
+	}
+	#endif
+
 #endif
 }
 
@@ -354,6 +399,7 @@ void push_data()
 		pkt[3+i] = p[7-i];
 	}
 
+	/* water_h is m, x100 is cm */
 	int16_t ui16 = (int16_t)(cur_water_h * 100);
 	p = (uint8_t *) &ui16;
 
