@@ -836,14 +836,18 @@ void encode_temp_vbat(uint8_t *pkt, int rssi)
 	// encode the vbat
 	uint16_t vbat = pkt[13] << 8 | pkt[14];
 
+	#ifdef ENCODE_CCID_LOW1
+	vb = (float)(vbat / 1000.0 + (pkt[17] == 1 ? 1 : 0) * 0.005);
+	uint16_t ui16 = vb * 100;
+
+	ui16 *= 10;
+	ui16 += (uint16_t)get_ccid_low1(pkt);
+	#else
 	vb = (float)(vbat / 1000.0 + (pkt[17] == 1 ? 1 : 0) * 0.05);
 	uint16_t ui16 = vb * 10;
 
 	ui16 *= 100;
 
-	#ifdef ENCODE_CCID_LOW1
-	ui16 += (uint16_t)get_ccid_low1(pkt);
-	#else
 	ui16 += (uint16_t)get_ccid_low2(pkt);
 	#endif
 
