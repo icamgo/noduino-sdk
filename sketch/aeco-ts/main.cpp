@@ -379,11 +379,10 @@ void show_ver(int txc)
 
 	do {
 		u8g2.setFont(Futura_Heavy_20px);
-		u8g2.setCursor(64, 23);
+		u8g2.setCursor(50, 23);
 		u8g2.print(FW_VER);
-
-		//u8g2.setCursor(58, 116);
-		//u8g2.print("1.6 MPa");
+		u8g2.print(".");
+		u8g2.print(sample_period);
 
 		if(txc < 9999) {
 			u8g2.setCursor(10, 78);
@@ -403,7 +402,7 @@ void show_ver(int txc)
 
 		u8g2.print(txc);
 
-	#if 1
+	#if 0
 		u8g2.setFont(Futura_Heavy_20px);
 		u8g2.setCursor(66, 118);
 		u8g2.print(sample_period);
