@@ -30,7 +30,7 @@
 
 #define ENABLE_ENG_MODE				1
 
-#if 0
+#if 1
 #define	DEBUG						1
 #define DEBUG_TX					1
 //#define DEBUG_RSSI					1
@@ -41,7 +41,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V2.9"
+#define	FW_VER						"V3.0"
 
 #define LOW_BAT_THRESHOLD			3.0
 #define RX_ERR_THRESHOLD			15
@@ -1315,6 +1315,9 @@ bool is_did_for_me(uint8_t *p)
 
 void rx_irq_handler()
 {
+	NVIC_DisableIRQ(GPIO_ODD_IRQn);
+	NVIC_DisableIRQ(GPIO_EVEN_IRQn);
+
 	int8_t e = 0;
 
 	sx1272.getRSSIpacket();
@@ -1341,6 +1344,11 @@ void rx_irq_handler()
 
 		rx_err_cnt++;
 	}
+
+	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
+	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
+	NVIC_EnableIRQ(GPIO_ODD_IRQn);
+	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
 }
 
 int tx_pkt(uint8_t *p, int len)
@@ -1540,6 +1548,13 @@ float fetch_vbat()
 	return vbat/3.0;
 }
 
+void reset_dev_sys()
+{
+	power_off_dev();
+	i2c_delay(6000*I2C_1MS);			/* delay 6000ms */
+	NVIC_SystemReset();
+}
+
 void period_check_status(RTCDRV_TimerID_t id, void *user)
 {
 	/* reset the watchdog */
@@ -1580,9 +1595,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 			if (rx_cnt == old_rx_cnt) {
 				// no rx pkt, reset the system
-				power_off_dev();
-				i2c_delay(14*1000*2000);	/* delay 2000ms */
-				NVIC_SystemReset();
+				reset_dev_sys();
 
 			} else {
 
@@ -1593,9 +1606,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 		if (cnt_1min % 1440 == 0) {
 			// 24h
-			power_off_dev();
-			i2c_delay(14*1000*2000);	/* delay 2000ms */
-			NVIC_SystemReset();
+			reset_dev_sys();
 		}
 	}
 
@@ -1628,9 +1639,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 			if (vbat_low) {
 			#if 1
 				/* Reset the system */
-				power_off_dev();
-				i2c_delay(14*1000*2000);	/* delay 2000ms */
-				NVIC_SystemReset();
+				reset_dev_sys();
 			#else
 				/*
 				 * Recover from low vbat state
