@@ -27,7 +27,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER					"Ver 1.2"
+#define FW_VER					"Ver 1.3"
 
 #define ENABLE_CRYPTO				1
 #define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
@@ -469,7 +469,7 @@ void push_data()
 #endif
 
 #ifdef CONFIG_V0
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
+	e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
 #else
 	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
