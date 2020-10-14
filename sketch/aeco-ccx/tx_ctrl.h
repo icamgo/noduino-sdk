@@ -3,6 +3,8 @@
 
 #ifdef EFM32HG110F64
 #define	CTRL_FIFO_SIZE		56
+#elif EFM32GG230F512
+#define	CTRL_FIFO_SIZE		1024
 #else
 #define	CTRL_FIFO_SIZE		8
 #endif
