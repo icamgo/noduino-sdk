@@ -13,6 +13,12 @@
 #ifndef _VARIANT_EMF32DIP_H_
 #define _VARIANT_EMF32DIP_H_
 
+#ifndef LED_BUILTIN
+#define BOARD_NR_LED		1
+#define LED_BUILTIN PA0
+#define LED_BUILTIN_MASK	0x01
+#endif
+
 #define A0  PD0
 #define A1  PD1
 #define A2  PD2
