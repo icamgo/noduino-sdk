@@ -29,7 +29,15 @@
 
 //#define CONFIG_2MIN				1
 
+#define ENABLE_P_TEST			1
+
 #define FW_VER					"Ver 1.3"
+
+#ifdef ENABLE_P_TEST
+#define DELTA_P					0.1
+#else
+#define DELTA_P					0.05
+#endif
 
 #define ENABLE_CAD				1
 
@@ -40,15 +48,9 @@
 #include "crypto.h"
 #endif
 
-#define ENABLE_P_TEST			1
-
 #ifdef ENABLE_P_TEST
-#define DELTA_P					0.1
 static uint32_t cnt_01 = 0;
-#else
-#define DELTA_P					0.05
 #endif
-
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
