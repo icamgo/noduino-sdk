@@ -104,10 +104,15 @@ struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
 #endif
 
 ////////////////////////////////////////////////////////////
+#ifdef EFM32GG230F512
+#define	PWR_CTRL_PIN			5		/* PIN06_PA05_D5 */
+#define	KEY_PIN					41		/* PIN36_PD08_D41 */
+#define	RX_INT_PIN				12		/* PIN16_PB08_D12 */
+#else
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
-#define	BEEP_PIN				10		/* PIN13_PD06_D10 */
 #define	RX_INT_PIN				3		/* PIN8_PB11_D3 */
+#endif
 
 
 #ifdef CONFIG_V0
@@ -876,7 +881,7 @@ void encode_temp_vbat(uint8_t *pkt, int rssi)
 		// 0.01
 		dd = (float)(data / 100.0);
 
-		if (dd >= 0 && dd < 18) {
+		if (dd >= 1 && dd < 18) {
 
 			data = (dd + (pkt[17] == 1 ? 1 : 0) * 0.05) * 10;
 			data *= 10;
