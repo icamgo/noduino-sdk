@@ -27,7 +27,11 @@
 
 //#define	DEBUG					1
 
+//#define CONFIG_2MIN				1
+
 #define FW_VER					"Ver 1.3"
+
+#define ENABLE_CAD				1
 
 #define ENABLE_CRYPTO				1
 #define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
@@ -49,32 +53,28 @@ static uint32_t cnt_01 = 0;
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 20;		/* 20s */
+#ifndef CONFIG_2MIN
+static uint32_t sample_period = 18;		/* 20s */
+static uint32_t cnt_20s = 0;
+#define HEARTBEAT_TIME			6600	/* 120min */
 
-static uint32_t sample_count = 0;
-#define		HEARTBEAT_TIME			7200
+#else
+static uint32_t sample_period = 110;	/* 120s */
+//static uint32_t sample_period = 18;	/* 20s */
+#endif
 
 static float old_water_h = 0.0;
 static float cur_water_h = 0.0;
 
 static float cur_curr = 0.0;
 
-//#define	TX_TESTING				1
-
 static uint8_t need_push = 0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
 
-#if 0
-#define SDA_PIN					11		/* PIN14_PD7 */
-#define SCL_PIN					16		/* PIN21_PF2 */
-#else
 #define SDA_PIN					12		/* PIN23_PE12 */
 #define SCL_PIN					13		/* PIN24_PE13 */
-#endif
-
-#define ENABLE_CAD				1
 
 #define	TX_TIME					1800		// 1800ms
 #define DEST_ADDR				1
@@ -100,11 +100,9 @@ static uint8_t need_push = 0;
 #define MAX_DBM					20
 
 
-//#define WITH_ACK
-
 #ifdef CONFIG_V0
 uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
-uint8_t tx_cause = RESET_TX;
+int tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 #else
 uint8_t message[32];
@@ -202,13 +200,18 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
-	sample_count++;
+#ifndef CONFIG_2MIN
+	cnt_20s++;
 
-	if (sample_count >= HEARTBEAT_TIME/20) {
+	if (cnt_20s >= HEARTBEAT_TIME/20) {
+
+		// 2 hours
+
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
-		sample_count = 0;
+		cnt_20s = 0;
 	}
+#endif
 
 	pressure_init(SCL_PIN, SDA_PIN);	// initialization of the sensor
 
@@ -225,10 +228,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	*/
 	cur_water_h = get_water_h();
 
-#ifdef TX_TESTING
-	need_push = 0x5a;
-	tx_cause = TIMER_TX;
-#else
+#ifndef CONFIG_2MIN
 	//if (fabsf(cur_water_h - old_water_h) > 0.05) {
 	/* 1/200 or 1/100 */
 	float dp = fabsf(cur_water_h - old_water_h);
@@ -263,6 +263,12 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	}
 	#endif
 
+#else
+
+	// 2min fixed interval
+	need_push = 0x5a;
+	tx_cause = TIMER_TX;
+
 #endif
 }
 
@@ -283,10 +289,15 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 
 #ifdef ENABLE_CRYPTO
 	crypto_init();
+#endif
+
+#ifndef CONFIG_2MIN
+	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+#else
+	wInit.perSel = wdogPeriod_128k;	/* 128 seconds watchdog */
 #endif
 
 	// init dev power ctrl pin
@@ -389,13 +400,11 @@ void push_data()
 	}
 
 #ifdef CONFIG_V0
+	// set devid
 	uint64_t devid = get_devid();
-
 	uint8_t *p = (uint8_t *) &devid;
 
-	// set devid
-	int i = 0;
-	for(i = 0; i < 8; i++) {
+	for(int i = 0; i < 8; i++) {
 		pkt[3+i] = p[7-i];
 	}
 
@@ -407,8 +416,6 @@ void push_data()
 
 	ui16 = vbat * 1000;
 	pkt[13] = p[1]; pkt[14] = p[0];
-
-	//pkt[15] = tx_cause;
 
 	float chip_temp = fetch_mcu_temp();
 
@@ -503,10 +510,12 @@ void push_data()
 	INFOLN(r_size);
 #endif
 
-	if (!e) {
-		// send message succesful, update the old_water_h
+#ifndef CONFIG_2MIN
+	if (0 == e) {
+		/* send message succesful, update the old_water_h */
 		old_water_h = cur_water_h;
 	}
+#endif
 
 #ifdef DEBUG
 	endSend = millis();
@@ -522,10 +531,13 @@ void push_data()
 #endif
 
 	e = sx1272.setSleepMode();
+
+#ifdef DEBUG
 	if (!e)
 		INFO("Successfully switch into sleep mode");
 	else
 		INFO("Could not switch into sleep mode");
+#endif
 
 	digitalWrite(SX1272_RST, LOW);
 
@@ -536,10 +548,6 @@ void push_data()
 
 void loop()
 {
-	//INFO("Clock Freq = ");
-	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
-
-	//INFOLN("Feed the watchdog");
 
 	if (0x5a == need_push) {
 		push_data();
