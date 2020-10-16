@@ -24,7 +24,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.9"
+#define FW_VER						"Ver 2.0"
 
 //#define CONFIG_2MIN					1
 
@@ -1009,6 +1009,8 @@ void task_oled()
 			min_temp = cur_t;
 			max_temp = cur_t;
 			key_count = 0;
+
+			mode = MODE_MAX;
 
 		} else if (key_count >= 3) {
 

@@ -306,7 +306,7 @@ coff: build/main.elf
 	$(NM) -n $< > $@
 
 ############################################################
-dev_type	:= 07
+dev_type	:= 15
 year		:= $(shell date +%y)
 week		:= $(shell date +%V)
 

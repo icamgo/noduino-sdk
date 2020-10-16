@@ -979,6 +979,8 @@ void task_oled()
 			max_humi = cur_h;
 			key_count = 0;
 
+			mode = MODE_MAX;
+
 		} else if (key_count >= 3) {
 
 			key_count = 0;
