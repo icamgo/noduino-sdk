@@ -75,7 +75,7 @@ uint8_t sht3x_reset(void)
 	return ret;
 }
 
-static uint8_t sht3x_read_sensor(uint16_t cmd, uint8_t *data, size_t len)
+static uint8_t sht3x_read_data(uint16_t cmd, uint8_t *data, size_t len)
 {
 	int ret;
 
@@ -121,7 +121,7 @@ int sht3x_read_sensor(float *t, float *h)
 	uint8_t data[6] = {0};
 
 	while ((sd == 1) && cnt <= 3) {
-		sd = sht3x_read_sensor(READ_HIGH_RES, data, 6);
+		sd = sht3x_read_data(READ_HIGH_RES, data, 6);
 		cnt++;
 	}
 
@@ -262,6 +262,8 @@ float sht3x_get_humi(void)
 uint8_t sht3x_init(uint8_t scl, uint8_t sda)
 {
 	wire_begin(scl, sda);
+
+	sht3x_reset();
 
 	return 0;
 }
