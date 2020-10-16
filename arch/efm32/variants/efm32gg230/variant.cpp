@@ -87,7 +87,7 @@ extern const Pin2PortMapArray g_Pin2PortMapArray[]=
 
 	/* Port C */
     {gpioPortC, GPIO_PIN_0,  NO_ADC,                     NO_PWM,NO_PWM},  /* D17/PC00/PIN09, ACMP0_CH0, TIM0_CC1 #4, I2C0_SDA #4 */
-    {gpioPortC, GPIO_PIN_1,  NO_ADC,                     NO_PWM,NO_PWM},  /* D18/PC01/PIN10, ACMP0_CH1, TIM0_CC2 #4, I2C0_SDA #4 */
+    {gpioPortC, GPIO_PIN_1,  NO_ADC,                     NO_PWM,NO_PWM},  /* D18/PC01/PIN10, ACMP0_CH1, TIM0_CC2 #4, I2C0_SCL #4 */
     {gpioPortC, GPIO_PIN_2,  NO_ADC,                     NO_PWM,NO_PWM},  /* D19/PC02/PIN11, ACMP0_CH2, */
     {gpioPortC, GPIO_PIN_3,  NO_ADC,                     NO_PWM,NO_PWM},  /* D20/PC03/PIN12, ACMP0_CH3, */
     {gpioPortC, GPIO_PIN_4,  NO_ADC,                     NO_PWM,NO_PWM},  /* D21/PC04/PIN13, ACMP0_CH4, I2C1_SDA #0 */
