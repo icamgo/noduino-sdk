@@ -27,9 +27,11 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.1"
+#define FW_VER						"Ver 1.2"
 
 //#define CONFIG_2MIN					1
+
+#define ENABLE_CRYPTO				1
 
 #define ENABLE_OLED					1
 #define ENABLE_CAD					1
@@ -41,7 +43,6 @@
 
 #ifdef ENABLE_P_TEST
 #define DELTA_P					3
-static uint32_t cnt_01 = 0;
 #else
 #define DELTA_P					3
 #endif
@@ -51,22 +52,26 @@ static uint32_t cnt_01 = 0;
 static uint32_t cnt_rt_01 = 0;
 #endif
 
-#if 0
-#define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
-#else
-#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
+#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
+
+#ifdef ENABLE_P_TEST
+static uint32_t cnt_01 = 0;
+#endif
+
+#ifdef ENABLE_CRYPTO
+#include "crypto.h"
 #endif
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
 #ifndef CONFIG_2MIN
-static uint32_t sample_period = 2;			/* 20s */
-static uint32_t sample_count = 0;
+static uint32_t sample_period = 18;			/* 20s */
+static uint32_t cnt_20s = 0;
 #define		HEARTBEAT_TIME			6600	/* 120min */
 #else
-//static uint32_t sample_period = 110;		/* 120s */
-static uint32_t sample_period = 18;			/* 20s */
+static uint32_t sample_period = 110;		/* 120s */
+//static uint32_t sample_period = 18;			/* 20s */
 #endif
 
 static float old_temp = 0.0;
@@ -96,13 +101,8 @@ static uint8_t need_push = 0;
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
 
-#if 1
 #define SCL_PIN					11		/* PIN14_PD7 */
 #define SDA_PIN					10		/* PIN13_PD6 */
-#else
-#define SDA_PIN					12		/* PIN23_PE12 */
-#define SCL_PIN					13		/* PIN24_PE13 */
-#endif
 
 #define	TX_TIME					1800		// 1800ms
 #define DEST_ADDR				1
@@ -119,8 +119,7 @@ static uint8_t need_push = 0;
 #define	WL_TX				5
 
 #else
-#define node_addr				110
-
+#define node_addr			110
 #define TXRX_CH				CH_00_470
 #define LORA_MODE			11
 #endif
@@ -128,7 +127,7 @@ static uint8_t need_push = 0;
 #define MAX_DBM					20
 
 #ifdef CONFIG_V0
-uint8_t message[32] = { 0x47, 0x4F, 0x33 };
+uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 uint32_t tx_ok_cnt = 0;
@@ -370,11 +369,10 @@ void show_ver(int txc)
 
 	do {
 		u8g2.setFont(Futura_Heavy_20px);
-		u8g2.setCursor(64, 23);
+		u8g2.setCursor(50, 23);
 		u8g2.print(FW_VER);
-
-		//u8g2.setCursor(58, 116);
-		//u8g2.print("1.6 MPa");
+		u8g2.print(".");
+		u8g2.print(sample_period);
 
 		if(txc < 9999) {
 			u8g2.setCursor(10, 78);
@@ -394,9 +392,8 @@ void show_ver(int txc)
 
 		u8g2.print(txc);
 
-	#if 1
+	#if 0
 		u8g2.setFont(Futura_Heavy_20px);
-	//	u8g2.setCursor(10, 116);
 		u8g2.setCursor(66, 118);
 		u8g2.print(sample_period);
 		u8g2.print(" S");
@@ -513,12 +510,12 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	}
 
 #ifndef CONFIG_2MIN
-	sample_count++;
+	cnt_20s++;
 
-	if (sample_count >= HEARTBEAT_TIME/20) {
+	if (cnt_20s >= HEARTBEAT_TIME/20) {
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
-		sample_count = 0;
+		cnt_20s = 0;
 	}
 #endif
 
@@ -597,6 +594,10 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
+
+#ifdef ENABLE_CRYPTO
+	crypto_init();
+#endif
 
 #ifdef CONFIG_2MIN
 	//wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
@@ -709,16 +710,19 @@ uint16_t get_crc(uint8_t *pp, int len)
 
 void push_data()
 {
-	long startSend;
-	long endSend;
-
+	long start;
+	long end;
 	int e;
+
+	WDOG_Feed();
 
 #ifdef CONFIG_V0
 	uint8_t *pkt = message;
-#endif
 
-	WDOG_Feed();
+	memset(pkt, 0, PAYLOAD_LEN+6);
+
+	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
+#endif
 
 	////////////////////////////////
 #ifdef MONITOR_CURRENT
@@ -749,13 +753,10 @@ void push_data()
 
 
 #ifdef CONFIG_V0
-	uint64_t devid = get_devid();
-
-	uint8_t *p = (uint8_t *) &devid;
-
 	// set devid
-	int i = 0;
-	for(i = 0; i < 8; i++) {
+	uint64_t devid = get_devid();
+	uint8_t *p = (uint8_t *) &devid;
+	for(int i = 0; i < 8; i++) {
 		pkt[3+i] = p[7-i];
 	}
 
@@ -768,7 +769,6 @@ void push_data()
 	pkt[13] = p[1]; pkt[14] = p[0];
 
 	p = (uint8_t *) &tx_count;
-	//pkt[16] = p[1]; pkt[17] = p[0];
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
 	tx_count++;
 
@@ -790,11 +790,20 @@ void push_data()
 	pkt[23] = 0;
 #endif
 
-
+	/////////////////////////////////////////////////////////
+	/*
+	 * 2. crc
+	 * 3. set mic
+	*/
 	ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
+#ifdef ENABLE_CRYPTO
+	set_pkt_mic(pkt, PAYLOAD_LEN+6);
+#endif
+	/////////////////////////////////////////////////////////
 #else
 	uint8_t r_size;
 
@@ -818,7 +827,7 @@ void push_data()
 #endif
 
 #ifdef DEBUG
-	startSend = millis();
+	start = millis();
 #endif
 
 #ifdef CONFIG_V0
@@ -865,13 +874,13 @@ void push_data()
 	}
 
 #ifdef DEBUG
-	endSend = millis();
+	end = millis();
 
 	INFO("LoRa Sent in ");
-	INFOLN(endSend - startSend);
+	INFOLN(end - start);
 
 	INFO("LoRa Sent w/CAD in ");
-	INFOLN(endSend - sx1272._startDoCad);
+	INFOLN(end - sx1272._startDoCad);
 
 	INFO("Packet sent, state ");
 	INFOLN(e);
