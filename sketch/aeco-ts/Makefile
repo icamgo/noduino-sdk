@@ -168,6 +168,7 @@ CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I
 CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32HG/Include -I$(ARDUINO_CORES)/../variants/efm32hg110 
 
 CINCS		+= -I  $(LIB_DIR)/softspi/				\
+			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/pt1000/						\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
@@ -175,7 +176,8 @@ CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/sx127x					\
 			-I .									
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
-			-I $(LIB_DIR)/pt1000/						\
+			-I $(LIB_DIR)/softi2c/					\
+			-I $(LIB_DIR)/pt1000/					\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
