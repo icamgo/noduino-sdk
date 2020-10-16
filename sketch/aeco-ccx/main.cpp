@@ -41,7 +41,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V3.0"
+#define	FW_VER						"V3.1"
 
 #define LOW_BAT_THRESHOLD			3.0
 #define RX_ERR_THRESHOLD			15
@@ -863,7 +863,7 @@ void encode_temp_vbat(uint8_t *pkt, int rssi)
 	// encode the temp
 	int16_t data = (pkt[11]  << 8) | pkt[12];
 
-	if ('0' == dev_id[3] && ('2' == dev_id[4] || '8' == dev_id[4])) {
+	if ('0' == dev_id[3] && ('0' == dev_id[4] || '2' == dev_id[4] || '8' == dev_id[4])) {
 		// 0.1
 		dd = (float)(data / 10.0);
 
@@ -877,7 +877,7 @@ void encode_temp_vbat(uint8_t *pkt, int rssi)
 			return;
 		}
 
-	} else if ('0' == dev_id[3] && '3' == dev_id[4]) {
+	} else if ('0' == dev_id[3] && ('1' == dev_id[4] || '3' == dev_id[4])) {
 		// 0.01
 		dd = (float)(data / 100.0);
 
@@ -904,6 +904,10 @@ void encode_temp_vbat(uint8_t *pkt, int rssi)
 
 			return;
 		}
+
+	} else {
+
+		return ;
 	}
 
 #if 0
