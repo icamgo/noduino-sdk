@@ -97,7 +97,7 @@ struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
 #include "crypto.h"
 #endif
 
-#ifdef EFM32HG110F64
+#ifndef EFM32ZG110F32
 #define ENABLE_OLED					1
 #define ENABLE_SH1106				1
 //#define ENABLE_SSD1306			1
@@ -105,10 +105,12 @@ struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
 
 ////////////////////////////////////////////////////////////
 #ifdef EFM32GG230F512
+/* EFM32GG */
 #define	PWR_CTRL_PIN			5		/* PIN06_PA05_D5 */
 #define	KEY_PIN					41		/* PIN36_PD08_D41 */
 #define	RX_INT_PIN				12		/* PIN16_PB08_D12 */
 #else
+/* EFM32ZG & EFM32HG */
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
 #define	RX_INT_PIN				3		/* PIN8_PB11_D3 */
@@ -201,6 +203,19 @@ U8G2_SSD1306_128X32_UNIVISION_1_HW_I2C u8g2(U8G2_R2, /* reset=*/ U8X8_PIN_NONE);
 #endif
 
 #ifdef ENABLE_SH1106
+
+#ifdef EFM32GG230F512
+/*
+ * PIN09_PC0: I2C0_SDA#4
+ * PIN10_PC1: I2C0_SCL#4
+*/
+
+#define SH1107_RESET				2		/* PIN03_PA02_D2 */
+
+U8G2_SH1107_SEEED_128X128_1_HW_I2C u8g2(U8G2_R0, SH1107_RESET);
+
+#else
+
 /*
  * PIN24_PE13_D13 - SCL
  * PIN23_PE12_D12 - SDA
@@ -216,6 +231,7 @@ U8G2_SH1106_128X32_NONAME_1_SW_I2C u8g2(U8G2_R2, SH1106_SCL, SH1106_SDA, SH1106_
 U8G2_SH1106_128X32_NONAME_1_HW_I2C u8g2(U8G2_R2, SH1106_RESET);
 #endif
 
+#endif
 #endif // ENABLE_SH1106
 
 #endif // ENABLE_OLED

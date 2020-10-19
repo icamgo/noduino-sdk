@@ -126,6 +126,7 @@ $(LIB_DIR)/U8g2/src/clib/u8x8_byte.c					\
 $(LIB_DIR)/U8g2/src/clib/u8x8_cad.c						\
 $(LIB_DIR)/U8g2/src/clib/u8x8_d_ssd1306_128x32.c		\
 $(LIB_DIR)/U8g2/src/clib/u8x8_d_ssd1306_128x64_noname.c	\
+$(LIB_DIR)/U8g2/src/clib/u8x8_d_sh1107.c				\
 $(LIB_DIR)/U8g2/src/clib/u8x8_debounce.c				\
 $(LIB_DIR)/U8g2/src/clib/u8x8_display.c					\
 $(LIB_DIR)/U8g2/src/clib/u8x8_gpio.c					\
