@@ -380,7 +380,7 @@ static void i2c_init(uint8_t addr)
 	init.master = true;
 	init.refFreq = 0;
 
-#if F_CPU == 21000000L
+#if F_CPU >= 21000000L
 	init.clhr = i2cClockHLRFast;
 	init.freq = I2C_FREQ_FASTPLUS_MAX;
 #elif F_CPU == 14000000L
@@ -396,12 +396,29 @@ static void i2c_init(uint8_t addr)
 	/* Enabling clock to the I2C, GPIO*/
 	CMU_ClockEnable(cmuClock_I2C0, true);
 
-	/* PE12 - SDA, PE13 - SCL */
+#ifdef EFM32GG230F512
+	/*
+	 * PIN09_PC0: I2C0_SDA#4
+	 * PIN10_PC1: I2C0_SCL#4
+	*/
+	GPIO_PinModeSet(gpioPortC, GPIO_PIN_0, gpioModeWiredAndPullUpFilter, 1);
+	GPIO_PinModeSet(gpioPortC, GPIO_PIN_1, gpioModeWiredAndPullUpFilter, 1);
+
+	I2C0->ROUTE = I2C_ROUTE_SDAPEN | I2C_ROUTE_SCLPEN;
+	I2C0->ROUTE = (I2C0->ROUTE & (~_I2C_ROUTE_LOCATION_MASK)) | I2C_ROUTE_LOCATION_LOC4;
+#else
+	/*
+	 * EFM32ZG110F32 & EFM32HG110F64:
+	 *
+	 *  PIN23_PE12: I2C0_SDA#6
+	 *  PIN24_PE13: I2C0_SCL#6
+	*/
 	GPIO_PinModeSet(gpioPortE, GPIO_PIN_12, gpioModeWiredAndPullUpFilter, 1);
 	GPIO_PinModeSet(gpioPortE, GPIO_PIN_13, gpioModeWiredAndPullUpFilter, 1);
 
 	I2C0->ROUTE = I2C_ROUTE_SDAPEN | I2C_ROUTE_SCLPEN;
 	I2C0->ROUTE = (I2C0->ROUTE & (~_I2C_ROUTE_LOCATION_MASK)) | I2C_ROUTE_LOCATION_LOC6;
+#endif
 
 	I2C_Init(I2C0, &init);
 }
