@@ -27,7 +27,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.2"
+#define FW_VER						"Ver 1.3"
 
 //#define CONFIG_2MIN					1
 
@@ -1062,7 +1062,9 @@ void loop()
 	 */
 	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
 
-	wire_end();
+	//wire_end();
+	digitalWrite(SCL_PIN, HIGH);
+	digitalWrite(SDA_PIN, HIGH);
 
 	EMU_EnterEM2(true);
 }
