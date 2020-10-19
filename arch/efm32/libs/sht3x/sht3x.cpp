@@ -71,7 +71,7 @@ uint8_t sht3x_reset(void)
 	wire_write(SOFT_RESET & 0xff);
 	ret = wire_endTransmission();
 
-	sht3x_delay(2);
+	sht3x_delay(5);
 	return ret;
 }
 
@@ -222,7 +222,7 @@ float sht3x_get_temp(void)
 
 		for(i = 0; i < 5; i++) {
 			sht3x_read_sensor(t+i, h+i);	
-			sht3x_delay(1);
+			sht3x_delay(2);
 		}
 		
 		g_data.temp = median(t, 5);
@@ -247,7 +247,7 @@ float sht3x_get_humi(void)
 
 		for(i = 0; i < 5; i++) {
 			sht3x_read_sensor(t+i, h+i);	
-			sht3x_delay(1);
+			sht3x_delay(2);
 		}
 		
 		g_data.temp = median(t, 5);
