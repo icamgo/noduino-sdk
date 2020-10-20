@@ -22,6 +22,9 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include "softi2c.h"
+#include "rtcdriver.h"
+
 #include "crypto.h"
 
 #define ENABLE_RX_INTERRUPT		1
@@ -146,6 +149,15 @@ U8G2_SH1107_SEEED_128X128_1_HW_I2C u8g2(U8G2_R0, SH1107_RESET);
 #endif
 
 uint32_t rx_cnt = 0;
+
+#ifdef EFM32HG110F64
+uint32_t old_rx_cnt = 0;
+uint32_t cnt_20s = 0;
+
+/* Timer used for bringing the system back to EM0. */
+RTCDRV_TimerID_t xTimerForWakeUp;
+static uint32_t check_period = 18;	/* 20s */
+#endif
 
 void radio_setup()
 {
@@ -452,8 +464,6 @@ void show_frame(int l, int mode, bool alarm)
 {
 	u8g2.setPowerSave(0);
 
-	//u8g2.clearBuffer();		// clear the internal memory
-
 	u8g2.firstPage();
 
 	do {
@@ -729,6 +739,38 @@ void rx_irq_handler()
 #endif
 }
 
+#ifdef EFM32HG110F64
+void reset_dev_sys()
+{
+	power_off_dev();
+	i2c_delay(2300*I2C_1MS);			/* delay 2.3s */
+	NVIC_SystemReset();
+}
+
+void period_check_status(RTCDRV_TimerID_t id, void *user)
+{
+	/* reset the watchdog */
+	WDOG_Feed();
+
+	++cnt_20s;
+
+	if (cnt_20s % 6 == 0) {
+
+		// 2min timer
+
+		if (rx_cnt == old_rx_cnt) {
+			// no rx pkt, reset the system
+			reset_dev_sys();
+
+		} else {
+
+			old_rx_cnt = rx_cnt;
+		}
+
+	}
+}
+#endif
+
 void setup()
 {
 	int e;
@@ -738,7 +780,11 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
+#ifdef EFM32HG110F64
+	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+#else
 	wInit.perSel = wdogPeriod_2k;	/* 2k 1kHz periods should give 2 seconds */
+#endif
 
 #ifdef DEBUG
 	Serial.setRouteLoc(1);
@@ -776,6 +822,13 @@ void setup()
 	}
 
 	show_mode(omode);
+#endif
+
+#ifdef EFM32HG110F64
+	/* Initialize RTC timer. */
+	RTCDRV_Init();
+	RTCDRV_AllocateTimer(&xTimerForWakeUp);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, check_period * 1000, period_check_status, NULL);
 #endif
 
 	INFOLN("%s", "Init OK......");
@@ -830,7 +883,9 @@ void loop(void)
 	int e = 1;
 	static int c = 0;
 
+#ifndef EFM32HG110F64
 	WDOG_Feed();
+#endif
 
 #ifdef ENABLE_RX_INTERRUPT
 	status_counter++;
