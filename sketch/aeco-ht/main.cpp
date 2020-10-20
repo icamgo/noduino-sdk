@@ -30,7 +30,7 @@
 
 #ifdef CONFIG_PROTO_V33
 #define ENABLE_CRYPTO				1
-#define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
+#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 #endif
 
 #ifdef ENABLE_CRYPTO
@@ -71,13 +71,8 @@ static uint32_t need_push = 0;
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
 
-#if 0
-#define SDA_PIN					11		/* PIN14_PD7 */
-#define SCL_PIN					16		/* PIN21_PF2 */
-#else
 #define SDA_PIN					12		/* PIN23_PE12 */
 #define SCL_PIN					13		/* PIN24_PE13 */
-#endif
 
 #define ENABLE_CAD				1
 
@@ -235,7 +230,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 #endif
 #ifdef ENABLE_SHT3X
 	sht3x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
-	//sht3x_read_sensor(&cur_temp, &cur_humi);
 	cur_temp = sht3x_get_temp();
 	cur_humi = sht3x_get_humi();
 #endif
@@ -377,7 +371,6 @@ void push_data()
 	#endif
 	#ifdef ENABLE_SHT3X
 		sht3x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
-		//sht3x_read_sensor(&cur_temp, &cur_humi);
 		cur_temp = sht3x_get_temp();
 		cur_humi = sht3x_get_humi();
 	#endif
@@ -409,8 +402,6 @@ void push_data()
 
 	ui16 = vbat * 1000;
 	pkt[13] = p[1]; pkt[14] = p[0];
-
-	// pkt[15] <--- tx_cause
 
 	#ifdef CONFIG_PROTO_V33
 	pkt[2] = 0x33;
@@ -604,11 +595,6 @@ void push_data()
 
 void loop()
 {
-	//INFO("Clock Freq = ");
-	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
-
-	//INFO("need_push = ");
-	//INFOHEX(need_push);
 
 	if (0x5a == need_push) {
 		push_data();
