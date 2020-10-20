@@ -22,9 +22,6 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "softi2c.h"
-#include "rtcdriver.h"
-
 #include "crypto.h"
 
 #define ENABLE_RX_INTERRUPT		1
@@ -149,15 +146,6 @@ U8G2_SH1107_SEEED_128X128_1_HW_I2C u8g2(U8G2_R0, SH1107_RESET);
 #endif
 
 uint32_t rx_cnt = 0;
-
-#ifdef EFM32HG110F64
-uint32_t old_rx_cnt = 0;
-uint32_t cnt_20s = 0;
-
-/* Timer used for bringing the system back to EM0. */
-RTCDRV_TimerID_t xTimerForWakeUp;
-static uint32_t check_period = 18;	/* 20s */
-#endif
 
 void radio_setup()
 {
@@ -739,50 +727,23 @@ void rx_irq_handler()
 #endif
 }
 
-#ifdef EFM32HG110F64
 void reset_dev_sys()
 {
 	power_off_dev();
-	i2c_delay(2300*I2C_1MS);			/* delay 2.3s */
+	delay(2300);			/* delay 2.3s */
 	NVIC_SystemReset();
 }
-
-void period_check_status(RTCDRV_TimerID_t id, void *user)
-{
-	/* reset the watchdog */
-	WDOG_Feed();
-
-	++cnt_20s;
-
-	if (cnt_20s % 6 == 0) {
-
-		// 2min timer
-
-		if (rx_cnt == old_rx_cnt) {
-			// no rx pkt, reset the system
-			reset_dev_sys();
-
-		} else {
-
-			old_rx_cnt = rx_cnt;
-		}
-
-	}
-}
-#endif
 
 void setup()
 {
 	int e;
 
+#if 0
 	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
 
 	/* Watchdog setup - Use defaults, excepts for these : */
-	wInit.em2Run = true;
-	wInit.em3Run = true;
-#ifdef EFM32HG110F64
-	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
-#else
+	wInit.em2Run = false;
+	wInit.em3Run = false;
 	wInit.perSel = wdogPeriod_2k;	/* 2k 1kHz periods should give 2 seconds */
 #endif
 
@@ -809,7 +770,6 @@ void setup()
 	power_on_dev();
 
 #ifdef ENABLE_OLED
-	//u8g2.setI2CAddress(0x3c);
 	u8g2.begin();
 
 	delay(2);
@@ -824,13 +784,6 @@ void setup()
 	show_mode(omode);
 #endif
 
-#ifdef EFM32HG110F64
-	/* Initialize RTC timer. */
-	RTCDRV_Init();
-	RTCDRV_AllocateTimer(&xTimerForWakeUp);
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, check_period * 1000, period_check_status, NULL);
-#endif
-
 	INFOLN("%s", "Init OK......");
 	radio_setup();
 
@@ -840,7 +793,7 @@ void setup()
 #endif
 
 	/* Start watchdog */
-	WDOG_Init(&wInit);
+	//WDOG_Init(&wInit);
 
 	crypto_init();
 }
@@ -851,24 +804,12 @@ void deep_sleep()
 #ifdef ENABLE_OLED
 	u8g2.setPowerSave(1);
 #endif
-	sx1272.setSleepMode();
-	digitalWrite(SX1272_RST, LOW);
-
-	spi_end();
-	digitalWrite(10, LOW);
-	digitalWrite(11, LOW);
-	digitalWrite(12, LOW);
-	digitalWrite(13, LOW);
 
 	// dev power off
 	power_off_dev();
+	digitalWrite(SX1272_RST, LOW);
 
-#ifdef ENABLE_SH1107
-	//wire_end();
-	pinMode(SH1107_SCL, INPUT);
-	pinMode(SH1107_SDA, INPUT);
-	digitalWrite(SH1107_RESET, LOW);
-#endif
+	spi_end();
 
 	// reset the mode
 	omode = MODE_ALL;
@@ -883,9 +824,7 @@ void loop(void)
 	int e = 1;
 	static int c = 0;
 
-#ifndef EFM32HG110F64
-	WDOG_Feed();
-#endif
+	//WDOG_Feed();
 
 #ifdef ENABLE_RX_INTERRUPT
 	status_counter++;
