@@ -38,9 +38,16 @@
 #define CLEAR_STATUS				0x3041
 #define SOFT_RESET					0x30A2
 
+#ifdef ENABLE_CLOCK_STRETCHING
 #define READ_HIGH_RES				0x2C06
 #define READ_MEDIUM_RES				0x2C0D
 #define READ_LOW_RES				0x2C0F
+#else
+/* clock stretching disable */
+#define READ_HIGH_RES				0x2400
+#define READ_MEDIUM_RES				0x240B
+#define READ_LOW_RES				0x2416
+#endif
 
 #define R_HIGH_ALERT_SET			0xE11F
 #define R_HIGH_ALERT_CLR			0xE114
