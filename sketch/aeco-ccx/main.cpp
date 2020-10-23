@@ -30,7 +30,7 @@
 
 #define ENABLE_ENG_MODE				1
 
-#if 1
+#if 0
 #define	DEBUG						1
 #define DEBUG_TX					1
 //#define DEBUG_RSSI					1
@@ -41,7 +41,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V3.1"
+#define	FW_VER						"V3.2"
 
 #define LOW_BAT_THRESHOLD			3.0
 #define RX_ERR_THRESHOLD			15
@@ -857,25 +857,27 @@ void encode_temp_vbat(uint8_t *pkt, int rssi)
 	// encode the vbat
 	uint16_t vbat = pkt[13] << 8 | pkt[14];
 
-	#ifdef ENCODE_CCID_LOW1
+#ifdef ENCODE_CCID_LOW1
 	vb = (float)(vbat / 1000.0 + (pkt[17] == 1 ? 1 : 0) * 0.005);
 	uint16_t ui16 = vb * 100;
 
 	ui16 *= 10;
-	ui16 += (uint16_t)get_ccid_low1(pkt);
-	#else
+	//ui16 += (uint16_t)get_ccid_low1(pkt);
+	ui16 += (uint16_t)map_rssi_val(rssi);
+#else
 	vb = (float)(vbat / 1000.0 + (pkt[17] == 1 ? 1 : 0) * 0.05);
 	uint16_t ui16 = vb * 10;
 
 	ui16 *= 100;
 
 	ui16 += (uint16_t)get_ccid_low2(pkt);
-	#endif
+#endif
 
 	uint8_t *pb = (uint8_t *) &ui16;
 	pkt[13] = pb[1]; pkt[14] = pb[0];
 	///////////////////
 
+#if 0
 	// encode the temp
 	int16_t data = (pkt[11]  << 8) | pkt[12];
 
@@ -939,7 +941,7 @@ void encode_temp_vbat(uint8_t *pkt, int rssi)
 	pb = (uint8_t *) &data;
 	pkt[11] = pb[1];
 	pkt[12] = pb[0];
-
+#endif
 }
 
 bool process_pkt(uint8_t *p, int *len, int rssi)
@@ -1075,7 +1077,7 @@ bool process_pkt(uint8_t *p, int *len, int rssi)
 		#endif
 
 			if ((p[27] & 0x10) && eng_mode_on && (1 == p[17])) {
-				// has ccid
+				// cc2.0 relayed & it's the first cc2.0 rx-pkt
 				encode_temp_vbat(p, rssi);
 			}
 	}
