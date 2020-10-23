@@ -6,7 +6,7 @@
 #elif EFM32GG230F512
 #define	CTRL_FIFO_SIZE		1024
 #else
-#define	CTRL_FIFO_SIZE		8
+#define	CTRL_FIFO_SIZE		32
 #endif
 
 struct ctrl_t {
