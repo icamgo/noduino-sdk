@@ -819,6 +819,21 @@ void deep_sleep()
 	setup();
 }
 
+int get_1st_rssi(uint8_t *pkt)
+{
+	uint16_t vbat = pkt[13] << 8 | pkt[14];
+
+	uint16_t ui16 = vbat / 10 * 10;
+
+	if (pkt[17] >= 1) {
+
+		return (vbat - ui16);
+
+	} else {
+		return -1;
+	}
+}
+
 void loop(void)
 {
 	int e = 1;
@@ -1070,7 +1085,7 @@ void loop(void)
 
 				sprintf(frame_buf[fi], "%s %1d %4d",
 					dev_id,
-					p[17],
+					get_1st_rssi(p),
 					d.rssi);
 
 				//if (strncmp(dev_id+3, "20", 2) == 0 && (p[11] & 0x80)) {
