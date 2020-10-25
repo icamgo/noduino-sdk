@@ -1688,6 +1688,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 #ifdef EFM32ZG110F32
 void key_report_status()
 {
+	#if 0
 	uint8_t *pkt = rpt_pkt;
 
 	uint64_t devid = get_devid();
@@ -1717,6 +1718,7 @@ void key_report_status()
 	ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+	#endif
 
 	tx_cause = KEY_TX;
 	need_push = 0x55;
@@ -1910,7 +1912,7 @@ void loop(void)
 			INFO("No pkt, rssi = ");
 			INFOLN(sx1272.getRSSI());
 		#endif
-			return;
+			goto process_rpt;
 		}
 
 		uint8_t *p = d.data;
@@ -1938,7 +1940,7 @@ void loop(void)
 		// (p[2] == 0x33 && 36 == len)
 		if (false == check_pkt_mic(p, p_len)) {
 			/* check the mic of pkt */
-			return;
+			goto process_rpt;
 		}
 	#endif
 
@@ -1962,7 +1964,7 @@ void loop(void)
 					 * is only for me or send by me
 					 * no need to re-tx or show
 					*/
-					return;
+					goto process_rpt;
 				}
 			}
 		}
@@ -1971,17 +1973,17 @@ void loop(void)
 		if (is_cc_ok(p, p_len) == false) {
 
 			/* cc flag and count is not ok */
-			return;
+			goto process_rpt;
 		}
 
 		if (true == is_pkt_in_ctrl(&g_cfifo, p, p_len, seconds())) {
 			/* cc ctrl is not passed */
-			return;
+			goto process_rpt;
 		}
 
 		if (false == is_our_did(p)) {
 			/* filter the did */
-			return;
+			goto process_rpt;
 		}
 
 	#ifdef ENABLE_OLED
@@ -2084,6 +2086,8 @@ void loop(void)
 				sx1272.rx_v0();
 			}
 		}
+
+process_rpt:
 
 		if (0x55 == need_push) {
 
