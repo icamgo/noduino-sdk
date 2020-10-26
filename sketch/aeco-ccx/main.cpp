@@ -30,7 +30,7 @@
 
 #define ENABLE_ENG_MODE				1
 
-#if 0
+#if 1
 #define	DEBUG						1
 #define DEBUG_TX					1
 //#define DEBUG_RSSI					1
@@ -41,7 +41,7 @@
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
-#define	FW_VER						"V3.2"
+#define	FW_VER						"V3.3"
 
 #define LOW_BAT_THRESHOLD			3.0
 #define RX_ERR_THRESHOLD			15
