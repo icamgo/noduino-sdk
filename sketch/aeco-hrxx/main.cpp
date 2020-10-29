@@ -1083,10 +1083,18 @@ void loop(void)
 				int fi = (c % 3) * 2;
 				//int fi = (c % 4) * 2;
 
-				sprintf(frame_buf[fi], "%s %1d %4d",
-					dev_id,
-					get_1st_rssi(p),
-					d.rssi);
+				int rssi_1st = get_1st_rssi(p);
+
+				if (rssi_1st != -1) {
+					sprintf(frame_buf[fi], "%s %1d %4d",
+						dev_id,
+						rssi_1st,
+						d.rssi);
+				} else {
+					sprintf(frame_buf[fi], "%s  %4d",
+						dev_id,
+						d.rssi);
+				}
 
 				//if (strncmp(dev_id+3, "20", 2) == 0 && (p[11] & 0x80)) {
 
@@ -1134,11 +1142,10 @@ void loop(void)
 					p[17],
 					d.rssi);
 
-				sprintf(frame_buf[fi + 1], "%1d %02X %d %s",
+				sprintf(frame_buf[fi + 1], "%1d %02X %d",
 					check_pkt_mic(p, p_len),
 					p[11],
-					decode_cc2_epoch(p),
-					decode_ccid(p)+8);
+					decode_cc2_epoch(p));
 
 				show_frame(fi, omode, false);
 				c++;
