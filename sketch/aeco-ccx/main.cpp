@@ -28,9 +28,9 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-#define ENABLE_ENG_MODE				1
+#define ENABLE_TX5					1
 
-#if 1
+#if 0
 #define	DEBUG						1
 #define DEBUG_TX					1
 //#define DEBUG_RSSI					1
@@ -40,8 +40,11 @@
 
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
+#define ENCODE_CCID_LOW1			1
 
-#define	FW_VER						"V3.3"
+#define ENABLE_ENG_MODE				1
+
+#define	FW_VER						"V3.4"
 
 #define LOW_BAT_THRESHOLD			3.0
 #define RX_ERR_THRESHOLD			15
@@ -80,6 +83,9 @@ static uint8_t tx_cause __attribute__((aligned(4))) = RESET_TX;
 #endif
 
 #define MAC_RESET_CC			0x88
+
+#define MAC_TX5_OFF				0x89
+#define MAC_TX5_ON				0x8A
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 //#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
@@ -151,8 +157,6 @@ bool first_ccid __attribute__((aligned(4))) = false;
 #endif
 
 #ifdef ENABLE_ENG_MODE
-
-#define ENCODE_CCID_LOW1								1
 /*
  * If full ccid is enable, do not support to
  * turn on/off the eng mode via mac cmd
@@ -160,6 +164,13 @@ bool first_ccid __attribute__((aligned(4))) = false;
 bool eng_mode_on __attribute__((aligned(4))) = true;
 #else
 bool eng_mode_on __attribute__((aligned(4))) = false;
+#endif
+
+
+#ifdef ENABLE_TX5
+bool tx5_on __attribute__((aligned(4))) = true;
+#else
+bool tx5_on __attribute__((aligned(4))) = false;
 #endif
 
 /*
@@ -1019,19 +1030,26 @@ bool process_pkt(uint8_t *p, int *len, int rssi)
 			if (p[27] & 0x10) {
 				// new cc relayed pkt
 
-				if (p[17] >= 5) {
+				if (true == tx5_on) {
 
-					// cc relayed times
-					return false;
+					if (p[17] >= 5) {
 
-				} else {
-					p[17] += 1;
+						// cc relayed times
+						return false;
+
+					} else {
+						p[17] += 1;
+					}
 				}
 
 			} else {
 				// device pkt
 				p[27] |= 0x10;		// mark as cc-relayed
 				p[17] = 1;			// increment the cc-relayed-cnt
+
+			#ifndef ENCODE_FULL_CCID
+				p[18] = get_myid_low2();
+			#endif
 			}
 
 			//uint8_t mtype = p[27] & 0xE0;
@@ -1054,25 +1072,28 @@ bool process_pkt(uint8_t *p, int *len, int rssi)
 			}
 			//}
 		#else
-			if (1 == p[17]) {
+			if (true == tx5_on) {
 
-				p[18] = get_myid_low2();
+				if (1 == p[17]) {
 
-			} else if (2 == p[17]) {
+					p[18] = get_myid_low2();
 
-				p[19] = get_myid_low2();
+				} else if (2 == p[17]) {
 
-			} else if (3 == p[17]) {
+					p[19] = get_myid_low2();
 
-				p[24] = get_myid_low2();
+				} else if (3 == p[17]) {
 
-			} else if (4 == p[17]) {
+					p[24] = get_myid_low2();
 
-				p[25] = get_myid_low2();
+				} else if (4 == p[17]) {
 
-			} else if (5 == p[17]) {
+					p[25] = get_myid_low2();
 
-				p[26] = get_myid_low2();
+				} else if (5 == p[17]) {
+
+					p[26] = get_myid_low2();
+				}
 			}
 		#endif
 
@@ -1159,22 +1180,13 @@ uint64_t get_devid()
 	return *p;
 }
 
-inline void turn_tx_off(uint8_t cmd)
+inline void set_mac_cmd(uint8_t cmd)
 {
 	mac_cmd = cmd;
+	tx_cause = MAC_TX;
+	need_push_mac = 0x55;
+
 	tx_on = false;
-
-	tx_cause = MAC_TX;
-	need_push_mac = 0x55;
-}
-
-inline void turn_tx_on(uint8_t cmd)
-{
-	mac_cmd = cmd;
-	tx_on = true;
-
-	tx_cause = MAC_TX;
-	need_push_mac = 0x55;
 }
 
 inline void set_the_epoch(uint8_t *ep)
@@ -1224,72 +1236,66 @@ void process_mac_cmds(uint8_t *p, int len)
 	}
 
 	INFOLN("ok");
+
 	switch(cmd) {
 		case MAC_CCTX_OFF:
-			turn_tx_off(cmd);
+			set_mac_cmd(cmd);
+			tx_on = false;
 			//set_the_epoch(p+20);
 			break;
 		case MAC_CCTX_ON:
-			turn_tx_on(cmd);
+			set_mac_cmd(cmd);
+			tx_on = true;
 			//set_the_epoch(p+20);
 			break;
 		case MAC_SET_EPOCH:
 			set_the_epoch(p+20);
-			mac_cmd = cmd;
-			tx_cause = MAC_TX;
-			need_push_mac = 0x55;
+			set_mac_cmd(cmd);
 			break;
 		case MAC_GET_CMD:
-			tx_cause = MAC_TX;
-			need_push_mac = 0x55;
+			set_mac_cmd(cmd);
 			break;
 		#ifdef ENABLE_CAD
 		case MAC_CAD_OFF:
-			mac_cmd = cmd;
+			set_mac_cmd(cmd);
 			cad_on = false;
 			tx_time = NOCAD_TX_TIME;
-			tx_cause = MAC_TX;
-			need_push_mac = 0x55;
 			break;
 		case MAC_CAD_ON:
-			mac_cmd = cmd;
+			set_mac_cmd(cmd);
 			cad_on = true;
 			tx_time = CAD_TX_TIME;
-			tx_cause = MAC_TX;
-			need_push_mac = 0x55;
 			break;
 		#endif
 		#ifdef ENCODE_FULL_CCID
 		case MAC_FIRST_CCID:
-			mac_cmd = cmd;
+			set_mac_cmd(cmd);
 			first_ccid = true;
-			tx_cause = MAC_TX;
-			need_push_mac = 0x55;
 			break;
 		case MAC_LATEST_CCID:
-			mac_cmd = cmd;
+			set_mac_cmd(cmd);
 			first_ccid = false;
-			tx_cause = MAC_TX;
-			need_push_mac = 0x55;
 			break;
 		#else
 		case MAC_ENGMODE_ON:
-			mac_cmd = cmd;
+			set_mac_cmd(cmd);
 			eng_mode_on = true;
-			tx_cause = MAC_TX;
-			need_push_mac = 0x55;
 			break;
 		case MAC_ENGMODE_OFF:
-			mac_cmd = cmd;
+			set_mac_cmd(cmd);
 			eng_mode_on = false;
-			tx_cause = MAC_TX;
-			need_push_mac = 0x55;
 			break;
 		#endif
 		case MAC_RESET_CC:
-			mac_cmd = cmd;
-			tx_cause = MAC_TX;
-			need_push_mac = 0x55;
+			set_mac_cmd(cmd);
+			break;
+		case MAC_TX5_OFF:
+			set_mac_cmd(cmd);
+			tx5_on = false;
+			break;
+		case MAC_TX5_ON:
+			set_mac_cmd(cmd);
+			tx5_on = true;
 			break;
 	}
 
@@ -1422,7 +1428,7 @@ int16_t get_encode_mcu_temp()
 	*/
 	uint8_t xbit = first_ccid << 2 | cad_on << 1 | tx_on;
 #else
-	uint8_t xbit = eng_mode_on << 2 | cad_on << 1 | tx_on;
+	uint8_t xbit = tx5_on << 2 | cad_on << 1 | tx_on;
 #endif
 
 	return ret + xbit;
