@@ -1142,10 +1142,11 @@ void loop(void)
 					p[17],
 					d.rssi);
 
-				sprintf(frame_buf[fi + 1], "%1d %02X %d",
+				sprintf(frame_buf[fi + 1], "%1d %02X %d %02d",
 					check_pkt_mic(p, p_len),
 					p[11],
-					decode_cc2_epoch(p));
+					decode_cc2_epoch(p),
+					p[27]);
 
 				show_frame(fi, omode, false);
 				c++;
