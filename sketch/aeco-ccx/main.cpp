@@ -1369,7 +1369,7 @@ void rx_irq_handler()
 
 		if ((true == is_our_pkt(p, plen))
 			&& (false == is_my_did(p))
-			&& (true == is_cc_ok(p, p_len))
+			&& (true == is_cc_ok(p, plen))
 			&& (false == is_pkt_in_ctrl(&g_cfifo, p, plen, seconds()))) {
 
 			// need to push into the tx queue buffer
