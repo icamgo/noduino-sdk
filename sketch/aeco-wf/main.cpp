@@ -28,9 +28,9 @@
 //#define	ONLY_WATER_LEAK				1
 //#define	DEBUG					1
 
-#define FW_VER					"Ver 1.2"
+#define FW_VER					"Ver 1.3"
 
-#define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
+#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 #define ENABLE_CRYPTO				1
 
 #ifdef ENABLE_CRYPTO
@@ -87,7 +87,7 @@ static uint8_t need_push = 0;
 #define	DELTA_TX				1
 #define	TIMER_TX				2
 #define	KEY_TX					3
-#define	WATER_LEAK_TX			5
+#define	WATER_LEAK_TX			7
 #define	WATER_DELTA				8
 #define	WATER_LOW				9
 
