@@ -44,7 +44,7 @@
 
 #define ENABLE_ENG_MODE				1
 
-#define	FW_VER						"V3.4"
+#define	FW_VER						"V3.5"
 
 #define LOW_BAT_THRESHOLD			3.0
 #define RX_ERR_THRESHOLD			15
@@ -1367,7 +1367,10 @@ void rx_irq_handler()
 
 		if (plen > 44) return;
 
-		if (is_our_pkt(p, plen) == true && (false == is_my_did(p))) {
+		if ((true == is_our_pkt(p, plen))
+			&& (false == is_my_did(p))
+			&& (true == is_cc_ok(p, p_len))
+			&& (false == is_pkt_in_ctrl(&g_cfifo, p, plen, seconds()))) {
 
 			// need to push into the tx queue buffer
 			push_pkt(&g_cbuf, p, sx1272._RSSIpacket, plen);
@@ -1975,6 +1978,7 @@ void loop(void)
 			}
 		}
 
+	#if 0
 		/* Is need to re-tx ? */
 		if (is_cc_ok(p, p_len) == false) {
 
@@ -1986,6 +1990,7 @@ void loop(void)
 			/* cc ctrl is not passed */
 			goto process_rpt;
 		}
+	#endif
 
 		if (false == is_our_did(p)) {
 			/* filter the did */
