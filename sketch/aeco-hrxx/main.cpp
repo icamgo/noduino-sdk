@@ -709,7 +709,7 @@ void rx_irq_handler()
 		if (plen > PKT_LEN) plen = PKT_LEN;
 
 		if (omode == MODE_RAW ||
-			(omode == MODE_KEY && is_our_pkt(p, plen) && (p[15]&0x0F) >= 3) ||
+			(omode == MODE_KEY && is_our_pkt(p, plen) && (p[15]&0x0F) >= 3 && (p[15]&0x0F) <= 5) ||
 			((omode == MODE_CC2 || omode == MODE_ALL || omode == MODE_MAC) && is_our_pkt(p, plen))) {
 
 			push_pkt(&g_cbuf, p, sx1272._RSSIpacket, plen);
