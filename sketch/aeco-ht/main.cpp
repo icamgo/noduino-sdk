@@ -37,7 +37,7 @@
 #include "crypto.h"
 #endif
 
-#define FW_VER					"Ver 1.2"
+#define FW_VER					"Ver 1.3"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -353,7 +353,7 @@ void push_data()
 
 	noInterrupts();
 
-	if (cur_curr > 1.9)
+	if (KEY_TX == tx_cause && cur_curr > 1.9)
 		pkt[15] = EL_TX;
 	else
 		pkt[15] = tx_cause;
@@ -613,7 +613,9 @@ void loop()
 	 */
 	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
 
-	wire_end();
+	//wire_end();
+	digitalWrite(SCL_PIN, HIGH);
+	digitalWrite(SDA_PIN, HIGH);
 
 	EMU_EnterEM2(true);
 }
