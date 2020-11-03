@@ -31,7 +31,7 @@
 
 #define ENABLE_P_TEST			1
 
-#define FW_VER					"Ver 1.2"
+#define FW_VER					"Ver 1.3"
 
 #ifdef ENABLE_P_TEST
 #define DELTA_P					0.2			/* 3x0.1 count */
@@ -417,7 +417,7 @@ void push_data()
 
 	noInterrupts();
 
-	if (cur_curr > 1.9)
+	if (KEY_TX == tx_cause && cur_curr > 1.9)
 		pkt[15] = EL_TX;
 	else
 		pkt[15] = tx_cause;
