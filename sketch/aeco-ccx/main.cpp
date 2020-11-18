@@ -38,6 +38,7 @@
 #define DEBUG_HEX_PKT				1
 #endif
 
+#define ENABLE_FLASH				1
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 #define ENCODE_CCID_LOW1			1
@@ -86,6 +87,11 @@ static uint8_t tx_cause __attribute__((aligned(4))) = RESET_TX;
 
 #define MAC_TX5_OFF				0x89
 #define MAC_TX5_ON				0x8A
+
+#ifdef ENABLE_FLASH
+#define MAC_TX5_OFF_SAVE		0x8B
+#define MAC_TX5_ON_SAVE			0x8C
+#endif
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 //#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
@@ -172,6 +178,57 @@ bool tx5_on __attribute__((aligned(4))) = true;
 #else
 bool tx5_on __attribute__((aligned(4))) = false;
 #endif
+
+
+#ifdef ENABLE_FLASH
+#ifdef EFM32HG110F64
+#define CFGDATA_BASE     (0x0000FC00UL) /* config data page base address: 64K - 1K */
+#elif EFM32ZG110F32
+#define CFGDATA_BASE     (0x00007C00UL) /* config data page base address: 32K - 1K */
+#endif
+
+uint32_t *cfg_addr = ((uint32_t *) CFGDATA_BASE);
+
+typedef struct cfg_data {
+	uint32_t init_flag;
+	uint32_t epoch;
+	uint32_t tx_count;
+	uint32_t tx5_on;
+	uint32_t cad_on;
+	uint32_t tx_on;
+} cfg_data_t;
+
+cfg_data_t g_cfg __attribute__((aligned(4)));
+
+void flash_init()
+{
+	uint32_t *p = (uint32_t *)&g_cfg;
+
+	uint32_t flag = *cfg_addr;
+
+	if (0x55aa == flag) {
+		/*
+		 * cfg in flash is used
+		 * need to init the g_cfg
+		*/
+		memcpy(p, cfg_addr, sizeof(g_cfg));
+
+		tx5_on = 0x1 & (g_cfg.tx5_on);
+	}
+}
+
+void flash_update()
+{
+	if (0x55aa == g_cfg.init_flag) {
+		MSC_Init();
+		MSC_ErasePage(cfg_addr);
+
+		MSC_WriteWord(cfg_addr, &g_cfg, sizeof(g_cfg));
+		MSC_Deinit();
+	}
+}
+#endif
+
 
 /*
  * Output Mode:
@@ -1297,6 +1354,22 @@ void process_mac_cmds(uint8_t *p, int len)
 			set_mac_cmd(cmd);
 			tx5_on = true;
 			break;
+		#ifdef ENABLE_FLASH
+		case MAC_TX5_OFF_SAVE:
+			set_mac_cmd(cmd);
+			tx5_on = false;
+			g_cfg.tx5_on = tx5_on;
+			g_cfg.init_flag = 0x55aa;
+			flash_update();
+			break;
+		case MAC_TX5_ON_SAVE:
+			set_mac_cmd(cmd);
+			tx5_on = true;
+			g_cfg.tx5_on = tx5_on;
+			g_cfg.init_flag = 0x55aa;
+			flash_update();
+			break;
+		#endif
 	}
 
 #if 0
@@ -1815,6 +1888,10 @@ void setup()
 
 	need_push = 0x55;
 	tx_cause = RESET_TX;
+
+#ifdef ENABLE_FLASH
+	flash_init();
+#endif
 }
 
 void deep_sleep()
