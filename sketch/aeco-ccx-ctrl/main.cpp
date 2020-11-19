@@ -83,6 +83,25 @@ uint8_t loraAddr = 1;
 
 #endif
 
+
+#define MAC_CCTX_OFF			0x80
+#define MAC_CCTX_ON				0x81
+#define MAC_SET_EPOCH			0x82
+#define MAC_GET_CMD				0x83
+#define MAC_CAD_OFF				0x84
+#define MAC_CAD_ON				0x85
+
+#define MAC_ENGMODE_ON			0x86
+#define MAC_ENGMODE_OFF			0x87
+
+#define MAC_RESET_CC			0x88
+
+#define MAC_TX5_OFF				0x89
+#define MAC_TX5_ON				0x8A
+
+#define MAC_TX5_OFF_SAVE		0x8B
+#define MAC_TX5_ON_SAVE			0x8C
+
 /*
  * TX CMD:
  *
@@ -508,14 +527,18 @@ void setup()
 #endif
 	switch (txcmd) {
 		case MODE_CC_OFF:
-			send_cmd(0x80);
-			send_cmd(0x80);
-			send_cmd(0x80);
+			send_cmd(MAC_CCTX_OFF);
+			send_cmd(MAC_CCTX_OFF);
+			send_cmd(MAC_RESET_CC);
+			send_cmd(MAC_RESET_CC);
+			send_cmd(MAC_RESET_CC);
 			break;
 		case MODE_CC_ON:
-			send_cmd(0x81);
-			send_cmd(0x81);
-			send_cmd(0x81);
+			send_cmd(MAC_CCTX_ON);
+			send_cmd(MAC_CCTX_ON);
+			send_cmd(MAC_RESET_CC);
+			send_cmd(MAC_RESET_CC);
+			send_cmd(MAC_RESET_CC);
 			break;
 	}
 
@@ -541,14 +564,16 @@ void loop(void)
 
 		switch (txcmd) {
 			case MODE_CC_OFF:
-				send_cmd(0x80);
-				send_cmd(0x80);
-				send_cmd(0x80);
+				send_cmd(MAC_CCTX_OFF);
+				send_cmd(MAC_CCTX_OFF);
+				send_cmd(MAC_CCTX_OFF);
 				break;
 			case MODE_CC_ON:
-				send_cmd(0x81);
-				send_cmd(0x81);
-				send_cmd(0x81);
+				send_cmd(MAC_RESET_CC);
+				send_cmd(MAC_RESET_CC);
+				send_cmd(MAC_RESET_CC);
+				send_cmd(MAC_RESET_CC);
+				send_cmd(MAC_RESET_CC);
 				break;
 		}
 
