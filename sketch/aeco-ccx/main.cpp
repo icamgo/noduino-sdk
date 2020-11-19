@@ -45,7 +45,7 @@
 
 #define ENABLE_ENG_MODE				1
 
-#define	FW_VER						"V3.5"
+#define	FW_VER						"V3.6"
 
 #define LOW_BAT_THRESHOLD			3.0
 #define RX_ERR_THRESHOLD			15
@@ -2219,7 +2219,7 @@ process_rpt:
 				push_pkt(&g_cbuf, rpt_pkt, 0, PAYLOAD_LEN+6);
 				interrupts();
 
-				need_push = 0;
+				need_push_mac = 0;
 
 				if (MAC_RESET_CC == mac_cmd) {
 					NVIC_SystemReset();
