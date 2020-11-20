@@ -105,14 +105,14 @@ uint8_t loraAddr = 1;
 /*
  * TX CMD:
  *
- *   0x0: All CC Off
- *   0x1: All CC On
+ *   0x0: All TX5 Off
+ *   0x1: All TX5 On
 */
-#define	MODE_CC_OFF		0x0
-#define	MODE_CC_ON		0x1
+#define	MODE_TX5_OFF		0x0
+#define	MODE_TX5_ON			0x1
 
-int txcmd = MODE_CC_OFF;
-int old_txcmd = MODE_CC_OFF;
+int txcmd = MODE_TX5_OFF;
+int old_txcmd = MODE_TX5_OFF;
 
 int key_time = 0;
 bool key_pressed = false;
@@ -312,17 +312,17 @@ void show_mode(int mode)
 	u8g2.firstPage();
 
 	do {
-		if (MODE_CC_ON == mode) {
+		if (MODE_TX5_ON == mode) {
 			u8g2.setFont(u8g2_font_freedoomr10_mu);
 			u8g2.setCursor(12, 26);
-			u8g2.print(" CC - ON ");
+			u8g2.print(" TX5 - ON ");
 
 			u8g2.setFont(u8g2_font_open_iconic_www_1x_t);
 			u8g2.drawGlyph(112, 23, 81);
-		} else if (MODE_CC_OFF == mode) {
+		} else if (MODE_TX5_OFF == mode) {
 			u8g2.setFont(u8g2_font_freedoomr10_mu);
 			u8g2.setCursor(12, 26);
-			u8g2.print(" CC - OFF");
+			u8g2.print(" TX5 - OFF");
 
 			u8g2.setFont(u8g2_font_open_iconic_app_1x_t);
 			u8g2.drawGlyph(112, 23, 64);
@@ -351,13 +351,13 @@ void change_txcmd()
 #if 0
 	if (key_cnt % 12 == 0) {
 
-		if (MODE_CC_ON == txcmd) {
+		if (MODE_TX5_ON == txcmd) {
 
-			txcmd = MODE_CC_OFF;
+			txcmd = MODE_TX5_OFF;
 
-		} else if (MODE_CC_OFF == txcmd) {
+		} else if (MODE_TX5_OFF == txcmd) {
 
-			txcmd = MODE_CC_ON;
+			txcmd = MODE_TX5_ON;
 		}
 	}
 
@@ -528,14 +528,20 @@ void setup()
 	show_mode(txcmd);
 #endif
 	switch (txcmd) {
-		case MODE_CC_OFF:
+		case MODE_TX5_OFF:
 			send_cmd(MAC_CCTX_OFF);
 			send_cmd(MAC_CCTX_OFF);
-			send_cmd(MAC_CCTX_OFF);
+			send_cmd(MAC_TX5_OFF_SAVE);
+			send_cmd(MAC_TX5_OFF_SAVE);
+			send_cmd(MAC_RESET_CC);
+			send_cmd(MAC_RESET_CC);
+			send_cmd(MAC_RESET_CC);
 			break;
-		case MODE_CC_ON:
-			send_cmd(MAC_RESET_CC);
-			send_cmd(MAC_RESET_CC);
+		case MODE_TX5_ON:
+			send_cmd(MAC_CCTX_OFF);
+			send_cmd(MAC_CCTX_OFF);
+			send_cmd(MAC_TX5_ON_SAVE);
+			send_cmd(MAC_TX5_ON_SAVE);
 			send_cmd(MAC_RESET_CC);
 			send_cmd(MAC_RESET_CC);
 			send_cmd(MAC_RESET_CC);
@@ -563,14 +569,20 @@ void loop(void)
 		old_txcmd = txcmd;
 
 		switch (txcmd) {
-			case MODE_CC_OFF:
+			case MODE_TX5_OFF:
 				send_cmd(MAC_CCTX_OFF);
 				send_cmd(MAC_CCTX_OFF);
-				send_cmd(MAC_CCTX_OFF);
+				send_cmd(MAC_TX5_OFF_SAVE);
+				send_cmd(MAC_TX5_OFF_SAVE);
+				send_cmd(MAC_RESET_CC);
+				send_cmd(MAC_RESET_CC);
+				send_cmd(MAC_RESET_CC);
 				break;
-			case MODE_CC_ON:
-				send_cmd(MAC_RESET_CC);
-				send_cmd(MAC_RESET_CC);
+			case MODE_TX5_ON:
+				send_cmd(MAC_CCTX_OFF);
+				send_cmd(MAC_CCTX_OFF);
+				send_cmd(MAC_TX5_ON_SAVE);
+				send_cmd(MAC_TX5_ON_SAVE);
 				send_cmd(MAC_RESET_CC);
 				send_cmd(MAC_RESET_CC);
 				send_cmd(MAC_RESET_CC);
