@@ -834,6 +834,15 @@ int get_1st_rssi(uint8_t *pkt)
 	}
 }
 
+int get_temp_low1(uint8_t *pkt)
+{
+	int16_t data = (pkt[11]  << 8) | pkt[12];
+
+	int ret = data -  10 * (data / 10);
+
+	return (ret >= 0 ? ret : -ret);
+}
+
 void loop(void)
 {
 	int e = 1;
@@ -1144,11 +1153,12 @@ void loop(void)
 
 				int xep = decode_cc2_epoch(p);
 				if (1600155579 == xep) {
-					sprintf(frame_buf[fi + 1], "%1d %02X  %s  %02d",
+					sprintf(frame_buf[fi + 1], "%1d %02X  %s  %02d  %d",
 						check_pkt_mic(p, p_len),
 						p[11],
 						"ON",
-						p[27]);
+						p[27],
+						get_temp_low1(p));
 
 				} else {
 					sprintf(frame_buf[fi + 1], "%1d %02X %d %02d",
