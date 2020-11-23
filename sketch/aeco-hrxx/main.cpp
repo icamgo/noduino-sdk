@@ -1153,7 +1153,7 @@ void loop(void)
 
 				int xep = decode_cc2_epoch(p);
 				if (1600155579 == xep) {
-					sprintf(frame_buf[fi + 1], "%1d %02X  %s  %02d  %d",
+					sprintf(frame_buf[fi + 1], "%1d %02X  %s  %02X  %d",
 						check_pkt_mic(p, p_len),
 						p[11],
 						"ON",
@@ -1161,7 +1161,7 @@ void loop(void)
 						get_temp_low1(p));
 
 				} else {
-					sprintf(frame_buf[fi + 1], "%1d %02X %d %02d",
+					sprintf(frame_buf[fi + 1], "%1d %02X %d %02X",
 						check_pkt_mic(p, p_len),
 						p[11],
 						xep,
