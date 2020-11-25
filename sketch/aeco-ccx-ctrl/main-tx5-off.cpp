@@ -111,8 +111,8 @@ uint8_t loraAddr = 1;
 #define	MODE_TX5_OFF		0x0
 #define	MODE_TX5_ON			0x1
 
-int txcmd = MODE_TX5_OFF;
-int old_txcmd = MODE_TX5_OFF;
+int txcmd = MODE_TX5_ON;
+int old_txcmd = MODE_TX5_ON;
 
 int key_time = 0;
 bool key_pressed = false;
