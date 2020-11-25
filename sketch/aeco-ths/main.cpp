@@ -25,24 +25,31 @@
 #include "math.h"
 #include "em_wdog.h"
 
-//#define	DEBUG					1
+#if 1
+#define CONFIG_PROTO_V33			1
+#else
+#define CONFIG_PROTO_V34			1
+#endif
+
+//#define DEBUG						1
+//#define CONFIG_2MIN				1
 
 #define FW_VER						"V1.5"
 
-//#define CONFIG_2MIN					1
-
+#ifdef CONFIG_PROTO_V33
 #define ENABLE_CRYPTO				1
+#endif
 
 #define ENABLE_OLED					1
 #define ENABLE_CAD					1
 
 #define ENABLE_SHT3X				1
 
-#define ENABLE_T_TEST			1
+#define ENABLE_T_TEST				1
 //#define ENABLE_RTP_TEST			1
 
 #ifdef ENABLE_T_TEST
-#define DELTA_T					1
+#define DELTA_T					1.5
 #define DELTA_H					3
 #else
 #define DELTA_T					1
@@ -54,7 +61,6 @@
 static uint32_t cnt_rt_01 = 0;
 #endif
 
-#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 
 #ifdef ENABLE_T_TEST
 static uint32_t cnt_01 = 0;
@@ -133,7 +139,16 @@ static uint8_t need_push = 0;
 #define MAX_DBM					20
 
 #ifdef CONFIG_V0
+
+#ifdef CONFIG_PROTO_V33
+#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
+
+#elif CONFIG_PROTO_V34
+#define PAYLOAD_LEN					36		/* 36 + 6 = 42B */
+uint8_t message[PAYLOAD_LEN] = { 0x47, 0x4F, 0x34 };
+#endif
+
 uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 uint32_t tx_ok_cnt = 0;
@@ -874,7 +889,7 @@ void push_data()
 
 	memset(pkt, 0, PAYLOAD_LEN+6);
 
-	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
+	pkt[0] = 0x47; pkt[1] = 0x4F;
 #endif
 
 	////////////////////////////////
@@ -913,7 +928,7 @@ void push_data()
 		pkt[3+i] = p[7-i];
 	}
 
-	int16_t ui16 = (int16_t)(cur_humi * 10);
+	int16_t ui16 = (int16_t)(cur_temp * 10);
 	p = (uint8_t *) &ui16;
 
 	pkt[11] = p[1]; pkt[12] = p[0];
@@ -921,14 +936,13 @@ void push_data()
 	ui16 = cur_vbat * 1000;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
-	p = (uint8_t *) &tx_count;
-	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
-	tx_count++;
+	#ifdef CONFIG_PROTO_V33
+	pkt[2] = 0x33;
 
 	float chip_temp = fetch_mcu_temp();
 
 	// Humidity Sensor data	or Water Leak Sensor data
-	pkt[20] = (int8_t)roundf(cur_temp);
+	pkt[20] = (int8_t)roundf(cur_humi);
 
 	// Internal Temperature of the chip
 	pkt[21] = (int8_t)roundf(chip_temp);
@@ -942,6 +956,10 @@ void push_data()
 #else
 	pkt[23] = 0;
 #endif
+
+	p = (uint8_t *) &tx_count;
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
+	tx_count++;
 
 	/////////////////////////////////////////////////////////
 	/*
@@ -957,6 +975,65 @@ void push_data()
 	set_pkt_mic(pkt, PAYLOAD_LEN+6);
 #endif
 	/////////////////////////////////////////////////////////
+	#elif CONFIG_PROTO_V34
+	pkt[2] = 0x34;
+
+	pkt[16] = 8;			// dev_type
+
+	pkt[17] = 0;			// dev_type
+
+	/* DTF: 0 00 001 00, realtime data, int8 */
+	pkt[18] = 0x04;
+
+	/* DUF: % */
+	pkt[19] = 0x15;
+	pkt[20] = (int8_t) roundf(cur_humi);
+
+	/* DTF: 0 00 101 10, realtime data, float, 4bytes */
+	pkt[21] = 0x16;
+
+	/* DUF: 'C */
+	pkt[22] = 0xB;
+
+	p = (uint8_t *) &cur_temp;
+	pkt[23] = p[1];
+	pkt[24] = p[0];
+	pkt[25] = p[3];
+	pkt[26] = p[2];
+
+	/* DTF: 0 00 001 00, realtime data, int8 */
+	pkt[27] = 0x04;
+	/* DUF: % */
+	pkt[28] = 0x15;
+#ifdef MONITOR_CURRENT
+	pkt[29] = (int8_t) roundf(cur_curr);
+#else
+	pkt[29] = 0;
+#endif
+
+	/* DTF: 0 00 001 00, realtime data, int16 */
+	pkt[30] = 0x05;
+	/* DUF: 'C */
+	pkt[31] = 0x0B;
+
+	float chip_temp = fetch_mcu_temp();
+	ui16 = (int16_t)(chip_temp * 10);
+	p = (uint8_t *) &ui16;
+	pkt[32] = p[1]; pkt[33] = p[0];
+
+	/* frame number */
+	//pkt[34] = p[1]; pkt[35] = p[0];
+	p = (uint8_t *) &tx_count;
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
+	tx_count++;
+
+	//pkt[36] = p[1]; pkt[37] = p[0];
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
+	p = (uint8_t *) &ui16;
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
+	//pkt[38] = 0; pkt[39] = 0; pkt[40] = 0; pkt[41] = 0;
+	#endif
 #else
 	uint8_t r_size;
 
