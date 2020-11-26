@@ -373,17 +373,17 @@ void show_th(float t, float h)
 	u8g2.firstPage();
 
 	do {
-		u8g2.drawXBM(110, 10, c_width, c_height, c_icon);
+		u8g2.drawXBM(108, 10, c_width, c_height, c_icon);
 
 		u8g2.setFont(Futura_Heavy_20px);
-		u8g2.setCursor(114, 82);
+		u8g2.setCursor(112, 82);
 		u8g2.print("%");
 
 		u8g2.setFont(Futura_Medium_55px);
 
 		// show the temp
 		if (t > -99.99 && t < 99.99) {
-			u8g2.setCursor(20, 50);
+			u8g2.setCursor(15, 50);
 			u8g2.print(temp);
 		} else if (t >= 99.99) {
 			u8g2.setCursor(4, 50);
@@ -395,7 +395,7 @@ void show_th(float t, float h)
 
 		// show the humi
 		if (len_h <= 4) {
-			u8g2.setCursor(20, 108);
+			u8g2.setCursor(15, 108);
 		} else if (len_h == 5) {
 			u8g2.setCursor(4, 108);
 		}
