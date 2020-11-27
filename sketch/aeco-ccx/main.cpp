@@ -109,7 +109,7 @@ struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
 #include "crypto.h"
 #endif
 
-#ifndef EFM32ZG110F32
+#ifdef EFM32HG110F64
 #define ENABLE_OLED					1
 #define ENABLE_SH1106				1
 //#define ENABLE_SSD1306			1
@@ -118,9 +118,19 @@ struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
 ////////////////////////////////////////////////////////////
 #ifdef EFM32GG230F512
 /* EFM32GG */
-#define	PWR_CTRL_PIN			5		/* PIN06_PA05_D5 */
-#define	KEY_PIN					41		/* PIN36_PD08_D41 */
-#define	RX_INT_PIN				12		/* PIN16_PB08_D12 */
+//#define	PWR_CTRL_PIN			5		/* PIN06_PA05_D5 */
+//#define	KEY_PIN					41		/* PIN36_PD08_D41 */
+//#define	RX_INT_PIN				12		/* PIN16_PB08_D12 */
+
+#define	PWR_CTRL_PIN			4		/* PIN05_PA04_D4 */
+#define	KEY_PIN					54		/* PIN53_PF04_D54 */
+#define	RX_INT_PIN				8		/* PIN18_PA09_D8 */
+
+#define OLED_PWR3_PIN			55		/* PIN54_PF5_D55 */
+#define OLED_PWR12_PIN			9		/* PIN19_PA10_D9 */
+#define OLED_I2C_SDA			13		/* PIN21_PB11_D13 */
+#define OLED_I2C_SCL			14		/* PIN22_PB12_D14 */
+
 #else
 /* EFM32ZG & EFM32HG */
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
@@ -185,6 +195,8 @@ bool tx5_on __attribute__((aligned(4))) = false;
 #define CFGDATA_BASE     (0x0000FC00UL) /* config data page base address: 64K - 1K */
 #elif EFM32ZG110F32
 #define CFGDATA_BASE     (0x00007C00UL) /* config data page base address: 32K - 1K */
+#elif EFM32GG230F512
+#define CFGDATA_BASE     (0x0000FC00UL) /* config data page base address: 64K - 1K */
 #endif
 
 uint32_t *cfg_addr = ((uint32_t *) CFGDATA_BASE);
@@ -1767,7 +1779,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 	}
 }
 
-#ifdef EFM32ZG110F32
+#if defined(EFM32ZG110F32) || defined(EFM32GG230F512)
 void key_report_status()
 {
 	#if 0
@@ -1829,9 +1841,8 @@ void setup()
 	pinMode(KEY_PIN, INPUT);
 #ifdef EFM32HG110F64
 	attachInterrupt(KEY_PIN, change_omode, FALLING);
-#endif
-
-#ifdef EFM32ZG110F32
+#else
+	// EFM32ZG110F32 or EFM32GG230F512
 	attachInterrupt(KEY_PIN, key_report_status, FALLING);
 #endif
 
@@ -1843,6 +1854,20 @@ void setup()
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 
 	power_on_dev();
+
+#ifdef EFM32GG230F512
+	// oled pwr ctrl
+	pinMode(OLED_PWR3_PIN, OUTPUT);
+	pinMode(OLED_PWR12_PIN, OUTPUT);
+	pinMode(OLED_I2C_SCL, OUTPUT);
+	pinMode(OLED_I2C_SDA, OUTPUT);
+
+	digitalWrite(OLED_PWR3_PIN, LOW);
+	digitalWrite(OLED_PWR12_PIN, LOW);
+	digitalWrite(OLED_I2C_SCL, HIGH);
+	digitalWrite(OLED_I2C_SDA, HIGH);
+#endif
+
 
 #ifdef ENABLE_OLED
 	u8g2.begin();
