@@ -51,9 +51,9 @@ extern const Pin2PortMapArray g_Pin2PortMapArray[]=
     {gpioPortA, GPIO_PIN_6,  NO_ADC,                     NO_PWM,NO_PWM},  /* D06/PA6/PIN7 */ 
 
 #if USE_TIMER2_PWM>0    
-    {gpioPortA, GPIO_PIN_8,  NO_ADC,                     TIMER2,0x00  },  /* D03/PA8/PIN17, TIM2_CC0 #0*/
-    {gpioPortA, GPIO_PIN_9,  NO_ADC,                     TIMER2,0x01  },  /* D04/PA9/PIN18, TIM2_CC1 #0*/
-    {gpioPortA, GPIO_PIN_10, NO_ADC,                     TIMER2,0x02  },  /* D05/PA10/PIN19,TIM2_CC2 #0*/ 
+    {gpioPortA, GPIO_PIN_8,  NO_ADC,                     TIMER2,0x00  },  /* D07/PA8/PIN17, TIM2_CC0 #0*/
+    {gpioPortA, GPIO_PIN_9,  NO_ADC,                     TIMER2,0x01  },  /* D08/PA9/PIN18, TIM2_CC1 #0*/
+    {gpioPortA, GPIO_PIN_10, NO_ADC,                     TIMER2,0x02  },  /* D09/PA10/PIN19,TIM2_CC2 #0*/ 
 #else
     {gpioPortA, GPIO_PIN_8,  NO_ADC,                     NO_PWM,NO_PWM},  /* D07/PA8/PIN17,   TIM2_CC0 #0*/ 
     {gpioPortA, GPIO_PIN_9,  NO_ADC,                     NO_PWM,NO_PWM},  /* D08/PA9/PIN18,   TIM2_CC1 #0*/ 
