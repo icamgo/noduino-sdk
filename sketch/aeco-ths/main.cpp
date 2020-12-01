@@ -114,7 +114,7 @@ static uint8_t need_push = 0;
 #define SCL_PIN					11		/* PIN14_PD7 */
 #define SDA_PIN					10		/* PIN13_PD6 */
 
-#define	TX_TIME					1800		// 1800ms
+#define	TX_TIME					900		// 1800ms
 #define DEST_ADDR				1
 
 #ifdef CONFIG_V0
@@ -560,7 +560,7 @@ void show_ver(int txc, float vb, bool show_bat)
 
 #endif
 
-void push_data();
+void push_data(bool cad);
 
 void power_on_dev()
 {
@@ -864,7 +864,7 @@ uint16_t get_crc(uint8_t *pp, int len)
 	return hh;
 }
 
-void push_data()
+void push_data(bool cad_on)
 {
 	long start;
 	long end;
@@ -1023,7 +1023,12 @@ void push_data()
 	qsetup();
 
 #ifdef ENABLE_CAD
-	sx1272.CarrierSense();
+	if (cad_on) {
+		sx1272._enableCarrierSense = true;
+		sx1272.CarrierSense();
+	} else {
+		sx1272._enableCarrierSense = false;
+	}
 #endif
 
 #ifdef DEBUG
@@ -1218,16 +1223,20 @@ void task_oled()
 
 void loop()
 {
+
 	if (key_count >= 1) {
+
+		if (0x5a == need_push) {
+			push_data(false);
+			need_push = 0;
+		}
 
 		power_on_dev();
 		task_oled();
-
 	}
 
 	if (0x5a == need_push) {
-		push_data();
-
+		push_data(true);
 		need_push = 0;
 	}
 
