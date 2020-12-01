@@ -337,6 +337,10 @@ char *decode_sensor_type()
 
 		strcpy(dev_type, "T2W");
 
+	} else if (dev_id[3] == '1' && dev_id[4] == '6') {
+
+		strcpy(dev_type, "GOTH");
+
 	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
 
 		strcpy(dev_type, "CC");
@@ -406,6 +410,10 @@ char *decode_sensor_data(uint8_t *pkt)
 		dd = (float)(data / 10.0);
 		ftoa(dev_data, dd, 1);
 		sprintf(dev_data, "%s", dev_data);
+
+	} else if (dev_id[3] == '1' && dev_id[4] == '6') {
+		// GOTh with oled
+		sprintf(dev_data, "%d %d", (int)(data/10.0+0.5), (int8_t)(pkt[20]));
 
 	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
 		// Internal Temprature of ECC
@@ -624,52 +632,8 @@ bool check_crc(uint8_t *p, int plen)
 	int i, pos = 0;
 	uint16_t hh = 0, sum = 0;
 
-#if 0
-	switch (p[2]) {
-
-		case 0x31:
-			len = 15;
-			sum = p[15] << 8 | p[16];
-			break;
-
-		case 0x32:
-			len = 17;
-			sum = p[17] << 8 | p[18];
-			break;
-
-		case 0x33:
-			len = 18;
-			sum = p[18] << 8 | p[19];
-			break;
-		default:
-			len = 0;
-			sum = 1;
-			break;
-	}
-#endif
-#if 0
-	switch (plen) {
-		case 24:
-			len = 18;
-			sum = p[18] << 8 | p[19];
-			break;
-		case 23:
-			len = 17;
-			sum = p[17] << 8 | p[18];
-			break;
-		case 21:
-			len = 15;
-			sum = p[15] << 8 | p[16];
-			break;
-		default:
-			len = 0;
-			sum = 1;
-			break;
-	}
-#else
 	pos = plen - 6;
 	sum = p[pos] << 8 | p[pos+1];
-#endif
 
 	for (i = 0; i < pos; i++) {
 		hh += p[i];
@@ -1054,7 +1018,8 @@ void loop(void)
 				decode_sensor_type();
 				decode_sensor_data(p);
 
-				if (dev_id[3] == '0' && (dev_id[4] == '8')) {
+				if ((dev_id[3] == '0' && (dev_id[4] == '8')) ||
+					(dev_id[3] == '1' && (dev_id[4] == '6'))) {
 
 					sprintf(frame_buf[fi+1], "%s %s %s",
 						dev_type,
