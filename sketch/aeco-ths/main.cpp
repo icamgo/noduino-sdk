@@ -114,7 +114,7 @@ static uint8_t need_push = 0;
 #define SCL_PIN					11		/* PIN14_PD7 */
 #define SDA_PIN					10		/* PIN13_PD6 */
 
-#define	TX_TIME					900		// 1800ms
+#define	TX_TIME					800		// 1800ms
 #define DEST_ADDR				1
 
 #ifdef CONFIG_V0
@@ -1035,7 +1035,11 @@ void push_data(bool cad_on)
 	start = millis();
 #endif
 
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
+	if (cad_on) {
+		e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
+	} else {
+		e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, 300);
+	}
 
 	if (!e) {
 		// send message succesful, update the old_humi
@@ -1059,13 +1063,15 @@ void push_data(bool cad_on)
 	INFOLN(e);
 #endif
 
-	sx1272.setSleepMode();
-	digitalWrite(SX1272_RST, LOW);
+	if (cad_on) {
+		sx1272.setSleepMode();
+		digitalWrite(SX1272_RST, LOW);
 
-	spi_end();
+		spi_end();
 
-	// dev power off
-	power_off_dev();
+		// dev power off
+		power_off_dev();
+	}
 }
 
 void task_oled()
@@ -1084,6 +1090,8 @@ void task_oled()
 	float old_t = 0.0;
 	float old_h = 0.0;
 #endif
+
+	bool tx_flag = false;
 
 	if (2 == sample_period) {
 		// usb power
@@ -1211,6 +1219,12 @@ void task_oled()
 				break;
 		}
 
+		if (0x5a == need_push && false == tx_flag) {
+			push_data(false);
+			need_push = 0;
+			tx_flag = true;
+		}
+
 		delay(oled_refresh_time);
 	}
 
@@ -1225,11 +1239,6 @@ void loop()
 {
 
 	if (key_count >= 1) {
-
-		if (0x5a == need_push) {
-			push_data(false);
-			need_push = 0;
-		}
 
 		power_on_dev();
 		task_oled();
