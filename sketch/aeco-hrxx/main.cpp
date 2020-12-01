@@ -1164,7 +1164,8 @@ void loop(void)
 					dev_id,
 					d.rssi);
 
-				if (dev_id[3] == '0' && (dev_id[4] == '8')) {
+				if ((dev_id[3] == '0' && (dev_id[4] == '8')) ||
+					(dev_id[3] == '1' && (dev_id[4] == '6'))) {
 
 					sprintf(frame_buf[fi + 1], "%s %s %s",
 						decode_sensor_type(),
