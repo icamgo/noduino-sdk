@@ -34,7 +34,7 @@
 //#define DEBUG						1
 //#define CONFIG_2MIN				1
 
-#define FW_VER						"V1.7"
+#define FW_VER						"V1.8"
 
 #define ENABLE_DELTA_HUMI			1
 
@@ -1196,6 +1196,74 @@ void task_oled()
 			cur_t = old_t;
 		}
 		#endif
+
+		float dt = fabsf(cur_t - old_temp);
+
+		#ifdef ENABLE_DELTA_HUMI
+		float dh = fabsf(cur_h - old_humi);
+		if (dt >= DELTA_T || dh >= DELTA_H) {
+		#else
+		if (dt >= DELTA_T) {
+		#endif
+			need_push = 0x5a;
+			tx_cause = DELTA_TX;
+
+			#ifdef ENABLE_T_TEST
+			cnt_01 = 0;
+			#endif
+
+		#ifdef ENABLE_DELTA_HUMI
+			#ifdef ENABLE_H_TEST
+			cnt_01_h = 0;
+			#endif
+		#endif
+
+			tx_flag = false;
+		}
+
+#if 0
+		#ifdef ENABLE_T_TEST
+		if (dt >= DELTA_T/2 && dt < DELTA_T) {
+
+			cnt_01++;
+
+			if (cnt_01 >= 3) {
+				need_push = 0x5a;
+				tx_cause = DELTA_TX;
+
+				tx_flag = false;
+
+				cnt_01 = 0;
+			}
+
+		} else if (dt < DELTA_T/2) {
+
+			cnt_01 = 0;
+		}
+		#endif
+
+		#ifdef ENABLE_DELTA_HUMI
+		#ifdef ENABLE_H_TEST
+		if (dh >= DELTA_H/2 && dh < DELTA_H) {
+
+			cnt_01_h++;
+
+			if (cnt_01_h >= 3) {
+				need_push = 0x5a;
+				tx_cause = DELTA_TX;
+
+				tx_flag = false;
+
+				cnt_01_h = 0;
+			}
+
+		} else if (dh < DELTA_H/2) {
+
+			cnt_01_h = 0;
+		}
+		#endif
+		#endif
+#endif
 
 		if (key_count == 2) {
 
