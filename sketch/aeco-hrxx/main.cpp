@@ -281,152 +281,166 @@ char *decode_vbat(uint8_t *pkt)
 	return dev_vbat;
 }
 
-// after decode_devid()
-char *decode_sensor_type()
+uint32_t get_dev_type(uint8_t *p)
 {
-	if (dev_id[3] == '0') {
-		switch(dev_id[4]) {
-			case '0':
-				strcpy(dev_type, "GOT1K");
-				break;
-			case '1':
-				strcpy(dev_type, "GOP");
-				break;
-			case '2':
-				strcpy(dev_type, "T2");
-				break;
-			case '3':
-				strcpy(dev_type, "T2P");
-				break;
-			case '4':
-				strcpy(dev_type, "GOT100");
-				break;
-			case '5':
-				strcpy(dev_type, "ETP");
-				break;
-			case '6':
-				strcpy(dev_type, "EV");
-				break;
-			case '7':
-				strcpy(dev_type, "T2WP");
-				break;
-			case '8':
-				strcpy(dev_type, "HT");
-				break;
-			case '9':
-				strcpy(dev_type, "T2M");
-				break;
-		}
-	} else if (dev_id[3] == '1' && dev_id[4] == '0') {
+	uint64_t devid = 0UL;
+	uint8_t *pd = (uint8_t *) &devid;
 
-		strcpy(dev_type, "GOMA");
-
-	} else if (dev_id[3] == '1' && dev_id[4] == '1') {
-
-		strcpy(dev_type, "MBUS");
-
-	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
-
-		strcpy(dev_type, "T2V");
-
-	} else if (dev_id[3] == '1' && dev_id[4] == '3') {
-
-		strcpy(dev_type, "T2WF");
-
-	} else if (dev_id[3] == '1' && dev_id[4] == '4') {
-
-		strcpy(dev_type, "T2W");
-
-	} else if (dev_id[3] == '1' && dev_id[4] == '6') {
-
-		strcpy(dev_type, "GOTH");
-
-	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
-
-		strcpy(dev_type, "CC");
-
-	} else if (dev_id[3] == '2' && dev_id[4] == '1') {
-
-		strcpy(dev_type, "T3ABC");
+	for(int i = 0; i < 8; i++) {
+		pd[7-i] = p[3+i];
 	}
+
+	uint64_t temp = devid / 1000000;
+	uint32_t tt = (uint32_t)(temp / 100);
+	return (uint32_t)(temp - tt * 100);
+}
+
+// after decode_devid()
+char *decode_sensor_type(uint32_t dev_t)
+{
+	switch(dev_t) {
+		case 0:
+			strcpy(dev_type, "GOT1K");
+			break;
+		case 1:
+			strcpy(dev_type, "GOP");
+			break;
+		case 2:
+			strcpy(dev_type, "T2");
+			break;
+		case 3:
+			strcpy(dev_type, "T2P");
+			break;
+		case 4:
+			strcpy(dev_type, "GOT100");
+			break;
+		case 5:
+			strcpy(dev_type, "ETP");
+			break;
+		case 6:
+			strcpy(dev_type, "EV");
+			break;
+		case 7:
+			strcpy(dev_type, "T2WP");
+			break;
+		case 8:
+			strcpy(dev_type, "HT");
+			break;
+		case 9:
+			strcpy(dev_type, "T2M");
+			break;
+		case 10:
+			strcpy(dev_type, "GOMA");
+			break;
+		case 11:
+			strcpy(dev_type, "MBUS");
+			break;
+		case 12:
+			strcpy(dev_type, "T2V");
+			break;
+		case 13:
+			strcpy(dev_type, "T2WF");
+			break;
+		case 14:
+			strcpy(dev_type, "T2W");
+			break;
+		case 16:
+			strcpy(dev_type, "GOTH");
+			break;
+		case 20:
+			strcpy(dev_type, "CC");
+			break;
+		case 21:
+			strcpy(dev_type, "T3ABC");
+			break;
+		case 22:
+			strcpy(dev_type, "TCC");
+			break;
+	}
+
 	return dev_type;
 }
 
-char *decode_sensor_data(uint8_t *pkt)
+char *decode_sensor_data(uint8_t *pkt, uint32_t dev_type)
 {
 	int16_t data = 0;
 	float dd  = 0;
 
 	data = (pkt[11]  << 8) | pkt[12];
 
-	if (dev_id[3] == '0' && (dev_id[4] == '2' || dev_id[4] == '0' || dev_id[4] == '4')) {
-		// Temperature
-		dd = (float)(data / 10.0);
-		ftoa(dev_data, dd, 1);
-		sprintf(dev_data, "%s", dev_data);
+	switch(dev_type) {
+		case 0:
+		case 2:
+		case 4:
+			// Temperature
+			dd = (float)(data / 10.0);
+			ftoa(dev_data, dd, 1);
+			sprintf(dev_data, "%s", dev_data);
+			break;
+		case 1:
+		case 3:
+			// Pressure
+			dd = (float)(data / 100.0);
+			ftoa(dev_data, dd, 2);
+			sprintf(dev_data, "%s", dev_data);
+			break;
+		case 5:
+			// ET-Pump
+			dd = data;
+			sprintf(dev_data, "0x%X", data);
+			break;
+		case 7:
+			// water level (pressure)
+			dd = (float)(data / 100.0);
+			ftoa(dev_data, dd, 2);
+			sprintf(dev_data, "%sM", dev_data);
+			break;
+		case 8:
+			// Humi&Temp Sensor
+			//dd = (float)(data / 10.0);
+			//ftoa(dev_data, dd, 0);
+			//sprintf(dev_data, "%s %d", dev_data, (int8_t)(pkt[20]));
+			sprintf(dev_data, "%d %d", (int)(data/10.0+0.5), (int8_t)(pkt[20]));
+			break;
+		case 9:
+			// Moving Sensor
+			sprintf(dev_data, "%dMM", data);
+			break;
+		case 12:
+			// Vibration Sensor
+			sprintf(dev_data, "%d", data);
+			break;
+		case 13:
+			// Float & Temp Sensor
+			dd = (float)(data / 10.0);
+			ftoa(dev_data, dd, 1);
+			sprintf(dev_data, "%s", dev_data);
+			break;
+		case 14:
+			// Water Leak Sensor
+			dd = (float)(data / 10.0);
+			ftoa(dev_data, dd, 1);
+			sprintf(dev_data, "%s", dev_data);
+			break;
+		case 16:
+			// GOTh with oled
+			sprintf(dev_data, "%d %d", (int)(data/10.0+0.5), (int8_t)(pkt[20]));
+			break;
+		case 20:
+			// Internal Temprature of ECC
+			dd = (float)(data / 10.0);
+			ftoa(dev_data, dd, 1);
+			sprintf(dev_data, "%s", dev_data);
+			break;
+		case 21:
+			// Internal Temprature of ABC Sensor
+			dd = (float)(data / 10.0);
+			ftoa(dev_data, dd, 1);
+			sprintf(dev_data, "%s", dev_data);
+			break;
 
-	} else if (dev_id[3] == '0' && (dev_id[4] == '1' || dev_id[4] == '3')) {
-
-		// Pressure
-		dd = (float)(data / 100.0);
-		ftoa(dev_data, dd, 2);
-		sprintf(dev_data, "%s", dev_data);
-
-	} else if (dev_id[3] == '0' && dev_id[4] == '7') {
-
-		// water level (pressure)
-		dd = (float)(data / 100.0);
-		ftoa(dev_data, dd, 2);
-		sprintf(dev_data, "%sM", dev_data);
-
-	} else if (dev_id[3] == '0' && dev_id[4] == '5') {
-		// ET-Pump
-		dd = data;
-		sprintf(dev_data, "0x%X", data);
-
-	} else if (dev_id[3] == '0' && dev_id[4] == '8') {
-		// Humi&Temp Sensor
-		//dd = (float)(data / 10.0);
-		//ftoa(dev_data, dd, 0);
-		//sprintf(dev_data, "%s %d", dev_data, (int8_t)(pkt[20]));
-		sprintf(dev_data, "%d %d", (int)(data/10.0+0.5), (int8_t)(pkt[20]));
-
-	} else if (dev_id[3] == '0' && dev_id[4] == '9') {
-		// Moving Sensor
-		sprintf(dev_data, "%dMM", data);
-
-	} else if (dev_id[3] == '1' && dev_id[4] == '2') {
-		// Vibration Sensor
-		sprintf(dev_data, "%d", data);
-
-	} else if (dev_id[3] == '1' && dev_id[4] == '3') {
-		// Float & Temp Sensor
-		dd = (float)(data / 10.0);
-		ftoa(dev_data, dd, 1);
-		sprintf(dev_data, "%s", dev_data);
-
-	} else if (dev_id[3] == '1' && dev_id[4] == '4') {
-		// Water Leak Sensor
-		dd = (float)(data / 10.0);
-		ftoa(dev_data, dd, 1);
-		sprintf(dev_data, "%s", dev_data);
-
-	} else if (dev_id[3] == '1' && dev_id[4] == '6') {
-		// GOTh with oled
-		sprintf(dev_data, "%d %d", (int)(data/10.0+0.5), (int8_t)(pkt[20]));
-
-	} else if (dev_id[3] == '2' && dev_id[4] == '0') {
-		// Internal Temprature of ECC
-		dd = (float)(data / 10.0);
-		ftoa(dev_data, dd, 1);
-		sprintf(dev_data, "%s", dev_data);
-
-	} else if (dev_id[3] == '2' && dev_id[4] == '1') {
-		// Internal Temprature of ABC Sensor
-		dd = (float)(data / 10.0);
-		ftoa(dev_data, dd, 1);
-		sprintf(dev_data, "%s", dev_data);
 	}
+
 	return dev_data;
 }
 
@@ -975,6 +989,8 @@ void loop(void)
 
 		decode_devid(p);
 
+		uint32_t dev_t = get_dev_type(p);
+
 #ifndef ENABLE_RX_INTERRUPT
 		if (strcmp(dev_id, "") == 0) {
 			// lora module unexpected error
@@ -992,8 +1008,8 @@ void loop(void)
 			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
 				dev_id,
 				decode_vbat(p),
-				decode_sensor_type(),
-				decode_sensor_data(p),
+				decode_sensor_type(dev_t),
+				decode_sensor_data(p, dev_t),
 				decode_cmd(p),
 				decode_ver(p),
 				d.rssi);
@@ -1015,11 +1031,10 @@ void loop(void)
 					d.rssi);
 
 				decode_vbat(p);
-				decode_sensor_type();
-				decode_sensor_data(p);
+				decode_sensor_type(dev_t);
+				decode_sensor_data(p, dev_t);
 
-				if ((dev_id[3] == '0' && (dev_id[4] == '8')) ||
-					(dev_id[3] == '1' && (dev_id[4] == '6'))) {
+				if (dev_t == 8 || dev_t == 16) {
 
 					sprintf(frame_buf[fi+1], "%s %s %s",
 						dev_type,
@@ -1041,14 +1056,14 @@ void loop(void)
 				INFOLN("%s", cmd);
 		} else if (MODE_CC2 == omode) {
 			// only show the cc2.0 message
-			if (p_len == 36) {
+			if (p[2] == 0x34 || (p[2] == 0x33 && p_len == 36)) {
 
 			#ifdef DEBUG
 				sprintf(cmd, "%s/U/%s/%s/%s/ccid/%s/rssi/%d",
 					decode_devid(p),
 					decode_vbat(p),
-					decode_sensor_type(),
-					decode_sensor_data(p),
+					decode_sensor_type(dev_t),
+					decode_sensor_data(p, dev_t),
 					decode_ccid(p),
 					d.rssi);
 			#endif
@@ -1086,7 +1101,7 @@ void loop(void)
 					sprintf(frame_buf[fi + 1], "%d %s %s",
 						check_pkt_mic(p, p_len),
 						decode_vbat(p),
-						decode_sensor_data(p));
+						decode_sensor_data(p, dev_t));
 				}
 
 				show_frame(fi, omode, false);
@@ -1153,8 +1168,8 @@ void loop(void)
 				sprintf(cmd, "%s/U/%s/%s/%s/rssi/%d",
 					dev_id,
 					decode_vbat(p),
-					decode_sensor_type(),
-					decode_sensor_data(p),
+					decode_sensor_type(dev_t),
+					decode_sensor_data(p, dev_t),
 					d.rssi);
 			#endif
 
@@ -1164,18 +1179,17 @@ void loop(void)
 					dev_id,
 					d.rssi);
 
-				if ((dev_id[3] == '0' && (dev_id[4] == '8')) ||
-					(dev_id[3] == '1' && (dev_id[4] == '6'))) {
+				if (dev_t == 8 || dev_t == 16) {
 
 					sprintf(frame_buf[fi + 1], "%s %s %s",
-						decode_sensor_type(),
-						decode_sensor_data(p),
+						decode_sensor_type(dev_t),
+						decode_sensor_data(p, dev_t),
 						decode_vbat(p)
 						);
 				} else {
 					sprintf(frame_buf[fi + 1], " %s %s %s",
-						decode_sensor_type(),
-						decode_sensor_data(p),
+						decode_sensor_type(dev_t),
+						decode_sensor_data(p, dev_t),
 						decode_vbat(p)
 						);
 				}
