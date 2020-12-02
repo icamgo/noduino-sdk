@@ -34,7 +34,9 @@
 //#define DEBUG						1
 //#define CONFIG_2MIN				1
 
-#define FW_VER						"V1.6"
+#define FW_VER						"V1.7"
+
+#define ENABLE_DELTA_HUMI			1
 
 #define ENABLE_CRYPTO				1
 
@@ -44,15 +46,21 @@
 #define ENABLE_SHT3X				1
 
 #define ENABLE_T_TEST				1
+#define ENABLE_H_TEST				1
 //#define ENABLE_RTP_TEST			1
 
 #ifdef ENABLE_T_TEST
 #define DELTA_T					1.5
-#define DELTA_H					3
 #else
 #define DELTA_T					1
+#endif
+
+#ifdef ENABLE_H_TEST
+#define DELTA_H					2
+#else
 #define DELTA_H					3
 #endif
+
 
 #ifdef ENABLE_RTP_TEST
 #define DELTA_RT_P				1
@@ -62,6 +70,10 @@ static uint32_t cnt_rt_01 = 0;
 
 #ifdef ENABLE_T_TEST
 static uint32_t cnt_01 = 0;
+#endif
+
+#ifdef ENABLE_T_TEST
+static uint32_t cnt_01_h = 0;
 #endif
 
 #ifdef ENABLE_CRYPTO
@@ -687,16 +699,25 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	 * 1.25%
 	*/
 	float dt = fabsf(cur_temp - old_temp);
-	//float dh = fabsf(cur_humi - old_humi);
 
+#ifdef ENABLE_DELTA_HUMI
+	float dh = fabsf(cur_humi - old_humi);
+	if (dt >= DELTA_T || dh >= DELTA_H) {
+#else
 	if (dt >= DELTA_T) {
-
+#endif
 		need_push = 0x5a;
 		tx_cause = DELTA_TX;
 
 	#ifdef ENABLE_T_TEST
 		cnt_01 = 0;
 	#endif
+
+#ifdef ENABLE_DELTA_HUMI
+	#ifdef ENABLE_H_TEST
+		cnt_01_h = 0;
+	#endif
+#endif
 
 		return;
 	}
@@ -718,6 +739,26 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		cnt_01 = 0;
 	}
 	#endif
+
+#ifdef ENABLE_DELTA_HUMI
+	#ifdef ENABLE_H_TEST
+	if (dh >= DELTA_H/2 && dh < DELTA_H) {
+
+		cnt_01_h++;
+
+		if (cnt_01_h >= 3) {
+			need_push = 0x5a;
+			tx_cause = DELTA_TX;
+
+			cnt_01_h = 0;
+		}
+
+	} else if (dh < DELTA_H/2) {
+
+		cnt_01_h = 0;
+	}
+	#endif
+#endif
 #else
 	// 2min fixed interval
 	need_push = 0x5a;
