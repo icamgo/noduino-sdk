@@ -45,9 +45,9 @@
 
 #define ENABLE_ENG_MODE				1
 
-#define	FW_VER						"V3.7"
+#define	FW_VER						"V3.8"
 
-#define LOW_BAT_THRESHOLD			3.0
+#define LOW_BAT_THRESHOLD			3.1
 #define RX_ERR_THRESHOLD			15
 
 /* Timer used for bringing the system back to EM0. */
@@ -91,6 +91,8 @@ static uint8_t tx_cause __attribute__((aligned(4))) = RESET_TX;
 #ifdef ENABLE_FLASH
 #define MAC_TX5_OFF_SAVE		0x8B
 #define MAC_TX5_ON_SAVE			0x8C
+#define MAC_CAD_OFF_SAVE		0x8D
+#define MAC_CAD_ON_SAVE			0x8E
 #endif
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
@@ -226,6 +228,7 @@ void flash_init()
 		memcpy(p, cfg_addr, sizeof(g_cfg));
 
 		tx5_on = 0x1 & (g_cfg.tx5_on);
+		cad_on = 0x1 & (g_cfg.cad_on);
 	}
 }
 
@@ -1442,6 +1445,20 @@ void process_mac_cmds(uint8_t *p, int len)
 			set_mac_cmd(cmd);
 			tx5_on = true;
 			g_cfg.tx5_on = tx5_on;
+			g_cfg.init_flag = 0x55aa;
+			flash_update();
+			break;
+		case MAC_CAD_OFF_SAVE:
+			set_mac_cmd(cmd);
+			cad_on = false;
+			g_cfg.cad_on = cad_on;
+			g_cfg.init_flag = 0x55aa;
+			flash_update();
+			break;
+		case MAC_CAD_ON_SAVE:
+			set_mac_cmd(cmd);
+			cad_on = true;
+			g_cfg.cad_on = cad_on;
 			g_cfg.init_flag = 0x55aa;
 			flash_update();
 			break;
