@@ -403,15 +403,6 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 			sprintf(dev_data, "H/%s/T/%d/iT/%d/iC/%d", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]), (int8_t)(pkt[23]));
 		}
 
-	} else if (id[3] == '1' && id[4] == '6') {
-		// Temperature and Humidity Sensor
-		dd = (float)(data / 10.0);
-		ftoa(data_buf, dd, 1);
-
-		if (pkt_len >= 24) {
-			sprintf(dev_data, "T/%s/H/%d", data_buf, (int8_t)(pkt[20]));
-		}
-
 	} else if (id[3] == '0' && id[4] == '9') {
 		// Moving Sensor
 		sprintf(dev_data, "M/%d", data);
@@ -424,7 +415,7 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 		// Water Leak Sensor
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
-		sprintf(dev_data, "T/%s/WL/%d/iT/%d/iH/%d/iC/%d", data_buf, (int8_t)pkt[20], (int8_t)(pkt[21]), (int8_t)(pkt[22]), (int8_t)(pkt[23]));
+		sprintf(dev_data, "T/%s/WL/%d/iT/%d/iH/%d", data_buf, (int8_t)pkt[20], (int8_t)(pkt[21]), (int8_t)(pkt[22]));
 
 	} else if (id[3] == '2' && id[4] == '0') {
 		// Internal Temprature of ECC
@@ -432,11 +423,10 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 		ftoa(data_buf, dd, 1);
 		sprintf(dev_data, "T/%s", data_buf);
 
-	} else if (id[3] == '2' && id[4] == '1') {
-		// Internal Temprature of ABC Sensor
+	} else if (id[3] == '1' && id[4] == '6') {
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
-		sprintf(dev_data, "T/%s", data_buf);
+		sprintf(dev_data, "T/%s/H/%d", data_buf, (int8_t)(pkt[20]));
 	}
 	return dev_data;
 }
