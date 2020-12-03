@@ -1531,7 +1531,7 @@ void rx_irq_handler()
 
 		rx_cnt++;
 
-		if (plen > 44) return;
+		if (plen > PKT_LEN) return;
 
 		if ((true == is_our_pkt(p, plen))
 			&& (false == is_my_did(p))
