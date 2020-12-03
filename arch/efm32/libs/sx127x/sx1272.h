@@ -357,8 +357,8 @@ const uint8_t NOISE_ABSOLUTE_ZERO = 174.0;
 
 #ifdef CONFIG_V0
 #if 1
-const uint8_t MAX_LENGTH = 48;
-const uint8_t MAX_PAYLOAD = 44;
+const uint8_t MAX_LENGTH = 68;
+const uint8_t MAX_PAYLOAD = 64;
 #else
 const uint8_t MAX_LENGTH = 36;
 const uint8_t MAX_PAYLOAD = 32;
