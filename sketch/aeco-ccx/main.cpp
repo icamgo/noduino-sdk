@@ -1661,7 +1661,7 @@ void set_mac_status_pkt()
 	 * 0x81 00 = -3251.2
 	 * 0x82 00 = -3225.6
 	*/
-	pkt[11] = mac_cmd; pkt[12] = cad_on;
+	pkt[11] = mac_cmd; pkt[12] = 0;
 
 	ui16 = get_encode_vbat();
 	p = (uint8_t *) &ui16;
