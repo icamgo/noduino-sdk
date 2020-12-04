@@ -1438,6 +1438,7 @@ void process_mac_cmds(uint8_t *p, int len)
 			set_mac_cmd(cmd);
 			tx5_on = false;
 			g_cfg.tx5_on = tx5_on;
+			g_cfg.cad_on = cad_on;
 			g_cfg.init_flag = 0x55aa;
 			flash_update();
 			break;
@@ -1445,6 +1446,7 @@ void process_mac_cmds(uint8_t *p, int len)
 			set_mac_cmd(cmd);
 			tx5_on = true;
 			g_cfg.tx5_on = tx5_on;
+			g_cfg.cad_on = cad_on;
 			g_cfg.init_flag = 0x55aa;
 			flash_update();
 			break;
@@ -1452,6 +1454,7 @@ void process_mac_cmds(uint8_t *p, int len)
 			set_mac_cmd(cmd);
 			cad_on = false;
 			g_cfg.cad_on = cad_on;
+			g_cfg.tx5_on = tx5_on;
 			g_cfg.init_flag = 0x55aa;
 			flash_update();
 			break;
@@ -1459,6 +1462,7 @@ void process_mac_cmds(uint8_t *p, int len)
 			set_mac_cmd(cmd);
 			cad_on = true;
 			g_cfg.cad_on = cad_on;
+			g_cfg.tx5_on = tx5_on;
 			g_cfg.init_flag = 0x55aa;
 			flash_update();
 			break;
