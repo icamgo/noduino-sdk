@@ -28,7 +28,7 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-#define ENABLE_TX5					1
+//#define ENABLE_TX5					1
 
 #if 0
 #define	DEBUG						1
@@ -1604,7 +1604,7 @@ int16_t get_encode_mcu_temp()
 	uint8_t xbit = tx5_on << 2 | cad_on << 1 | tx_on;
 #endif
 
-	return ret + xbit;
+	return ret >= 0 ? (ret + xbit) : (ret - xbit);
 }
 
 uint16_t get_encode_vbat()
