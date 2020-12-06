@@ -77,9 +77,6 @@ uint8_t loraAddr = 1;
 
 #endif
 
-#define MAX_CMD_LENGTH			48
-char cmd[MAX_CMD_LENGTH];
-
 int status_counter = 0;
 
 char frame_buf[8][24];
@@ -103,6 +100,8 @@ int old_omode = MODE_KEY;
 int key_time = 0;
 
 #ifdef DEBUG
+#define MAX_CMD_LENGTH			48
+char cmd[MAX_CMD_LENGTH];
 
 #define INFO_S(fmt,param)			Serial.print(F(param))
 #define INFO_HEX(fmt,param)			Serial.print(param,HEX)
@@ -144,6 +143,9 @@ U8G2_SH1107_SEEED_128X128_1_HW_I2C u8g2(U8G2_R0, SH1107_RESET);
 #endif
 
 #endif
+
+
+#define CC2_FMT						"%d %2d %2d %2d %2d %2d"
 
 uint32_t rx_cnt = 0;
 
@@ -446,20 +448,20 @@ char *decode_sensor_data(uint8_t *pkt, uint32_t dev_type)
 
 uint8_t decode_cmd(uint8_t *pkt)
 {
-	uint8_t cmd = 0;
+	uint8_t cmdx = 0;
 
 	switch(pkt[2]) {
 
 		case 0x33:
 		case 0x34:
-			cmd = pkt[15];
+			cmdx = pkt[15];
 			break;
 		default:
-			cmd = 255;
+			cmdx = 255;
 			break;
 	}
 
-	return cmd;
+	return cmdx;
 }
 
 uint8_t decode_ver(uint8_t *pkt)
@@ -991,6 +993,8 @@ void loop(void)
 
 		uint32_t dev_t = get_dev_type(p);
 
+		int mic_ok = check_pkt_mic(p, p_len);
+
 #ifndef ENABLE_RX_INTERRUPT
 		if (strcmp(dev_id, "") == 0) {
 			// lora module unexpected error
@@ -1087,19 +1091,28 @@ void loop(void)
 
 				//if (strncmp(dev_id+3, "20", 2) == 0 && (p[11] & 0x80)) {
 
-				if ((p[27] & 0x10) && p[17] >= 1 && p[17] <= 5) {
+				if (p[2] == 0x33 && (p[27] & 0x10) && p[17] >= 1 && p[17] <= 5) {
 
-					sprintf(frame_buf[fi + 1], "%d %2d %2d %2d %2d %2d",
-						check_pkt_mic(p, p_len),
+					sprintf(frame_buf[fi + 1], CC2_FMT,
+						mic_ok,
 						p[18],
 						p[19],
 						p[24],
 						p[25],
 						p[26]);
 
+				} else if (p[2] == 0x34 && (p[p_len-9] & 0x10) && p[p_len-11] >= 1 && p[p_len-11] <= 5) {
+					sprintf(frame_buf[fi + 1], CC2_FMT,
+						mic_ok,
+						p[p_len-12],
+						p[p_len-13],
+						p[p_len-14],
+						p[p_len-15],
+						p[p_len-16]);
+
 				} else {
 					sprintf(frame_buf[fi + 1], "%d %s %s",
-						check_pkt_mic(p, p_len),
+						mic_ok,
 						decode_vbat(p),
 						decode_sensor_data(p, dev_t));
 				}
@@ -1134,7 +1147,7 @@ void loop(void)
 				int xep = decode_cc2_epoch(p);
 				if (1600155579 == xep) {
 					sprintf(frame_buf[fi + 1], "%1d %02X  %s  %02X  %d",
-						check_pkt_mic(p, p_len),
+						mic_ok,
 						p[11],
 						"ON",
 						p[27],
@@ -1142,7 +1155,7 @@ void loop(void)
 
 				} else {
 					sprintf(frame_buf[fi + 1], "%1d %02X %d %02X",
-						check_pkt_mic(p, p_len),
+						mic_ok,
 						p[11],
 						xep,
 						p[27]);
@@ -1161,7 +1174,6 @@ void loop(void)
 				return;
 			}
 #endif
-
 			if ((p[2] == 0x33 || p[2] == 0x34) && (p[15] == 0x03 || p[15] == 0x04 || p[15] == 0x05)) {
 
 			#ifdef DEBUG
