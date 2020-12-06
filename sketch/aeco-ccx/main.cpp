@@ -28,7 +28,7 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-//#define ENABLE_TX5					1
+#define ENABLE_TX5					1
 
 #if 0
 #define	DEBUG						1
@@ -45,7 +45,7 @@
 
 #define ENABLE_ENG_MODE				1
 
-#define	FW_VER						"V3.8"
+#define	FW_VER						"V3.9"
 
 #define LOW_BAT_THRESHOLD			3.1
 #define RX_ERR_THRESHOLD			15
@@ -1181,59 +1181,61 @@ bool process_pkt(uint8_t *p, int *len, int rssi)
 		 * 3. fill the ccid
 		 * 4. encode the did and rssi of the d
 		*/
-		if (p[*len-3] & 0x10) {
+
+		/* PAYLOAD_LEN = (*len-6) */
+		if (p[*len-6-3] & 0x10) {
 			// new cc relayed pkt
 
 			if (true == tx5_on) {
 
-				if (p[*len-5] >= 5) {
+				if (p[*len-6-5] >= 5) {
 
 					// cc relayed times
 					return false;
 
 				} else {
-					p[*len-5] += 1;
+					p[*len-6-5] += 1;
 				}
 			}
 
 		} else {
 			// device pkt
-			p[*len-3] |= 0x10;		// mark as cc-relayed
-			p[*len-5] = 1;			// increment the cc-relayed-cnt
+			p[*len-6-3] |= 0x10;		// mark as cc-relayed
+			p[*len-6-5] = 1;			// increment the cc-relayed-cnt
 
 		#ifndef ENCODE_FULL_CCID
-			p[*len-6] = get_myid_low2();
+			p[*len-6-6] = get_myid_low2();
 		#endif
 		}
 
 		#ifdef ENCODE_FULL_CCID
-		if ((1 == p[*len-5])
-			|| (false == first_ccid && p[*len-5] > 1)) {
+		if ((1 == p[*len-6-5])
+			|| (false == first_ccid && p[*len-6-5] > 1)) {
 
 			uint64_t devid = get_devid();
 			uint8_t *pd = (uint8_t *) &devid;
 
-			p[*len-6] = pd[0];
-			p[*len-7] = pd[1];
-			p[*len-8] = pd[2];
+			p[*len-6-6] = pd[0];
+			p[*len-6-7] = pd[1];
+			p[*len-6-8] = pd[2];
 
-			p[*len-9] = pd[3];
-			p[*len-10] = pd[4];
+			p[*len-6-9] = pd[3];
+			p[*len-6-10] = pd[4];
 		}
 		//}
 		#else
 		if (true == tx5_on) {
 
 			/* 1 ~ 5 */
-			int tc = p[*len-5];
+			int tc = p[*len-6-5];
 
 			if (tc >=1 && tc <=5) {
-				p[*len-5-tc] = get_myid_low2();
+				p[*len-6-5-tc] = get_myid_low2();
 			}
 		}
 		#endif
 
-		if ((p[*len-3] & 0x10) && eng_mode_on && (1 == p[*len-5])) {
+		if ((p[*len-6-3] & 0x10) && eng_mode_on && (1 == p[*len-6-5])) {
 			// cc2.0 relayed & it's the first cc2.0 rx-pkt
 			encode_temp_vbat(p, rssi);
 		}
