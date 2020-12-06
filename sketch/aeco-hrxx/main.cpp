@@ -985,7 +985,7 @@ void loop(void)
 
 		status_counter = 0;
 
-		memset(p+p_len, 0, MAX_PAYLOAD-p_len);
+		memset(p+p_len, 0, PKT_LEN-p_len);
 
 		decode_devid(p);
 
