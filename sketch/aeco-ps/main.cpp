@@ -1008,7 +1008,7 @@ void task_oled()
 		#endif
 
 	#ifdef ENABLE_OLED_ON_TX
-		float dp = fabsf(cur_p - old_p);
+		float dp = fabsf(cur_p - old_pres);
 
 		if (dp >= DELTA_P) {
 			need_push = 0x5a;
