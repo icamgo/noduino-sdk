@@ -31,6 +31,7 @@
 #define CONFIG_PROTO_V34			1
 #endif
 
+//#define ENABLE_OLED_ON_TX			1
 //#define DEBUG						1
 //#define CONFIG_2MIN				1
 
@@ -1004,9 +1005,9 @@ void push_data(bool cad_on)
 #elif CONFIG_PROTO_V34
 	pkt[2] = 0x34;
 
-	pkt[16] = 8;			// dev_type
+	pkt[16] = 16;			// dev_type
 
-	pkt[17] = 0;			// dev_type
+	pkt[17] = 0;			// crypto_type
 
 	/* DTF: 0 00 001 00, realtime data, int8 */
 	pkt[18] = 0x04;
@@ -1197,6 +1198,7 @@ void task_oled()
 		}
 		#endif
 
+	#ifdef ENABLE_OLED_ON_TX
 		float dt = fabsf(cur_t - old_temp);
 
 		#ifdef ENABLE_DELTA_HUMI
@@ -1220,6 +1222,7 @@ void task_oled()
 
 			tx_flag = false;
 		}
+	#endif
 
 #if 0
 		#ifdef ENABLE_T_TEST
