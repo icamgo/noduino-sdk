@@ -27,7 +27,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.3"
+#define FW_VER						"Ver 1.4"
 
 //#define CONFIG_2MIN					1
 
@@ -38,23 +38,23 @@
 
 #define ENABLE_SHT3X				1
 
-#define ENABLE_P_TEST			1
-//#define ENABLE_RTP_TEST			1
+#define ENABLE_H_TEST			1
+//#define ENABLE_RT_TEST			1
 
-#ifdef ENABLE_P_TEST
-#define DELTA_P					3
+#ifdef ENABLE_H_TEST
+#define DELTA_H					3
 #else
-#define DELTA_P					3
+#define DELTA_H					3
 #endif
 
-#ifdef ENABLE_RTP_TEST
-#define DELTA_RT_P				1
+#ifdef ENABLE_RT_TEST
+#define DELTA_RT_H				1
 static uint32_t cnt_rt_01 = 0;
 #endif
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 
-#ifdef ENABLE_P_TEST
+#ifdef ENABLE_H_TEST
 static uint32_t cnt_01 = 0;
 #endif
 
@@ -403,7 +403,7 @@ void show_ver(int txc)
 }
 #endif
 
-void push_data();
+void push_data(bool cad_on);
 
 void power_on_dev()
 {
@@ -531,20 +531,20 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	*/
 	float dp = fabsf(cur_humi - old_humi);
 
-	if (dp >= DELTA_P) {
+	if (dp >= DELTA_H) {
 
 		need_push = 0x5a;
 		tx_cause = DELTA_TX;
 
-	#ifdef ENABLE_P_TEST
+	#ifdef ENABLE_H_TEST
 		cnt_01 = 0;
 	#endif
 
 		return;
 	}
 
-	#ifdef ENABLE_P_TEST
-	if (dp >= DELTA_P/2 && dp < DELTA_P) {
+	#ifdef ENABLE_H_TEST
+	if (dp >= DELTA_H/2 && dp < DELTA_H) {
 
 		cnt_01++;
 
@@ -555,7 +555,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			cnt_01 = 0;
 		}
 
-	} else if (dp < DELTA_P/2) {
+	} else if (dp < DELTA_H/2) {
 
 		cnt_01 = 0;
 	}
@@ -708,7 +708,7 @@ uint16_t get_crc(uint8_t *pp, int len)
 }
 #endif
 
-void push_data()
+void push_data(bool cad_on)
 {
 	long start;
 	long end;
@@ -823,7 +823,12 @@ void push_data()
 	qsetup();
 
 #ifdef ENABLE_CAD
-	sx1272.CarrierSense();
+	if (cad_on) {
+		sx1272._enableCarrierSense = true;
+		sx1272.CarrierSense();
+	} else {
+		sx1272._enableCarrierSense = false;
+	}
 #endif
 
 #ifdef DEBUG
@@ -831,35 +836,17 @@ void push_data()
 #endif
 
 #ifdef CONFIG_V0
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
+	if (cad_on) {
+		e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
+	} else {
+		e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, 300);
+	}
 #else
 	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
 
-	// Send message to the gateway and print the result
-	// with the app key if this feature is enabled
-#ifdef WITH_ACK
-	int n_retry = NB_RETRIES;
-
-	do {
-		e = sx1272.sendPacketTimeoutACK(DEST_ADDR,
-						message, r_size);
-
-		if (e == 3)
-			INFO("No ACK");
-
-		n_retry--;
-
-		if (n_retry)
-			INFO("Retry");
-		else
-			INFO("Abort");
-
-	} while (e && n_retry);
-#else
 	// 10ms max tx time
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
-#endif
 
 	INFO("LoRa pkt size ");
 	INFOLN(r_size);
@@ -886,13 +873,15 @@ void push_data()
 	INFOLN(e);
 #endif
 
-	sx1272.setSleepMode();
-	digitalWrite(SX1272_RST, LOW);
+	if (cad_on) {
+		sx1272.setSleepMode();
+		digitalWrite(SX1272_RST, LOW);
 
-	spi_end();
+		spi_end();
 
-	// dev power off
-	power_off_dev();
+		// dev power off
+		power_off_dev();
+	}
 }
 
 void task_oled()
@@ -906,9 +895,11 @@ void task_oled()
 	float vbat = cur_vbat;
 
 	float cur_h = 0.0;
-#ifdef ENABLE_RTP_TEST
+#ifdef ENABLE_RT_TEST
 	float old_h = 0.0;
 #endif
+
+	bool tx_flag = false;
 
 	if (2 == sample_period) {
 		// usb power
@@ -938,17 +929,17 @@ void task_oled()
 
 		cur_h = sht3x_get_humi();
 
-		#ifdef ENABLE_RTP_TEST
+		#ifdef ENABLE_RT_TEST
 		float dp = fabsf(cur_h - old_h);
 
-		if (dp >= DELTA_RT_P) {
+		if (dp >= DELTA_RT_H) {
 
 			//need_show = 0x5a;
 			old_h = cur_h;
 
 			cnt_rt_01 = 0;
 
-		} else if (dp >= DELTA_RT_P/2 && dp < DELTA_RT_P) {
+		} else if (dp >= DELTA_RT_H/2 && dp < DELTA_RT_H) {
 
 			cnt_rt_01++;
 
@@ -964,13 +955,49 @@ void task_oled()
 				cur_h = old_h;
 			}
 
-		} else if (dp < DELTA_RT_P/2) {
+		} else if (dp < DELTA_RT_H/2) {
 
 			cnt_rt_01 = 0;
 
 			cur_h = old_h;
 		}
 		#endif
+
+	#ifdef ENABLE_OLED_ON_TX
+		float dh = fabsf(cur_h - old_humi);
+		if (dh >= DELTA_H) {
+			need_push = 0x5a;
+			tx_cause = DELTA_TX;
+
+			#ifdef ENABLE_H_TEST
+			cnt_01 = 0;
+			#endif
+
+			tx_flag = false;
+		}
+	#endif
+
+#if 0
+		#ifdef ENABLE_H_TEST
+		if (dh >= DELTA_H/2 && dh < DELTA_H) {
+
+			cnt_01++;
+
+			if (cnt_01 >= 3) {
+				need_push = 0x5a;
+				tx_cause = DELTA_TX;
+
+				tx_flag = false;
+
+				cnt_01 = 0;
+			}
+
+		} else if (dh < DELTA_H/2) {
+
+			cnt_01 = 0;
+		}
+		#endif
+#endif
 
 		if (key_count == 2) {
 
@@ -1022,6 +1049,12 @@ void task_oled()
 				break;
 		}
 
+		if (0x5a == need_push && false == tx_flag) {
+			push_data(false);
+			need_push = 0;
+			tx_flag = true;
+		}
+
 		delay(oled_refresh_time);
 	}
 
@@ -1042,8 +1075,7 @@ void loop()
 	}
 
 	if (0x5a == need_push) {
-		push_data();
-
+		push_data(false);
 		need_push = 0;
 	}
 
