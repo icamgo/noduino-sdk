@@ -27,7 +27,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.1"
+#define FW_VER						"Ver 1.2"
 
 //#define CONFIG_2MIN					1
 
@@ -164,10 +164,6 @@ uint32_t key_count = 0;
 #define INFOLN(param)
 #define FLUSHOUTPUT
 
-#endif
-
-#ifdef WITH_ACK
-#define	NB_RETRIES			2
 #endif
 
 char *ftoa(char *a, double f, int precision)
@@ -404,7 +400,7 @@ void show_ver(int txc)
 }
 #endif
 
-void push_data();
+void push_data(bool cad_on);
 
 void power_on_dev()
 {
@@ -577,9 +573,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 void trig_check_sensor()
 {
 	need_push = 0x5a;
-#ifdef CONFIG_V0
 	tx_cause = KEY_TX;
-#endif
 
 	key_count++;
 
@@ -713,7 +707,7 @@ uint16_t get_crc(uint8_t *pp, int len)
 }
 #endif
 
-void push_data()
+void push_data(bool cad_on)
 {
 	long start;
 	long end;
@@ -827,7 +821,12 @@ void push_data()
 	qsetup();
 
 #ifdef ENABLE_CAD
-	sx1272.CarrierSense();
+	if (cad_on) {
+		sx1272._enableCarrierSense = true;
+		sx1272.CarrierSense();
+	} else {
+		sx1272._enableCarrierSense = false;
+	}
 #endif
 
 #ifdef DEBUG
@@ -835,35 +834,16 @@ void push_data()
 #endif
 
 #ifdef CONFIG_V0
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
+	if (cad_on) {
+		e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
+	} else {
+		e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, 300);
+	}
 #else
 	// just a simple data packet
 	sx1272.setPacketType(PKT_TYPE_DATA);
 
-	// Send message to the gateway and print the result
-	// with the app key if this feature is enabled
-#ifdef WITH_ACK
-	int n_retry = NB_RETRIES;
-
-	do {
-		e = sx1272.sendPacketTimeoutACK(DEST_ADDR,
-						message, r_size);
-
-		if (e == 3)
-			INFO("No ACK");
-
-		n_retry--;
-
-		if (n_retry)
-			INFO("Retry");
-		else
-			INFO("Abort");
-
-	} while (e && n_retry);
-#else
-	// 10ms max tx time
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
-#endif
 
 	INFO("LoRa pkt size ");
 	INFOLN(r_size);
@@ -890,13 +870,15 @@ void push_data()
 	INFOLN(e);
 #endif
 
-	sx1272.setSleepMode();
-	digitalWrite(SX1272_RST, LOW);
+	if (cad_on) {
+		sx1272.setSleepMode();
+		digitalWrite(SX1272_RST, LOW);
 
-	spi_end();
+		spi_end();
 
-	// dev power off
-	power_off_dev();
+		// dev power off
+		power_off_dev();
+	}
 }
 
 void task_oled()
@@ -913,6 +895,8 @@ void task_oled()
 #ifdef ENABLE_RTP_TEST
 	float old_p = 0.0;
 #endif
+
+	bool tx_flag = false;
 
 	if (2 == sample_period) {
 		// usb power
@@ -974,6 +958,43 @@ void task_oled()
 		}
 		#endif
 
+	#ifdef ENABLE_OLED_ON_TX
+		float dp = fabsf(cur_p - old_pres);
+
+		if (dp >= DELTA_P) {
+			need_push = 0x5a;
+			tx_cause = DELTA_TX;
+
+			#ifdef ENABLE_P_TEST
+			cnt_01 = 0;
+			#endif
+
+			tx_flag = false;
+		}
+	#endif
+
+#if 0
+		#ifdef ENABLE_P_TEST
+		if (dp >= DELTA_P/2 && dp < DELTA_P) {
+
+			cnt_01++;
+
+			if (cnt_01 >= 3) {
+				need_push = 0x5a;
+				tx_cause = DELTA_TX;
+
+				tx_flag = false;
+
+				cnt_01 = 0;
+			}
+
+		} else if (dp < DELTA_P/2) {
+
+			cnt_01 = 0;
+		}
+		#endif
+#endif
+
 		if (key_count == 2) {
 
 			// reset the min & max
@@ -1024,6 +1045,12 @@ void task_oled()
 				break;
 		}
 
+		if (0x5a == need_push && false == tx_flag) {
+			push_data(false);
+			need_push = 0;
+			tx_flag = true;
+		}
+
 		delay(oled_refresh_time);
 	}
 
@@ -1045,8 +1072,7 @@ void loop()
 	}
 
 	if (0x5a == need_push) {
-		push_data();
-
+		push_data(true);
 		need_push = 0;
 	}
 
