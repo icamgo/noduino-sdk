@@ -39,14 +39,18 @@ void power_off_dev()
 
 void setup()
 {
-	//Serial.begin(115200);
+	Serial.setRouteLoc(1);
+	Serial.begin(115200);
 
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 	power_on_dev();
 
+	delay(100);
+
 	radio_init();
 }
 
+/* 12020430011 */
 uint8_t p[36] = {
 	0x47, 0x4F, 0x33,
 	0x00, 0x00, 0x00, 0x02, 0xCC, 0x79, 0x34, 0xBB,
@@ -60,6 +64,10 @@ uint8_t p[36] = {
 
 void loop()
 {
+	Serial.println("TX testing...");
+
+	lora.get_status();
+
 	lora.send(p, 36, SX126x_TXMODE_SYNC);
 
 	delay(3000);

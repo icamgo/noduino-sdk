@@ -21,8 +21,8 @@ ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
 ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
-DEFS := -DCONFIG_V0 -DUSE_SOFTSPI -DPC10_HALF_RANGE=8000.0
-#DEFS = -DUSE_SOFTSPI
+DEFS := -DCONFIG_V0
+#DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
 
 MCU = cortex-m0plus
 #F_CPU = 1000000
@@ -99,6 +99,9 @@ $(ARDUINO_CORES)/efm32/efm32init.c						\
 $(ARDUINO_CORES)/efm32/efm32gpio.c						\
 $(ARDUINO_CORES)/efm32/core_callback.c					\
 $(ARDUINO_CORES)/avr/dtostrf.c							\
+$(LIB_DIR)/dmadrv/dmadrv.c								\
+$(LIB_DIR)/dmadrv/dmactrl.c								\
+$(LIB_DIR)/spidrv/spidrv.c								\
 $(LIB_DIR)/rtcdrv/rtcdriver.c
 
 CXX_MODULES = 										\
@@ -113,8 +116,9 @@ $(ARDUINO_CORES)/efm32/HardwareSerial.cpp				\
 $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
-$(LIB_DIR)/softspi/softspi.cpp							\
 ./sx126x.cpp
+
+#$(LIB_DIR)/softspi/softspi.cpp							\
 
 
 CXX_APP = main.cpp
@@ -126,11 +130,17 @@ CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I
 
 CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
 
-CINCS		+= -I  $(LIB_DIR)/softspi/				\
+CINCS		+= 										\
 			-I $(LIB_DIR)/rtcdrv					\
+			-I $(LIB_DIR)/dmadrv					\
+			-I $(LIB_DIR)/spidrv					\
 			-I .									
-CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
+			#-I  $(LIB_DIR)/softspi/				\
+
+CXXINCS		+=										\
 			-I $(LIB_DIR)/rtcdrv					\
+			-I $(LIB_DIR)/dmadrv					\
+			-I $(LIB_DIR)/spidrv					\
 			-I .
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\

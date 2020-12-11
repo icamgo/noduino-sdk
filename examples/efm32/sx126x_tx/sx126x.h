@@ -359,6 +359,8 @@ class SX126x {
 
 	void reset(void);
 
+	uint8_t get_status(void);
+
  private:
 	uint8_t PacketParams[6];
 	bool txActive;
@@ -380,7 +382,6 @@ class SX126x {
 	void set_dio3_as_tcxo_ctrl(uint8_t tcxoVoltage, uint32_t timeout);
 	void set_dio2_as_rfswitch_ctrl(uint8_t enable);
 
-	uint8_t get_status(void);
 
 	void set_standby(uint8_t mode);
 	void wait_on_busy(void);
