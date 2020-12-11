@@ -3,7 +3,7 @@
 void setup()
 {
 	Serial.setRouteLoc(1);
-	Serial.begin(2400);
+	Serial.begin(115200);
 }
 
 void loop()
