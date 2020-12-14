@@ -21,9 +21,13 @@
 #define ERR_INVALID_MODE                16
 
 // SX126X physical layer properties
+#if 0
 #define XTAL_FREQ                       (double)32000000
 #define FREQ_DIV                        (double)pow(2.0, 25.0)
 #define FREQ_STEP                       (double)(XTAL_FREQ / FREQ_DIV)
+#else
+#define FREQ_STEP                       0.95367431640625
+#endif
 
 // SX126X SPI commands
 // operational modes commands
@@ -378,6 +382,9 @@ class SX126x {
 
 	void write_reg(uint16_t addr, uint8_t data);
 	void write_reg(uint16_t addr, uint8_t *data, uint8_t size);
+
+	void write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len);
+	void read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len);
 
 	void set_dio3_as_tcxo_ctrl(uint8_t tcxoVoltage, uint32_t timeout);
 	void set_dio2_as_rfswitch_ctrl(uint8_t enable);

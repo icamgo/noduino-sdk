@@ -3,7 +3,8 @@
 
 //#define RF_FREQ			470000000	// Hz center frequency
 #define RF_FREQ			472500000
-#define TX_PWR			14				// dBm tx output power
+//#define RF_FREQ			471700000
+#define TX_PWR			17				// dBm tx output power
 #define LORA_BW			6
 #define LORA_SF			10			
 #define LORA_CR			2
@@ -70,5 +71,5 @@ void loop()
 
 	lora.send(p, 36, SX126x_TXMODE_SYNC);
 
-	delay(3000);
+	delay(6000);
 }
