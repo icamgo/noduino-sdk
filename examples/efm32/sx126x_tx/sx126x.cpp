@@ -31,6 +31,7 @@ SPIDRV_Handle_t spi_hdl = &handle_data;
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
 #define INFO_HEX(param)			Serial.print(param,HEX)
+#define INFOLN_HEX(param)		Serial.println(param,HEX)
 #define INFO(param)				Serial.print(param)
 #define INFOLN(param)			Serial.println(param)
 #define FLUSHOUTPUT				Serial.flush();
@@ -38,6 +39,7 @@ SPIDRV_Handle_t spi_hdl = &handle_data;
 #define INFO_S(param)
 #define INFO(param)
 #define INFO_HEX(param)
+#define INFOLN_HEX(param)
 #define INFOLN(param)
 #define FLUSHOUTPUT
 #endif
@@ -96,7 +98,7 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 	 *  SX126x: 0x2A
 	 */
 	if (0x2A != get_status()) {
-		Serial.println("SX126x error, maybe no SPI connection?");
+		INFOLN("SX126x error, maybe no SPI connection?");
 		//return ERR_INVALID_MODE;
 	}
 
@@ -257,9 +259,9 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 	}
 
 	if (rv)
-		Serial.println("TX OK");
+		INFOLN("TX OK");
 	else
-		Serial.println("TX failed");
+		INFOLN("TX failed");
 
 	return rv;
 }
@@ -328,17 +330,17 @@ uint8_t SX126x::get_status(void)
 
 	data = SX126X_CMD_GET_STATUS;
 	SPIDRV_MTransfer(spi_hdl, &data, &rv, 1, NULL);
-	Serial.println(rv, HEX);
+	INFOLN(rv, HEX);
 	data = 0;
 	SPIDRV_MTransfer(spi_hdl, &data, &rv, 1, NULL);
-	Serial.println(rv, HEX);
+	INFOLN(rv, HEX);
 	SPIDRV_MTransfer(spi_hdl, &data, &rv, 1, NULL);
-	Serial.println(rv, HEX);
+	INFOLN(rv, HEX);
 
 	digitalWrite(_spi_cs, HIGH);
 #endif
-	Serial.print("get_status: 0x");
-	Serial.println(rv, HEX);
+	INFO("get_status: 0x");
+	INFOLN_HEX(rv);
 	return rv;
 }
 
@@ -348,8 +350,8 @@ uint16_t SX126x::get_dev_errors(void)
 
 	read_cmd(SX126X_CMD_GET_DEVICE_ERRORS, (uint8_t *)&error, 2);
 
-	Serial.print("get_dev_errors: 0x");
-	Serial.println(error, HEX);
+	INFO("get_dev_errors: 0x");
+	INFOLN_HEX(error);
 
 	return error;
 }
@@ -649,9 +651,9 @@ uint8_t SX126x::read_buf(uint8_t * rxData, uint8_t * rxDataLen,
 
 uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
 {
-	Serial.print("SPI write: CMD=0x");
-	Serial.print(SX126X_CMD_WRITE_BUFFER, HEX);
-	Serial.print(" TX: ");
+	INFO("SPI write: CMD=0x");
+	INFO_HEX(SX126X_CMD_WRITE_BUFFER);
+	INFO(" TX: ");
 #ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, LOW);
 #endif
@@ -659,17 +661,17 @@ uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
 	spi_transfer(SX126X_CMD_WRITE_BUFFER);
 	spi_transfer(0);	//offset in tx fifo
 
-	Serial.print(" 0 ");
+	INFO(" 0 ");
 	for (uint16_t i = 0; i < len; i++) {
-		Serial.print(data[i], HEX);
-		Serial.print(" ");
+		INFO_HEX(data[i]);
+		INFO(" ");
 		spi_transfer(data[i]);
 	}
 
 #ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, HIGH);
 #endif
-	Serial.println("");
+	INFOLN("");
 
 	while (digitalRead(_pin_busy)) ;
 
@@ -734,31 +736,31 @@ void SX126x::spi_cmd(uint8_t cmd, bool write, uint8_t *dataOut,
 
 	// send/receive all bytes
 	if (write) {
-		Serial.print("SPI write: CMD=0x");
-		Serial.print(cmd, HEX);
-		Serial.print(" TX: ");
+		INFO("SPI write: CMD=0x");
+		INFO_HEX(cmd);
+		INFO(" TX: ");
 		for (uint8_t n = 0; n < len; n++) {
 			uint8_t in = spi_transfer(dataOut[n]);
-			Serial.print(dataOut[n], HEX);
-			Serial.print(" ");
+			INFO_HEX(dataOut[n]);
+			INFO(" ");
 		}
-		Serial.println();
+		INFOLN();
 	} else {
-		Serial.print("SPI read:  CMD=0x");
-		Serial.print(cmd, HEX);
+		INFO("SPI read:  CMD=0x");
+		INFO_HEX(cmd);
 		// skip the first byte for read-type commands (status-only)
 		uint8_t in = spi_transfer(SX126X_CMD_NOP);
 
-		//Serial.println(in, HEX);
-		Serial.print(" RX: ");
+		//INFOLN(in, HEX);
+		INFO(" RX: ");
 
 		for (uint8_t n = 0; n < len; n++) {
 			dataIn[n] = spi_transfer(SX126X_CMD_NOP);
-			//Serial.println((SX126X_CMD_NOP, HEX));
-			Serial.print(dataIn[n], HEX);
-			Serial.print(" ");
+			//INFOLN((SX126X_CMD_NOP, HEX));
+			INFO_HEX(dataIn[n]);
+			INFO(" ");
 		}
-		//Serial.println();
+		//INFOLN();
 	}
 
 #ifdef USE_SOFTSPI
