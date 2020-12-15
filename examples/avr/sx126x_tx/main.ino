@@ -10,7 +10,7 @@
 #define LORA_CR			2
 #define	CRC				true
 
-#define LORA_PREAMBLE_LEN				6	// Same for Tx and Rx
+#define LORA_PREAMBLE_LEN				8	// Same for Tx and Rx
 #define LORA_PAYLOAD_LEN				0	// 0: variable receive length
 							      			// 1..255 payloadlength
 
