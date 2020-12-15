@@ -55,7 +55,7 @@
 
 #ifndef	USE_SOFTSPI
 /* Assumption: All Arduino Boards have "SPI.h" */
-#define U8X8_HAVE_HW_SPI
+//#define U8X8_HAVE_HW_SPI
 #endif
 
 #ifndef	USE_SOFTI2C
