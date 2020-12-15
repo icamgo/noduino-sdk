@@ -50,8 +50,6 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 
 	set_rf_freq(freq_hz);
 
-	//set_pa_config(0x04, 0x07, 0x00, 0x01);
-
 	set_dio2_as_rfswitch_ctrl(true);
 
 	set_standby(SX126X_STANDBY_RC);
@@ -60,17 +58,8 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 
 	set_buffer_base_addr(0, 0);
 
-	//set_over_current_protect(0x38);	// set max current to 140mA
-
-	/*
-	config_dio_irq(SX126X_IRQ_ALL,	//all interrupts enabled
-			(SX126X_IRQ_RX_DONE | SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT),	//interrupts on DIO1
-			SX126X_IRQ_NONE,	//interrupts on DIO2
-			SX126X_IRQ_NONE);	//interrupts on DIO3
-	*/
-
-	set_sync_word(0x1212);
-	//set_sync_word(0x3444);
+	//set_sync_word(0x1212);
+	set_sync_word(0x3444);
 	//set_sync_word(0x1424);
 }
 
@@ -113,12 +102,12 @@ int16_t SX126x::lora_config(uint8_t sf, uint8_t bw,
 
 	write_cmd(SX126X_CMD_SET_PACKET_PARAMS, PacketParams, 6);
 
-/*
-	config_dio_irq(SX126X_IRQ_ALL,	//all interrupts enabled
-			(SX126X_IRQ_RX_DONE | SX126X_IRQ_TX_DONE, SX126X_IRQ_TIMEOUT),	//interrupts on DIO1
-			SX126X_IRQ_NONE,	//interrupts on DIO2
-			SX126X_IRQ_NONE);
-*/
+	set_tx_power(_tx_power);
+
+	config_dio_irq(SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT,
+					SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT,
+					SX126X_IRQ_NONE,
+					SX126X_IRQ_NONE);
 
 	//receive state no receive timeoout
 	//set_rx(0xFFFFFF);
@@ -146,16 +135,6 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 
 		txActive = true;
 
-		set_tx_power(_tx_power);
-
-		config_dio_irq(SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT,
-						SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT,
-						SX126X_IRQ_NONE,
-						SX126X_IRQ_NONE);
-
-		set_modulation_params(_sf, _bw, _cr, 1);
-
-
 		// set_packet_params()
 		PacketParams[2] = 0x00;	//Variable length packet (explicit header)
 		PacketParams[3] = len;
@@ -166,7 +145,7 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 		write_buf(data, len);
 
 		//set_tx(0);
-		set_tx(100);		// timeout = 100ms
+		set_tx(300);		// timeout = 100ms
 
 		if (mode & SX126x_TXMODE_SYNC) {
 			irq = get_irq_status();
