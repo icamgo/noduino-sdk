@@ -1562,18 +1562,31 @@ void rx_irq_handler()
 int tx_pkt(uint8_t *p, int len)
 {
 	//radio_setup();
+	bool need_cadon = true;
+	int e = 0;
 
 	if (false == is_our_did(p) || p[2] < 0x33) {
 
 		return 5;
 	}
 
-#ifdef ENABLE_CAD
-	if (cad_on) {
-		sx1272.CarrierSense();
+	if (KEY_TX == p[15]) {
+
+		if(is_my_did(p)) {
+			// Turn off cad if pkt is my key_tx
+			need_cadon = false;
+		}
 	}
-#endif
-	int e = sx1272.sendPacketTimeout(DEST_ADDR, p, len, tx_time);
+
+	if (cad_on && need_cadon) {
+
+		sx1272.CarrierSense();
+		e = sx1272.sendPacketTimeout(DEST_ADDR, p, len, CAD_TX_TIME);
+
+	} else {
+
+		e = sx1272.sendPacketTimeout(DEST_ADDR, p, len, NOCAD_TX_TIME);
+	}
 
 	if (0 == e) {
 		// send message succesful,
@@ -2015,7 +2028,9 @@ void deep_sleep()
 	sx1272.setSleepMode();
 	digitalWrite(SX1272_RST, LOW);
 
+#ifdef USE_SOFTSPI
 	spi_end();
+#endif
 	digitalWrite(10, LOW);
 	digitalWrite(11, LOW);
 	digitalWrite(12, LOW);
