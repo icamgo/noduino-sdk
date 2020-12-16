@@ -23,12 +23,6 @@
 #include <stdint.h>
 #include <Arduino.h>
 
-#ifdef USE_SOFTSPI
-#include "softspi.h"
-#else
-#include <SPI.h>
-#endif
-
 #ifndef inttypes_h
 #include <inttypes.h>
 #endif

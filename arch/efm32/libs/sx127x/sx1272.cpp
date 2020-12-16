@@ -18,8 +18,42 @@
 
 #include "sx1272.h"
 
-//#include "softi2c.h"
+#ifdef USE_SOFTSPI
+#include "softspi.h"
+#else
+#include "spidrv.h"
 
+#define SPI_M_USART1   	                                           \
+{                                                                         \
+  USART1,                       /* USART port                       */    \
+  _USART_ROUTE_LOCATION_LOC0,   /* USART pins location number       */    \
+  8000000,                      /* Bitrate                          */    \
+  8,                            /* Frame length                     */    \
+  0,                            /* Dummy tx value for rx only funcs */    \
+  spidrvMaster,                 /* SPI mode                         */    \
+  spidrvBitOrderMsbFirst,       /* Bit order on bus                 */    \
+  spidrvClockMode0,             /* SPI clock/phase mode             */    \
+  spidrvCsControlAuto,          /* CS controlled by the driver      */    \
+  spidrvSlaveStartImmediate     /* Slave start transfers immediately*/    \
+}
+
+  //spidrvCsControlAuto,          /* CS controlled by the driver      */    \
+  //spidrvCsControlApplication,	/* CS controlled by the app         */    \
+  //spidrvSlaveStartDelayed		\
+  //spidrvSlaveStartImmediate     /* Slave start transfers immediately*/    \
+
+SPIDRV_HandleData_t handle_data;
+SPIDRV_Handle_t spi_hdl = &handle_data;
+
+uint8_t spihw_transfer(uint8_t data)
+{
+	uint8_t rx = 0;
+	SPIDRV_MTransferSingleItemB(spi_hdl, data, &rx);
+	return rx;
+}
+#endif
+
+//#include "softi2c.h"
 //#define	sx_delay(x)			i2c_delay(14*1000*x)
 #define	sx_delay(x)				delay(x)
 
@@ -151,7 +185,8 @@ void SX1272::setup_v0(uint32_t freq, uint8_t dbm)
 #ifdef USE_SOFTSPI
 	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
 #else
-	SPI.begin();
+	SPIDRV_Init_t spi_init = SPI_M_USART1;
+	SPIDRV_Init(spi_hdl, &spi_init);
 #endif
 
 	reset();
@@ -221,7 +256,8 @@ void SX1272::sx1278_qsetup(uint32_t freq, uint8_t dbm)
 #ifdef USE_SOFTSPI
 	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
 #else
-	SPI.begin();
+	SPIDRV_Init_t spi_init = SPI_M_USART1;
+	SPIDRV_Init(spi_hdl, &spi_init);
 #endif
 
 	reset();
@@ -449,19 +485,8 @@ uint8_t SX1272::ON()
 #ifdef USE_SOFTSPI
 	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
 #else
-	//Configure the MISO, MOSI, CS, SPCR.
-	SPI.begin();
-	//Set Most significant bit first
-	SPI.setBitOrder(MSBFIRST);
-
-	// for the DUE, set to 4MHz
-	SPI.setClockDivider(42);
-
-	// for the MEGA, set to 2MHz
-	//SPI.setClockDivider(SPI_CLOCK_DIV8);
-
-	//Set data mode
-	SPI.setDataMode(SPI_MODE0);
+	SPIDRV_Init_t spi_init = SPI_M_USART1;
+	SPIDRV_Init(spi_hdl, &spi_init);
 #endif
 
 	reset();
@@ -524,8 +549,10 @@ void SX1272::OFF()
 #endif
 
 #ifdef USE_SOFTSPI
+
 #else
-	SPI.end();
+	//SPI.end();
+	//SPIDRV_DeInit(spi_hdl);
 #endif
 
 #if (DEBUG_MODE > 1)
@@ -542,10 +569,17 @@ byte SX1272::readRegister(byte address)
 #ifdef USE_SOFTSPI
 	value = spi_read_reg(address & 0x7f);
 #else
-	bitClear(address, 7);	// Bit 7 cleared to write in registers
-	SPI.transfer(address);
-	value = SPI.transfer(0x00);
+	//bitClear(address, 7);	// Bit 7 cleared to write in registers
+	//SPI.transfer(address);
+	//value = SPI.transfer(0x00);
+
+	//SPIDRV_MTransferSingleItemB(spi_hdl, address & 0x7f, &value);
+	//SPIDRV_MTransferSingleItemB(spi_hdl, 0, &value);
+
+	spihw_transfer(address & 0x7f);
+	value = spihw_transfer(0);
 #endif
+
 	digitalWrite(_SX1272_SS, HIGH);
 
 	return value;
@@ -558,10 +592,23 @@ void SX1272::writeRegister(byte address, byte data)
 #ifdef USE_SOFTSPI
 	spi_write_reg(address | 0x80, data);
 #else
-	bitSet(address, 7);	// Bit 7 set to read from registers
-	SPI.transfer(address);
-	SPI.transfer(data);
+	//bitSet(address, 7);	// Bit 7 set to read from registers
+	//SPI.transfer(address);
+	//SPI.transfer(data);
+
+	//uint8_t tx[2];
+	//tx[0] = address | 0x80;
+	//tx[1] = data;
+	//SPIDRV_MTransmitB(spi_hdl, tx, 2);
+
+	//uint8_t value = 0;
+	//SPIDRV_MTransferSingleItemB(spi_hdl, address | 0x80, &value);
+	//SPIDRV_MTransferSingleItemB(spi_hdl, data, &value);
+
+	spihw_transfer(address | 0x80);
+	spihw_transfer(data);
 #endif
+
 	digitalWrite(_SX1272_SS, HIGH);
 }
 
