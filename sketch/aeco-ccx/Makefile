@@ -21,9 +21,9 @@ ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
 ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
-#DEFS := -DCONFIG_V0 -DUSE_SOFTSPI -DUSE_SOFTI2C
+#DEFS := -DCONFIG_V0
 DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
-#DEFS = -DUSE_SOFTSPI
+#DEFS := -DCONFIG_V0 -DUSE_SOFTSPI -DUSE_SOFTI2C
 
 MCU = cortex-m0plus
 #F_CPU = 7000000
@@ -137,6 +137,9 @@ $(LIB_DIR)/U8g2/src/clib/u8x8_setup.c					\
 $(LIB_DIR)/U8g2/src/clib/u8x8_string.c					\
 $(LIB_DIR)/U8g2/src/clib/u8x8_u16toa.c					\
 $(LIB_DIR)/U8g2/src/clib/u8x8_u8toa.c					\
+$(LIB_DIR)/dmadrv/dmadrv.c								\
+$(LIB_DIR)/dmadrv/dmactrl.c								\
+$(LIB_DIR)/spidrv/spidrv.c								\
 $(LIB_DIR)/rtcdrv/rtcdriver.c
 
 #$(ARDUINO_CORES)/efm32/efm32dac.c						\
@@ -172,6 +175,8 @@ CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/pc10/						\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
+			-I $(LIB_DIR)/dmadrv					\
+			-I $(LIB_DIR)/spidrv					\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I $(LIB_DIR)/sx127x					\
 			-I .
@@ -180,6 +185,8 @@ CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/pc10/						\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
+			-I $(LIB_DIR)/dmadrv					\
+			-I $(LIB_DIR)/spidrv					\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I $(LIB_DIR)/sx127x					\
 			-I .
