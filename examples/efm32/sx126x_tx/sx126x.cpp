@@ -139,8 +139,8 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 			SX126X_IRQ_NONE);	//interrupts on DIO3
 	*/
 
-	set_sync_word(0x1212);
-	//set_sync_word(0x3444);
+	//set_sync_word(0x1212);
+	set_sync_word(0x3444);
 	//set_sync_word(0x1424);
 
 	//set_standby(SX126X_STANDBY_RC);
@@ -289,7 +289,7 @@ void SX126x::rx_status(uint8_t * rssi, uint8_t * snr)
 {
 	uint8_t buf[3];
 
-	read_cmd(SX126X_CMD_GET_PACKET_STATUS, buf, 3);
+	read_op_cmd(SX126X_CMD_GET_PACKET_STATUS, buf, 3);
 
 	(buf[1] < 128) ? (*snr = buf[1] >> 2) : (*snr = ((buf[1] - 256) >> 2));
 	*rssi = -buf[0] >> 1;
@@ -348,7 +348,7 @@ uint16_t SX126x::get_dev_errors(void)
 {
 	uint16_t error;
 
-	read_cmd(SX126X_CMD_GET_DEVICE_ERRORS, (uint8_t *)&error, 2);
+	read_op_cmd(SX126X_CMD_GET_DEVICE_ERRORS, (uint8_t *)&error, 2);
 
 	INFO("get_dev_errors: 0x");
 	INFOLN_HEX(error);
@@ -440,6 +440,7 @@ void SX126x::set_buffer_base_addr(uint8_t tx_addr, uint8_t rx_addr)
 
 void SX126x::set_sync_word(uint16_t syncw)
 {
+#if 0
 	uint8_t buf[3];
 
 	buf[0] = ((SX126X_REG_LORA_SYNC_WORD_MSB & 0xFF00) >> 8);
@@ -454,6 +455,10 @@ void SX126x::set_sync_word(uint16_t syncw)
 	buf[2] = syncw & 0xFF;
 
 	write_op_cmd(SX126X_CMD_WRITE_REGISTER, buf, 3);
+#else
+	write_reg(SX126X_REG_LORA_SYNC_WORD_MSB, (syncw & 0xFF00) >> 8);
+	write_reg(SX126X_REG_LORA_SYNC_WORD_LSB, (syncw & 0xFF));
+#endif
 }
 
 void SX126x::set_pa_config(uint8_t paDutyCycle, uint8_t hpMax, uint8_t deviceSel,
@@ -472,8 +477,8 @@ void SX126x::set_over_current_protect(uint8_t value)
 {
 	uint8_t buf[3];
 
-	buf[0] = ((SX126X_REG_OCP_CONFIGURATION & 0xFF00) >> 8);
-	buf[1] = (SX126X_REG_OCP_CONFIGURATION & 0x00FF);
+	buf[0] = ((SX126X_REG_OCP & 0xFF00) >> 8);
+	buf[1] = (SX126X_REG_OCP & 0x00FF);
 	buf[2] = value;
 	write_op_cmd(SX126X_CMD_WRITE_REGISTER, buf, 3);
 }
@@ -566,7 +571,7 @@ void SX126x::get_rx_buf_status(uint8_t * payloadLength,
 {
 	uint8_t buf[2];
 
-	read_cmd(SX126X_CMD_GET_RX_BUFFER_STATUS, buf, 2);
+	read_op_cmd(SX126X_CMD_GET_RX_BUFFER_STATUS, buf, 2);
 
 	*payloadLength = buf[0];
 	*rxStartBufferPointer = buf[1];
@@ -575,6 +580,14 @@ void SX126x::get_rx_buf_status(uint8_t * payloadLength,
 void SX126x::set_tx_power(int8_t dbm)
 {
     uint8_t buf[2];
+
+	/*
+	 * WORKAROUND - Better Resistance of the SX1262 Tx to Antenna Mismatch
+	 * see DS_SX1261-2_V1.2 datasheet chapter 15.2
+	 * RegTxClampConfig = @address 0x08D8
+	*/
+	write_reg(0x08D8, read_reg(0x08D8) | (0x0F << 1));
+	/* WORKAROUND END */
 
 	// sx1262 or sx1268
 	if (dbm > 22) {
@@ -590,7 +603,7 @@ void SX126x::set_tx_power(int8_t dbm)
 	}
 
 	//set_over_current_protect(0x38);	// set max current to 140mA
-	write_reg(SX126X_REG_OCP_CONFIGURATION, 0x38); // current max 160mA for the whole device
+	write_reg(SX126X_REG_OCP, 0x38); // current max 160mA for the whole device
 
     buf[0] = dbm;
 
@@ -661,7 +674,6 @@ uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
 	spi_transfer(SX126X_CMD_WRITE_BUFFER);
 	spi_transfer(0);	//offset in tx fifo
 
-	INFO(" 0 ");
 	for (uint16_t i = 0; i < len; i++) {
 		INFO_HEX(data[i]);
 		INFO(" ");
@@ -676,6 +688,39 @@ uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
 	while (digitalRead(_pin_busy)) ;
 
 	return 0;
+}
+
+uint8_t SX126x::read_reg(uint16_t addr)
+{
+	uint8_t ret = 0;
+	read_reg(addr, &ret, 1);
+	return ret;
+}
+
+void SX126x::read_reg(uint16_t addr, uint8_t *data, uint8_t size)
+{
+	// TODO timeout
+	while (digitalRead(_pin_busy)) ;
+
+#ifdef USE_SOFTSPI
+	digitalWrite(_spi_cs, LOW);
+#endif
+
+	spi_transfer(SX126X_CMD_READ_REGISTER);
+
+    spi_transfer((addr & 0xFF00) >> 8);
+    spi_transfer(addr & 0x00FF);
+	spi_transfer(0);
+
+    for (int i = 0; i < size; i++) {
+		data[i] = spi_transfer(0);
+    }
+
+#ifdef USE_SOFTSPI
+	digitalWrite(_spi_cs, HIGH);
+#endif
+
+	while (digitalRead(_pin_busy)) ;
 }
 
 void SX126x::write_reg(uint16_t addr, uint8_t data)
@@ -704,76 +749,8 @@ void SX126x::write_reg(uint16_t addr, uint8_t *data, uint8_t size)
 #ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, HIGH);
 #endif
-}
 
-void SX126x::write_cmd(uint8_t cmd, uint8_t *data, uint8_t len,
-			     bool waitForBusy)
-{
-	spi_cmd(cmd, true, data, NULL, len, waitForBusy);
-}
-
-void SX126x::read_cmd(uint8_t cmd, uint8_t *data, uint8_t len,
-			    bool waitForBusy)
-{
-	spi_cmd(cmd, false, NULL, data, len, waitForBusy);
-}
-
-void SX126x::spi_cmd(uint8_t cmd, bool write, uint8_t *dataOut,
-			 uint8_t *dataIn, uint8_t len, bool waitForBusy)
-{
-
-	// ensure BUSY is low (state meachine ready)
-	// TODO timeout
 	while (digitalRead(_pin_busy)) ;
-
-#ifdef USE_SOFTSPI
-	// start transfer
-	digitalWrite(_spi_cs, LOW);
-#endif
-
-	// send command byte
-	spi_transfer(cmd);
-
-	// send/receive all bytes
-	if (write) {
-		INFO("SPI write: CMD=0x");
-		INFO_HEX(cmd);
-		INFO(" TX: ");
-		for (uint8_t n = 0; n < len; n++) {
-			uint8_t in = spi_transfer(dataOut[n]);
-			INFO_HEX(dataOut[n]);
-			INFO(" ");
-		}
-		INFOLN();
-	} else {
-		INFO("SPI read:  CMD=0x");
-		INFO_HEX(cmd);
-		// skip the first byte for read-type commands (status-only)
-		uint8_t in = spi_transfer(SX126X_CMD_NOP);
-
-		//INFOLN(in, HEX);
-		INFO(" RX: ");
-
-		for (uint8_t n = 0; n < len; n++) {
-			dataIn[n] = spi_transfer(SX126X_CMD_NOP);
-			//INFOLN((SX126X_CMD_NOP, HEX));
-			INFO_HEX(dataIn[n]);
-			INFO(" ");
-		}
-		//INFOLN();
-	}
-
-#ifdef USE_SOFTSPI
-	// stop transfer
-	digitalWrite(_spi_cs, HIGH);
-#endif
-
-	// wait for BUSY to go high and then low
-	// TODO timeout
-	if (waitForBusy) {
-		delayMicroseconds(1);
-		while (digitalRead(_pin_busy)) ;
-	}
 }
 
 void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
@@ -805,6 +782,8 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 	// stop transfer
 	digitalWrite(_spi_cs, HIGH);
 #endif
+
+	while (digitalRead(_pin_busy)) ;
 }
 
 void SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
@@ -837,4 +816,6 @@ void SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 	// stop transfer
 	digitalWrite(_spi_cs, HIGH);
 #endif
+
+	while (digitalRead(_pin_busy)) ;
 }

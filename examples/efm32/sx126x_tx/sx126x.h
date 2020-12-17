@@ -109,7 +109,7 @@
 #define SX126X_REG_RANDOM_NUMBER_2                    0x081B
 #define SX126X_REG_RANDOM_NUMBER_3                    0x081C
 #define SX126X_REG_RX_GAIN                            0x08AC
-#define SX126X_REG_OCP_CONFIGURATION                  0x08E7
+#define SX126X_REG_OCP								  0x08E7
 #define SX126X_REG_XTA_TRIM                           0x0911
 #define SX126X_REG_XTB_TRIM                           0x0912
 
@@ -374,11 +374,8 @@ class SX126x {
 	int _pin_reset;
 	int _pin_dio1;
 
-	void write_cmd(uint8_t cmd, uint8_t *data, uint8_t n, bool waitForBusy = true);
-	void read_cmd(uint8_t cmd, uint8_t *data, uint8_t n, bool waitForBusy = true);
-
-	void spi_cmd(uint8_t cmd, bool write, uint8_t * dataOut,
-			 uint8_t *dataIn, uint8_t n, bool waitForBusy);
+	uint8_t read_reg(uint16_t addr);
+	void read_reg(uint16_t addr, uint8_t *data, uint8_t size);
 
 	void write_reg(uint16_t addr, uint8_t data);
 	void write_reg(uint16_t addr, uint8_t *data, uint8_t size);

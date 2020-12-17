@@ -1,16 +1,16 @@
 
 #include "SX126x.h"
 
-//#define RF_FREQ			470000000	// Hz center frequency
-#define RF_FREQ			472500000
-//#define RF_FREQ			471700000
-#define TX_PWR			17				// dBm tx output power
+#define RF_FREQ			470000000	// Hz center frequency
+//#define RF_FREQ			472500000
+//#define RF_FREQ			473400000
+#define TX_PWR			22				// dBm tx output power
 #define LORA_BW			6
 #define LORA_SF			10			
 #define LORA_CR			2
 #define	CRC				true
 
-#define LORA_PREAMBLE_LEN				6	// 8
+#define LORA_PREAMBLE_LEN				8	// 8
 #define LORA_PAYLOAD_LEN				0	// 0: variable receive length
 							      			// 1..255 payloadlength
 
@@ -66,8 +66,6 @@ uint8_t p[36] = {
 void loop()
 {
 	Serial.println("TX testing...");
-
-	lora.get_status();
 
 	lora.send(p, 36, SX126x_TXMODE_SYNC);
 
