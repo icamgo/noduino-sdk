@@ -374,6 +374,10 @@ class SX126x {
 	void spi_cmd(uint8_t cmd, bool write, uint8_t * dataOut,
 			 uint8_t *dataIn, uint8_t n, bool waitForBusy);
 
+
+	uint8_t read_reg(uint16_t addr);
+	void read_reg(uint16_t addr, uint8_t *data, uint8_t size);
+
 	void write_reg(uint16_t addr, uint8_t data);
 	void write_reg(uint16_t addr, uint8_t *data, uint8_t size);
 

@@ -4,7 +4,7 @@
 //#define RF_FREQ			472500000	// Hz center frequency
 //#define RF_FREQ			470020000	// Hz center frequency
 #define RF_FREQ			470000000	// Hz center frequency
-#define TX_PWR			22			// dBm tx output power
+#define TX_PWR			14			// dBm tx output power
 #define LORA_BW			6
 #define LORA_SF			10			
 #define LORA_CR			2

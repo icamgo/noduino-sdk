@@ -144,6 +144,13 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 
 		write_buf(data, len);
 
+		/* WORKAROUND
+		 * see DS_SX1261-2_V1.2 datasheet chapter 15.1
+		 * 500KHz = @address 0x0889
+		*/
+		write_reg(0x0889, read_reg(0x0889) & 0xFB);
+		/* WORKAROUND END */
+
 		//set_tx(0);
 		set_tx(300);		// timeout = 100ms
 
@@ -322,6 +329,7 @@ void SX126x::set_buffer_base_addr(uint8_t tx_buf_addr, uint8_t rx_buf_addr)
 
 void SX126x::set_sync_word(uint16_t syncw)
 {
+#if 0
 	uint8_t buf[3];
 
 	buf[0] = ((SX126X_REG_LORA_SYNC_WORD_MSB & 0xFF00) >> 8);
@@ -336,6 +344,10 @@ void SX126x::set_sync_word(uint16_t syncw)
 	buf[2] = syncw & 0xFF;
 
 	write_cmd(SX126X_CMD_WRITE_REGISTER, buf, 3);
+#else
+	write_reg(SX126X_REG_LORA_SYNC_WORD_MSB, (syncw & 0xFF00) >> 8);
+	write_reg(SX126X_REG_LORA_SYNC_WORD_LSB, (syncw & 0xFF));
+#endif
 }
 
 void SX126x::set_pa_config(uint8_t paDutyCycle, uint8_t hpMax, uint8_t deviceSel,
@@ -603,9 +615,47 @@ void SX126x::write_reg(uint16_t addr, uint8_t *data, uint8_t size)
 	digitalWrite(_spi_cs, HIGH);
 }
 
+uint8_t SX126x::read_reg(uint16_t addr)
+{
+	uint8_t ret = 0;
+	read_reg(addr, &ret, 1);
+	return ret;
+}
+
+void SX126x::read_reg(uint16_t addr, uint8_t *data, uint8_t size)
+{
+	// TODO timeout
+	while (digitalRead(_pin_busy)) ;
+
+	digitalWrite(_spi_cs, LOW);
+	SPI.beginTransaction(SPISettings(2000000, MSBFIRST, SPI_MODE0));
+
+	SPI.transfer(SX126X_CMD_READ_REGISTER);
+
+    SPI.transfer((addr & 0xFF00) >> 8);
+    SPI.transfer(addr & 0x00FF);
+	SPI.transfer(0);
+
+    for (int i = 0; i < size; i++) {
+		data[i] = SPI.transfer(0);
+    }
+
+	digitalWrite(_spi_cs, HIGH);
+
+	while (digitalRead(_pin_busy)) ;
+}
+
 void SX126x::set_tx_power(int8_t dbm)
 {
     uint8_t buf[2];
+
+	/*
+	 * WORKAROUND - Better Resistance of the SX1262 Tx to Antenna Mismatch
+	 * see DS_SX1261-2_V1.2 datasheet chapter 15.2
+	 * RegTxClampConfig = @address 0x08D8
+	*/
+	write_reg(0x08D8, read_reg(0x08D8) | 0x1E);
+	/* WORKAROUND END */
 
 	// sx1262 or sx1268
 	if (dbm > 22) {
