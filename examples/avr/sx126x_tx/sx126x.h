@@ -433,6 +433,7 @@ class SX126x {
 	uint8_t _sf;
 	uint8_t _bw;
 	uint8_t _cr;
+	uint32_t _tx_freq;
 };
 
 #endif

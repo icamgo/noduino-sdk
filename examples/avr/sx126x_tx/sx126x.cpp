@@ -27,6 +27,7 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 		dbm = -3;
 
 	_tx_power = dbm;
+	_tx_freq = freq_hz;
 
 	reset();
 
@@ -48,8 +49,6 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 		  | SX126X_CALIBRATE_PLL_ON
 		  | SX126X_CALIBRATE_RC13M_ON | SX126X_CALIBRATE_RC64K_ON);
 
-	set_rf_freq(freq_hz);
-
 	set_dio2_as_rfswitch_ctrl(true);
 
 	set_standby(SX126X_STANDBY_RC);
@@ -60,6 +59,7 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 
 	//set_sync_word(0x1212);
 	set_sync_word(0x3444);
+
 	//set_sync_word(0x1424);
 }
 
@@ -134,6 +134,8 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 	if (txActive == false) {
 
 		txActive = true;
+
+		set_rf_freq(_tx_freq);
 
 		// set_packet_params()
 		PacketParams[2] = 0x00;	//Variable length packet (explicit header)
