@@ -4,7 +4,7 @@
 #define RF_FREQ			470000000	// Hz center frequency
 //#define RF_FREQ			472500000
 //#define RF_FREQ			473400000
-#define TX_PWR			22				// dBm tx output power
+#define TX_PWR			17				// dBm tx output power
 #define LORA_BW			6
 #define LORA_SF			10			
 #define LORA_CR			2
@@ -16,7 +16,8 @@
 
 SX126x lora(SW_CS,		// Pin: SPI CS,PIN06-PB08-D2
 	    9,				// Pin: RESET, PIN18-PC15-D9
-	    5,				// PIN: Busy,  PIN11-PB14-D5
+	    //5,				// PIN: Busy,  PIN11-PB14-D5
+	    0,				// PIN: Busy,  PIN11-PB14-D5
 	    3				// Pin: DIO1,  PIN08-PB11-D3
     );
 
@@ -41,7 +42,7 @@ void power_off_dev()
 void setup()
 {
 	Serial.setRouteLoc(1);
-	Serial.begin(115200);
+	Serial.begin(9600);
 
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 	power_on_dev();

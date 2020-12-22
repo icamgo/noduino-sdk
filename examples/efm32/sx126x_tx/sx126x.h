@@ -357,6 +357,7 @@ class SX126x {
 	void set_txPower(int8_t dbm);
 
 	uint16_t get_dev_errors(void);
+	void clear_dev_errors(void);
 	void set_tx_power(int8_t dbm);
 
 	int8_t get_rssi();
@@ -434,6 +435,7 @@ class SX126x {
 	uint8_t _sf;
 	uint8_t _bw;
 	uint8_t _cr;
+	uint32_t _tx_freq;
 };
 
 #endif

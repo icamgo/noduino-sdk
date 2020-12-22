@@ -26,6 +26,14 @@
 SPIDRV_HandleData_t handle_data;
 SPIDRV_Handle_t spi_hdl = &handle_data;
 
+uint8_t spi_transfer(uint8_t data)
+{
+	uint8_t rx = 0;
+	SPIDRV_MTransferSingleItemB(spi_hdl, data, &rx);
+	return rx;
+}
+#endif
+
 #define DEBUG
 
 #ifdef DEBUG
@@ -42,14 +50,6 @@ SPIDRV_Handle_t spi_hdl = &handle_data;
 #define INFOLN_HEX(param)
 #define INFOLN(param)
 #define FLUSHOUTPUT
-#endif
-
-uint8_t spi_transfer(uint8_t data)
-{
-	uint8_t rx = 0;
-	SPIDRV_MTransferSingleItemB(spi_hdl, data, &rx);
-	return rx;
-}
 #endif
 
 SX126x::SX126x(int cs, int reset, int busy, int interrupt)
@@ -69,13 +69,6 @@ SX126x::SX126x(int cs, int reset, int busy, int interrupt)
 	pinMode(_pin_dio1, INPUT);
 
 	digitalWrite(_pin_reset, HIGH);
-
-#ifdef USE_SOFTSPI
-	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
-#else
-	SPIDRV_Init_t spi_init = SPI_M_USART1;
-	SPIDRV_Init(spi_hdl, &spi_init);
-#endif
 }
 
 int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
@@ -86,48 +79,78 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 	if (dbm < -3)
 		dbm = -3;
 
+#ifdef USE_SOFTSPI
+	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
+#else
+	SPIDRV_Init_t spi_init = SPI_M_USART1;
+	SPIDRV_Init(spi_hdl, &spi_init);
+#endif
+
 	_tx_power = dbm;
+	_tx_freq = freq_hz;
 
 	reset();
 
-	set_standby(SX126X_STANDBY_RC);
+
+	while (0x22 != get_status()) {
+		set_standby(SX126X_STANDBY_RC);
+		set_regulator_mode(SX126X_REGULATOR_DC_DC);
+		delay(100);
+	}
+
+	/*
+	 * WORKAROUND - Better Resistance of the SX1262 Tx to Antenna Mismatch
+	 * see DS_SX1261-2_V1.2 datasheet chapter 15.2
+	 * RegTxClampConfig = @address 0x08D8
+	*/
+	write_reg(0x08D8, read_reg(0x08D8) | 0x1E);
+	/* WORKAROUND END */
+	get_status();
 
 	//if (0x2A != get_status()) {
 	/*
 	 * ASR6500: 0x22
 	 *  SX126x: 0x2A
 	 */
-	if (0x2A != get_status()) {
+	if (0x22 != get_status()) {
 		INFOLN("SX126x error, maybe no SPI connection?");
 		//return ERR_INVALID_MODE;
 	}
 
-	set_regulator_mode(SX126X_REGULATOR_DC_DC);
 
-	set_buffer_base_addr(0, 0);
+	set_regulator_mode(SX126X_REGULATOR_DC_DC);
+	get_status();
 
 	// convert from ms to SX126x time base
-	//set_dio3_as_tcxo_ctrl(SX126X_DIO3_OUTPUT_1_8, RADIO_TCXO_SETUP_TIME << 6);
-	set_dio3_as_tcxo_ctrl(SX126X_DIO3_OUTPUT_1_8, 320);				// 5ms
+	set_dio3_as_tcxo_ctrl(SX126X_DIO3_OUTPUT_1_8, RADIO_TCXO_SETUP_TIME << 6);
+	//set_dio3_as_tcxo_ctrl(SX126X_DIO3_OUTPUT_1_8, 320);				// 5ms
+	get_status();
 
-	#if 0
+	delay(5);
+
+	#if 1
 	calibrate(SX126X_CALIBRATE_IMAGE_ON
 		| SX126X_CALIBRATE_ADC_BULK_P_ON
 		  | SX126X_CALIBRATE_ADC_BULK_N_ON
 		  | SX126X_CALIBRATE_ADC_PULSE_ON
 		  | SX126X_CALIBRATE_PLL_ON
 		  | SX126X_CALIBRATE_RC13M_ON | SX126X_CALIBRATE_RC64K_ON);
+
 	#endif
+	get_status();
+	get_dev_errors();
+	clear_dev_errors();
 
 	calibrate(0x7f);
+	get_status();
 
-	set_rf_freq(freq_hz);
-
-	//set_pa_config(0x04, 0x07, 0x00, 0x01);
+	get_dev_errors();
 
 	set_dio2_as_rfswitch_ctrl(true);
 
-	set_packet_type(SX126X_PACKET_TYPE_LORA);
+	set_buffer_base_addr(0, 0);
+
+	//set_pa_config(0x04, 0x07, 0x00, 0x01);
 
 
 	//set_over_current_protect(0x38);	// set max current to 140mA
@@ -151,7 +174,7 @@ int16_t SX126x::lora_config(uint8_t sf, uint8_t bw,
 			   uint8_t cr, uint16_t preambleLength,
 			   uint8_t payloadLen, bool crcOn, bool invertIrq)
 {
-	uint8_t ldro = 1;		//LowDataRateOptimize
+	uint8_t ldro = 1;		// LowDataRateOptimize is on
 
 	_sf = sf; _bw = bw; _cr = cr;
 
@@ -219,6 +242,7 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 
 		txActive = true;
 
+		set_rf_freq(_tx_freq);
 		set_tx_power(_tx_power);
 
 		config_dio_irq(SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT,
@@ -238,8 +262,16 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 
 		write_buf(data, len);
 
+		/* WORKAROUND
+		 * see DS_SX1261-2_V1.2 datasheet chapter 15.1
+		 * 500KHz = @address 0x0889
+		*/
+		write_reg(0x0889, read_reg(0x0889) & 0xFB);
+		/* WORKAROUND END */
+
 		//set_tx(0);
-		set_tx(300);		// timeout = 100ms
+		set_tx(600);		// timeout = 100ms
+		get_status();
 
 		if (mode & SX126x_TXMODE_SYNC) {
 			irq = get_irq_status();
@@ -298,9 +330,9 @@ void SX126x::rx_status(uint8_t * rssi, uint8_t * snr)
 void SX126x::reset(void)
 {
 	digitalWrite(_pin_reset, LOW);
-	delay(20);
+	delay(50);
 	digitalWrite(_pin_reset, HIGH);
-	delay(10);
+	delay(20);
 	while (digitalRead(_pin_busy)) ;
 }
 
@@ -319,25 +351,21 @@ uint8_t SX126x::get_status(void)
 {
 	uint8_t rv = 0xff;
 
-#if 1
+#if 0
 	read_op_cmd(SX126X_CMD_GET_STATUS, &rv, 1);
 #else
 	while (digitalRead(_pin_busy)) ;
+
+	#ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, LOW);
+	#endif
 
-	uint8_t data = 0;
-	SPIDRV_MTransfer(spi_hdl, &data, &rv, 1, NULL);
+	spi_transfer(SX126X_CMD_GET_STATUS);
+	rv = spi_transfer(0);
 
-	data = SX126X_CMD_GET_STATUS;
-	SPIDRV_MTransfer(spi_hdl, &data, &rv, 1, NULL);
-	INFOLN(rv, HEX);
-	data = 0;
-	SPIDRV_MTransfer(spi_hdl, &data, &rv, 1, NULL);
-	INFOLN(rv, HEX);
-	SPIDRV_MTransfer(spi_hdl, &data, &rv, 1, NULL);
-	INFOLN(rv, HEX);
-
+	#ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, HIGH);
+	#endif
 #endif
 	INFO("get_status: 0x");
 	INFOLN_HEX(rv);
@@ -346,14 +374,39 @@ uint8_t SX126x::get_status(void)
 
 uint16_t SX126x::get_dev_errors(void)
 {
-	uint16_t error;
+	uint8_t error[2];
 
-	read_op_cmd(SX126X_CMD_GET_DEVICE_ERRORS, (uint8_t *)&error, 2);
+#if 0
+	read_op_cmd(SX126X_CMD_GET_DEVICE_ERRORS, error, 2);
+#else
+	uint8_t rx[4] = {0};
+	uint8_t cmd[4] = {0};
+	cmd[0] = SX126X_CMD_GET_DEVICE_ERRORS;
+	cmd[1] = 0; cmd[2] = 0; cmd[3] = 0;
 
-	INFO("get_dev_errors: 0x");
-	INFOLN_HEX(error);
+	SPIDRV_MTransferB(spi_hdl, cmd, rx, 4);
 
-	return error;
+	INFO("get_dev_errors: ");
+
+	INFO_HEX(rx[2]);
+	INFO(" ");
+
+	error[0] = rx[2];
+	error[1] = rx[3];
+#endif
+
+	INFO("0x");
+	INFO_HEX(error[0]);
+	INFOLN_HEX(error[1]);
+
+	return (error[0] << 8) | error[1];
+}
+
+void SX126x::clear_dev_errors(void)
+{
+	uint8_t error[2] = {0, 0};
+
+	write_op_cmd(SX126X_CMD_CLEAR_DEVICE_ERRORS, error, 2);
 }
 
 void SX126x::wait_on_busy(void)
@@ -371,6 +424,8 @@ void SX126x::set_dio3_as_tcxo_ctrl(uint8_t volt, uint32_t timeout)
 	buf[3] = (uint8_t) (timeout & 0xFF);
 
 	write_op_cmd(SX126X_CMD_SET_DIO3_AS_TCXO_CTRL, buf, 4);
+
+	get_status();
 }
 
 void SX126x::calibrate(uint8_t calibParam)
@@ -383,6 +438,8 @@ void SX126x::set_dio2_as_rfswitch_ctrl(uint8_t enable)
 {
 	uint8_t data = enable;
 	write_op_cmd(SX126X_CMD_SET_DIO2_AS_RF_SWITCH_CTRL, &data, 1);
+
+	get_status();
 }
 
 void SX126x::set_rf_freq(uint32_t frequency)
@@ -391,6 +448,7 @@ void SX126x::set_rf_freq(uint32_t frequency)
 	uint32_t freq = 0;
 
 	calibrate_image(frequency);
+	get_status();
 
 	freq = (uint32_t) ((double)frequency / (double)FREQ_STEP);
 	buf[0] = (uint8_t) ((freq >> 24) & 0xFF);
@@ -398,6 +456,9 @@ void SX126x::set_rf_freq(uint32_t frequency)
 	buf[2] = (uint8_t) ((freq >> 8) & 0xFF);
 	buf[3] = (uint8_t) (freq & 0xFF);
 	write_op_cmd(SX126X_CMD_SET_RF_FREQUENCY, buf, 4);
+	get_status();
+
+	get_dev_errors();
 }
 
 void SX126x::calibrate_image(uint32_t frequency)
@@ -581,14 +642,6 @@ void SX126x::set_tx_power(int8_t dbm)
 {
     uint8_t buf[2];
 
-	/*
-	 * WORKAROUND - Better Resistance of the SX1262 Tx to Antenna Mismatch
-	 * see DS_SX1261-2_V1.2 datasheet chapter 15.2
-	 * RegTxClampConfig = @address 0x08D8
-	*/
-	write_reg(0x08D8, read_reg(0x08D8) | (0x0F << 1));
-	/* WORKAROUND END */
-
 	// sx1262 or sx1268
 	if (dbm > 22) {
 		dbm = 22;
@@ -601,9 +654,11 @@ void SX126x::set_tx_power(int8_t dbm)
 	} else {
 		set_pa_config(0x04, 0x07, 0x00, 0x01);
 	}
+	get_status();
 
 	//set_over_current_protect(0x38);	// set max current to 140mA
 	write_reg(SX126X_REG_OCP, 0x38); // current max 160mA for the whole device
+	get_status();
 
     buf[0] = dbm;
 
@@ -616,6 +671,8 @@ void SX126x::set_tx_power(int8_t dbm)
     //}
 
     write_op_cmd(SX126X_CMD_SET_TX_PARAMS, buf, 2);
+
+	get_status();
 }
 
 int8_t SX126x::get_rssi()
@@ -770,7 +827,7 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 
 	for (uint8_t n = 0; n < len; n++) {
 
-		uint8_t in = spi_transfer(data[n]);
+		spi_transfer(data[n]);
 
 		INFO_HEX(data[n]);
 		INFO(" ");
