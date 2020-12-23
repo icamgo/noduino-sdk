@@ -375,6 +375,10 @@ class SX126x {
 	int _pin_reset;
 	int _pin_dio1;
 
+	void set_cad_params(uint8_t sym_num, uint8_t det_pek, uint8_t det_min,
+							uint8_t exit_mode, uint32_t timeout);
+	void set_cad();
+
 	uint8_t read_reg(uint16_t addr);
 	void read_reg(uint16_t addr, uint8_t *data, uint8_t size);
 

@@ -410,6 +410,27 @@ void SX126x::wait_on_busy(void)
 	while (digitalRead(_pin_busy) == 1) ;
 }
 
+void SX126x::set_cad()
+{
+	write_op_cmd(SX126X_CMD_SET_CAD, NULL, 0);
+}
+
+void SX126x::set_cad_params(uint8_t sym_num, uint8_t det_pek, uint8_t det_min,
+							uint8_t exit_mode, uint32_t timeout)
+{
+    uint8_t buf[6];
+
+    buf[0] = sym_num;
+    buf[1] = det_pek;
+    buf[2] = det_min;
+	buf[3] = exit_mode;
+    buf[4] = (uint8_t)((timeout >> 16) & 0xFF);
+    buf[5] = (uint8_t)((timeout >> 8) & 0xFF);
+    buf[6] = (uint8_t)(timeout & 0xFF);
+
+	write_op_cmd(SX126X_CMD_SET_CAD_PARAMS, buf, 7);
+}
+
 void SX126x::set_dio3_as_tcxo_ctrl(uint8_t volt, uint32_t timeout)
 {
 	uint8_t buf[4];
@@ -895,14 +916,12 @@ void SX126x::write_reg(uint16_t addr, uint8_t *data, uint8_t size)
 
 void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 {
+	while (digitalRead(_pin_busy)) ;
+
 #ifdef USE_SOFTSPI
 	// start transfer
 	digitalWrite(_spi_cs, LOW);
-#endif
 
-	while (digitalRead(_pin_busy)) ;
-
-#if 0
 	spi_transfer(cmd);
 
 	INFO("SPI write: CMD=0x");
@@ -917,6 +936,9 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 		INFO(" ");
 	}
 	INFOLN(" ");
+
+	// stop transfer
+	digitalWrite(_spi_cs, HIGH);
 #else
 	uint8_t tx[12] = {0};
 
@@ -942,11 +964,6 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 
 #endif
 
-#ifdef USE_SOFTSPI
-	// stop transfer
-	digitalWrite(_spi_cs, HIGH);
-#endif
-
 	while (digitalRead(_pin_busy)) ;
 }
 
@@ -956,14 +973,12 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
  */
 uint8_t SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 {
+	while (digitalRead(_pin_busy)) ;
+
 #ifdef USE_SOFTSPI
 	// start transfer
 	digitalWrite(_spi_cs, LOW);
-#endif
 
-	while (digitalRead(_pin_busy)) ;
-
-#if 0
 	spi_transfer(cmd);
 	spi_transfer(0);
 
@@ -980,6 +995,9 @@ uint8_t SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 	}
 
 	INFOLN(" ");
+
+	// stop transfer
+	digitalWrite(_spi_cs, HIGH);
 #else
 	uint8_t tx[8] = {0};
 	uint8_t rx[8] = {0};
@@ -1004,11 +1022,6 @@ uint8_t SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 	INFOLN(" ");
 #endif
 
-#endif
-
-#ifdef USE_SOFTSPI
-	// stop transfer
-	digitalWrite(_spi_cs, HIGH);
 #endif
 
 	while (digitalRead(_pin_busy)) ;
