@@ -142,9 +142,6 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 	clear_dev_errors();
 
 	calibrate(0x7f);
-	get_status();
-
-	get_dev_errors();
 
 	set_dio2_as_rfswitch_ctrl(true);
 
@@ -162,9 +159,9 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 			SX126X_IRQ_NONE);	//interrupts on DIO3
 	*/
 
-	//set_sync_word(0x1212);
-	set_sync_word(0x3444);
-	//set_sync_word(0x1424);
+	set_sync_word(0x1212);
+	//set_sync_word(0x3444);	/* for public network */
+	//set_sync_word(0x1424);	/* for private network */
 
 	//set_standby(SX126X_STANDBY_RC);
 
@@ -271,7 +268,6 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 
 		//set_tx(0);
 		set_tx(600);		// timeout = 100ms
-		get_status();
 
 		if (mode & SX126x_TXMODE_SYNC) {
 			irq = get_irq_status();
@@ -424,8 +420,6 @@ void SX126x::set_dio3_as_tcxo_ctrl(uint8_t volt, uint32_t timeout)
 	buf[3] = (uint8_t) (timeout & 0xFF);
 
 	write_op_cmd(SX126X_CMD_SET_DIO3_AS_TCXO_CTRL, buf, 4);
-
-	get_status();
 }
 
 void SX126x::calibrate(uint8_t calibParam)
@@ -438,8 +432,6 @@ void SX126x::set_dio2_as_rfswitch_ctrl(uint8_t enable)
 {
 	uint8_t data = enable;
 	write_op_cmd(SX126X_CMD_SET_DIO2_AS_RF_SWITCH_CTRL, &data, 1);
-
-	get_status();
 }
 
 void SX126x::set_rf_freq(uint32_t frequency)
@@ -448,7 +440,6 @@ void SX126x::set_rf_freq(uint32_t frequency)
 	uint32_t freq = 0;
 
 	calibrate_image(frequency);
-	get_status();
 
 	freq = (uint32_t) ((double)frequency / (double)FREQ_STEP);
 	buf[0] = (uint8_t) ((freq >> 24) & 0xFF);
@@ -456,9 +447,6 @@ void SX126x::set_rf_freq(uint32_t frequency)
 	buf[2] = (uint8_t) ((freq >> 8) & 0xFF);
 	buf[3] = (uint8_t) (freq & 0xFF);
 	write_op_cmd(SX126X_CMD_SET_RF_FREQUENCY, buf, 4);
-	get_status();
-
-	get_dev_errors();
 }
 
 void SX126x::calibrate_image(uint32_t frequency)
@@ -661,11 +649,9 @@ void SX126x::set_tx_power(int8_t dbm)
 	} else {
 		set_pa_config(0x04, 0x07, 0x00, 0x01);
 	}
-	get_status();
 
 	//set_over_current_protect(0x38);	// set max current to 140mA
 	write_reg(SX126X_REG_OCP, 0x38); // current max 160mA for the whole device
-	get_status();
 
     buf[0] = dbm;
 
@@ -678,8 +664,6 @@ void SX126x::set_tx_power(int8_t dbm)
     //}
 
     write_op_cmd(SX126X_CMD_SET_TX_PARAMS, buf, 2);
-
-	get_status();
 }
 
 int8_t SX126x::get_rssi()
