@@ -117,7 +117,7 @@ $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softspi/softspi.cpp							\
-./sx126x.cpp
+$(LIB_DIR)/sx126x/sx126x.cpp							\
 
 
 
@@ -134,14 +134,16 @@ CINCS		+= 										\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I $(LIB_DIR)/dmadrv					\
 			-I $(LIB_DIR)/spidrv					\
-			-I  $(LIB_DIR)/softspi/				\
+			-I  $(LIB_DIR)/softspi/					\
+			-I  $(LIB_DIR)/sx126x/					\
 			-I .									
 
 CXXINCS		+=										\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I $(LIB_DIR)/dmadrv					\
 			-I $(LIB_DIR)/spidrv					\
-			-I  $(LIB_DIR)/softspi/				\
+			-I  $(LIB_DIR)/softspi/					\
+			-I  $(LIB_DIR)/sx126x/					\
 			-I .
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
