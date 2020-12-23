@@ -41,7 +41,7 @@ void power_off_dev()
 void setup()
 {
 	Serial.setRouteLoc(1);
-	Serial.begin(9600);
+	Serial.begin(115200);
 
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 	power_on_dev();
