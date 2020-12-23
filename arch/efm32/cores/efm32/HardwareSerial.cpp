@@ -242,9 +242,12 @@ void HardwareSerial::initSerialGpio(void) {
                     AF_LEUART0_TX_PIN(this->routeLoc),
                     gpioModePushPull, 1);
 
+	#ifndef UART_NO_RX_INT
     GPIO_PinModeSet((GPIO_Port_TypeDef)AF_LEUART0_RX_PORT(this->routeLoc),
                     AF_LEUART0_RX_PIN(this->routeLoc),
                     gpioModeInputPull, 0);
+	#endif
+
 	buf->mode = LEUART_TYPE;
   }
 #endif
@@ -415,8 +418,12 @@ void HardwareSerial::initPort(void) {
     init.enable = leuartDisable;
 	init.baudrate = this->baud;
     LEUART_Init(LEUART0, &init);
+	#ifndef UART_NO_RX_INT
     LEUART0->IEN = LEUART_IEN_RXDATAV;
     LEUART0->ROUTE = USART_ROUTE_LOCATION_LOCx | LEUART_ROUTE_RXPEN | LEUART_ROUTE_TXPEN;
+	#else
+    LEUART0->ROUTE = USART_ROUTE_LOCATION_LOCx | LEUART_ROUTE_TXPEN;
+	#endif
   }
 #endif
 
@@ -511,7 +518,9 @@ void HardwareSerial::initPort(void) {
   if (this->instance == (USART_TypeDef *)LEUART0) {
     NVIC_ClearPendingIRQ(LEUART0_IRQn);
     NVIC_EnableIRQ(LEUART0_IRQn);
+	#ifndef UART_NO_RX_INT
     LEUART0->IEN = LEUART_IEN_RXDATAV;
+	#endif
     LEUART_Enable(LEUART0, leuartEnable);
 
   }
@@ -791,13 +800,17 @@ void LEUART_TXCallback(USART_Buf_TypeDef *interruptUART) {
     interruptUART->txStart %= SERIAL_TX_BUFFER_SIZE;
   }
 }
+#ifndef UART_NO_RX_INT
 void LEUART_RXCallback(USART_Buf_TypeDef *interruptUART) {
   if (((interruptUART->rxEnd + 1) % SERIAL_RX_BUFFER_SIZE) == interruptUART->txStart) return; /*over*/
   interruptUART->rxBuffer[interruptUART->rxEnd++] = LEUART_Rx((LEUART_TypeDef *)interruptUART->instance);
   interruptUART->rxEnd %= SERIAL_RX_BUFFER_SIZE;
 }
+#endif
 #if defined(LEUART0) && (USE_LEUART0 >0)
+#ifndef UART_NO_RX_INT
 void (*leuart0_rxCallbBck)(USART_Buf_TypeDef *interruptUART) = LEUART_RXCallback;
+#endif
 void (*leuart0_txCallbBck)(USART_Buf_TypeDef *interruptUART) = LEUART_TXCallback;
 
 extern "C"
@@ -805,7 +818,9 @@ void LEUART0_IRQHandler(void)
 {
   uint32_t flags = LEUART_IntGet(LEUART0);
   LEUART_IntClear(LEUART0, flags);
+#ifndef UART_NO_RX_INT
   if (flags & LEUART_IF_RXDATAV) leuart0_rxCallbBck(LEUART0_buf);
+#endif
   if (flags & LEUART_IF_TXC)     leuart0_txCallbBck(LEUART0_buf);
 }
 HardwareSerial SerialLEUART0((USART_TypeDef *)LEUART0);
