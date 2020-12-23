@@ -382,7 +382,7 @@ class SX126x {
 	void write_reg(uint16_t addr, uint8_t *data, uint8_t size);
 
 	void write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len);
-	void read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len);
+	uint8_t read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len);
 
 	void set_dio3_as_tcxo_ctrl(uint8_t tcxoVoltage, uint32_t timeout);
 	void set_dio2_as_rfswitch_ctrl(uint8_t enable);
@@ -410,6 +410,7 @@ class SX126x {
 	void set_lora_symb_num_timeout(uint8_t SymbNum);
 
 	void set_packet_type(uint8_t packetType);
+	uint8_t get_packet_type();
 
 	void set_modulation_params(uint8_t sf, uint8_t bw, uint8_t cr,
 				 uint8_t lowDataRateOptimize);
@@ -420,7 +421,7 @@ class SX126x {
 	void set_rx(uint32_t timeout);
 	void set_tx(uint32_t timeoutInMs);
 
-	void get_rx_buf_status(uint8_t * payloadLength,
+	void get_rxbuf_status(uint8_t * payloadLength,
 
 			       uint8_t * rxStartBufferPointer);
 	void wakeup(void);

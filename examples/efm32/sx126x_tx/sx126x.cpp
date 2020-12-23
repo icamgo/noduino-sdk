@@ -10,7 +10,7 @@
 {                                                                         \
   USART1,                       /* USART port                       */    \
   _USART_ROUTE_LOCATION_LOC0,   /* USART pins location number       */    \
-  4000000,                      /* Bitrate                          */    \
+  2000000,                      /* Bitrate                          */    \
   8,                            /* Frame length                     */    \
   0,                            /* Dummy tx value for rx only funcs */    \
   spidrvMaster,                 /* SPI mode                         */    \
@@ -317,7 +317,7 @@ bool SX126x::rx_mode(void)
 	return rv;
 }
 
-void SX126x::rx_status(uint8_t * rssi, uint8_t * snr)
+void SX126x::rx_status(uint8_t *rssi, uint8_t *snr)
 {
 	uint8_t buf[3];
 
@@ -349,10 +349,10 @@ void SX126x::set_standby(uint8_t mode)
 
 uint8_t SX126x::get_status(void)
 {
-	uint8_t rv = 0xff;
+	uint8_t rv = 0xff, ret = 0;
 
-#if 0
-	read_op_cmd(SX126X_CMD_GET_STATUS, &rv, 1);
+#if 1
+	ret = read_op_cmd(SX126X_CMD_GET_STATUS, &rv, 0);
 #else
 	while (digitalRead(_pin_busy)) ;
 
@@ -361,22 +361,22 @@ uint8_t SX126x::get_status(void)
 	#endif
 
 	spi_transfer(SX126X_CMD_GET_STATUS);
-	rv = spi_transfer(0);
+	ret = spi_transfer(0);
 
 	#ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, HIGH);
 	#endif
 #endif
 	INFO("get_status: 0x");
-	INFOLN_HEX(rv);
-	return rv;
+	INFOLN_HEX(ret);
+	return ret;
 }
 
 uint16_t SX126x::get_dev_errors(void)
 {
 	uint8_t error[2];
 
-#if 0
+#if 1
 	read_op_cmd(SX126X_CMD_GET_DEVICE_ERRORS, error, 2);
 #else
 	uint8_t rx[4] = {0};
@@ -572,11 +572,19 @@ void SX126x::set_lora_symb_num_timeout(uint8_t SymbNum)
 	write_op_cmd(SX126X_CMD_SET_LORA_SYMB_NUM_TIMEOUT, &data, 1);
 }
 
-void SX126x::set_packet_type(uint8_t packetType)
+void SX126x::set_packet_type(uint8_t pkt_t)
 {
-	uint8_t data = packetType;
+	uint8_t data = pkt_t;
 	write_op_cmd(SX126X_CMD_SET_PACKET_TYPE, &data, 1);
 }
+
+uint8_t SX126x::get_packet_type()
+{
+	uint8_t data = 0;
+	read_op_cmd(SX126X_CMD_GET_PACKET_TYPE, &data, 1);
+	return data;
+}
+
 
 void SX126x::set_modulation_params(uint8_t sf, uint8_t bw,
 				 uint8_t cr,
@@ -627,15 +635,14 @@ void SX126x::set_tx(uint32_t timeoutInMs)
 	write_op_cmd(SX126X_CMD_SET_TX, buf, 3);
 }
 
-void SX126x::get_rx_buf_status(uint8_t * payloadLength,
-			       uint8_t * rxStartBufferPointer)
+void SX126x::get_rxbuf_status(uint8_t *plen, uint8_t *rxbuf_start)
 {
 	uint8_t buf[2];
 
 	read_op_cmd(SX126X_CMD_GET_RX_BUFFER_STATUS, buf, 2);
 
-	*payloadLength = buf[0];
-	*rxStartBufferPointer = buf[1];
+	*plen = buf[0];
+	*rxbuf_start = buf[1];
 }
 
 void SX126x::set_tx_power(int8_t dbm)
@@ -686,13 +693,13 @@ int8_t SX126x::get_rssi()
     return rssi;
 }
 
-uint8_t SX126x::read_buf(uint8_t * rxData, uint8_t * rxDataLen,
-			   uint8_t maxLen)
+uint8_t SX126x::read_buf(uint8_t *data, uint8_t *len, uint8_t max_len)
 {
 	uint8_t offset = 0;
 
-	get_rx_buf_status(rxDataLen, &offset);
-	if (*rxDataLen > maxLen) {
+	get_rxbuf_status(len, &offset);
+
+	if (*len> max_len) {
 		return 1;
 	}
 
@@ -700,7 +707,6 @@ uint8_t SX126x::read_buf(uint8_t * rxData, uint8_t * rxDataLen,
 
 #ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, LOW);
-#endif
 
 	spi_transfer(SX126X_CMD_READ_BUFFER);
 	spi_transfer(offset);
@@ -710,8 +716,36 @@ uint8_t SX126x::read_buf(uint8_t * rxData, uint8_t * rxDataLen,
 		rxData[i] = spi_transfer(SX126X_CMD_NOP);
 	}
 
-#ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, HIGH);
+#else
+
+	uint8_t *ptx = (uint8_t *)malloc(*len+3);
+
+	if (ptx == NULL) {
+		INFOLN("alloc failed");
+		return;
+	}
+
+	memset(ptx, 0, *len+3);
+
+	ptx[0] = SX126X_CMD_WRITE_BUFFER;
+	ptx[1] = 0;								/* offset */
+
+	memcpy(ptx+3, data, *len);
+
+	SPIDRV_MTransferB(spi_hdl, ptx, ptx, *len+3);
+
+#ifdef DEBUG
+	for (uint16_t i = 0; i < *len; i++) {
+		INFO_HEX(ptx[i+3]);
+		INFO(" ");
+	}
+	INFOLN("");
+#endif
+
+	free(ptx);
+	ptx = NULL;
+
 #endif
 
 	while (digitalRead(_pin_busy)) ;
@@ -724,9 +758,9 @@ uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
 	INFO("SPI write: CMD=0x");
 	INFO_HEX(SX126X_CMD_WRITE_BUFFER);
 	INFO(" TX: ");
+
 #ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, LOW);
-#endif
 
 	spi_transfer(SX126X_CMD_WRITE_BUFFER);
 	spi_transfer(0);	//offset in tx fifo
@@ -736,11 +770,38 @@ uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
 		INFO(" ");
 		spi_transfer(data[i]);
 	}
-
-#ifdef USE_SOFTSPI
-	digitalWrite(_spi_cs, HIGH);
-#endif
 	INFOLN("");
+
+	digitalWrite(_spi_cs, HIGH);
+#else
+
+	uint8_t *ptx = (uint8_t *)malloc(len+2);
+
+	if (ptx == NULL) {
+		INFOLN("alloc failed");
+		return;
+	}
+
+	memset(ptx, 0, len+2);
+
+	ptx[0] = SX126X_CMD_WRITE_BUFFER;
+	ptx[1] = 0;								/* offset */
+
+	memcpy(ptx+2, data, len);
+
+	SPIDRV_MTransmitB(spi_hdl, ptx, len+2);
+
+#ifdef DEBUG
+	for (uint16_t i = 0; i < len; i++) {
+		INFO_HEX(ptx[i+2]);
+		INFO(" ");
+	}
+	INFOLN("");
+#endif
+
+	free(ptx);
+	ptx = NULL;
+#endif
 
 	while (digitalRead(_pin_busy)) ;
 
@@ -761,7 +822,6 @@ void SX126x::read_reg(uint16_t addr, uint8_t *data, uint8_t size)
 
 #ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, LOW);
-#endif
 
 	spi_transfer(SX126X_CMD_READ_REGISTER);
 
@@ -773,8 +833,28 @@ void SX126x::read_reg(uint16_t addr, uint8_t *data, uint8_t size)
 		data[i] = spi_transfer(0);
     }
 
-#ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, HIGH);
+#else
+	uint8_t *ptx = (uint8_t *)malloc(size+4);
+
+	if (ptx == NULL) {
+		INFOLN("alloc failed");
+		return;
+	}
+
+	memset(ptx, 0, size+4);
+
+	ptx[0] = SX126X_CMD_READ_REGISTER;
+	ptx[1] = (addr >> 8) & 0xff;
+	ptx[2] = addr & 0xff;
+	ptx[3] = 0;
+
+	SPIDRV_MTransferB(spi_hdl, ptx, ptx, size+4);
+
+	memcpy(data, ptx+4, size);
+
+	free(ptx);
+	ptx = NULL;
 #endif
 
 	while (digitalRead(_pin_busy)) ;
@@ -792,7 +872,6 @@ void SX126x::write_reg(uint16_t addr, uint8_t *data, uint8_t size)
 
 #ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, LOW);
-#endif
 
 	spi_transfer(SX126X_CMD_WRITE_REGISTER);
 
@@ -803,8 +882,28 @@ void SX126x::write_reg(uint16_t addr, uint8_t *data, uint8_t size)
 		spi_transfer(data[i]);
     }
 
-#ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, HIGH);
+#else
+
+	uint8_t *ptx = (uint8_t *)malloc(size+3);
+
+	if (ptx == NULL) {
+		INFOLN("alloc failed");
+		return;
+	}
+
+	memset(ptx, 0, size+3);
+
+	ptx[0] = SX126X_CMD_READ_REGISTER;
+	ptx[1] = (addr >> 8) & 0xff;
+	ptx[2] = addr & 0xff;
+
+	memcpy(ptx+3, data, size);
+
+	SPIDRV_MTransmitB(spi_hdl, ptx, size+3);
+
+	free(ptx);
+	ptx = NULL;
 #endif
 
 	while (digitalRead(_pin_busy)) ;
@@ -819,6 +918,7 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 
 	while (digitalRead(_pin_busy)) ;
 
+#if 0
 	spi_transfer(cmd);
 
 	INFO("SPI write: CMD=0x");
@@ -832,8 +932,31 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 		INFO_HEX(data[n]);
 		INFO(" ");
 	}
-
 	INFOLN(" ");
+#else
+	uint8_t tx[12] = {0};
+
+	tx[0] = cmd;
+
+	if (len > 0 && len <= 11) {
+		memcpy(tx+1, data, len);
+	}
+
+	SPIDRV_MTransmitB(spi_hdl, tx, len+1);
+
+#ifdef DEBUG
+	INFO("SPI write: CMD=0x");
+	INFO_HEX(cmd);
+	INFO(" TX: ");
+
+	for (uint8_t n = 0; n < len; n++) {
+		INFO_HEX(data[n]);
+		INFO(" ");
+	}
+	INFOLN(" ");
+#endif
+
+#endif
 
 #ifdef USE_SOFTSPI
 	// stop transfer
@@ -843,7 +966,11 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 	while (digitalRead(_pin_busy)) ;
 }
 
-void SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
+/*
+ * Max len is 6
+ * Return the status of 2nd NOP
+ */
+uint8_t SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 {
 #ifdef USE_SOFTSPI
 	// start transfer
@@ -852,6 +979,7 @@ void SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 
 	while (digitalRead(_pin_busy)) ;
 
+#if 0
 	spi_transfer(cmd);
 	spi_transfer(0);
 
@@ -868,6 +996,31 @@ void SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 	}
 
 	INFOLN(" ");
+#else
+	uint8_t tx[8] = {0};
+	uint8_t rx[8] = {0};
+
+	tx[0] = cmd;
+
+	SPIDRV_MTransferB(spi_hdl, tx, rx, len+2);
+
+	if (len > 0 && len <= 6) {
+		memcpy(data, rx+2, len);
+	}
+
+#ifdef DEBUG
+	INFO("SPI read: CMD=0x");
+	INFO_HEX(cmd);
+	INFO(" RX: ");
+
+	for (uint8_t i = 0; i < len; i++) {
+		INFO_HEX(data[i]);
+		INFO(" ");
+	}
+	INFOLN(" ");
+#endif
+
+#endif
 
 #ifdef USE_SOFTSPI
 	// stop transfer
@@ -875,4 +1028,6 @@ void SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 #endif
 
 	while (digitalRead(_pin_busy)) ;
+
+	return rx[1];
 }
