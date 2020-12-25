@@ -16,7 +16,7 @@
 #define ERR_INVALID_BIT_RATE            11
 #define ERR_INVALID_RX_BANDWIDTH        12
 #define ERR_INVALID_DATA_SHAPING        13
-#define ERR_INVALID_SYNC_WORD           14
+#define ERR_INVALID_SYNCWORD           14
 #define ERR_INVALID_OUTPUT_POWER        15
 #define ERR_INVALID_MODE                16
 
@@ -92,18 +92,18 @@
 #define SX126X_REG_CRC_INITIAL_LSB                    0x06BD
 #define SX126X_REG_CRC_POLYNOMIAL_MSB                 0x06BE
 #define SX126X_REG_CRC_POLYNOMIAL_LSB                 0x06BF
-#define SX126X_REG_SYNC_WORD_0                        0x06C0
-#define SX126X_REG_SYNC_WORD_1                        0x06C1
-#define SX126X_REG_SYNC_WORD_2                        0x06C2
-#define SX126X_REG_SYNC_WORD_3                        0x06C3
-#define SX126X_REG_SYNC_WORD_4                        0x06C4
-#define SX126X_REG_SYNC_WORD_5                        0x06C5
-#define SX126X_REG_SYNC_WORD_6                        0x06C6
-#define SX126X_REG_SYNC_WORD_7                        0x06C7
+#define SX126X_REG_SYNCWORD_0                        0x06C0
+#define SX126X_REG_SYNCWORD_1                        0x06C1
+#define SX126X_REG_SYNCWORD_2                        0x06C2
+#define SX126X_REG_SYNCWORD_3                        0x06C3
+#define SX126X_REG_SYNCWORD_4                        0x06C4
+#define SX126X_REG_SYNCWORD_5                        0x06C5
+#define SX126X_REG_SYNCWORD_6                        0x06C6
+#define SX126X_REG_SYNCWORD_7                        0x06C7
 #define SX126X_REG_NODE_ADDRESS                       0x06CD
 #define SX126X_REG_BROADCAST_ADDRESS                  0x06CE
-#define SX126X_REG_LORA_SYNC_WORD_MSB                 0x0740
-#define SX126X_REG_LORA_SYNC_WORD_LSB                 0x0741
+#define SX126X_REG_LORA_SYNCWORD_MSB                 0x0740
+#define SX126X_REG_LORA_SYNCWORD_LSB                 0x0741
 #define SX126X_REG_RANDOM_NUMBER_0                    0x0819
 #define SX126X_REG_RANDOM_NUMBER_1                    0x081A
 #define SX126X_REG_RANDOM_NUMBER_2                    0x081B
@@ -181,7 +181,7 @@
 #define SX126X_IRQ_CRC_ERR                          0b0001000000	//  6     6     wrong CRC received
 #define SX126X_IRQ_HEADER_ERR                       0b0000100000	//  5     5     LoRa header CRC error
 #define SX126X_IRQ_HEADER_VALID                     0b0000010000	//  4     4     valid LoRa header received
-#define SX126X_IRQ_SYNC_WORD_VALID                  0b0000001000	//  3     3     valid sync word detected
+#define SX126X_IRQ_SYNCWORD_VALID                  0b0000001000	//  3     3     valid sync word detected
 #define SX126X_IRQ_PREAMBLE_DETECTED                0b0000000100	//  2     2     preamble detected
 #define SX126X_IRQ_RX_DONE                          0b0000000010	//  1     1     packet received
 #define SX126X_IRQ_TX_DONE                          0b0000000001	//  0     0     packet transmission completed
@@ -246,6 +246,7 @@
 #define SX126X_GFSK_RX_BW_312_0                       0x19	//  7     0                        312.0 kHz
 #define SX126X_GFSK_RX_BW_373_6                       0x11	//  7     0                        373.6 kHz
 #define SX126X_GFSK_RX_BW_467_0                       0x09	//  7     0                        467.0 kHz
+
 #define SX126X_LORA_BW_7_8                            0x00	//  7     0     LoRa bandwidth: 7.8 kHz
 #define SX126X_LORA_BW_10_4                           0x08	//  7     0                     10.4 kHz
 #define SX126X_LORA_BW_15_6                           0x01	//  7     0                     15.6 kHz
@@ -262,6 +263,19 @@
 #define SX126X_LORA_CR_4_8                            0x04	//  7     0                       4/8
 #define SX126X_LORA_LOW_DATA_RATE_OPTIMIZE_OFF        0x00	//  7     0     LoRa low data rate optimization: disabled
 #define SX126X_LORA_LOW_DATA_RATE_OPTIMIZE_ON         0x01	//  7     0                                      enabled
+
+
+#define SF10										0xA
+#define SF11										0xB
+#define SF12										0xC
+
+#define BW125										0x4
+#define BW250										0x5
+#define BW500										0x6
+
+#define CR45										0x1
+#define CR46										0x2
+#define CR47										0x3
 
 //SX126X_CMD_SET_PACKET_PARAMS
 #define SX126X_GFSK_PREAMBLE_DETECT_OFF               0x00	//  7     0     GFSK minimum preamble length before reception starts: detector disabled
@@ -330,9 +344,9 @@
 #define SX126X_RC64K_CALIB_ERR                       0b000000001	//  0     0                    RC64K calibration failed
 
 //SX126X SPI register variables
-//SX126X_REG_LORA_SYNC_WORD_MSB + LSB
-#define SX126X_SYNC_WORD_PUBLIC                       0x3444
-#define SX126X_SYNC_WORD_PRIVATE                      0x1424
+//SX126X_REG_LORA_SYNCWORD_MSB + LSB
+#define SX126X_SYNCWORD_PUBLIC                       0x3444
+#define SX126X_SYNCWORD_PRIVATE                      0x1424
 
 #define SX126x_TXMODE_ASYNC                           0x01
 #define SX126x_TXMODE_SYNC                            0x02
@@ -378,6 +392,9 @@ class SX126x {
 	void set_cad_params(uint8_t sym_num, uint8_t det_pek, uint8_t det_min,
 							uint8_t exit_mode, uint32_t timeout);
 	void set_cad();
+
+	void test_tx();
+	void test_tx_preamble();
 
 	uint8_t read_reg(uint16_t addr);
 	void read_reg(uint16_t addr, uint8_t *data, uint8_t size);

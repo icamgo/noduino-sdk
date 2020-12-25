@@ -513,21 +513,21 @@ void SX126x::set_sync_word(uint16_t syncw)
 #if 0
 	uint8_t buf[3];
 
-	buf[0] = ((SX126X_REG_LORA_SYNC_WORD_MSB & 0xFF00) >> 8);
-	buf[1] = (SX126X_REG_LORA_SYNC_WORD_MSB & 0x00FF);
+	buf[0] = ((SX126X_REG_LORA_SYNCWORD_MSB & 0xFF00) >> 8);
+	buf[1] = (SX126X_REG_LORA_SYNCWORD_MSB & 0x00FF);
 	buf[2] = (syncw >> 8) & 0xFF;
 
 	write_op_cmd(SX126X_CMD_WRITE_REGISTER, buf, 3);
 
 
-	buf[0] = ((SX126X_REG_LORA_SYNC_WORD_LSB & 0xFF00) >> 8);
-	buf[1] = (SX126X_REG_LORA_SYNC_WORD_LSB & 0x00FF);
+	buf[0] = ((SX126X_REG_LORA_SYNCWORD_LSB & 0xFF00) >> 8);
+	buf[1] = (SX126X_REG_LORA_SYNCWORD_LSB & 0x00FF);
 	buf[2] = syncw & 0xFF;
 
 	write_op_cmd(SX126X_CMD_WRITE_REGISTER, buf, 3);
 #else
-	write_reg(SX126X_REG_LORA_SYNC_WORD_MSB, (syncw & 0xFF00) >> 8);
-	write_reg(SX126X_REG_LORA_SYNC_WORD_LSB, (syncw & 0xFF));
+	write_reg(SX126X_REG_LORA_SYNCWORD_MSB, (syncw & 0xFF00) >> 8);
+	write_reg(SX126X_REG_LORA_SYNCWORD_LSB, (syncw & 0xFF));
 #endif
 }
 
@@ -696,6 +696,16 @@ int8_t SX126x::get_rssi()
 	rssi = -buf >> 1;
 
     return rssi;
+}
+
+void SX126x::test_tx()
+{
+	write_op_cmd(SX126X_CMD_SET_TX_CONTINUOUS_WAVE, NULL, 0);
+}
+
+void SX126x::test_tx_preamble()
+{
+	write_op_cmd(SX126X_CMD_SET_TX_INFINITE_PREAMBLE, NULL, 0);
 }
 
 uint8_t SX126x::read_buf(uint8_t *data, uint8_t *len, uint8_t max_len)
