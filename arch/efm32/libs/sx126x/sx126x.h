@@ -357,6 +357,7 @@ class SX126x {
  public:
 	SX126x(int spi_cs, int reset, int busy, int interrupt);
 
+	int16_t init();
 	int16_t begin(uint32_t freq_hz, int8_t dbm);
 	int16_t lora_config(uint8_t sf, uint8_t bw,
 			   uint8_t cr, uint16_t preamble_len,
@@ -369,6 +370,7 @@ class SX126x {
 
 	bool send(uint8_t *data, uint8_t len, uint8_t mode);
 
+	bool enter_rx(void);
 	bool rx_mode(void);
 	void rx_status(uint8_t *rssi_pkt, uint8_t *snr_pkt);
 	void set_txPower(int8_t dbm);
@@ -460,8 +462,8 @@ class SX126x {
 	uint8_t _bw;
 	uint8_t _cr;
 
-	uint8_t _crc;
 	uint8_t _ldro;		/* Low Data Rate Optimize */
+	uint16_t _preamble_len;
 
 	uint32_t _tx_freq;
 };
