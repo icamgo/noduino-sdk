@@ -359,15 +359,18 @@ class SX126x {
 
 	int16_t begin(uint32_t freq_hz, int8_t dbm);
 	int16_t lora_config(uint8_t sf, uint8_t bw,
-			   uint8_t cr, uint16_t preambleLength,
-			   uint8_t payloadLen, bool crcOn, bool invertIrq);
+			   uint8_t cr, uint16_t preamble_len,
+			   uint8_t plen, bool crc_on, bool invert_irq);
 
-	uint8_t Receive(uint8_t * pData, uint16_t len);
+	int16_t setup_v0(uint32_t freq_hz, int8_t dbm);
+	int16_t setup_v1(uint32_t freq_hz, int8_t dbm);
+
+	uint8_t rx(uint8_t *p, uint16_t len);
 
 	bool send(uint8_t *data, uint8_t len, uint8_t mode);
 
 	bool rx_mode(void);
-	void rx_status(uint8_t * rssiPacket, uint8_t * snrPacket);
+	void rx_status(uint8_t *rssi_pkt, uint8_t *snr_pkt);
 	void set_txPower(int8_t dbm);
 
 	uint16_t get_dev_errors(void);
@@ -381,8 +384,8 @@ class SX126x {
 	uint8_t get_status(void);
 
  private:
-	uint8_t PacketParams[6];
-	bool txActive;
+	uint8_t pkt_params[6];
+	bool tx_active;
 
 	int _spi_cs;
 	int _pin_busy;
@@ -405,7 +408,7 @@ class SX126x {
 	void write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len);
 	uint8_t read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len);
 
-	void set_dio3_as_tcxo_ctrl(uint8_t tcxoVoltage, uint32_t timeout);
+	void set_dio3_as_tcxo_ctrl(uint8_t tcxo_volt, uint32_t timeout);
 	void set_dio2_as_rfswitch_ctrl(uint8_t enable);
 
 
@@ -414,7 +417,7 @@ class SX126x {
 
 	void set_rf_freq(uint32_t frequency);
 
-	void calibrate(uint8_t calibParam);
+	void calibrate(uint8_t calib_param);
 	void calibrate_image(uint32_t frequency);
 
 	void set_regulator_mode(uint8_t mode);
@@ -422,15 +425,14 @@ class SX126x {
 
 	void set_over_current_protect(uint8_t value);
 
-	void set_pa_config(uint8_t paDutyCycle, uint8_t hpMax, uint8_t deviceSel,
-			 uint8_t paLut);
-	void config_dio_irq(uint16_t irqMask, uint16_t dio1Mask,
-			     uint16_t dio2Mask, uint16_t dio3Mask);
+	void set_pa_config(uint8_t duty_cycle, uint8_t hp_max, uint8_t dev_sel, uint8_t lut);
+	void config_dio_irq(uint16_t irq_mask, uint16_t dio1_mask,
+						 uint16_t dio2_mask, uint16_t dio3_mask);
 
 	void set_stop_rx_timer_on_preamble(bool enable);
-	void set_lora_symb_num_timeout(uint8_t SymbNum);
+	void set_lora_symb_num_timeout(uint8_t symb_num);
 
-	void set_packet_type(uint8_t packetType);
+	void set_packet_type(uint8_t packet_type);
 	uint8_t get_packet_type();
 
 	void set_modulation_params(uint8_t sf, uint8_t bw, uint8_t cr,
@@ -440,23 +442,27 @@ class SX126x {
 	void clear_irq_status(uint16_t irq);
 
 	void set_rx(uint32_t timeout);
-	void set_tx(uint32_t timeoutInMs);
+	void set_tx(uint32_t timeout_ms);
 
-	void get_rxbuf_status(uint8_t * payloadLength,
-
-			       uint8_t * rxStartBufferPointer);
+	void get_rxbuf_status(uint8_t *plen, uint8_t *buf);
 	void wakeup(void);
 
-	uint8_t read_buf(uint8_t * rxData, uint8_t * rxDataLen,
-			   uint8_t maxLen);
-	uint8_t write_buf(uint8_t * txData, uint8_t txDataLen);
+	uint8_t read_buf(uint8_t *rx_data, uint8_t *rx_len, uint8_t max_len);
+	uint8_t write_buf(uint8_t *tx_data, uint8_t len);
 
 	void set_sync_word(uint16_t syncw);
+
+	void workaround_ant_mismatch();
+	void workaround_tx();
 
 	int _tx_power;
 	uint8_t _sf;
 	uint8_t _bw;
 	uint8_t _cr;
+
+	uint8_t _crc;
+	uint8_t _ldro;		/* Low Data Rate Optimize */
+
 	uint32_t _tx_freq;
 };
 

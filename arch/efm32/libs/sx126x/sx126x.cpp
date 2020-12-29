@@ -59,7 +59,10 @@ SX126x::SX126x(int cs, int reset, int busy, int interrupt)
 	_pin_busy = busy;
 	_pin_dio1 = interrupt;
 
-	txActive = false;
+	tx_active = false;
+
+	_crc = true;
+	_ldro = true;
 
 #ifdef USE_SOFTSPI
 	pinMode(_spi_cs, OUTPUT);
@@ -69,6 +72,42 @@ SX126x::SX126x(int cs, int reset, int busy, int interrupt)
 	pinMode(_pin_dio1, INPUT);
 
 	digitalWrite(_pin_reset, HIGH);
+}
+
+int16_t SX126x::setup_v0(uint32_t freq_hz, int8_t dbm)
+{
+	_sf = SF10;
+	_bw = BW500;
+	_cr = CR46;
+	_ldro = true;
+
+	_tx_freq = freq_hz;
+
+	if (dbm > 22)
+		dbm = 22;
+
+	if (dbm < -3)
+		dbm = -3;
+
+	_tx_power = dbm;
+}
+
+int16_t SX126x::setup_v1(uint32_t freq_hz, int8_t dbm)
+{
+	_sf = SF12;
+	_bw = BW125;
+	_cr = CR45;
+	_ldro = true;
+
+	_tx_freq = freq_hz;
+
+	if (dbm > 22)
+		dbm = 22;
+
+	if (dbm < -3)
+		dbm = -3;
+
+	_tx_power = dbm;
 }
 
 int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
@@ -91,23 +130,15 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 
 	reset();
 
-
 	while (0x22 != get_status()) {
 		set_standby(SX126X_STANDBY_RC);
 		set_regulator_mode(SX126X_REGULATOR_DC_DC);
 		delay(100);
 	}
 
-	/*
-	 * WORKAROUND - Better Resistance of the SX1262 Tx to Antenna Mismatch
-	 * see DS_SX1261-2_V1.2 datasheet chapter 15.2
-	 * RegTxClampConfig = @address 0x08D8
-	*/
-	write_reg(0x08D8, read_reg(0x08D8) | 0x1E);
-	/* WORKAROUND END */
+	workaround_ant_mismatch();
 	get_status();
 
-	//if (0x2A != get_status()) {
 	/*
 	 * ASR6500: 0x22
 	 *  SX126x: 0x2A
@@ -167,9 +198,42 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 
 }
 
+void SX126x::workaround_ant_mismatch()
+{
+	/* 
+	 * Better Resistance of the SX1262 Tx to Antenna Mismatch
+	 * see DS_SX1261-2_V1.2 datasheet chapter 15.2
+	 * RegTxClampConfig = @address 0x08D8
+	 *
+	 * The register modification must be done
+	 * after a Power On Reset, or a wake-up
+	 * from cold Start
+	*/
+
+	write_reg(0x08D8, read_reg(0x08D8) | 0x1E);
+}
+
+void SX126x::workaround_tx()
+{
+	/* 
+	 * Before any packet transmission, bit #2 at address 0x0889 shall be
+	 * set to:
+	 *  •0 if the LoRa BW = 500 kHz
+	 *  •1 for any other LoRa BW
+	 *
+	 * see DS_SX1261-2_V1.2 datasheet chapter 15.1
+	 * 500KHz = @address 0x0889
+	*/
+	if (_bw == BW500) {
+		write_reg(0x0889, read_reg(0x0889) & 0xFB);
+	} else {
+		write_reg(0x0889, read_reg(0x0889) & 0x04);
+	}
+}
+
 int16_t SX126x::lora_config(uint8_t sf, uint8_t bw,
-			   uint8_t cr, uint16_t preambleLength,
-			   uint8_t payloadLen, bool crcOn, bool invertIrq)
+			   uint8_t cr, uint16_t preamble_len,
+			   uint8_t pkt_len, bool crc_on, bool invert_irq)
 {
 	uint8_t ldro = 1;		// LowDataRateOptimize is on
 
@@ -183,28 +247,29 @@ int16_t SX126x::lora_config(uint8_t sf, uint8_t bw,
 
 	set_modulation_params(sf, bw, cr, ldro);
 
-	PacketParams[0] = (preambleLength >> 8) & 0xFF;
-	PacketParams[1] = preambleLength;
-	if (payloadLen) {
+	pkt_params[0] = (preamble_len>> 8) & 0xFF;
+	pkt_params[1] = preamble_len;
+
+	if (pkt_len) {
 		//fixed payload length
-		PacketParams[2] = 0x01;
-		PacketParams[3] = payloadLen;
+		pkt_params[2] = 0x01;
+		pkt_params[3] = pkt_len;
 	} else {
-		PacketParams[2] = 0x00;
-		PacketParams[3] = 0xFF;
+		pkt_params[2] = 0x00;
+		pkt_params[3] = 0xFF;
 	}
 
-	if (crcOn)
-		PacketParams[4] = 0x01;
+	if (crc_on)
+		pkt_params[4] = 0x01;
 	else
-		PacketParams[4] = 0x00;
+		pkt_params[4] = 0x00;
 
-	if (invertIrq)
-		PacketParams[5] = 0x01;
+	if (invert_irq)
+		pkt_params[5] = 0x01;
 	else
-		PacketParams[5] = 0x00;
+		pkt_params[5] = 0x00;
 
-	write_op_cmd(SX126X_CMD_SET_PACKET_PARAMS, PacketParams, 6);
+	write_op_cmd(SX126X_CMD_SET_PACKET_PARAMS, pkt_params, 6);
 
 /*
 	config_dio_irq(SX126X_IRQ_ALL,	//all interrupts enabled
@@ -217,17 +282,19 @@ int16_t SX126x::lora_config(uint8_t sf, uint8_t bw,
 	//set_rx(0xFFFFFF);
 }
 
-uint8_t SX126x::Receive(uint8_t * pData, uint16_t len)
+uint8_t SX126x::rx(uint8_t *pkt, uint16_t len)
 {
-	uint8_t rxLen = 0;
-	uint16_t irqRegs = get_irq_status();
+	uint8_t rx_len = 0;
+	uint16_t irq = get_irq_status();
 
-	if (irqRegs & SX126X_IRQ_RX_DONE) {
+	if (irq & SX126X_IRQ_RX_DONE) {
+
 		clear_irq_status(SX126X_IRQ_RX_DONE);
-		read_buf(pData, &rxLen, len);
+
+		read_buf(pkt, &rx_len, len);
 	}
 
-	return rxLen;
+	return rx_len;
 }
 
 bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
@@ -235,36 +302,30 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 	uint16_t irq;
 	bool rv = false;
 
-	if (txActive == false) {
+	if (tx_active == false) {
 
-		txActive = true;
+		tx_active = true;
 
 		set_rf_freq(_tx_freq);
 		set_tx_power(_tx_power);
+
+		set_modulation_params(_sf, _bw, _cr, 1);
+
+		// set_packet_params()
+		pkt_params[2] = 0x00;	//Variable length packet (explicit header)
+		pkt_params[3] = len;
+		write_op_cmd(SX126X_CMD_SET_PACKET_PARAMS, pkt_params, 6);
 
 		config_dio_irq(SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT,
 						SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT,
 						SX126X_IRQ_NONE,
 						SX126X_IRQ_NONE);
 
-		set_modulation_params(_sf, _bw, _cr, 1);
-
-
-		// set_packet_params()
-		PacketParams[2] = 0x00;	//Variable length packet (explicit header)
-		PacketParams[3] = len;
-		write_op_cmd(SX126X_CMD_SET_PACKET_PARAMS, PacketParams, 6);
-
 		clear_irq_status(SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT);
 
 		write_buf(data, len);
 
-		/* WORKAROUND
-		 * see DS_SX1261-2_V1.2 datasheet chapter 15.1
-		 * 500KHz = @address 0x0889
-		*/
-		write_reg(0x0889, read_reg(0x0889) & 0xFB);
-		/* WORKAROUND END */
+		workaround_tx();
 
 		//set_tx(0);
 		set_tx(600);		// timeout = 100ms
@@ -275,7 +336,7 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 			       && (!(irq & SX126X_IRQ_TIMEOUT))) {
 				irq = get_irq_status();
 			}
-			txActive = false;
+			tx_active = false;
 
 			set_rx(0xFFFFFF);
 
@@ -299,13 +360,13 @@ bool SX126x::rx_mode(void)
 	uint16_t irq;
 	bool rv = false;
 
-	if (txActive == false) {
+	if (tx_active == false) {
 		rv = true;
 	} else {
 		irq = get_irq_status();
 		if (irq & (SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT)) {
 			set_rx(0xFFFFFF);
-			txActive = false;
+			tx_active = false;
 			rv = true;
 		}
 	}
@@ -531,15 +592,15 @@ void SX126x::set_sync_word(uint16_t syncw)
 #endif
 }
 
-void SX126x::set_pa_config(uint8_t paDutyCycle, uint8_t hpMax, uint8_t deviceSel,
-			 uint8_t paLut)
+void SX126x::set_pa_config(uint8_t duty_cycle, uint8_t hp_max, uint8_t dev_sel,
+			 uint8_t lut)
 {
 	uint8_t buf[4];
 
-	buf[0] = paDutyCycle;
-	buf[1] = hpMax;
-	buf[2] = deviceSel;
-	buf[3] = paLut;
+	buf[0] = duty_cycle;
+	buf[1] = hp_max;
+	buf[2] = dev_sel;
+	buf[3] = lut;
 	write_op_cmd(SX126X_CMD_SET_PA_CONFIG, buf, 4);
 }
 
@@ -553,19 +614,19 @@ void SX126x::set_over_current_protect(uint8_t value)
 	write_op_cmd(SX126X_CMD_WRITE_REGISTER, buf, 3);
 }
 
-void SX126x::config_dio_irq(uint16_t irqMask, uint16_t dio1Mask,
-			     uint16_t dio2Mask, uint16_t dio3Mask)
+void SX126x::config_dio_irq(uint16_t irq_mask, uint16_t dio1_mask,
+							 uint16_t dio2_mask, uint16_t dio3_mask)
 {
 	uint8_t buf[8];
 
-	buf[0] = (uint8_t) ((irqMask >> 8) & 0x00FF);
-	buf[1] = (uint8_t) (irqMask & 0x00FF);
-	buf[2] = (uint8_t) ((dio1Mask >> 8) & 0x00FF);
-	buf[3] = (uint8_t) (dio1Mask & 0x00FF);
-	buf[4] = (uint8_t) ((dio2Mask >> 8) & 0x00FF);
-	buf[5] = (uint8_t) (dio2Mask & 0x00FF);
-	buf[6] = (uint8_t) ((dio3Mask >> 8) & 0x00FF);
-	buf[7] = (uint8_t) (dio3Mask & 0x00FF);
+	buf[0] = (uint8_t) ((irq_mask >> 8) & 0x00FF);
+	buf[1] = (uint8_t) (irq_mask & 0x00FF);
+	buf[2] = (uint8_t) ((dio1_mask >> 8) & 0x00FF);
+	buf[3] = (uint8_t) (dio1_mask & 0x00FF);
+	buf[4] = (uint8_t) ((dio2_mask >> 8) & 0x00FF);
+	buf[5] = (uint8_t) (dio2_mask & 0x00FF);
+	buf[6] = (uint8_t) ((dio3_mask >> 8) & 0x00FF);
+	buf[7] = (uint8_t) (dio3_mask & 0x00FF);
 	write_op_cmd(SX126X_CMD_SET_DIO_IRQ_PARAMS, buf, 8);
 }
 
@@ -575,9 +636,9 @@ void SX126x::set_stop_rx_timer_on_preamble(bool enable)
 	write_op_cmd(SX126X_CMD_STOP_TIMER_ON_PREAMBLE, &data, 1);
 }
 
-void SX126x::set_lora_symb_num_timeout(uint8_t SymbNum)
+void SX126x::set_lora_symb_num_timeout(uint8_t symb_num)
 {
-	uint8_t data = SymbNum;
+	uint8_t data = symb_num;
 	write_op_cmd(SX126X_CMD_SET_LORA_SYMB_NUM_TIMEOUT, &data, 1);
 }
 
@@ -595,16 +656,14 @@ uint8_t SX126x::get_packet_type()
 }
 
 
-void SX126x::set_modulation_params(uint8_t sf, uint8_t bw,
-				 uint8_t cr,
-				 uint8_t lowDataRateOptimize)
+void SX126x::set_modulation_params(uint8_t sf, uint8_t bw, uint8_t cr, uint8_t ldro)
 {
 	uint8_t data[4];
 	//currently only LoRa supported
 	data[0] = sf;
 	data[1] = bw;
 	data[2] = cr;
-	data[3] = lowDataRateOptimize;
+	data[3] = ldro;
 	write_op_cmd(SX126X_CMD_SET_MODULATION_PARAMS, data, 4);
 }
 
