@@ -382,6 +382,7 @@ class SX126x {
 	int8_t get_rssi();
 
 	void reset(void);
+	void set_sleep();
 
 	uint8_t get_status(void);
 

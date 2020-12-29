@@ -406,6 +406,12 @@ void SX126x::wakeup(void)
 	get_status();
 }
 
+void SX126x::set_sleep()
+{
+	uint8_t cfg = SX126X_SLEEP_START_COLD | SX126X_SLEEP_RTC_OFF;
+	write_op_cmd(SX126X_CMD_SET_SLEEP, &cfg, 0);
+}
+
 void SX126x::set_standby(uint8_t mode)
 {
 	uint8_t data = mode;
