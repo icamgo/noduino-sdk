@@ -1,29 +1,40 @@
 
-#include "SX126x.h"
+#include "sx126x.h"
 
 #define RF_FREQ			470000000	// Hz center frequency
-//#define RF_FREQ			472500000
-#define TX_PWR			17			// dBm tx output power
+#define TX_PWR			22			// dBm tx output power
+
+#if 0
 #define LORA_BW			6
 #define LORA_SF			10			
 #define LORA_CR			2
 #define	CRC				true
+#define INVERTED_IQ		false
 
 #define LORA_PREAMBLE_LEN				8	// 8
 #define LORA_PAYLOAD_LEN				0	// 0: variable receive length
+#endif
 							      			// 1..255 payloadlength
 
 SX126x lora(SW_CS,		// Pin: SPI CS,PIN06-PB08-D2
 	    9,				// Pin: RESET, PIN18-PC15-D9
-	    5,				// PIN: Busy,  PIN11-PB14-D5
-	    //0,				// PIN: Busy,  PIN1-D0
+		#if 1
+	    5,				// PIN: Busy,  PIN11-PB14-D5, The RX pin
+		#else
+	    0,				// PIN: Busy,  PIN1-D0, The KEY pin
+		#endif
 	    3				// Pin: DIO1,  PIN08-PB11-D3
     );
 
 void radio_init()
 {
+#if 0
 	lora.begin(RF_FREQ, TX_PWR);
-	lora.lora_config(LORA_SF, LORA_BW, LORA_CR, LORA_PREAMBLE_LEN, LORA_PAYLOAD_LEN, CRC, false);
+	lora.lora_config(LORA_SF, LORA_BW, LORA_CR, LORA_PREAMBLE_LEN, LORA_PAYLOAD_LEN, CRC, INVERTED_IQ);
+#else
+	lora.init();
+	lora.setup_v0(RF_FREQ, TX_PWR);
+#endif
 }
 
 #define	PWR_CTRL_PIN			8
@@ -51,7 +62,7 @@ void setup()
 	radio_init();
 }
 
-/* 12020430011 */
+/* 20430011 */
 uint8_t p[36] = {
 	0x47, 0x4F, 0x33,
 	0x00, 0x00, 0x00, 0x02, 0xCC, 0x79, 0x34, 0xBB,
