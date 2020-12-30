@@ -22,12 +22,13 @@ ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 #ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
-DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
-#DEFS = -DUSE_SOFTSPI
+#DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
+#DEFS := -DUSE_SX126X -DUART_NO_RX_INT
+DEFS := -DUSE_SX126X -DUART_NO_RX_INT -DDEBUG_SX126X
 
 MCU = cortex-m0plus
 #F_CPU = 7000000
-F_CPU = 1000000
+F_CPU =  1000000
 
 VERSION=187
 
@@ -100,6 +101,9 @@ $(ARDUINO_CORES)/efm32/efm32init.c						\
 $(ARDUINO_CORES)/efm32/efm32gpio.c						\
 $(ARDUINO_CORES)/efm32/core_callback.c					\
 $(ARDUINO_CORES)/avr/dtostrf.c							\
+$(LIB_DIR)/dmadrv/dmadrv.c								\
+$(LIB_DIR)/dmadrv/dmactrl.c								\
+$(LIB_DIR)/spidrv/spidrv.c								\
 $(LIB_DIR)/rtcdrv/rtcdriver.c
 
 #$(ARDUINO_CORES)/efm32/efm32dac.c						\
@@ -118,6 +122,7 @@ $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/softspi/softspi.cpp							\
+$(LIB_DIR)/sx126x/sx126x.cpp							\
 $(LIB_DIR)/sx127x/sx1272.cpp
 
 
@@ -136,7 +141,10 @@ CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
+			-I $(LIB_DIR)/dmadrv					\
+			-I $(LIB_DIR)/spidrv					\
 			-I $(LIB_DIR)/sx127x					\
+			-I  $(LIB_DIR)/sx126x/					\
 			-I .									
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
@@ -144,7 +152,10 @@ CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/U8g2/src					\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
+			-I $(LIB_DIR)/dmadrv					\
+			-I $(LIB_DIR)/spidrv					\
 			-I $(LIB_DIR)/sx127x					\
+			-I  $(LIB_DIR)/sx126x/					\
 			-I .
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
@@ -270,6 +281,7 @@ coff: build/main.elf
 	$(NM) -n $< > $@
 
 ############################################################
+#used from Jan 2020
 dev_type	:= 21
 year		:= $(shell date +%y)
 week		:= $(shell date +%V)
@@ -277,16 +289,16 @@ week		:= $(shell date +%V)
 id_base := 1$(year)$(dev_type)$(week)0000
 
 ifeq ($(OS),Windows_NT)
-idn		:= $(shell /bin/bash -c "echo $$RANDOM")
+rand		:= $(shell /bin/bash -c "echo $$RANDOM")
 else
-idn		:= $(shell /bin/bash -c 'echo $$RANDOM')
+rand		:= $(shell /bin/bash -c 'echo $$RANDOM')
 endif
 
 ifndef id
-id = $$(($(id_base) + $(idn) % 10000))
+id = $$(($(id_base)+$(rand)%10000))
+endif
 
 id_ok = $$(cat .idused | grep $(id))
-endif
 
 hex_id = $$(printf "%016X" $(id) | fold -w2 | tac | tr -d "\n")
 
@@ -379,19 +391,21 @@ getuuid:
 # make setid id=xxx (set id=xxx, do not log it)
 setid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
-	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;  \
-		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
-	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
+	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER) && echo $(id) >> .idused;
 	@rm -f .u.bin
 
 # same as setid
 setdid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
-	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;  \
-		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
-	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
+	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER) && echo $(id) >> .idused;
 	@rm -f .u.bin
 
 reset:

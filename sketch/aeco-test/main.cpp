@@ -16,21 +16,32 @@
  *
 */
 
-#include "softspi.h"
-#include "sx1272.h"
-
 #include "rtcdriver.h"
 #include "math.h"
 #include "em_wdog.h"
 
+#ifdef CONFIG_V0
+#include "softspi.h"
+#include "sx1272.h"
+#elif USE_SX126X
+#include "sx126x.h"
+SX126x sx126x(2,			// Pin: SPI CS,PIN06-PB08-D2
+			  9,			// Pin: RESET, PIN18-PC15-D9
+			  5,			// PIN: Busy,  PIN11-PB14-D5, The RX pin
+			  //0,			// PIN: Busy,  PIN1-D0, The KEY pin
+	    	  3				// Pin: DIO1,  PIN08-PB11-D3
+);
+#endif
+
 //#define	DEBUG					1
+#define	TX_TESTING				1
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 30;		/* 30s */
-
+static uint32_t sample_period = 18;		/* 30s */
 static uint32_t sample_count = 0;
+
 #define		HEARTBEAT_TIME			7200
 
 static float old_temp = 0.0;
@@ -58,66 +69,46 @@ uint8_t wf_pkt1[24] = {
 	0x8B, 0x06, 0x62, 0x99, 0xF2, 0xAE, 0x55
 };
 
-//#define	TX_TESTING				1
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
 
 static uint8_t need_push = 0;
 
-#define ENABLE_CAD				1
-
-#define	TX_TIME					2300		// 2300ms
-#define DEST_ADDR				1
-
 #ifdef CONFIG_V0
+//#define TXRX_CH				CH_00_470
 #define TXRX_CH				CH_01_472
 #define LORA_MODE			12
+#define ENABLE_CAD				1
+#define	TX_TIME					2300		// 2300ms
+#define DEST_ADDR				1
+#define MAX_DBM					20
+
+#else
+#define TXRX_CH					472500000
+#define MAX_DBM					22
+#endif
 
 #define	RESET_TX			0
 #define	DELTA_TX			1
 #define	TIMER_TX			2
 #define	KEY_TX				3
 
-#else
-#define node_addr				110
-
-#define TXRX_CH				CH_00_470
-#define LORA_MODE			11
-#endif
-
-#define MAX_DBM					20
-
-
-//#define WITH_ACK
-
-#ifdef CONFIG_V0
-uint8_t message[32] = { 0x47, 0x4F, 0x33 };
+uint8_t message[36] = { 0x47, 0x4F, 0x33 };
 uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
-#else
-uint8_t message[32];
-#endif
 
 #ifdef DEBUG
-
 #define INFO_S(param)			Serial.print(F(param))
 #define INFO_HEX(param)			Serial.print(param,HEX)
 #define INFO(param)				Serial.print(param)
 #define INFOLN(param)			Serial.println(param)
 #define FLUSHOUTPUT					Serial.flush();
-
 #else
-
 #define INFO_S(param)
 #define INFO(param)
 #define INFOLN(param)
 #define FLUSHOUTPUT
-
-#endif
-
-#ifdef WITH_ACK
-#define	NB_RETRIES			2
 #endif
 
 void push_data();
@@ -188,9 +179,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	if (fabsf(cur_temp - old_temp) > 0.5) {
 
 		need_push = 0x5a;
-#ifdef CONFIG_V0
 		tx_cause = DELTA_TX;
-#endif
 	}
 #endif
 }
@@ -198,9 +187,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 void trig_check_sensor()
 {
 	need_push = 0x5a;
-#ifdef CONFIG_V0
 	tx_cause = KEY_TX;
-#endif
 }
 
 void setup()
@@ -212,7 +199,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_64k;	/* 128k 1kHz periods should give 64 seconds */
+	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -243,18 +230,18 @@ void qsetup()
 {
 #ifdef CONFIG_V0
 	sx1272.setup_v0(TXRX_CH, MAX_DBM);
-#else
-	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
-	sx1272._nodeAddress = node_addr;
-#endif
-
 #ifdef ENABLE_CAD
 	sx1272._enableCarrierSense = true;
 #endif
 
+#elif USE_SX126X
+	sx126x.wakeup();
+
+	sx126x.init();
+	sx126x.setup_v0(TXRX_CH, MAX_DBM);
+#endif
 }
 
-#ifdef CONFIG_V0
 uint64_t get_devid()
 {
 	uint64_t *p;
@@ -274,7 +261,6 @@ uint16_t get_crc(uint8_t *pp, int len)
 	}
 	return hh;
 }
-#endif
 
 void push_data()
 {
@@ -297,7 +283,6 @@ void push_data()
 	}
 #endif
 
-#ifdef CONFIG_V0
 	uint8_t *pkt = message;
 	uint64_t devid = get_devid();
 
@@ -331,71 +316,52 @@ void push_data()
 	pkt[21] = 0;		// Internal Temperature of the chip
 	pkt[22] = 0;		// Internal humidity to detect water leak of the shell
 	pkt[23] = 0;		// Internal current consumption
-#else
-	char vbat_s[10], pres_s[10];
-	ftoa(vbat_s, vbat, 2);
-	ftoa(pres_s, cur_temp, 2);
-
-	r_size = sprintf((char *)message, "\\!U/%s/P/%s", vbat_s, pres_s);
-
-	INFO("Sending ");
-	INFOLN((char *)message);
-
-	INFO("Real payload size is ");
-	INFOLN(r_size);
-#endif
 
 	power_on_dev();
-	qsetup();
-
-#ifdef ENABLE_CAD
-	sx1272.CarrierSense();
-#endif
 
 #ifdef DEBUG
 	startSend = millis();
 #endif
 
+	qsetup();
+
 #ifdef CONFIG_V0
+
+#ifdef ENABLE_CAD
+	sx1272.CarrierSense();
+#endif
+
 	if (tx_cause != KEY_TX) {
 		e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
 	} else {
 		e = sx1272.sendPacketTimeout(DEST_ADDR, wf_pkt2, 28, TX_TIME);
 	}
-#else
-	// just a simple data packet
-	sx1272.setPacketType(PKT_TYPE_DATA);
-
-	// Send message to the gateway and print the result
-	// with the app key if this feature is enabled
-#ifdef WITH_ACK
-	int n_retry = NB_RETRIES;
-
-	do {
-		e = sx1272.sendPacketTimeoutACK(DEST_ADDR,
-						message, r_size);
-
-		if (e == 3)
-			INFO("No ACK");
-
-		n_retry--;
-
-		if (n_retry)
-			INFO("Retry");
-		else
-			INFO("Abort");
-
-	} while (e && n_retry);
-#else
-	// 10ms max tx time
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
-#endif
-#endif
 
 	if (!e) {
 		// send message succesful, update the old_temp
 		old_temp = cur_temp;
 	}
+
+	e = sx1272.setSleepMode();
+
+	if (!e)
+		INFO("Successfully switch into sleep mode");
+	else
+		INFO("Could not switch into sleep mode");
+
+	digitalWrite(SX1272_RST, LOW);
+	spi_end();
+
+	power_off_dev();
+#elif USE_SX126X
+
+	sx126x.send(message, 24, SX126x_TXMODE_SYNC);
+
+	sx126x.set_sleep();
+
+	power_off_dev();
+#endif
+
 
 #ifdef DEBUG
 	endSend = millis();
@@ -406,43 +372,28 @@ void push_data()
 	INFO("LoRa Sent in ");
 	INFOLN(endSend - startSend);
 
-	INFO("LoRa Sent w/CAD in ");
-	INFOLN(endSend - sx1272._startDoCad);
-
 	INFO("Packet sent, state ");
 	INFOLN(e);
 #endif
-
-	e = sx1272.setSleepMode();
-	if (!e)
-		INFO("Successfully switch into sleep mode");
-	else
-		INFO("Could not switch into sleep mode");
-
-	digitalWrite(SX1272_RST, LOW);
-
-	spi_end();
-
-	power_off_dev();
 }
 
 void loop()
 {
-	INFO("Clock Freq = ");
-	INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
-
+	//INFO("Clock Freq = ");
+	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
 	//INFOLN("Feed the watchdog");
 
 	if (0x5a == need_push) {
 		push_data();
-
 		need_push = 0;
 	}
 
 	power_off_dev();
-	digitalWrite(SX1272_RST, LOW);
 
+#ifdef CONFIG_V0
+	digitalWrite(SX1272_RST, LOW);
 	spi_end();
+#endif
 
 	/*
 	 * Enable rtc timer before enter deep sleep
