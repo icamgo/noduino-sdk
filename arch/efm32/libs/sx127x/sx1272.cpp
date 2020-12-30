@@ -20,7 +20,9 @@
 
 #ifdef USE_SOFTSPI
 #include "softspi.h"
-#else
+#endif
+
+#ifdef CONFIG_V0
 #include "spidrv.h"
 
 #define SPI_M_USART1   	                                           \
@@ -51,7 +53,6 @@ uint8_t spihw_transfer(uint8_t data)
 	SPIDRV_MTransferSingleItemB(spi_hdl, data, &rx);
 	return rx;
 }
-#endif
 
 //#include "softi2c.h"
 //#define	sx_delay(x)			i2c_delay(14*1000*x)
@@ -5196,3 +5197,4 @@ void SX1272::setCSPin(uint8_t cs)
 }
 
 SX1272 sx1272 = SX1272();
+#endif
