@@ -385,6 +385,7 @@ class SX126x {
 	void set_sleep();
 
 	uint8_t get_status(void);
+	void wakeup(void);
 
  private:
 	uint8_t pkt_params[6];
@@ -448,7 +449,6 @@ class SX126x {
 	void set_tx(uint32_t timeout_ms);
 
 	void get_rxbuf_status(uint8_t *plen, uint8_t *buf);
-	void wakeup(void);
 
 	uint8_t read_buf(uint8_t *rx_data, uint8_t *rx_len, uint8_t max_len);
 	uint8_t write_buf(uint8_t *tx_data, uint8_t len);

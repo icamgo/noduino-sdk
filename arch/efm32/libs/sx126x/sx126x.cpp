@@ -34,9 +34,7 @@ uint8_t spi_transfer(uint8_t data)
 }
 #endif
 
-#define DEBUG
-
-#ifdef DEBUG
+#ifdef DEBUG_SX126X
 #define INFO_S(param)			Serial.print(F(param))
 #define INFO_HEX(param)			Serial.print(param,HEX)
 #define INFOLN_HEX(param)		Serial.println(param,HEX)
@@ -63,7 +61,7 @@ SX126x::SX126x(int cs, int reset, int busy, int interrupt)
 
 	_ldro = true;
 
-	_preamble_len = 12;
+	_preamble_len = 8;
 
 #ifdef USE_SOFTSPI
 	pinMode(_spi_cs, OUTPUT);
@@ -82,6 +80,13 @@ SX126x::SX126x(int cs, int reset, int busy, int interrupt)
 
 	pkt_params[4] = 0x01;	/* crc on */
 	pkt_params[5] = 0x00;	/* no inverted iq */
+
+#ifdef USE_SOFTSPI
+	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
+#else
+	SPIDRV_Init_t spi_init = SPI_M_USART1;
+	SPIDRV_Init(spi_hdl, &spi_init);
+#endif
 }
 
 int16_t SX126x::setup_v0(uint32_t freq_hz, int8_t dbm)
@@ -136,23 +141,16 @@ int16_t SX126x::setup_v1(uint32_t freq_hz, int8_t dbm)
 
 int16_t SX126x::init()
 {
-#ifdef USE_SOFTSPI
-	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
-#else
-	SPIDRV_Init_t spi_init = SPI_M_USART1;
-	SPIDRV_Init(spi_hdl, &spi_init);
-#endif
-
 	reset();
 
 	while (0x22 != get_status()) {
 		set_standby(SX126X_STANDBY_RC);
 		set_regulator_mode(SX126X_REGULATOR_DC_DC);
-		delay(100);
+		delay(50);
 	}
 
-	workaround_ant_mismatch();
 	get_status();
+	workaround_ant_mismatch();
 
 	/*
 	 * ASR6500: 0x22
@@ -164,15 +162,14 @@ int16_t SX126x::init()
 	}
 
 	set_regulator_mode(SX126X_REGULATOR_DC_DC);
-	get_status();
+	//get_status();
 
 	// convert from ms to SX126x time base
 	set_dio3_as_tcxo_ctrl(SX126X_DIO3_OUTPUT_1_8, RADIO_TCXO_SETUP_TIME << 6);
 	//set_dio3_as_tcxo_ctrl(SX126X_DIO3_OUTPUT_1_8, 320);				// 5ms
 
-	get_status();
-
-	delay(5);
+	//get_status();
+	//delay(5);
 
 	#if 1
 	calibrate(SX126X_CALIBRATE_IMAGE_ON
@@ -182,7 +179,7 @@ int16_t SX126x::init()
 		  | SX126X_CALIBRATE_PLL_ON
 		  | SX126X_CALIBRATE_RC13M_ON | SX126X_CALIBRATE_RC64K_ON);
 
-	get_status();
+	//get_status();
 	#else
 	calibrate(0x7f);
 
@@ -800,8 +797,8 @@ uint8_t SX126x::read_buf(uint8_t *data, uint8_t *len, uint8_t max_len)
 	spi_transfer(offset);
 	spi_transfer(SX126X_CMD_NOP);
 
-	for (uint16_t i = 0; i < *rxDataLen; i++) {
-		rxData[i] = spi_transfer(SX126X_CMD_NOP);
+	for (uint16_t i = 0; i < *len; i++) {
+		data[i] = spi_transfer(SX126X_CMD_NOP);
 	}
 
 	digitalWrite(_spi_cs, HIGH);
@@ -823,7 +820,7 @@ uint8_t SX126x::read_buf(uint8_t *data, uint8_t *len, uint8_t max_len)
 
 	SPIDRV_MTransferB(spi_hdl, ptx, ptx, *len+3);
 
-#ifdef DEBUG
+#ifdef DEBUG_SX126X
 	for (uint16_t i = 0; i < *len; i++) {
 		INFO_HEX(ptx[i+3]);
 		INFO(" ");
@@ -879,7 +876,7 @@ uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
 
 	SPIDRV_MTransmitB(spi_hdl, ptx, len+2);
 
-#ifdef DEBUG
+#ifdef DEBUG_SX126X
 	for (uint16_t i = 0; i < len; i++) {
 		INFO_HEX(ptx[i+2]);
 		INFO(" ");
@@ -1033,7 +1030,7 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 
 	SPIDRV_MTransmitB(spi_hdl, tx, len+1);
 
-#ifdef DEBUG
+#ifdef DEBUG_SX126X
 	INFO("SPI write: CMD=0x");
 	INFO_HEX(cmd);
 	INFO(" TX: ");
@@ -1059,6 +1056,8 @@ uint8_t SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 	while (digitalRead(_pin_busy)) ;
 
 #ifdef USE_SOFTSPI
+	uint8_t rx[2] = {0};
+
 	// start transfer
 	digitalWrite(_spi_cs, LOW);
 
@@ -1093,7 +1092,7 @@ uint8_t SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 		memcpy(data, rx+2, len);
 	}
 
-#ifdef DEBUG
+#ifdef DEBUG_SX126X
 	INFO("SPI read: CMD=0x");
 	INFO_HEX(cmd);
 	INFO(" RX: ");
