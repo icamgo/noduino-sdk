@@ -23,13 +23,14 @@
 #endif
 
 #ifdef CONFIG_V0
-#include "spidrv.h"
 
+#ifndef USE_SOFTSPI
+#include "spidrv.h"
 #define SPI_M_USART1   	                                           \
 {                                                                         \
   USART1,                       /* USART port                       */    \
   _USART_ROUTE_LOCATION_LOC0,   /* USART pins location number       */    \
-  8000000,                      /* Bitrate                          */    \
+  2000000,                      /* Bitrate                          */    \
   8,                            /* Frame length                     */    \
   0,                            /* Dummy tx value for rx only funcs */    \
   spidrvMaster,                 /* SPI mode                         */    \
@@ -53,6 +54,7 @@ uint8_t spihw_transfer(uint8_t data)
 	SPIDRV_MTransferSingleItemB(spi_hdl, data, &rx);
 	return rx;
 }
+#endif
 
 //#include "softi2c.h"
 //#define	sx_delay(x)			i2c_delay(14*1000*x)
