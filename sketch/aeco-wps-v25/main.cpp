@@ -375,7 +375,7 @@ void show_ver(int txc)
 		u8g2.print(sample_period);
 
 		u8g2.setCursor(58, 116);
-		u8g2.print("3.0 M");
+		u8g2.print("25 M");
 
 		if(txc < 9999) {
 			u8g2.setCursor(10, 78);
