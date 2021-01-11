@@ -166,6 +166,92 @@ void power_off_dev()
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
+#ifdef USE_PT1K_X1
+int get_water()
+{
+	int ret = 0;
+	uint32_t rt = 0;
+
+	power_on_dev();
+	pt1000_init();
+	rt = pt1000_get_rt();
+	power_off_dev();
+
+	/* 1 - LOW, 2 - Median, 0 - High */
+	ret = rt / 10000;
+
+	switch (ret) {
+		case 1:
+			ret = LEVEL_LOW;
+			break;
+		case 2:
+			ret = LEVEL_MEDIAN;
+			break;
+		case 0:
+			ret = LEVEL_HIGH;
+			break;
+		default:
+			ret = LEVEL_UNKNOWN;
+	}
+
+	/* (pt1K + 1.1K) para. 1.1K, [7624.91, 7223.35] */
+	if (ret == LEVEL_HIGH && (rt > 7625 || rt <= 7223)) {
+
+		ret = LEVEL_UNKNOWN;
+	}
+
+	/* 1 x pt1K+ 1.1K, (21039, 24851] */
+	if (ret == LEVEL_MEDIAN && (rt > 24851 || rt <= 21039)) {
+
+		ret = LEVEL_UNKNOWN;
+	}
+
+	/* 1 x pt1K, (10039, 13851] */
+	if (ret == LEVEL_LOW && (rt > 13851 || rt <= 10039)) {
+
+		ret = LEVEL_UNKNOWN;
+	}
+
+	return ret;
+}
+
+float get_temp()
+{
+	int n = 0;
+	uint32_t rt = 0;
+
+	pt1000_init();
+	rt = pt1000_get_rt();
+
+	n = rt / 10000;
+
+	if (2 == n) {
+		/* median */
+
+		rt -= 11000;
+
+	} else if (0 == n) {
+		/* high */
+
+		//rt = 1.0 / (1.0/(double)rt - 1.0/11000.0) - 11000;
+		rt = 11000.0*(double)rt / (double)(11000.0 - rt) - 11000;
+
+	} // n >= 3, rt = rt
+
+	// n == 1, rt = rt
+
+	if (n != 3 && (rt > 13851 || rt <= 10039)) {
+
+		// n = 0, 1, 2, 4...
+
+		return -2.0;
+	}
+
+	// n = 3 is the 300'C, no sensor connected
+
+	return cal_temp(rt);
+}
+#else
 int get_water()
 {
 	int ret = 0;
@@ -247,6 +333,7 @@ float get_temp()
 
 	return cal_temp(rt);
 }
+#endif
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
