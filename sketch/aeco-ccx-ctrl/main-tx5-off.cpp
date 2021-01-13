@@ -348,6 +348,7 @@ void change_txcmd()
 {
 	key_cnt++;
 
+#if 0
 	if (key_cnt % 12 == 0) {
 
 		if (MODE_TX5_ON == txcmd) {
@@ -362,6 +363,7 @@ void change_txcmd()
 
 	INFO("%s", "txcmd: ");
 	INFOLN("%d", txcmd);
+#endif
 
 	key_pressed = true;
 }
