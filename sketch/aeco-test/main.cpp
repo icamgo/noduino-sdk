@@ -33,8 +33,15 @@ SX126x sx126x(2,			// Pin: SPI CS,PIN06-PB08-D2
 );
 #endif
 
+#define ENABLE_CRYPTO				1
+#define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
+
 //#define	DEBUG					1
 #define	TX_TESTING				1
+
+#ifdef ENABLE_CRYPTO
+#include "crypto.h"
+#endif
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -94,7 +101,8 @@ static uint8_t need_push = 0;
 #define	TIMER_TX			2
 #define	KEY_TX				3
 
-uint8_t message[36] = { 0x47, 0x4F, 0x33 };
+uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4))) = {0x47, 0x4F, 0x33};
+
 uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
 
@@ -103,7 +111,7 @@ uint16_t tx_count = 0;
 #define INFO_HEX(param)			Serial.print(param,HEX)
 #define INFO(param)				Serial.print(param)
 #define INFOLN(param)			Serial.println(param)
-#define FLUSHOUTPUT					Serial.flush();
+#define FLUSHOUTPUT				Serial.flush();
 #else
 #define INFO_S(param)
 #define INFO(param)
@@ -304,18 +312,32 @@ void push_data()
 
 	pkt[15] = tx_cause;
 
-	p = (uint8_t *) &tx_count;
-	pkt[16] = p[1]; pkt[17] = p[0];
-	tx_count++;
-
-	ui16 = get_crc(pkt, 18);
-	p = (uint8_t *) &ui16;
-	pkt[18] = p[1]; pkt[19] = p[0];
-
 	pkt[20] = 0;		// Humidity Sensor data	or Water Leak Sensor data
 	pkt[21] = 0;		// Internal Temperature of the chip
 	pkt[22] = 0;		// Internal humidity to detect water leak of the shell
 	pkt[23] = 0;		// Internal current consumption
+
+	p = (uint8_t *) &tx_count;
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
+	tx_count++;
+
+	p = (uint8_t *) &tx_count;
+	pkt[16] = p[1]; pkt[17] = p[0];
+	tx_count++;
+
+	/////////////////////////////////////////////////////////
+	/*
+	 * 2. crc
+	 * 3. set mic
+	*/
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
+	p = (uint8_t *) &ui16;
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
+#ifdef ENABLE_CRYPTO
+	set_pkt_mic(pkt, PAYLOAD_LEN+6);
+#endif
+	/////////////////////////////////////////////////////////
 
 	power_on_dev();
 
@@ -332,7 +354,7 @@ void push_data()
 #endif
 
 	if (tx_cause != KEY_TX) {
-		e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
+		e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
 	} else {
 		e = sx1272.sendPacketTimeout(DEST_ADDR, wf_pkt2, 28, TX_TIME);
 	}
@@ -351,14 +373,12 @@ void push_data()
 
 	digitalWrite(SX1272_RST, LOW);
 	spi_end();
-
 	power_off_dev();
+
 #elif USE_SX126X
 
-	sx126x.send(message, 24, SX126x_TXMODE_SYNC);
-
+	sx126x.send(message, PAYLOAD_LEN+6, SX126x_TXMODE_SYNC);
 	sx126x.set_sleep();
-
 	power_off_dev();
 #endif
 
@@ -394,6 +414,7 @@ void loop()
 	digitalWrite(SX1272_RST, LOW);
 	spi_end();
 #endif
+
 
 	/*
 	 * Enable rtc timer before enter deep sleep
