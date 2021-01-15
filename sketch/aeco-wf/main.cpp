@@ -24,9 +24,10 @@
 #include "math.h"
 #include "em_wdog.h"
 
-
 //#define	ONLY_WATER_LEAK				1
 //#define	DEBUG					1
+
+//#define USE_PT1K_X1					1
 
 #define FW_VER					"Ver 1.3"
 
@@ -194,20 +195,24 @@ int get_water()
 			ret = LEVEL_UNKNOWN;
 	}
 
-	/* (pt1K + 1.1K) para. 1.1K, [7624.91, 7223.35] */
-	if (ret == LEVEL_HIGH && (rt > 7625 || rt <= 7223)) {
+	/* (pt1K + 1.1K) para. 1.1K, [7223.35, 7624.92] */
+	/* (pt1k + 0.5K) para. 0.5K, [3752.43, 3951.83] */
+	/* 3pt1k, [6692.67, 9234] */
+	if (ret == LEVEL_HIGH && (rt > 7625 || rt < 7223)) {
 
 		ret = LEVEL_UNKNOWN;
 	}
 
 	/* 1 x pt1K+ 1.1K, (21039, 24851] */
-	if (ret == LEVEL_MEDIAN && (rt > 24851 || rt <= 21039)) {
+	/* 1 x pt1k+ 0.5K, (15039, 18851] */
+	/* 3pt1k, [20078, 27702 */
+	if (ret == LEVEL_MEDIAN && (rt > 24851 || rt < 21039)) {
 
 		ret = LEVEL_UNKNOWN;
 	}
 
 	/* 1 x pt1K, (10039, 13851] */
-	if (ret == LEVEL_LOW && (rt > 13851 || rt <= 10039)) {
+	if (ret == LEVEL_LOW && (rt > 13851 || rt < 10039)) {
 
 		ret = LEVEL_UNKNOWN;
 	}
