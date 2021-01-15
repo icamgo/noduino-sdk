@@ -29,7 +29,7 @@
 
 //#define USE_PT1K_X1					1
 
-#define FW_VER					"Ver 1.3"
+#define FW_VER					"Ver 1.4"
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 #define ENABLE_CRYPTO				1
@@ -349,8 +349,12 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
-	sample_count++;
+	/* storage mode */
+	if (1 == digitalRead(KEY_PIN)) {
+		return ;
+	}
 
+	sample_count++;
 
 	power_on_dev();
 	cur_temp = get_temp() + T_FIX;
@@ -504,8 +508,11 @@ void setup()
 	WDOG_Init(&wInit);
 
 	/* bootup tx */
-	tx_cause = RESET_TX;
-	need_push = 0x5a;
+	if (1 == digitalRead(KEY_PIN)) {
+		/* storage mode */
+		tx_cause = RESET_TX;
+		need_push = 0x5a;
+	}
 }
 
 void qsetup()
