@@ -72,15 +72,6 @@ SX126x::SX126x(int cs, int reset, int busy, int interrupt)
 
 	digitalWrite(_pin_reset, HIGH);
 
-	pkt_params[0] = (_preamble_len>> 8) & 0xFF;
-	pkt_params[1] = _preamble_len;
-
-	pkt_params[2] = 0x00;	/* Explicit Header */
-	pkt_params[3] = 0x24;	/* 36 Bytes payload len */
-
-	pkt_params[4] = 0x01;	/* crc on */
-	pkt_params[5] = 0x00;	/* no inverted iq */
-
 #ifdef USE_SOFTSPI
 	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
 #else
@@ -142,6 +133,15 @@ int16_t SX126x::setup_v1(uint32_t freq_hz, int8_t dbm)
 int16_t SX126x::init()
 {
 	reset();
+
+	pkt_params[0] = (_preamble_len>> 8) & 0xFF;
+	pkt_params[1] = _preamble_len;
+
+	pkt_params[2] = 0x00;	/* Explicit Header */
+	pkt_params[3] = 0x24;	/* 36 Bytes payload len */
+
+	pkt_params[4] = 0x01;	/* crc on */
+	pkt_params[5] = 0x00;	/* no inverted iq */
 
 	while (0x22 != get_status()) {
 		set_standby(SX126X_STANDBY_RC);
@@ -339,7 +339,7 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 
 			tx_active = false;
 
-			set_rx(0xFFFFFF);
+			//set_rx(0xFFFFFF);
 
 			if (irq != SX126X_IRQ_TIMEOUT)
 				rv = true;
@@ -407,6 +407,9 @@ void SX126x::set_sleep()
 {
 	uint8_t cfg = SX126X_SLEEP_START_COLD | SX126X_SLEEP_RTC_OFF;
 	write_op_cmd(SX126X_CMD_SET_SLEEP, &cfg, 0);
+
+	//SPIDRV_DeInit(spi_hdl);
+	//digitalWrite(_pin_reset, LOW);
 }
 
 void SX126x::set_standby(uint8_t mode)
