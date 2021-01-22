@@ -34,7 +34,7 @@ SX126x sx126x(2,			// Pin: SPI CS,PIN06-PB08-D2
 #endif
 
 #define ENABLE_CRYPTO				1
-#define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
+#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 
 //#define	DEBUG					1
 #define	TX_TESTING				1
@@ -46,7 +46,7 @@ SX126x sx126x(2,			// Pin: SPI CS,PIN06-PB08-D2
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 18;		/* 30s */
+static uint32_t sample_period = 5;		/* 30s */
 static uint32_t sample_count = 0;
 
 #define		HEARTBEAT_TIME			7200
@@ -209,6 +209,10 @@ void setup()
 	wInit.em3Run = true;
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 
+#ifdef ENABLE_CRYPTO
+	crypto_init();
+#endif
+
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 
@@ -321,10 +325,6 @@ void push_data()
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
 	tx_count++;
 
-	p = (uint8_t *) &tx_count;
-	pkt[16] = p[1]; pkt[17] = p[0];
-	tx_count++;
-
 	/////////////////////////////////////////////////////////
 	/*
 	 * 2. crc
@@ -356,6 +356,7 @@ void push_data()
 	if (tx_cause != KEY_TX) {
 		e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
 	} else {
+		/* key */
 		e = sx1272.sendPacketTimeout(DEST_ADDR, wf_pkt2, 28, TX_TIME);
 	}
 
@@ -414,7 +415,6 @@ void loop()
 	digitalWrite(SX1272_RST, LOW);
 	spi_end();
 #endif
-
 
 	/*
 	 * Enable rtc timer before enter deep sleep
