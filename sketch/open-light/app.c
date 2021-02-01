@@ -28,6 +28,7 @@ system_status_t sys_status = {
 		.b = 255,
 		.w = 255,
 	},
+	.rgbw_bind = 0,
 	.sc_effect = NONE_EFFECT,
 	.voice_name = ""
 };
@@ -547,10 +548,13 @@ irom void set_light_status(mcu_status_t *st)
 		st = &(sys_status.mcu_status);
 	}
 
-	if ((st->r == st->g) && (st->g == st->b))
-		st->w = st->r;
-	else
-		st->w = 0;
+	if (1 == sys_status.rgbw_bind) {
+
+		if ((st->r == st->g) && (st->g == st->b))
+			st->w = st->r;
+		else
+			st->w = 0;
+	}
 
 	if (st->s) {
 		// we only change the led color when user setup apparently
@@ -613,7 +617,7 @@ irom void app_param_load(void)
 		// reset the grad_on to 0x1 by default
 		sys_status.grad_on = 1;
 	}
-	if (sys_status.rgbw_bind = 0xff) {
+	if (0xff == sys_status.rgbw_bind) {
 		sys_status.rgbw_bind = 0;
 	}
 
