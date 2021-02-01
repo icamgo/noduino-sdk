@@ -37,10 +37,12 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 	}
 	set_standby(SX126X_STANDBY_RC);
 
+	set_regulator_mode(SX126X_REGULATOR_DC_DC);
+
 	set_packet_type(SX126X_PACKET_TYPE_LORA);
 
 	// convert from ms to SX126x time base
-	set_dio3_as_tcxo_ctrl(SX126X_DIO3_OUTPUT_3_0, RADIO_TCXO_SETUP_TIME << 6);
+	set_dio3_as_tcxo_ctrl(SX126X_DIO3_OUTPUT_1_8, RADIO_TCXO_SETUP_TIME << 6);
 
 	calibrate(SX126X_CALIBRATE_IMAGE_ON
 		| SX126X_CALIBRATE_ADC_BULK_P_ON
@@ -49,11 +51,11 @@ int16_t SX126x::begin(uint32_t freq_hz, int8_t dbm)
 		  | SX126X_CALIBRATE_PLL_ON
 		  | SX126X_CALIBRATE_RC13M_ON | SX126X_CALIBRATE_RC64K_ON);
 
+	get_dev_errors();
+
 	set_dio2_as_rfswitch_ctrl(true);
 
 	set_standby(SX126X_STANDBY_RC);
-
-	set_regulator_mode(SX126X_REGULATOR_DC_DC);
 
 	set_buffer_base_addr(0, 0);
 
@@ -237,14 +239,15 @@ uint8_t SX126x::get_status(void)
 
 uint16_t SX126x::get_dev_errors(void)
 {
-	uint16_t error;
+	uint8_t error[2] = {0};
 
-	read_cmd(SX126X_CMD_GET_DEVICE_ERRORS, (uint8_t *)&error, 2);
+	read_cmd(SX126X_CMD_GET_DEVICE_ERRORS, error, 2);
 
 	Serial.print("get_dev_errors: 0x");
-	Serial.println(error, HEX);
+	Serial.print(error[0], HEX);
+	Serial.println(error[1], HEX);
 
-	return error;
+	return (error[0] << 8) | error[1];
 }
 
 void SX126x::wait_on_busy(void)
@@ -289,6 +292,8 @@ void SX126x::set_rf_freq(uint32_t frequency)
 	buf[2] = (uint8_t) ((freq >> 8) & 0xFF);
 	buf[3] = (uint8_t) (freq & 0xFF);
 	write_cmd(SX126X_CMD_SET_RF_FREQUENCY, buf, 4);
+
+	get_dev_errors();
 }
 
 void SX126x::calibrate_image(uint32_t frequency)
