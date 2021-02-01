@@ -49,7 +49,8 @@ typedef struct system_status_t {
 	uint8 grad_on;
 	uint8 alexa_on;
 	uint8 airkiss_nff_on;
-	uint8 pack[2];
+	uint8 rgbw_bind;
+	uint8 pack[1];
 } __attribute__((aligned(4), packed)) system_status_t;
 
 typedef enum app_state_t {
