@@ -72,15 +72,11 @@ void setup()
 	}
 
 	// create blink task
-	xTaskCreate(vLEDFlashTask,
-		    "Task1",
-		    configMINIMAL_STACK_SIZE + 50,
+	xTaskCreate(vLEDFlashTask, "Task1", configMINIMAL_STACK_SIZE + 50,
 		    NULL, tskIDLE_PRIORITY + 2, &blink);
 
 	// create print task
-	xTaskCreate(vPrintTask,
-		    "Task2",
-		    configMINIMAL_STACK_SIZE + 100,
+	xTaskCreate(vPrintTask, "Task2", configMINIMAL_STACK_SIZE + 100,
 		    NULL, tskIDLE_PRIORITY + 1, NULL);
 
 	//start FreeRTOS
