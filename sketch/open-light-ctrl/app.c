@@ -28,6 +28,7 @@ system_status_t sys_status = {
 		.b = 255,
 		.w = 255,
 	},
+	.rgbw_bind = 0,
 	.sc_effect = NONE_EFFECT,
 	.voice_name = ""
 };
@@ -115,6 +116,15 @@ irom void app_push_grad_on()
 	os_sprintf(msg, "%d", sys_status.grad_on);
 
 	mjyun_publish("grad_on", msg);
+}
+
+irom void app_push_rgbw_bind()
+{
+	char msg[4];
+	os_memset(msg, 0, 4);
+	os_sprintf(msg, "%d", sys_status.rgbw_bind);
+
+	mjyun_publish("rgbw_bind", msg);
 }
 
 irom void mjyun_receive(const char * event_name, const char * event_data)
@@ -228,6 +238,20 @@ irom void mjyun_receive(const char * event_name, const char * event_data)
 	if (0 == os_strcmp(event_name, "get_grad_on")) {
 		INFO("RX Get grad_on Request!\r\n");
 		app_push_grad_on();
+	}
+
+	/* {"m":"set_rgbw_bind", "d":1} */
+	if (0 == os_strcmp(event_name, "set_rgbw_bind")) {
+		uint8_t rgbw_bind = atoi(event_data);
+		INFO("RX set rgbw_bind %d Request!\r\n", rgbw_bind);
+		sys_status.rgbw_bind = rgbw_bind;
+		app_param_save();
+		app_push_rgbw_bind();
+	}
+	/* {"m":"get_rgbw_bind", "d":""} */
+	if (0 == os_strcmp(event_name, "get_rgbw_bind")) {
+		INFO("RX Get rgbw_bind Request!\r\n");
+		app_push_rgbw_bind();
 	}
 
 	/* {"m":"set_alexa_on", "d":1} */
@@ -547,10 +571,13 @@ irom void set_light_status(mcu_status_t *st)
 		st = &(sys_status.mcu_status);
 	}
 
-	if ((st->r == st->g) && (st->g == st->b))
-		st->w = st->r;
-	else
-		st->w = 0;
+	if (1 == sys_status.rgbw_bind) {
+
+		if ((st->r == st->g) && (st->g == st->b))
+			st->w = st->r;
+		else
+			st->w = 0;
+	}
 
 	if (st->s) {
 		// we only change the led color when user setup apparently
@@ -615,6 +642,9 @@ irom void app_param_load(void)
 	if (sys_status.grad_on == 0xff) {
 		// reset the grad_on to 0x1 by default
 		sys_status.grad_on = 1;
+	}
+	if (sys_status.rgbw_bind == 0xff) {
+		sys_status.rgbw_bind = 0;
 	}
 
 	sys_status.start_count += 1;
@@ -759,6 +789,7 @@ irom void app_start_check(uint32_t system_start_seconds)
 			sys_status.mcu_status.s = 1;
 			sys_status.cold_on = 1;
 			sys_status.grad_on = 1;
+			sys_status.rgbw_bind = 0;
 			sys_status.airkiss_nff_on = 1;
 			os_strcpy(sys_status.voice_name, DEFAULT_VOICE_NAME);
 			// Save param
