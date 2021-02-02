@@ -419,11 +419,16 @@ irom void change_light_grad(mcu_status_t *to)
 	static hsl_t hsl_cur, hsl_to;
 	static float l_to;
 
+	static int rgb_w_from = 0, rgb_w_to = 0, step_w = 0;
+
 	if (l_from == 2.2f) {
 		// first run
 
 		rgb2hsl(st, &hsl_cur);
 		rgb2hsl(to, &hsl_to);
+
+		rgb_w_from = st->w;
+		rgb_w_to = to->w;
 
 		if (st->s == 0) {
 			// current state is off
@@ -445,7 +450,8 @@ irom void change_light_grad(mcu_status_t *to)
 		else
 			step = -0.015;
 
-		//step = (l_to - l_from) / 50.0f;
+		step_w = (rgb_w_to - rgb_w_from) / (fabsf(l_to - l_from) / 0.015f);
+
 		// turn off need to notify others ASAP
 		app_push_status(to);
 
@@ -465,6 +471,9 @@ irom void change_light_grad(mcu_status_t *to)
 		hsl_to.l = l_from;
 
 		hsl2rgb(&hsl_to, &rgb);
+
+		//rgb.w = get_light_lum(&rgb);
+		rgb.w += step_w;
 
 		rgb.s = 1;
 		set_light_status(&rgb);
@@ -490,6 +499,8 @@ irom void change_light_grad(mcu_status_t *to)
 		}
 
 		hsl2rgb(&hsl_to, &rgb);
+
+		rgb.w = rgb_w_to;
 
 		set_light_status(&rgb);
 		INFO("rgbws: (%d, %d, %d, %d, %d)\r\n", rgb.r, rgb.g, rgb.b, rgb.w, rgb.s);
@@ -548,10 +559,12 @@ irom void change_light_lum(int bri)
 #endif
 }
 
-irom int get_light_lum()
+irom int get_light_lum(mcu_status_t *st)
 {
-	mcu_status_t *st = &(sys_status.mcu_status);
 	hsl_t hsl;
+
+	if (st == NULL)
+		st = &(sys_status.mcu_status);
 
 	rgb2hsl(st, &hsl);
 
