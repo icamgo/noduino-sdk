@@ -427,22 +427,23 @@ irom void change_light_grad(mcu_status_t *to)
 		rgb2hsl(st, &hsl_cur);
 		rgb2hsl(to, &hsl_to);
 
-		rgb_w_from = st->w;
-		rgb_w_to = to->w;
-
 		if (st->s == 0) {
 			// current state is off
 			// need to change from 0 to l_to firstly
 			l_from = 0.0f;
+			rgb_w_from = 0;
 
 		} else {
 			l_from = hsl_cur.l;
+			rgb_w_from = st->w;
 		}
 
 		if (to->s == 0) {
 			l_to = 0.0f;
+			rgb_w_to = 0;
 		} else {
 			l_to = hsl_to.l;
+			rgb_w_to = to->w;
 		}
 
 		if (l_from < l_to)
@@ -451,6 +452,8 @@ irom void change_light_grad(mcu_status_t *to)
 			step = -0.015;
 
 		step_w = (rgb_w_to - rgb_w_from) / (fabsf(l_to - l_from) / 0.015f);
+
+		rgb.w = rgb_w_from;
 
 		// turn off need to notify others ASAP
 		app_push_status(to);
@@ -473,7 +476,9 @@ irom void change_light_grad(mcu_status_t *to)
 		hsl2rgb(&hsl_to, &rgb);
 
 		//rgb.w = get_light_lum(&rgb);
-		rgb.w += step_w;
+		if ((step_w < 0 && rgb.w >= fabs(step_w)) || (step_w >0 && rgb.w <= (255-step_w))) {
+			rgb.w += step_w;
+		}
 
 		rgb.s = 1;
 		set_light_status(&rgb);
@@ -493,17 +498,22 @@ irom void change_light_grad(mcu_status_t *to)
 		if (l_to == 0) {
 			hsl_to.l = hsl_cur.l;
 			rgb.s = 0;
+			rgb.w = 0;
 		} else {
 			rgb.s = 1;
 			hsl_to.l = l_to;
+			rgb.w = rgb_w_to;
 		}
 
 		hsl2rgb(&hsl_to, &rgb);
 
-		rgb.w = rgb_w_to;
-
 		set_light_status(&rgb);
 		INFO("rgbws: (%d, %d, %d, %d, %d)\r\n", rgb.r, rgb.g, rgb.b, rgb.w, rgb.s);
+
+		if (l_to == 0) {
+			// change to turn off, but need to save the original state
+			rgb.w = rgb_w_from;
+		}
 
 		// update to global
 		os_memcpy(st, &rgb, sizeof(mcu_status_t));
