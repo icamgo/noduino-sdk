@@ -353,6 +353,100 @@ char *decode_vbat(uint8_t *pkt)
 	return dev_vbat;
 }
 
+#if 1
+uint32_t get_dev_type(uint8_t *p)
+{
+	uint64_t devid = 0UL;
+	uint8_t *pd = (uint8_t *) &devid;
+
+	for(int i = 0; i < 8; i++) {
+		pd[7-i] = p[3+i];
+	}
+
+	uint64_t temp = devid / 1000000;
+	uint32_t tt = (uint32_t)(temp / 100);
+	return (uint32_t)(temp - tt * 100);
+}
+
+char *decode_sensor_data(uint8_t *pkt)
+{
+	int16_t data = 0;
+	float dd  = 0;
+	char data_buf[8] = {0};
+
+	data = (pkt[11]  << 8) | pkt[12];
+
+	uint32_t dev_t = get_dev_type(pkt);
+
+	switch(dev_t) {
+
+		case 0:
+		case 2:
+		case 4:
+		case 20:
+			// Temperature: 00, 02, 04
+			dd = (float)(data / 10.0);
+			ftoa(data_buf, dd, 1);
+			sprintf(dev_data, "T/%s", data_buf);
+			break;
+
+		case 1:
+		case 3:
+			// Pressure sensor: 01, 03
+			dd = (float)(data / 100.0);
+			ftoa(data_buf, dd, 2);
+			sprintf(dev_data, "P/%s", data_buf);
+			break;
+		case 5:
+			// ET-Pump
+			sprintf(dev_data, "0x%X", data);
+			break;
+		case 7:
+			// water level (pressure), unit is 'M'
+			dd = (float)(data / 100.0);
+			ftoa(data_buf, dd, 2);
+			sprintf(dev_data, "L/%s", data_buf);
+			break;
+		case 8:
+			// Humi&Temp Sensor
+			sprintf(dev_data, "H/%d/T/%d", (int)(data/10.0+0.5), (int8_t)(pkt[20]));
+			break;
+		case 16:
+			// Temp&Humi Sensor
+			dd = (float)(data / 10.0);
+			ftoa(data_buf, dd, 1);
+			sprintf(dev_data, "T/%d/H/%d", data_buf, (int8_t)(pkt[20]));
+			break;
+		case 9:
+			// Moving Sensor, unit is 'mm'
+			sprintf(dev_data, "M/%d", data);
+			break;
+		case 12:
+			// Vibration Sensor
+			sprintf(dev_data, "V/%d", data);
+			break;
+		case 13:
+			// Float & Temp Sensor
+			dd = (float)(data / 10.0);
+			ftoa(data_buf, dd, 1);
+			sprintf(dev_data, "T/%s/L/%d", data_buf, (int8_t)(pkt[20]));
+			break;
+		case 14:
+			// Water Leak Sensor
+			dd = (float)(data / 10.0);
+			ftoa(data_buf, dd, 1);
+			sprintf(dev_data, "L/%s", data_buf);
+			break;
+		case 21:
+			// Internal Temprature of ABC Sensor
+			dd = (float)(data / 10.0);
+			ftoa(data_buf, dd, 1);
+			sprintf(dev_data, "T/%s", data_buf);
+			break;
+	}
+	return dev_data;
+}
+#else
 char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 {
 	char data_buf[8] = {0};
@@ -430,6 +524,7 @@ char *decode_sensor_data(uint8_t *pkt, uint8_t pkt_len, char *id)
 	}
 	return dev_data;
 }
+#endif
 
 uint8_t decode_cmd(uint8_t *pkt)
 {
@@ -550,10 +645,10 @@ int radio_available(char *cmd)
 			return 0;
 		}
 
-		sprintf(cmd, "devid/%s/U/%s/%s/cmd/%d/ver/%d/rssi/%d",
+		sprintf(cmd, "did/%s/U/%s/%s/cmd/%d/ver/%d/rssi/%d",
 			devid,
 			decode_vbat(p),
-			decode_sensor_data(p, p_len, devid),
+			decode_sensor_data(p),
 			decode_cmd(p),
 			decode_ver(p),
 		#ifndef ENABLE_RX_INTERRUPT
