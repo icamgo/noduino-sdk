@@ -28,28 +28,34 @@
 
 #include "radio.h"
 
-//#define		DEBUG_SERVER
-#define		DEBUG
-#define		DEBUG_EEPROM
-#define		DEBUG_TOKEN
-#define		NETCORE_ROUTER_FIXUP
-//#define		NO_DHCP_ROBUST
-//#define		WITH_FLASH
+//#define		ENABLE_DHCP					1
+
+#define		DEBUG_SERVER				1
+#define		DEBUG						1
+#define		DEBUG_EEPROM				1
+#define		NETCORE_ROUTER_FIXUP		1
+//#define		NO_DHCP_ROBUST			1
+
+//#define		DEBUG_TOKEN				1
+//#define		WITH_FLASH				1
 
 #define		TRYNUM	1
 #define		FW_VER	"1.0.0"
 
 byte mac[7];
+#ifndef CONFIG_V0x
 byte dkey[9];
 byte uuid[25];
 byte token[25];
+#endif
 
-IPAddress ip(192,168,1,92);
+IPAddress ip(192,168,2,126);
 IPAddress gw_ip5(10,0,0,2);
 IPAddress ip9(10,0,0,254);
 
 #ifdef CONFIG_V0
-char cos_serv[] = "192.168.1.97";
+char cos_serv[] = "192.168.2.97";
+//char cos_serv[] = "iot.autoeco.net";
 #else
 char cos_serv[] = "api.noduino.org";
 #endif
@@ -80,6 +86,8 @@ byte buf[8];
 void init_devid()
 {
 	int i;
+
+#ifndef CONFIG_V0x
 	// read the uuid
 	for (i=0; i<19; i++) {
 		uuid[i] = EEPROM.read(0x10 + i);
@@ -91,6 +99,7 @@ void init_devid()
 		dkey[i] = EEPROM.read(0x23 + i);
 	}
 	dkey[8] = 0;
+#endif
 
 	// read the mac
 	for (i=0; i<6; i++) {
@@ -98,6 +107,7 @@ void init_devid()
 	}
 }
 
+#ifndef CONFIG_V0
 DES des;
 
 void gen_token(byte *out, byte *uuid, byte *key)
@@ -114,6 +124,7 @@ void gen_token(byte *out, byte *uuid, byte *key)
 	des.encrypt(out+8, uuid+8, key);
 	des.encrypt(out, uuid+16, key);
 }
+#endif
 
 // 0=16ms, 1=32ms, 2=64ms, 3=128ms, 4=250ms, 5=500ms
 // 6=1sec, 7=2sec, 8=4sec, 9=8sec
@@ -166,10 +177,9 @@ void setup() {
 	// disable the watchdog
 	wdt_disable();
 
-#ifdef DEBUG
 	Serial.begin(115200);
-	Serial.println("Power On now!");
-#endif
+
+	INFOLN("%s", "Power On now!");
 
 	randomSeed(analogRead(14));
 	radio_setup();
@@ -214,8 +224,10 @@ void setup() {
 	init_devid();
 
 #ifdef DEBUG_EEPROM
+	#ifndef CONFIG_V0x
 	Serial.printf("uuid = %s\n", (char *)uuid);
 	Serial.printf("dkey = %s\n", (char *)dkey);
+	#endif
 	Serial.print("mac = ");
 	for(int i=0; i<6; i++) {
 		Serial.printf("%02X ", mac[i]);
@@ -226,14 +238,19 @@ void setup() {
 	//body.reserve(100);
 
 	setup_wdt(9);
+
 	// start the Ethernet connection:
+
+#ifdef ENABLE_DHCP
 	if (Ethernet.begin(mac) == 0) {
-#ifdef DEBUG
-		//Serial.println("Failed to configure Ethernet using DHCP");
-#endif
+
+		INFOLN("%s", "DHCP Failed");
+
 		// DHCP failed, so try a fixed IP
 		// If static ip failed, it's network issue
 		// waitting for the network is OK
+		wdt_reset();
+
 #ifdef NO_DHCP_ROBUST
 		if (try_static_ip() == 0) {
 #endif
@@ -241,26 +258,33 @@ void setup() {
 #ifdef NO_DHCP_ROBUST
 		}
 #endif
+
 	} else {
-#ifdef DEBUG
-		Serial.println("DHCP is OK");
-#endif
+		INFOLN("%s", "DHCP OK");
 	}
+#else
+	Ethernet.begin(mac, ip);
+
+	if (wan_ok()) {
+		//INFOLN("%s", "Static IP is OK");
+	} else {
+		//INFOLN("%s", "Static IP failed");
+		chip_reset();
+	}
+
+#endif
 
 	// setup ip must be in 8s otherwise chip would be reset
 	wdt_reset();
 
-#ifdef DEBUG
-	Serial.print("My address:");
-	Serial.println(Ethernet.localIP());
-#endif
+	INFO("%s", "ip:");
+	INFOLN("%s", Ethernet.localIP());
 
-	// push a message to say "I'm online"
+	wdt_reset();
+
 #ifdef NETCORE_ROUTER_FIXUP
 	if(wan_ok() == 0) {
-#ifdef DEBUG
-		Serial.println("wan is offline");
-#endif
+		INFOLN("%s", "wan is offline");
 	}
 #endif
 
@@ -281,15 +305,21 @@ byte try_static_ip()
 	if (wan_ok())
 		return 1;
 
+	wdt_reset();
+
 	ip[3] = 254;
 	Ethernet.begin(mac, ip);
 	if (wan_ok())
 		return 1;
 
+	wdt_reset();
+
 	ip[3] = 111;
 	Ethernet.begin(mac, ip);
 	if (wan_ok())
 		return 1;
+
+	wdt_reset();
 
 	// Try 192.168.0.111/254/3
 	ip[2] = 0;
@@ -297,15 +327,21 @@ byte try_static_ip()
 	if (wan_ok())
 		return 1;
 
+	wdt_reset();
+
 	ip[3] = 254;
 	Ethernet.begin(mac, ip);
 	if (wan_ok())
 		return 1;
 
+	wdt_reset();
+
 	ip[3] = 3;
 	Ethernet.begin(mac, ip);
 	if (wan_ok())
 		return 1;
+
+	wdt_reset();
 
 	// Try 192.168.10.3/111/254
 	ip[2] = 10;
@@ -313,16 +349,24 @@ byte try_static_ip()
 	if (wan_ok()) {
 		return 1;
 	}
+
+	wdt_reset();
+
 	ip[3] = 111;
 	Ethernet.begin(mac, ip);
 	if (wan_ok()) {
 		return 1;
 	}
+
+	wdt_reset();
+
 	ip[3] = 254;
 	Ethernet.begin(mac, ip);
 	if (wan_ok()) {
 		return 1;
 	}
+
+	wdt_reset();
 
 	// Try 192.168.18.3/111/254
 	ip[2] = 18;
@@ -330,16 +374,24 @@ byte try_static_ip()
 	if (wan_ok()) {
 		return 1;
 	}
+
+	wdt_reset();
+
 	ip[3] = 3;
 	Ethernet.begin(mac, ip);
 	if (wan_ok()) {
 		return 1;
 	}
+
+	wdt_reset();
+
 	ip[3] = 111;
 	Ethernet.begin(mac, ip);
 	if (wan_ok()) {
 		return 1;
 	}
+
+	wdt_reset();
 
 	// Try 10.0.0.254
 	Ethernet.begin(mac, ip9, gw_ip5, gw_ip5);
@@ -347,20 +399,24 @@ byte try_static_ip()
 		return 1;
 	}
 
+	wdt_reset();
+
 	return 0;
 }
 #endif
 
 byte wan_ok()
 {
-	wdt_off();
+	wdt_reset();
 	if (client.connect(cos_serv, 80)) {
+		wdt_reset();
 		client.stop();
-		setup_wdt(9);
+		INFOLN("%s", "wan is ok");
 		return 1;
 	} else {
+		wdt_reset();
 		client.stop();
-		setup_wdt(9);
+		INFOLN("%s", "wan is not ok");
 		return 0;
 	}
 }
@@ -374,21 +430,23 @@ void loop() {
 	int i = 0, e = 1;
 
 	int try_num = 0;
+
 	wdt_off();
 
 	e = radio_available(pbuf);
 
+	setup_wdt(9);
+
 	if (e) {
 
-		//Serial.println("Radio data available");
+		//Serial.println("rf rx");
 
+		wdt_reset();
 		// make sure push the data success
 		try_num = 0;
 #ifdef NETCORE_ROUTER_FIXUP
 		if(wan_ok() == 0) {
-#ifdef DEBUG
-			Serial.println("wan is offline");
-#endif
+			INFOLN("%s", "wan is offline");
 			chip_reset();
 		}
 		wdt_reset();
@@ -397,15 +455,13 @@ void loop() {
 		while (push_data(pbuf, cos_serv) == -1) {
 			wdt_reset();
 			try_num++;
-#ifdef DEBUG
-			Serial.print("pushed data failed. Try num:");
-			Serial.println(try_num);
-#endif
+
+			INFO("%s", "pushed data failed. Try num:");
+			INFOLN("%d", try_num);
+
 			if (try_num >= TRYNUM) break;
 			delay(1200);		// delay 1.2s
-#ifdef DEBUG
-			Serial.println("try next");
-#endif
+			INFOLN("%s", "try next");
 		}
 #endif
 	}
@@ -445,7 +501,6 @@ int push_data(char *pbuf, char serv[]) {
 		client.println("POST /dev/t2x HTTP/1.0");
 #else
 		gen_token(token, uuid, dkey);
-
 		client.println("POST /dev/quarkx HTTP/1.0");
 #endif
 
@@ -488,6 +543,7 @@ int push_data(char *pbuf, char serv[]) {
 		// maybe need this to delay some microseconds
 		Serial.println(".");
 #endif
+
 		// note the time that the connection was made or attempted:
 		last_post_time = millis();
 
@@ -533,10 +589,9 @@ int push_data(char *pbuf, char serv[]) {
 #endif
 
 	} else {
-#ifdef DEBUG
 		// if you couldn't make a connection:
-		Serial.println("Connection failed");
-#endif
+		INFOLN("%s", "Connection failed");
+
 		setup_wdt(9);
 		client.stop();
 		return -1;
