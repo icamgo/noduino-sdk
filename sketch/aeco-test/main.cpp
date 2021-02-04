@@ -46,7 +46,7 @@ SX126x sx126x(2,			// Pin: SPI CS,PIN06-PB08-D2
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 5;		/* 30s */
+static uint32_t sample_period = 18;		/* 20s */
 static uint32_t sample_count = 0;
 
 #define		HEARTBEAT_TIME			7200
@@ -353,12 +353,16 @@ void push_data()
 	sx1272.CarrierSense();
 #endif
 
-	if (tx_cause != KEY_TX) {
+	//if (tx_cause != KEY_TX) {
+
 		e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
+
+	#if 0
 	} else {
 		/* key */
 		e = sx1272.sendPacketTimeout(DEST_ADDR, wf_pkt2, 28, TX_TIME);
 	}
+	#endif
 
 	if (!e) {
 		// send message succesful, update the old_temp
