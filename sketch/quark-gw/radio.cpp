@@ -395,7 +395,8 @@ char *decode_sensor_data(uint8_t *pkt)
 			// Pressure sensor: 01, 03
 			dd = (float)(data / 100.0);
 			ftoa(data_buf, dd, 2);
-			sprintf(dev_data, "P/%s", data_buf);
+			//sprintf(dev_data, "P/%s", data_buf);
+			sprintf(dev_data, "P/%s/iT/%d/iC/%d", data_buf, (int8_t)(pkt[21]), (int8_t)(pkt[23]));
 			break;
 		case 5:
 			// ET-Pump
@@ -555,7 +556,7 @@ int radio_available(char *cmd)
 	int i = 0, e = 1;
 
 #ifdef ENABLE_RX_INTERRUPT
-	if (rx_err_cnt > 50) {
+	if (rx_err_cnt > 8) {
 
 		sx1272.reset();
 		INFO_S("%s", "Resetting lora module\n");
