@@ -164,6 +164,12 @@ uint32_t key_count = 0;
 
 #endif
 
+void clean_need_push()
+{
+	if (need_push > 0)
+		need_push--;
+}
+
 char *ftoa(char *a, double f, int precision)
 {
 	long p[] =
@@ -491,7 +497,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 		// battery supply
 		cnt_vbat_3v3 = 0;
-		sample_period = 18;
+		sample_period = 3;
 
 		cnt_vbat_low = 0;
 		vbat_low = false;
@@ -501,7 +507,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	sample_count++;
 
 	if (sample_count >= HEARTBEAT_TIME/20) {
-		need_push = 0x5a;
+		need_push = 0x1;
 		tx_cause = TIMER_TX;
 		sample_count = 0;
 	}
@@ -522,7 +528,12 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	if (dp >= DELTA_P) {
 
-		need_push = 0x5a;
+		if (dp > DELTA_P * 5) {
+			need_push = 0x5;
+		} else {
+			need_push = 0x1;
+		}
+
 		tx_cause = DELTA_TX;
 
 	#ifdef ENABLE_P_TEST
@@ -538,7 +549,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		cnt_01++;
 
 		if (cnt_01 >= 3) {
-			need_push = 0x5a;
+			need_push = 0x1;
 			tx_cause = DELTA_TX;
 
 			cnt_01 = 0;
@@ -551,14 +562,14 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	#endif
 #else
 	// 2min fixed interval
-	need_push = 0x5a;
+	need_push = 0x1;
 	tx_cause = TIMER_TX;
 #endif
 }
 
 void trig_check_sensor()
 {
-	need_push = 0x5a;
+	need_push = 0x1;
 	tx_cause = KEY_TX;
 
 	key_count++;
@@ -651,7 +662,7 @@ void setup()
 
 	/* bootup tx */
 	tx_cause = RESET_TX;
-	need_push = 0x5a;
+	need_push = 0x1;
 
 	mode = MODE_VER;
 }
@@ -914,7 +925,7 @@ void task_oled()
 
 		if (dp >= DELTA_RT_P) {
 
-			//need_show = 0x5a;
+			//need_show = 0x1;
 			old_p = cur_p;
 
 			cnt_rt_01 = 0;
@@ -925,7 +936,7 @@ void task_oled()
 
 			if (cnt_rt_01 >= 3) {
 
-				//need_show = 0x5a;
+				//need_show = 0x1;
 				old_p = cur_p;
 
 				cnt_rt_01 = 0;
@@ -947,7 +958,7 @@ void task_oled()
 		float dp = fabsf(cur_p - old_pres);
 
 		if (dp >= DELTA_P) {
-			need_push = 0x5a;
+			need_push = 0x1;
 			tx_cause = DELTA_TX;
 
 			#ifdef ENABLE_P_TEST
@@ -965,7 +976,7 @@ void task_oled()
 			cnt_01++;
 
 			if (cnt_01 >= 3) {
-				need_push = 0x5a;
+				need_push = 0x1;
 				tx_cause = DELTA_TX;
 
 				tx_flag = false;
@@ -1030,9 +1041,9 @@ void task_oled()
 				break;
 		}
 
-		if (0x5a == need_push && false == tx_flag) {
+		if (0x1 <= need_push && false == tx_flag) {
 			push_data(false);
-			need_push = 0;
+			clean_need_push();
 			tx_flag = true;
 		}
 
@@ -1056,9 +1067,13 @@ void loop()
 
 	}
 
-	if (0x5a == need_push) {
+	while (0x1 <= need_push) {
 		push_data(true);
-		need_push = 0;
+		clean_need_push();
+
+		if (0 < need_push) {
+			delay(1000);
+		}
 	}
 
 #ifdef ENABLE_OLED
