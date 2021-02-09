@@ -26,15 +26,21 @@
 #include "em_wdog.h"
 
 //#define	DEBUG					1
+//#define ENABLE_P_TEST			1
 
+#define	ENABLE_OLED_ON_TX			1
+
+#ifdef ENABLE_P_TEST
 #define FW_VER						"Ver 2.4"
+#else
+#define FW_VER						"Ver 1.0"
+#endif
 
 //#define CONFIG_2MIN					1
 
 #define ENABLE_OLED					1
 #define ENABLE_CAD					1
 
-#define ENABLE_P_TEST			1
 //#define ENABLE_RTP_TEST			1
 
 #ifdef ENABLE_P_TEST
@@ -59,15 +65,18 @@ static uint32_t cnt_rt_01 = 0;
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-#ifndef CONFIG_2MIN
-static uint32_t sample_period = 2;			/* 20s */
-static uint32_t sample_count = 0;
-#define		HEARTBEAT_TIME			6600	/* 120min */
-static float old_pres = 0.0;
-#else
+#ifdef CONFIG_2MIN
 //static uint32_t sample_period = 110;		/* 120s */
 static uint32_t sample_period = 18;			/* 20s */
+#else
+static uint32_t sample_period = 2;			/* 2s */
+static uint32_t sample_count = 0;
+static float old_pres = 0.0;
+
+#define		HEARTBEAT_TIME			6600	/* 120min */
 #endif
+
+#define MAX_DBM					17
 
 static float cur_pres = 0.0;
 
@@ -121,8 +130,6 @@ static uint32_t need_push = 0;
 #define TXRX_CH				CH_00_470
 #define LORA_MODE			11
 #endif
-
-#define MAX_DBM					20
 
 uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 
@@ -497,7 +504,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 		// battery supply
 		cnt_vbat_3v3 = 0;
-		sample_period = 3;
+		sample_period = 2;
 
 		cnt_vbat_low = 0;
 		vbat_low = false;
@@ -577,7 +584,7 @@ void trig_check_sensor()
 	mode++;
 	mode %= 3;
 
-	if (2 == sample_period || 18 == sample_period) {
+	if (1 == sample_period || 2 == sample_period || 18 == sample_period) {
 		// usb power, reset the oled_i
 		oled_i = 0;
 	}
@@ -598,8 +605,8 @@ void setup()
 #endif
 
 #ifdef CONFIG_2MIN
-	//wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
-	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+	wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
+	//wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 #else
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 #endif
@@ -894,7 +901,7 @@ void task_oled()
 
 	bool tx_flag = false;
 
-	if (2 == sample_period) {
+	if (1 == sample_period) {
 		// usb power
 		oled_on_time = 60;
 		oled_refresh_time = 200;
@@ -902,13 +909,13 @@ void task_oled()
 	} else if (28 == sample_period) {
 
 		// low battery
-		oled_on_time = 15;
+		oled_on_time = 2;
 		oled_refresh_time = 1500;
 
-	} else if (18 == sample_period) {
+	} else if (2 == sample_period) {
 
-		// battery supply
-		oled_on_time = 30;
+		// rt battery supply
+		oled_on_time = 5;
 		oled_refresh_time = 500;
 	}
 
