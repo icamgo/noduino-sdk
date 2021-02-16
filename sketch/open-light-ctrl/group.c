@@ -17,6 +17,7 @@
 */
 #include "user_config.h"
 
+#if 0
 irom void esp_now_rx_cb(uint8_t * macaddr, uint8_t * data, uint8_t length)
 {
 	DEBUG("ESPNow receive\r\n");
@@ -71,3 +72,4 @@ irom void espnow_start()
 		INFO("ESPNow create Failed\r\n");
 	}
 }
+#endif

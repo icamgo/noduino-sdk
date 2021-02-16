@@ -12,6 +12,9 @@
 #include "mjpwm.h"
 #include "cJSON.h"
 #include "espnow.h"
+#include "gpio.h"
+
+#include "noduino.h"
 
 #include "app.h"
 #include "upnp.h"
@@ -22,7 +25,7 @@
 #define CONFIG_ALEXA		1
 #define CONFIG_GRADIENT		1
 
-//#define CONFIG_INFO		1
+#define CONFIG_INFO		1
 //#define CONFIG_DEBUG		1
 
 #define DEFAULT_VOICE_NAME	"open light"
@@ -42,5 +45,8 @@
 #define USE_OPTIMIZE_PRINTF
 #define PIN_DI 				13
 #define PIN_DCKI 			15
+
+#define ON								0x5a
+#define OFF								0xaa
 
 #endif

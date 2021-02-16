@@ -19,6 +19,7 @@
 #include "compile.h"
 
 extern system_status_t sys_status;
+int need_turn = 0x55;
 
 #ifdef CONFIG_ALEXA
 irom void light_on_saved_and_pub()
@@ -76,7 +77,7 @@ upnp_dev_t upnp_devs[] = {
 };
 #endif
 
-irom static void mjyun_stated_cb(mjyun_state_t state)
+irom void mjyun_stated_cb(mjyun_state_t state)
 {
 	if (mjyun_state() != state)
 		INFO("Platform: mjyun_state error \r\n");
@@ -188,13 +189,58 @@ irom void mjyun_disconnected()
 	/* show the wifi status */
 }
 
+irom int digital_read(uint8_t pin)
+{
+	// pin < 16
+	return GPIP(pin);
+}
+
+irom void do_pir()
+{
+	uint32_t status = GPIE;		// same as GPIO_STATUS_ADDRESS
+	GPIEC = status;		//clear them interrupts
+
+	INFO("do_pir = 0x%X\r\n", status);
+
+	if (0 == (status & 0x10)) {
+		// interrupt of gpio4 is not enabled
+		return;
+	}
+
+	ETS_GPIO_INTR_DISABLE();
+
+	//gpio_st = GPIO_REG_READ(GPIO_STATUS_ADDRESS) <==> GPIE
+	//GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, gpio_st) <==> GPIEC
+	//INFO("st = 0x%X\r\n", gpio_st);
+
+	//uint32_t savedPS = xt_rsil(15);	// stop other interrupts
+
+	//bool pirl = GPIO_INPUT_GET(4);
+	bool pirl = digital_read(4);
+
+	if (pirl == true && sys_status.mcu_status.s == 0) {
+		need_turn = ON;
+		INFO("need on\r\n");
+		//light_on_save_and_pub
+	} else if (pirl == false && sys_status.mcu_status.s == 1) {
+		need_turn = OFF;
+		INFO("need off\r\n");
+		//light_off_save_and_pub
+	}
+
+	//xt_wsr_ps(savedPS);
+
+	ETS_GPIO_INTR_ENABLE();
+}
+
 irom void platform_init(void)
 {
 	gpio16_output_conf();
 	gpio16_output_set(1);
 
 	mjyun_statechanged(mjyun_stated_cb);
-	espnow_start();
+
+	//espnow_start();
 
 	/* execute app_start_check() every one second */
 	network_sys_timer_cb_reg(app_start_check);
@@ -216,6 +262,17 @@ irom void system_init_done()
 	INFO("\r\nWelcom to Noduino Open Light!\r\n");
 	INFO("Current firmware is user%d.bin\r\n", system_upgrade_userbin_check()+1);
 	INFO("%s", noduino_banner);
+
+	PIN_FUNC_SELECT(PERIPHS_IO_MUX_GPIO4_U,FUNC_GPIO4);
+	GPIO_DIS_OUTPUT(4);				/* disable output (change to input) */
+	PIN_PULLUP_DIS(PERIPHS_IO_MUX_GPIO4_U);
+
+	gpio_pin_intr_state_set(4, GPIO_PIN_INTR_ANYEDGE);
+
+	ETS_GPIO_INTR_ATTACH(do_pir, NULL);
+	ETS_GPIO_INTR_ENABLE();
+
+	INFO("gpio4 = %d\r\n", digital_read(4));
 
 	app_start_status();
 
@@ -277,7 +334,7 @@ irom void user_init()
 		}
 	}
 #endif
-	set_warm_boot_flag();
 
+	set_warm_boot_flag();
 	system_init_done_cb(system_init_done);
 }
