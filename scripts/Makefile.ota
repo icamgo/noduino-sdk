@@ -288,23 +288,23 @@ $(FW_BASE)/%.bin: $(USER1_OUT) $(USER2_OUT)
 	@$(XOBJCOPY) --only-section .irom0.text -O binary $(USER2_OUT) .user2.irom0text.bin
 
 	$(vecho) "Generate the bootloader bin..."
-	python $(FW_TOOL) $(USER1_OUT) 9 $(flash_mode) $(flash_freqdiv) $(flash_map) 1
+	python2.7 $(FW_TOOL) $(USER1_OUT) 9 $(flash_mode) $(flash_freqdiv) $(flash_map) 1
 	@cp -f $(SDK_BASE)/bootloader/bin/$(CONFIG_OTA_BOOTLOADER).bin $(FW_BASE)/
 	@dd if=.boothead.bin of=$(FW_BASE)/$(CONFIG_OTA_BOOTLOADER).bin bs=1 conv=notrunc
 
 ifeq ($(CONFIG_OTA_BOOTLOADER), boot_v1.1)
 	$(vecho) "Using bootloader $(CONFIG_OTA_BOOTLOADER), bootmode = 1"
-	python $(FW_TOOL) $(USER1_OUT) 1 $(flash_mode) $(flash_freqdiv) $(flash_map) 1
+	python2.7 $(FW_TOOL) $(USER1_OUT) 1 $(flash_mode) $(flash_freqdiv) $(flash_map) 1
 	$(vecho) "Generated user1.bin!"
 
-	python $(FW_TOOL) $(USER2_OUT) 1 $(flash_mode) $(flash_freqdiv) $(flash_map) 2
+	python2.7 $(FW_TOOL) $(USER2_OUT) 1 $(flash_mode) $(flash_freqdiv) $(flash_map) 2
 	$(vecho) "Generated user2.bin!"
 else
 	$(vecho) "Using bootloader $(CONFIG_OTA_BOOTLOADER), bootmode = 2"
-	python $(FW_TOOL) $(USER1_OUT) 2 $(flash_mode) $(flash_freqdiv) $(flash_map) 1
+	python2.7 $(FW_TOOL) $(USER1_OUT) 2 $(flash_mode) $(flash_freqdiv) $(flash_map) 1
 	$(vecho) "Generated user1.bin!"
 
-	python $(FW_TOOL) $(USER2_OUT) 2 $(flash_mode) $(flash_freqdiv) $(flash_map) 2
+	python2.7 $(FW_TOOL) $(USER2_OUT) 2 $(flash_mode) $(flash_freqdiv) $(flash_map) 2
 	$(vecho) "Generated user2.bin!"
 endif
 
