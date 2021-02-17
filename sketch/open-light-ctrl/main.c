@@ -19,7 +19,8 @@
 #include "compile.h"
 
 extern system_status_t sys_status;
-int need_turn = 0x55;
+
+static os_timer_t timer_1hz;
 
 #ifdef CONFIG_ALEXA
 irom void light_on_saved_and_pub()
@@ -195,19 +196,28 @@ irom int digital_read(uint8_t pin)
 	return GPIP(pin);
 }
 
+static uint32_t pir_off_cnt = 0;
+static uint32_t pir_off_delay_s = 0;
+static bool pir_off_flag = true;
+//int need_turn = 0x55;
+
 irom void do_pir()
 {
-	uint32_t status = GPIE;		// same as GPIO_STATUS_ADDRESS
-	GPIEC = status;		//clear them interrupts
+	ETS_GPIO_INTR_DISABLE();
 
-	INFO("do_pir = 0x%X\r\n", status);
+	uint32_t status = GPIE;		// same as GPIO_STATUS_ADDRESS
+	GPIEC = status;				// clear them interrupts
+
+	//INFO("do_pir = 0x%X\r\n", status);
 
 	if (0 == (status & 0x10)) {
 		// interrupt of gpio4 is not enabled
-		return;
+		goto out;
 	}
 
-	ETS_GPIO_INTR_DISABLE();
+	if (sys_status.pir_on == 0) {
+		goto out;
+	}
 
 	//gpio_st = GPIO_REG_READ(GPIO_STATUS_ADDRESS) <==> GPIE
 	//GPIO_REG_WRITE(GPIO_STATUS_W1TC_ADDRESS, gpio_st) <==> GPIEC
@@ -216,21 +226,85 @@ irom void do_pir()
 	//uint32_t savedPS = xt_rsil(15);	// stop other interrupts
 
 	//bool pirl = GPIO_INPUT_GET(4);
-	bool pirl = digital_read(4);
+	int pirl = digital_read(4);
 
-	if (pirl == true && sys_status.mcu_status.s == 0) {
-		need_turn = ON;
-		INFO("need on\r\n");
-		//light_on_save_and_pub
-	} else if (pirl == false && sys_status.mcu_status.s == 1) {
-		need_turn = OFF;
-		INFO("need off\r\n");
-		//light_off_save_and_pub
+	if (pirl == 1) {
+
+		pir_off_cnt = 0;
+
+		//INFO("pir on\r\n");
+
+		if (sys_status.mcu_status.s == 0
+			&& pir_off_flag == false) {
+			/* Don't turn on after pir off */
+
+			//need_turn = ON;
+
+			//INFO("need on\r\n");
+			//INFO("pir on\r\n");
+			light_on_saved_and_pub();
+		}
+
+	} else if (pirl == 0) {
+
+		//need_turn = OFF;
+		//INFO("pir off\r\n");
 	}
 
 	//xt_wsr_ps(savedPS);
-
+out:
 	ETS_GPIO_INTR_ENABLE();
+}
+
+irom static void clock_tick(void)
+{
+	if (sys_status.pir_on == 0) {
+		return;
+	}
+
+	os_timer_disarm(&timer_1hz);
+
+	int pirl = digital_read(4);
+
+	//INFO("gpio4 = %d\r\n", pirl);
+
+	if (pirl == 0) {
+		pir_off_cnt++;
+
+		if (pir_off_cnt >= 60 && sys_status.mcu_status.s == 1) {
+
+			light_off_saved_and_pub();
+
+			pir_off_cnt = 0;
+
+			pir_off_flag = true;
+
+		}
+	} else if (pirl == 1) {
+
+		pir_off_cnt = 0;
+
+		if (sys_status.mcu_status.s == 0
+			&& pir_off_flag == false) {
+			/* Don't turn on after pir off */
+
+			light_on_saved_and_pub();
+		}
+	}
+
+	if (sys_status.mcu_status.s == 0) {
+
+		pir_off_delay_s++;
+
+		if (pir_off_delay_s >= 5) {
+
+			pir_off_flag = false;
+			pir_off_delay_s = 0;
+		}
+	}
+
+	os_timer_setfn(&timer_1hz, clock_tick, NULL);
+	os_timer_arm(&timer_1hz, 1000, true);
 }
 
 irom void platform_init(void)
@@ -252,6 +326,10 @@ irom void platform_init(void)
 	mjyun_ondisconnected(mjyun_disconnected);
 	mjyun_run(&mjyun_conf);
 	wifi_set_sleep_type(MODEM_SLEEP_T);
+
+	os_timer_disarm(&timer_1hz);
+	os_timer_setfn(&timer_1hz, clock_tick, NULL);
+	os_timer_arm(&timer_1hz, 1000, true);
 }
 
 irom void system_init_done()
@@ -268,6 +346,7 @@ irom void system_init_done()
 	PIN_PULLUP_DIS(PERIPHS_IO_MUX_GPIO4_U);
 
 	gpio_pin_intr_state_set(4, GPIO_PIN_INTR_ANYEDGE);
+	//gpio_pin_intr_state_set(4, GPIO_PIN_INTR_POSEDGE);
 
 	ETS_GPIO_INTR_ATTACH(do_pir, NULL);
 	ETS_GPIO_INTR_ENABLE();
