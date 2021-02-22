@@ -117,6 +117,7 @@ $(ARDUINO_CORES)/efm32/HardwareSerial.cpp				\
 $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
+$(LIB_DIR)/m5311/m5311.cpp								\
 $(LIB_DIR)/pt1000/pt1000.cpp							\
 
 
@@ -130,13 +131,13 @@ CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I
 CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
 
 CINCS		+= -I  $(LIB_DIR)/softspi/				\
-			-I $(LIB_DIR)/softi2c/					\
+			-I $(LIB_DIR)/m5311/					\
 			-I $(LIB_DIR)/pt1000/					\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I .									
 
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
-			-I $(LIB_DIR)/softi2c/					\
+			-I $(LIB_DIR)/m5311/					\
 			-I $(LIB_DIR)/pt1000/					\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I .

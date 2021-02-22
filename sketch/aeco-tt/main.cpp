@@ -17,6 +17,7 @@
 */
 
 #include "pt1000.h"
+#include "m5311.h"
 
 #include "rtcdriver.h"
 #include "math.h"
@@ -38,6 +39,8 @@ static float cur_temp = 0.0;
 //#define	TX_TESTING				1
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
+#define MODEM_ON_PIN			2		/* PIN6_PB8_D2 */
+
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
 
 static uint8_t need_push = 0;
@@ -54,15 +57,15 @@ uint16_t tx_count = 0;
 #define FLUSHOUTPUT					Serial.flush();
 
 #else
-
 #define INFO_S(param)
 #define INFO(param)
 #define INFOLN(param)
 #define FLUSHOUTPUT
-
 #endif
 
 void push_data();
+
+M5311 modem;
 
 char *ftoa(char *a, double f, int precision)
 {
@@ -90,6 +93,24 @@ void power_on_dev()
 
 void power_off_dev()
 {
+	digitalWrite(PWR_CTRL_PIN, LOW);
+}
+
+void power_on_modem()
+{
+	digitalWrite(PWR_CTRL_PIN, HIGH);
+
+	digitalWrite(MODEM_ON_PIN, HIGH);
+	delay(2000);
+	digitalWrite(MODEM_ON_PIN, LOW);
+}
+
+void power_off_modem()
+{
+	digitalWrite(MODEM_ON_PIN, HIGH);
+	delay(8300);
+	digitalWrite(MODEM_ON_PIN, LOW);
+
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
@@ -138,6 +159,40 @@ void trig_check_sensor()
 	interrupts();
 }
 
+void qsetup()
+{
+	power_on_dev();		// turn on device power
+	power_on_modem();
+
+	Serial1.setRouteLoc(0);
+	Serial1.begin(115200);
+
+	//Serial1.println("Hello");
+
+	modem.init(Serial1);
+
+	while (!modem.check_network()) {
+
+		power_off_dev();
+		delay(1000);
+		power_on_dev();
+
+		power_on_modem();
+
+		modem.init_modem();
+	}
+
+
+	INFOLN("IMEI = " + modem.get_imei());
+	INFOLN("IMSI = " + modem.get_imsi());
+
+	delay(500);
+
+	INFOLN(modem.check_ipaddr());
+
+	//Serial1.println(modem.check_ipaddr());
+}
+
 void setup()
 {
 	Ecode_t e;
@@ -152,7 +207,10 @@ void setup()
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 
+	pinMode(MODEM_ON_PIN, OUTPUT);
+
 	power_off_dev();
+	digitalWrite(MODEM_ON_PIN, LOW);
 
 	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
@@ -166,25 +224,13 @@ void setup()
 	Serial.begin(115200);
 #endif
 
-	Serial1.setRouteLoc(0);
-	Serial1.begin(115200);
-
-	Serial1.println("Hello NB");
-
 	/* Start watchdog */
 	WDOG_Init(&wInit);
 
 	/* bootup tx */
 	need_push = 0x5a;
-}
 
-void qsetup()
-{
-	power_on_dev();		// turn on device power
-
-#ifdef CONFIG_V0
-	sx1272.setup_v0(TXRX_CH, MAX_DBM);
-#endif
+	qsetup();
 }
 
 #ifdef CONFIG_V0
