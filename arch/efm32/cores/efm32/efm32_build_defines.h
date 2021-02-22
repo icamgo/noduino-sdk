@@ -127,9 +127,7 @@
 #ifndef USE_USART0
 #define USE_USART0  1
 #endif
-#ifndef USE_USART1
-#define USE_USART1  1
-#endif
+
 #ifndef USE_USART2
 #define USE_USART2  1
 #endif
@@ -148,6 +146,10 @@
 #ifndef USE_UART1
 #define USE_UART1   1
 #endif
+#endif
+
+#ifdef USE_AT
+#define USE_USART1  1
 #endif
 
 #ifndef USE_LEUART0

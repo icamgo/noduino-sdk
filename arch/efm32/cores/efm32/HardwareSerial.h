@@ -149,4 +149,8 @@ class HardwareSerial : public Stream {
 #ifdef MENU_SERIAL
    #define Serial MENU_SERIAL
 #endif	
+
+#ifdef USE_AT
+   #define Serial1 SerialUSART1
+#endif
 #endif
