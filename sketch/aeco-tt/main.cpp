@@ -23,7 +23,7 @@
 #include "math.h"
 #include "em_wdog.h"
 
-//#define	DEBUG					1
+#define	DEBUG					1
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -40,6 +40,7 @@ static float cur_temp = 0.0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define MODEM_ON_PIN			2		/* PIN6_PB8_D2 */
+#define MODEM_RESET_PIN			1		/* PIN5_PB7_D1 */
 
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
 
@@ -103,6 +104,7 @@ void power_on_modem()
 	digitalWrite(MODEM_ON_PIN, HIGH);
 	delay(2000);
 	digitalWrite(MODEM_ON_PIN, LOW);
+	delay(200);
 }
 
 void power_off_modem()
@@ -112,6 +114,22 @@ void power_off_modem()
 	digitalWrite(MODEM_ON_PIN, LOW);
 
 	digitalWrite(PWR_CTRL_PIN, LOW);
+}
+
+void wakeup_modem()
+{
+	digitalWrite(MODEM_ON_PIN, HIGH);
+	delay(100);
+	digitalWrite(MODEM_ON_PIN, LOW);
+	delay(200);
+}
+
+void reset_modem()
+{
+	digitalWrite(MODEM_RESET_PIN, HIGH);
+	delay(300);
+	digitalWrite(MODEM_RESET_PIN, LOW);
+	delay(200);
 }
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
@@ -145,7 +163,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 #else
 	if (fabsf(cur_temp - old_temp) > 1.0) {
 
-		need_push = 0x5a;
+		//need_push = 0x5a;
 	}
 #endif
 }
@@ -159,8 +177,10 @@ void trig_check_sensor()
 	interrupts();
 }
 
-void qsetup()
+bool qsetup()
 {
+	bool network_ok = false;
+
 	power_on_dev();		// turn on device power
 	power_on_modem();
 
@@ -171,26 +191,56 @@ void qsetup()
 
 	modem.init(Serial1);
 
-	while (!modem.check_network()) {
+	reset_modem();
 
+	if (modem.check_boot()) {
+		network_ok = true;
+	}
+
+	for (int i = 0; i < 30; i++) {
+
+		if (modem.check_modem_status()) {
+			INFOLN("wakeup modem");
+			//wakeup_modem();
+			reset_modem();
+		}
+
+		if (modem.check_network()) {
+			network_ok = true;
+			break;
+		}
+
+		delay(1000);
+
+		INFOLN("network check");
+
+	#if 0
 		power_off_dev();
 		delay(1000);
 		power_on_dev();
 
 		power_on_modem();
+	#else
+		//reset_modem();
+	#endif
 
-		modem.init_modem();
+		//modem.init_modem();
 	}
 
+	if (network_ok) {
 
-	INFOLN("IMEI = " + modem.get_imei());
-	INFOLN("IMSI = " + modem.get_imsi());
+		modem.disable_deepsleep();
 
-	delay(500);
+		INFOLN("IMEI = " + modem.get_imei());
+		INFOLN("IMSI = " + modem.get_imsi());
 
-	INFOLN(modem.check_ipaddr());
+		delay(500);
 
-	//Serial1.println(modem.check_ipaddr());
+		INFOLN(modem.get_net_time());
+		INFOLN(modem.check_ipaddr());
+	}
+
+	return network_ok;
 }
 
 void setup()
@@ -206,11 +256,13 @@ void setup()
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
-
 	pinMode(MODEM_ON_PIN, OUTPUT);
+	pinMode(MODEM_RESET_PIN, OUTPUT);
 
 	power_off_dev();
+
 	digitalWrite(MODEM_ON_PIN, LOW);
+	digitalWrite(MODEM_RESET_PIN, LOW);
 
 	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
@@ -228,7 +280,9 @@ void setup()
 	WDOG_Init(&wInit);
 
 	/* bootup tx */
-	need_push = 0x5a;
+	//need_push = 0x5a;
+
+	INFOLN("\r\n\r\nAECO-TT setup OK");
 
 	qsetup();
 }

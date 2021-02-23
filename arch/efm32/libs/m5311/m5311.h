@@ -20,7 +20,7 @@
 #endif
 
 #define BUF_MAX_SIZE			64
-#define MODEM_RESP				64
+#define MODEM_RESP				80
 
 class M5311 {
 
@@ -40,6 +40,9 @@ public:
 	bool init_modem();
 	bool check_modem_status();
 	bool check_network();
+	bool disable_deepsleep();
+
+	bool check_boot();
 
 	String check_ipaddr();
 	String get_net_time();
