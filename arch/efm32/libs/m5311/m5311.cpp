@@ -77,9 +77,9 @@ bool M5311::check_network()
 	MODEM_SERIAL->println(F("AT+CGATT?"));
 	delay(2000);
 
-	char wait_str[] = "+CGATT:1";
+	char wait_str[] = "+CGATT: 1";
 
-	if (expect_rx_str(2000, wait_str, 8) != "") {
+	if (expect_rx_str(2000, wait_str, 9) != "") {
 		INFOLN("Regiester network Done");
 		return true;
 
@@ -105,6 +105,65 @@ String M5311::check_ipaddr()
 	return "";
 }
 
+char modem_said[MODEM_RESP];
+char str[BUF_MAX_SIZE];
+
+String M5311::expect_rx_str(unsigned long period, char exp_str[], int len_check)
+{
+	unsigned long cur_t = millis();
+	unsigned long start_t = millis();
+	bool str_found = 0;
+	bool time_out = 0;
+	bool loop_out = 0;
+	int i = 0;
+	int found_index = 0, end_index = 0;
+	int modem_said_len = 0;
+	char c;
+	String re_str;
+	char *x;
+
+	memset(modem_said, 0, MODEM_RESP);
+	memset(str, 0, BUF_MAX_SIZE);
+
+	INFOLN("expect");
+
+	while (!loop_out) {
+
+		if (MODEM_SERIAL->available()) {
+			c = MODEM_SERIAL->read();
+			modem_said[i++] = c;
+		}
+
+		cur_t = millis();
+
+		if (cur_t - start_t > period) {
+			time_out = true;
+			start_t = cur_t;
+			loop_out = true;
+		}
+	}
+
+	modem_said[i] = '\0';
+
+	INFOLN(modem_said);
+
+	end_index = i;
+
+	x = strstr(modem_said, exp_str);
+	found_index = x ? x - modem_said : -1;
+
+	if (found_index >= 0) {
+		i = 0;
+		while (modem_said[found_index + i + len_check] != 0x0D | i == 0) {
+			str[i] = modem_said[found_index + i + len_check];
+			re_str += String(str[i]);
+			i++;
+		}
+		str[i] = '\0';
+		return re_str;
+	}
+	return "";
+}
 
 bool M5311::check_match(char target[], char pattern[], int len_check)
 {
@@ -153,66 +212,6 @@ int M5311::check_match_index(char target[], char pattern[], int len_check)
 		return index;
 	}
 	return -1;
-}
-
-char modem_said[MODEM_RESP];
-char str[BUF_MAX_SIZE];
-
-String M5311::expect_rx_str(unsigned long period, char exp_str[], int len_check)
-{
-	unsigned long cur_t = millis();
-	unsigned long start_t = millis();
-	bool str_found = 0;
-	bool time_out = 0;
-	bool loop_out = 0;
-	int i = 0;
-	int found_index = 0, end_index = 0;
-	int modem_said_len = 0;
-	char c;
-	String re_str;
-	char *x;
-
-	memset(modem_said, 0, MODEM_RESP);
-	memset(str, 0, BUF_MAX_SIZE);
-
-	MODEM_SERIAL->println("expect");
-
-	while (!loop_out) {
-
-		if (MODEM_SERIAL->available()) {
-			c = MODEM_SERIAL->read();
-			modem_said[i++] = c;
-		}
-
-		cur_t = millis();
-
-		if (cur_t - start_t > period) {
-			time_out = true;
-			start_t = cur_t;
-			loop_out = true;
-		}
-	}
-
-	modem_said[i] = '\0';
-
-	MODEM_SERIAL->println(modem_said);
-
-	end_index = i;
-
-	x = strstr(modem_said, exp_str);
-	found_index = x ? x - modem_said : -1;
-
-	if (found_index >= 0) {
-		i = 0;
-		while (modem_said[found_index + i + len_check] != 0x0D | i == 0) {
-			str[i] = modem_said[found_index + i + len_check];
-			re_str += String(str[i]);
-			i++;
-		}
-		str[i] = '\0';
-		return re_str;
-	}
-	return "";
 }
 
 bool M5311::check_incoming_msg()
