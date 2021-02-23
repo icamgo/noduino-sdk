@@ -91,13 +91,29 @@ bool M5311::check_network()
 
 String M5311::check_ipaddr()
 {
-	char wait_str[] = "+CGPADDR:0,";
+	char wait_str[] = "+CGDCONT: 1,";
 	String re_str;
 
-	MODEM_SERIAL->println(F("AT+CGPADDR=0"));
+	MODEM_SERIAL->println(F("AT+CGDCONT?"));
 	delay(1000);
 
 	re_str = expect_rx_str(1000, wait_str, 11);
+
+	if (re_str != "") {
+		return re_str;
+	}
+	return "";
+}
+
+String M5311::get_net_time()
+{
+	char wait_str[] = "+CCLK: 2";
+	String re_str;
+
+	MODEM_SERIAL->println(F("AT+CCLK?"));
+	delay(1000);
+
+	re_str = expect_rx_str(1000, wait_str, 8);
 
 	if (re_str != "") {
 		return re_str;

@@ -40,7 +40,10 @@ public:
 	bool init_modem();
 	bool check_modem_status();
 	bool check_network();
+
 	String check_ipaddr();
+	String get_net_time();
+
 	int check_modem_signal();
 
 	bool check_incoming_msg();
