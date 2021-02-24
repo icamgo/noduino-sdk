@@ -7,18 +7,14 @@ void M5311::init(Stream & serial)
 
 bool M5311::init_modem()
 {
-	INFOLN("Initial Modem to connect NB-IoT Network");
-	MODEM_SERIAL->println(F("AT+CMRB"));
-	delay(1000);
+	INFOLN("Initial Modem");
 
-	char wait_str[] = "REBOOT";
-
-	if (expect_rx_str(3000, wait_str, 6) != "") {
-		INFOLN("Reboot done.");
-	}
-
-	MODEM_SERIAL->println(F("AT"));
-	delay(1000);
+	//MODEM_SERIAL->println(F("AT+CLPLMN"));
+	//delay(5);
+	MODEM_SERIAL->println(F("AT*CMBAND=8"));
+	delay(5);
+	MODEM_SERIAL->println(F("AT+SM=LOCK"));
+	delay(5);
 }
 
 bool M5311::disable_deepsleep()
@@ -37,10 +33,28 @@ bool M5311::disable_deepsleep()
 	}
 }
 
+/*
+bool M5311::set_band()
+{
+}
+*/
+
 bool M5311::reboot()
 {
-	//MODEM_SERIAL->println("AT+CMRB");
-	MODEM_SERIAL->println("AT+COLDRB");
+	//MODEM_SERIAL->println("AT+COLDRB");
+
+	MODEM_SERIAL->println(F("AT+CMRB"));
+	delay(1000);
+
+	char wait_str[] = "REBOOT";
+
+	if (expect_rx_str(3000, wait_str, 6) != "") {
+		INFOLN("Reboot done.");
+		return true;
+	} else {
+		INFOLN("Reboot failed.");
+		return false;
+	}
 }
 
 String M5311::get_imei()
@@ -71,45 +85,71 @@ String M5311::get_imsi()
 	return "";
 }
 
-bool M5311::check_boot()
+/*
+ * 0: Failed
+ * 1: OK
+ * 2: timeout
+*/
+int M5311::check_boot()
 {
 	char wait_str[] = "+IP: ";
 
-	if (expect_rx_str(20000, wait_str, 5) != "") {
+	String ret_s = expect_rx_str(10000, wait_str, 5);
+
+	if ( ret_s != "") {
 		INFOLN("Start OK, got the ip.");
-		return true;
+		return 1;
+	} else if (ret_s == "T") {
+		return 2;
 	} else {
 		INFOLN("Boot failed");
-		return false;
+		return 0;
 	}
 }
 
-bool M5311::check_modem_status()
+/*
+ * 0: Failed
+ * 1: OK
+ * 2: timeout
+*/
+int M5311::check_modem_status()
 {
 	MODEM_SERIAL->println(F("AT"));
 
 	char wait_ok[] = "OK";
 
-	if (expect_rx_str(2000, wait_ok, 2) != "") {
-		return true;
-	}
+	String ret_s = expect_rx_str(1000, wait_ok, 2);
 
-	return false;
+	if ( ret_s != "") {
+		return 1;
+	} else if (ret_s == "T") {
+		return 2;
+	} else {
+		return 0;
+	}
 }
 
-bool M5311::check_network()
+/*
+ * 0: Failed
+ * 1: OK
+ * 2: timeout
+*/
+int M5311::check_network()
 {
-	MODEM_SERIAL->println(F("AT+CGATT?"));
-
 	char wait_str[] = "+CGATT: 1";
 
-	if (expect_rx_str(1000, wait_str, 9) != "") {
-		INFOLN("Regiester network Done");
-		return true;
+	MODEM_SERIAL->println(F("AT+CGATT?"));
 
+	String ret_s = expect_rx_str(1000, wait_str, 9);
+
+	if ( ret_s != "") {
+		INFOLN("Regiester network Done");
+		return 1;
+	} else if (ret_s == "T") {
+		return 2;
 	} else {
 		INFOLN("network is not ok");
-		return false;
+		return 0;
 	}
 }
 
@@ -119,9 +159,8 @@ String M5311::check_ipaddr()
 	String re_str;
 
 	MODEM_SERIAL->println(F("AT+CGDCONT?"));
-	delay(200);
 
-	re_str = expect_rx_str(1000, wait_str, 11);
+	re_str = expect_rx_str(1000, wait_str, 12);
 
 	if (re_str != "") {
 		return re_str;
@@ -153,17 +192,14 @@ String M5311::expect_rx_str(unsigned long period, char exp_str[], int len_check)
 	unsigned long cur_t = millis();
 	unsigned long start_t = millis();
 
-	bool str_found = 0;
 	bool time_out = 0;
 	bool loop_out = 0;
 
 	int i = 0;
-	int found_index = 0, end_index = 0;
+	int found_index = 0;
 
 	char c;
 	char *x;
-
-	String re_str;
 
 	memset(modem_said, 0, MODEM_RESP);
 	memset(str, 0, BUF_MAX_SIZE);
@@ -179,9 +215,13 @@ String M5311::expect_rx_str(unsigned long period, char exp_str[], int len_check)
 
 		cur_t = millis();
 
-		if (cur_t - start_t > period || i >= MODEM_RESP-1) {
+		if (cur_t - start_t > period) {
 			time_out = true;
 			start_t = cur_t;
+			loop_out = true;
+		}
+
+		if (i >= MODEM_RESP-1) {
 			loop_out = true;
 		}
 	}
@@ -189,28 +229,34 @@ String M5311::expect_rx_str(unsigned long period, char exp_str[], int len_check)
 	modem_said[i] = '\0';
 
 	INFOLN(modem_said);
-	INFO("strlen(modem_said) = ");
+	INFO("len(modem_said) = ");
 	INFOLN(strlen(modem_said));
-
-	end_index = i;
 
 	x = strstr(modem_said, exp_str);
 	found_index = x ? x - modem_said : -1;
 
 	if (found_index >= 0) {
 		i = 0;
-		while (modem_said[found_index + i + len_check] != 0x0D | i == 0) {
+
+		while (modem_said[found_index + i + len_check] != 0x0D || i == 0) {
 			str[i] = modem_said[found_index + i + len_check];
-			re_str += String(str[i]);
 			i++;
 		}
 		str[i] = '\0';
 
-		INFOLN(re_str);
-		return re_str;
+		return str;
+
+	} else {
+
+		if (time_out) {
+			INFOLN("expect timeout");
+			return "T";
+		} else {
+
+			INFOLN("expect no str found");
+			return "";
+		}
 	}
-	INFOLN("expect failed");
-	return "";
 }
 
 bool M5311::check_match(char target[], char pattern[], int len_check)

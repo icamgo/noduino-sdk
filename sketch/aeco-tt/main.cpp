@@ -180,34 +180,48 @@ void trig_check_sensor()
 bool qsetup()
 {
 	bool network_ok = false;
-
-	power_on_dev();		// turn on device power
-	power_on_modem();
+	int start_cnt = 0;
 
 	Serial1.setRouteLoc(0);
 	Serial1.begin(115200);
 
 	//Serial1.println("Hello");
-
 	modem.init(Serial1);
 
-	reset_modem();
+qsetup_start:
 
-	if (modem.check_boot()) {
+	power_on_dev();		// turn on device power
+	power_on_modem();
+
+	modem.init_modem();
+
+	//reset_modem();
+	WDOG_Feed();
+
+	int ret = modem.check_boot();
+	start_cnt++;
+
+	if (ret == 1) {
+
 		network_ok = true;
+
+	} else if (ret == 2 && start_cnt < 3) {
+		goto qsetup_start;
 	}
 
 	for (int i = 0; i < 30; i++) {
 
-		if (modem.check_modem_status()) {
-			INFOLN("wakeup modem");
-			//wakeup_modem();
-			reset_modem();
-		}
+		WDOG_Feed();
+		ret = modem.check_network();
 
-		if (modem.check_network()) {
+		if (ret == 1) {
 			network_ok = true;
 			break;
+
+		} else if (ret == 2){
+
+			INFOLN("Try to wakeup modem");
+			wakeup_modem();
 		}
 
 		delay(1000);
@@ -229,12 +243,10 @@ bool qsetup()
 
 	if (network_ok) {
 
-		modem.disable_deepsleep();
+		//modem.disable_deepsleep();
 
-		INFOLN("IMEI = " + modem.get_imei());
-		INFOLN("IMSI = " + modem.get_imsi());
-
-		delay(500);
+		//INFOLN("IMEI = " + modem.get_imei());
+		//INFOLN("IMSI = " + modem.get_imsi());
 
 		INFOLN(modem.get_net_time());
 		INFOLN(modem.check_ipaddr());
