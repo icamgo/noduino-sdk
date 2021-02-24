@@ -316,8 +316,12 @@ void HardwareSerial::begin(const uint32_t baud,uint8_t config){
 #endif
     USART_InitAsync(this->instance, &initasync);
     this->instance->IFC = _USART_IFC_MASK;
+	#ifndef UART_NO_RX_INT
 	this->instance->IEN = USART_IEN_RXDATAV;
     this->instance->ROUTE |=  USART_ROUTE_TXPEN | USART_ROUTE_RXPEN | USART_ROUTE_LOCATION_LOCx;
+	#else
+    this->instance->ROUTE |=  USART_ROUTE_TXPEN | USART_ROUTE_LOCATION_LOCx;
+	#endif
   }
   
   if (buf->mode == LEUART_TYPE) {
