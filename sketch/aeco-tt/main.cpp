@@ -195,7 +195,6 @@ qsetup_start:
 
 	modem.init_modem();
 
-	//reset_modem();
 	WDOG_Feed();
 
 	int ret = modem.check_boot();
@@ -206,6 +205,9 @@ qsetup_start:
 		network_ok = true;
 
 	} else if (ret == 2 && start_cnt < 3) {
+
+		power_off_dev();
+		delay(1000);
 		goto qsetup_start;
 	}
 
@@ -249,7 +251,13 @@ qsetup_start:
 		//INFOLN("IMSI = " + modem.get_imsi());
 
 		INFOLN(modem.get_net_time());
-		INFOLN(modem.check_ipaddr());
+		//INFOLN(modem.check_ipaddr());
+
+	} else {
+		/* attach network timeout */
+		power_on_modem();
+		delay(500);
+		modem.clean_net_cache();
 	}
 
 	return network_ok;
@@ -262,9 +270,9 @@ void setup()
 	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
 
 	/* Watchdog setup - Use defaults, excepts for these : */
-	wInit.em2Run = true;
-	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
+	//wInit.em2Run = true;
+	//wInit.em3Run = true;
+	//wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -296,7 +304,21 @@ void setup()
 
 	INFOLN("\r\n\r\nAECO-TT setup OK");
 
-	qsetup();
+	if (qsetup()) {
+
+		//modem.mqtt_begin("mqtt.autoeco.net", 1883);
+		//modem.mqtt_end();
+
+		modem.mqtt_begin("39.106.95.136", 1883);
+
+		modem.mqtt_pub("dev/gw", "hello");
+
+		modem.mqtt_end();
+
+	} else {
+
+		power_off_dev();
+	}
 }
 
 #ifdef CONFIG_V0
@@ -356,19 +378,24 @@ void push_data()
 
 void loop()
 {
-	if (0x5a == need_push) {
-		push_data();
+	WDOG_Feed();
 
-		need_push = 0;
+	if (0x5a == need_push) {
+	//	push_data();
+
+	//	need_push = 0;
 	}
 
-	power_off_dev();
+	//power_off_dev();
 
 	/*
 	 * Enable rtc timer before enter deep sleep
 	 * Stop rtc timer after enter check_sensor_data()
 	 */
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
+	//RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
 
-	EMU_EnterEM2(true);
+	//EMU_EnterEM2(true);
+
+	//INFOLN("Loop heartbeat...");
+	delay(5);
 }
