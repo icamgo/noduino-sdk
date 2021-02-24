@@ -20,7 +20,7 @@
 #endif
 
 #define BUF_MAX_SIZE			64
-#define MODEM_RESP				128
+#define MODEM_RESP				256
 
 class M5311 {
 
@@ -43,6 +43,8 @@ public:
 	int check_network();
 	int check_boot();
 
+	void clean_net_cache();
+
 	bool disable_deepsleep();
 
 
@@ -54,8 +56,10 @@ public:
 	bool check_incoming_msg();
 
 	String req_srv_ip(char srv[]);
-	bool mqtt_connect(int port, char sock_num[]);
+
+	bool mqtt_begin(char srv[], int port);
 	bool mqtt_pub(char topic[], char msg[]);
+	void mqtt_end();
 
 	String check_udp_incoming_str();
 	String hex2str(String hexData);

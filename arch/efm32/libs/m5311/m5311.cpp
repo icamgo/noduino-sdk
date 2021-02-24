@@ -9,8 +9,6 @@ bool M5311::init_modem()
 {
 	INFOLN("Initial Modem");
 
-	//MODEM_SERIAL->println(F("AT+CLPLMN"));
-	//delay(5);
 	MODEM_SERIAL->println(F("AT*CMBAND=8"));
 	delay(5);
 	MODEM_SERIAL->println(F("AT+SM=LOCK"));
@@ -38,6 +36,16 @@ bool M5311::set_band()
 {
 }
 */
+void M5311::clean_net_cache()
+{
+	INFOLN("cleanup net cache");
+
+	MODEM_SERIAL->println(F("AT+CFUN=0"));
+	delay(5);
+
+	MODEM_SERIAL->println(F("AT+CLPLMN"));
+	delay(5);
+}
 
 bool M5311::reboot()
 {
@@ -96,14 +104,14 @@ int M5311::check_boot()
 
 	String ret_s = expect_rx_str(10000, wait_str, 5);
 
-	if ( ret_s != "") {
-		INFOLN("Start OK, got the ip.");
-		return 1;
+	if ( ret_s == "") {
+		INFOLN("Boot failed");
+		return 0;
 	} else if (ret_s == "T") {
 		return 2;
 	} else {
-		INFOLN("Boot failed");
-		return 0;
+		INFOLN("Start OK, got the ip.");
+		return 1;
 	}
 }
 
@@ -120,12 +128,12 @@ int M5311::check_modem_status()
 
 	String ret_s = expect_rx_str(1000, wait_ok, 2);
 
-	if ( ret_s != "") {
-		return 1;
+	if ( ret_s == "") {
+		return 0;
 	} else if (ret_s == "T") {
 		return 2;
 	} else {
-		return 0;
+		return 1;
 	}
 }
 
@@ -142,14 +150,14 @@ int M5311::check_network()
 
 	String ret_s = expect_rx_str(1000, wait_str, 9);
 
-	if ( ret_s != "") {
-		INFOLN("Regiester network Done");
-		return 1;
+	if ( ret_s == "") {
+		INFOLN("network is not ok");
+		return 0;
 	} else if (ret_s == "T") {
 		return 2;
 	} else {
-		INFOLN("network is not ok");
-		return 0;
+		INFOLN("Regiester network Done");
+		return 1;
 	}
 }
 
@@ -382,55 +390,55 @@ String M5311::req_srv_ip(char srv[])
 	return re_str;
 }
 
-bool M5311::mqtt_connect(int port, char sock_num[])
+bool M5311::mqtt_begin(char srv[], int port)
 {
-
-	MODEM_SERIAL->print(F("AT+NSOCR=DGRAM,17,"));
+//AT+MQTTCFG="mqtt.autoeco.net",1883,"12123089999",10,"test","test",1
+	MODEM_SERIAL->print(F("AT+MQTTCFG=\""));
+	MODEM_SERIAL->print(srv);
+	MODEM_SERIAL->print(F("\","));
 	MODEM_SERIAL->print(port);
-	MODEM_SERIAL->println(F(",1"));
+	MODEM_SERIAL->print(F(",\"devid_002\",60,\"test\",\"test\",1,0\r\n"));
 
+	#if 0
 	char wait_str[] = "+IP:";
-
 	String re_str;
 	re_str = expect_rx_str(1000, wait_str, 4);
+	#endif
+
+	delay(100);
+
+	//MODEM_SERIAL->print(F("AT+MQTTOPEN=1,1,1,1,1,\"dev/gw\",\"online\"\r\n"));
+	MODEM_SERIAL->print(F("AT+MQTTOPEN=1,1,0\r\n"));
+	delay(100);
+
+	MODEM_SERIAL->print(F("AT+MQTTSTAT\r\n"));
+	delay(100);
+
+	return true;
 }
 
 
 bool M5311::mqtt_pub(char topic[], char msg[])
 {
+	MODEM_SERIAL->print(F("AT+MQTTPUB=\""));
 
-#if 0
-	int str_len = data.length();
-	char buffer[str_len + 2];
-	data.toCharArray(buffer, str_len + 1);
+	MODEM_SERIAL->print(topic);
 
-	/* Start AT command */
-	MODEM_SERIAL->print(F("AT+NSOST=0"));
-	MODEM_SERIAL->print(F(","));
-	MODEM_SERIAL->print(ip);
-	MODEM_SERIAL->print(F(","));
-	MODEM_SERIAL->print(port);
-	MODEM_SERIAL->print(F(","));
-	MODEM_SERIAL->print(String(str_len));
-	MODEM_SERIAL->print(F(","));
+	MODEM_SERIAL->print(F("\",1,0,0,0,\""));
 
-	/* Fetch print data in hex format */
-	char *h_buf;
-	h_buf = buffer;
-	char fetch[3] = "";
-	bool chk = false;
-	int i = 0;
+	MODEM_SERIAL->print(msg);
 
-	while (*h_buf) {
-		chk = itoa((int)*h_buf, fetch, 16);
-		if (chk) {
-			MODEM_SERIAL->print(fetch);
-		}
-		h_buf++;
-	}
-	MODEM_SERIAL->print("\r\n");
-#endif
+	MODEM_SERIAL->print(F("\"\r\n"));
 
+	return true;
+}
+
+void M5311::mqtt_end()
+{
+	MODEM_SERIAL->print(F("AT+MQTTDISC\r\n"));
+	delay(800);
+	MODEM_SERIAL->print(F("AT+MQTTDEL\r\n"));
+	delay(800);
 }
 
 String M5311::check_udp_incoming_str()
