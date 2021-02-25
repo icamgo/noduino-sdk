@@ -20,7 +20,7 @@
 #endif
 
 #define BUF_MAX_SIZE			64
-#define MODEM_RESP				256
+#define MODEM_RESP				160
 
 class M5311 {
 
@@ -36,6 +36,8 @@ public:
 	int check_match_index(char target[], char pattern[], int len_check);
 	String expect_rx_str(unsigned long period, char exp_str[],
 			     int len_check);
+
+	String find_rxbuf_str(char exp_str[], int len_check);
 
 	bool init_modem();
 
@@ -57,7 +59,8 @@ public:
 
 	String req_srv_ip(char srv[]);
 
-	bool mqtt_begin(char srv[], int port);
+	bool mqtt_begin(char srv[], int port, char clientid[]);
+	bool mqtt_connect();
 	bool mqtt_pub(char topic[], char msg[]);
 	void mqtt_end();
 

@@ -28,7 +28,7 @@
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 240;		/* 240s */
+static uint32_t sample_period = 120;		/* 240s */
 
 static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			7200
@@ -36,7 +36,7 @@ static uint32_t sample_count = 0;
 static float old_temp = 0.0;
 static float cur_temp = 0.0;
 
-//#define	TX_TESTING				1
+#define	TX_TESTING				1
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define MODEM_ON_PIN			2		/* PIN6_PB8_D2 */
@@ -46,17 +46,16 @@ static float cur_temp = 0.0;
 
 static uint8_t need_push = 0;
 
-uint8_t message[32] = { 0x47, 0x4F, 0x33 };
 uint16_t tx_count = 0;
 
-#ifdef DEBUG
+#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s}"
 
+#ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
 #define INFO_HEX(param)			Serial.print(param,HEX)
 #define INFO(param)				Serial.print(param)
 #define INFOLN(param)			Serial.println(param)
-#define FLUSHOUTPUT					Serial.flush();
-
+#define FLUSHOUTPUT				Serial.flush();
 #else
 #define INFO_S(param)
 #define INFO(param)
@@ -64,27 +63,84 @@ uint16_t tx_count = 0;
 #define FLUSHOUTPUT
 #endif
 
-void push_data();
-
 M5311 modem;
 
-char *ftoa(char *a, double f, int precision)
+char dev_id[24];
+char dev_vbat[6];
+char dev_data[8];
+
+void push_data();
+
+uint64_t get_devid()
+{
+	uint64_t *p;
+
+	p = (uint64_t *)0x0FE00008;
+
+	return *p;
+}
+
+char *decode_devid(uint64_t n)
+{
+	char *dest = dev_id;
+
+	dest += 20;
+	*dest-- = 0;
+	while (n) {
+		*dest-- = (n % 10) + '0';
+		n /= 10;
+	}
+
+	strcpy(dev_id, dest+1);
+
+	return dev_id;
+}
+
+/* only support .0001 */
+char *ftoa(char *a, float f, int preci)
 {
 	long p[] =
-	    { 0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000 };
+	    {0, 10, 100, 1000, 10000};
 
 	char *ret = a;
-	long heiltal = (long)f;
-	itoa(heiltal, a, 10);
+
+	long ipart = (long)f;
+
+	itoa(ipart, a, 10);		//int16, -32,768 ~ 32,767
+
 	while (*a != '\0')
 		a++;
+
 	*a++ = '.';
-	long desimal = abs((long)((f - heiltal) * p[precision]));
-	if (desimal < p[precision - 1]) {
-		*a++ = '0';
+
+	long fpart = abs(f * p[preci] - ipart * p[preci]);
+
+	if (fpart > 0) {
+		if (fpart < p[preci]/10) {
+			*a++ = '0';
+		}
+		if (fpart < p[preci]/100) {
+			*a++ = '0';
+		}
+		if (fpart < p[preci]/1000) {
+			*a++ = '0';
+		}
 	}
-	itoa(desimal, a, 10);
+
+	itoa(fpart, a, 10);
 	return ret;
+}
+
+char *decode_vbat(float vbat)
+{
+	ftoa(dev_vbat, (float)(vbat / 1000.0), 1);
+	return dev_vbat;
+}
+
+char *decode_sensor_data(float dd)
+{
+	ftoa(dev_data, dd, 1);
+	return dev_data;
 }
 
 void power_on_dev()
@@ -156,14 +212,14 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	cur_temp = pt1000_get_temp();
 
-	power_off_dev();
+	//power_off_dev();
 
 #ifdef TX_TESTING
 	need_push = 0x5a;
 #else
 	if (fabsf(cur_temp - old_temp) > 1.0) {
 
-		//need_push = 0x5a;
+		need_push = 0x5a;
 	}
 #endif
 }
@@ -197,6 +253,8 @@ qsetup_start:
 
 	WDOG_Feed();
 
+	int ret;
+#if 0
 	int ret = modem.check_boot();
 	start_cnt++;
 
@@ -210,6 +268,7 @@ qsetup_start:
 		delay(1000);
 		goto qsetup_start;
 	}
+#endif
 
 	for (int i = 0; i < 30; i++) {
 
@@ -250,7 +309,7 @@ qsetup_start:
 		//INFOLN("IMEI = " + modem.get_imei());
 		//INFOLN("IMSI = " + modem.get_imsi());
 
-		INFOLN(modem.get_net_time());
+		//INFOLN(modem.get_net_time());
 		//INFOLN(modem.check_ipaddr());
 
 	} else {
@@ -300,90 +359,88 @@ void setup()
 	WDOG_Init(&wInit);
 
 	/* bootup tx */
-	//need_push = 0x5a;
+	need_push = 0x5a;
 
 	INFOLN("\r\n\r\nAECO-TT setup OK");
-
-	if (qsetup()) {
-
-		//modem.mqtt_begin("mqtt.autoeco.net", 1883);
-		//modem.mqtt_end();
-
-		modem.mqtt_begin("39.106.95.136", 1883);
-
-		modem.mqtt_pub("dev/gw", "hello");
-
-		modem.mqtt_end();
-
-	} else {
-
-		power_off_dev();
-	}
 }
 
-#ifdef CONFIG_V0
-uint64_t get_devid()
-{
-	uint64_t *p;
-
-	p = (uint64_t *)0x0FE00008;
-
-	return *p;
-}
-
-uint16_t get_crc(uint8_t *pp, int len)
-{
-	int i;
-	uint16_t hh = 0;
-
-	for (i = 0; i < len; i++) {
-		hh += pp[i];
-	}
-	return hh;
-}
-#endif
 
 void push_data()
 {
-	long startSend;
-	long endSend;
+	long start_send;
+	long end_send;
 
 	float vbat = 0.0;
 
 	uint8_t r_size;
 
-	int e;
+	int e = 0;
 
-	qsetup();
+	start_send = millis();
 
 	pt1000_init();
+
 	cur_temp = pt1000_get_temp();		// 'C
 
 	vbat = adc.readVbat();
 
-	startSend = millis();
+	if (qsetup()) {
 
-#ifdef CONFIG_V0
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, 24, TX_TIME);
+		modem.mqtt_end();
+		delay(100);
+
+		char *devid = decode_devid(get_devid());
+
+		wakeup_modem();
+		modem.mqtt_begin("mqtt.autoeco.net", 1883, devid);
+		//modem.mqtt_begin("39.106.95.136", 1883, devid);
+
+		char msg[64];
+		memset(msg, 0, 64);
+		sprintf(msg, MQTT_MSG,
+				seconds(),
+				devid,
+				decode_vbat(vbat),
+				decode_sensor_data(cur_temp)
+		);
+
+		wakeup_modem();
+
+#if 1
+		if (modem.mqtt_connect()) {
+
+			wakeup_modem();
+
+			if (modem.mqtt_pub("dev/gw", msg)) {
+
+				old_temp = cur_temp;
+			}
+		}
+#else
+		modem.mqtt_connect();
+		wakeup_modem();
+		modem.mqtt_pub("dev/gw", msg);
 #endif
+		modem.mqtt_end();
 
-	if (!e) {
-		// send message succesful, update the old_temp
-		old_temp = cur_temp;
+	} else {
+
+		// connect basestation failed
+
+		//power_off_dev();
 	}
 
+	end_send = millis();
 
-	power_off_dev();
+	//power_off_dev();
 }
 
 void loop()
 {
-	WDOG_Feed();
-
 	if (0x5a == need_push) {
-	//	push_data();
+		push_data();
 
-	//	need_push = 0;
+		need_push = 0;
 	}
 
 	//power_off_dev();
@@ -392,10 +449,10 @@ void loop()
 	 * Enable rtc timer before enter deep sleep
 	 * Stop rtc timer after enter check_sensor_data()
 	 */
-	//RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
 
-	//EMU_EnterEM2(true);
+	EMU_EnterEM2(true);
 
 	//INFOLN("Loop heartbeat...");
-	delay(5);
+	//delay(5);
 }
