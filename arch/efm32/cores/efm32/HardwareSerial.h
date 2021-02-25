@@ -24,7 +24,7 @@
 
 #if !(defined(SERIAL_TX_BUFFER_SIZE) && defined(SERIAL_RX_BUFFER_SIZE))
  #define SERIAL_TX_BUFFER_SIZE 32
- #define SERIAL_RX_BUFFER_SIZE 256
+ #define SERIAL_RX_BUFFER_SIZE 160
 #endif
  
 #define SERIAL_8N1 0x06
@@ -98,6 +98,9 @@ class HardwareSerial : public Stream {
     virtual size_t write(uint8_t);
     using Print::write;
 	operator bool() { return true; }
+
+	void clear_rxbuf();
+	char *get_rxbuf() { return buf->rxBuffer; }
 	
 	USART_Buf_TypeDef *buf = NULL;
     USART_TypeDef *instance = NULL;
