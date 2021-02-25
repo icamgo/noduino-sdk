@@ -363,7 +363,7 @@ char *uint64_to_str(uint64_t n)
 
 	strcpy(dev_id, dest+1);
 
-	return dest + 1;
+	return dev_id;
 }
 
 char *decode_devid(uint8_t *pkt)

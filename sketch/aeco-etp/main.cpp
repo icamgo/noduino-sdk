@@ -134,7 +134,7 @@ char *uint64_to_str(uint64_t n, char *buf)
 
 	strcpy(buf, dest+1);
 
-	return dest + 1;
+	return dev_id;
 }
 
 char *decode_devid(uint8_t *pkt)

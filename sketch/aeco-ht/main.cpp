@@ -30,7 +30,6 @@
 
 #ifdef CONFIG_PROTO_V33
 #define ENABLE_CRYPTO				1
-#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 #endif
 
 #ifdef ENABLE_CRYPTO
@@ -106,10 +105,11 @@ uint8_t tx_cause = RESET_TX;
 #ifdef CONFIG_V0
 
 #ifdef CONFIG_PROTO_V33
+#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 
 #elif CONFIG_PROTO_V34
-#define PAYLOAD_LEN			36		/* 36 + 6 = 42 */
+#define PAYLOAD_LEN					36		/* 36 + 6 = 42 */
 uint8_t message[PAYLOAD_LEN] = { 0x47, 0x4F, 0x34 };
 #endif
 

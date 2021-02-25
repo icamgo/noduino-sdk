@@ -107,7 +107,7 @@ char *uint64_to_str(uint64_t n)
 		*dest-- = (n % 10) + '0';
 		n /= 10;
 	}
-	return dest + 1;
+	return dev_id;
 }
 
 void setup()

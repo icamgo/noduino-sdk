@@ -136,7 +136,7 @@ char *uint64_to_str(uint64_t n)
 
 	strcpy(dev_id, dest+1);
 
-	return dest + 1;
+	return dev_id;
 }
 
 char *decode_devid(uint8_t *pkt)
@@ -351,7 +351,7 @@ here:
 #endif
 		rx_intval = INIT_RX_INTVAL - (end-start)/2;
 		//rx_window += 330;
-		rx_window = INIT_RX_WINDOW + (end-start)/2;
+		rx_window = INIT_RX_WINDOW;
 
 		rx_count++;
 	}
@@ -371,7 +371,6 @@ here:
 		rx_intval = INIT_RX_INTVAL;
 		rx_window = INIT_RX_INTVAL + INIT_RX_WINDOW;
 
-		rx_count = 0;
 	}
 
 	INFO_S("%s", "window = ");

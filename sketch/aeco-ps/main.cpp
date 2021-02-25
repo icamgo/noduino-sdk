@@ -53,8 +53,7 @@ static uint32_t cnt_rt_01 = 0;
 #define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
 #else
 #define ENABLE_CRYPTO				1
-#define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
-//#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
+#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 #endif
 
 #ifdef ENABLE_CRYPTO
@@ -250,7 +249,7 @@ char *uint64_to_str(uint64_t n)
 
 	strcpy(dev_id, dest+1);
 
-	return dest + 1;
+	return dev_id;
 }
 
 #endif
@@ -537,11 +536,11 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		cnt_vbat_low = 0;
 		vbat_low = false;
 
-	} else if (cur_vbat < 3.0) {
+	} else if (cur_vbat < 3.1) {
 
 		cnt_vbat_low++;
 
-		if (cnt_vbat_low >= 3) {
+		if (cnt_vbat_low >= 7) {
 
 			sample_period = 28;
 
@@ -555,7 +554,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 		// battery supply
 		cnt_vbat_3v3 = 0;
-		sample_period = 18;
+		sample_period = 4;
 
 		cnt_vbat_low = 0;
 		vbat_low = false;

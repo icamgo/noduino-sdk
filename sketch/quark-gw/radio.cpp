@@ -556,7 +556,7 @@ int radio_available(char *cmd)
 	int i = 0, e = 1;
 
 #ifdef ENABLE_RX_INTERRUPT
-	if (rx_err_cnt > 8) {
+	if (rx_err_cnt > 5) {
 
 		sx1272.reset();
 		INFO_S("%s", "Resetting lora module\n");
