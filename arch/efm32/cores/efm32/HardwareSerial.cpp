@@ -558,7 +558,7 @@ void HardwareSerial::clear_rxbuf(void)
 
 	//memset(buf->rxBuffer, 0, SERIAL_RX_BUFFER_SIZE);
 
-	buf->rxEnd = buf->rxStart;
+	buf->rxStart = buf->rxEnd;
 
 	interrupts();
 }
