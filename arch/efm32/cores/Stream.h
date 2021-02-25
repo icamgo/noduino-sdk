@@ -49,6 +49,8 @@ class Stream : public Print
     virtual int read() = 0;
     virtual int peek() = 0;
     virtual void flush() = 0;
+	virtual void clear_rxbuf() = 0;
+	virtual char *get_rxbuf() = 0;
 
     Stream() {_timeout=1000;}
 
