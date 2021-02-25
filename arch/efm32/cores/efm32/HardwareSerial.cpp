@@ -552,6 +552,17 @@ int HardwareSerial::availableForWrite(void)
   return buf->txStart - buf->txEnd - 1;
 }
 
+void HardwareSerial::clear_rxbuf(void)
+{
+	noInterrupts();
+
+	//memset(buf->rxBuffer, 0, SERIAL_RX_BUFFER_SIZE);
+
+	buf->rxEnd = buf->rxStart;
+
+	interrupts();
+}
+
 int HardwareSerial::peek(void)
 {
   if (available()) {
@@ -576,7 +587,7 @@ int HardwareSerial::read(void) {
 }
 
 size_t HardwareSerial::write(unsigned char ch) {
-#if DEBUG_EFM /*for debug unused interrupt*/
+#ifdef DEBUG_UART /*for debug unused interrupt*/
     if (buf->mode == LEUART_TYPE) {
       LEUART_Tx((LEUART_TypeDef *)buf->instance, ch);
     }
@@ -618,7 +629,7 @@ void USART_TXCallback(USART_Buf_TypeDef *interruptUART) {
   }
 }
 void USART_RXCallback(USART_Buf_TypeDef *interruptUART) {
-  if (((interruptUART->rxEnd + 1) % SERIAL_RX_BUFFER_SIZE) == interruptUART->txStart) return; /*over*/
+  if (((interruptUART->rxEnd + 1) % SERIAL_RX_BUFFER_SIZE) == interruptUART->rxStart) return; /*over*/
   interruptUART->rxBuffer[interruptUART->rxEnd++] = USART_Rx(interruptUART->instance);
   interruptUART->rxEnd %= SERIAL_RX_BUFFER_SIZE;
 }
