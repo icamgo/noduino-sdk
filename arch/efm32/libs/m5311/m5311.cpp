@@ -11,11 +11,12 @@ bool M5311::init_modem()
 
 	MODEM_SERIAL->println(F("AT*CMBAND=8"));
 	MODEM_SERIAL->flush();
-	delay(5);
+	MODEM_SERIAL->flush();
+	delay(1);
 
 	MODEM_SERIAL->println(F("AT+SM=LOCK"));
 	MODEM_SERIAL->flush();
-	delay(5);
+	delay(1);
 
 	MODEM_SERIAL->clear_rxbuf();
 }
@@ -24,6 +25,7 @@ bool M5311::disable_deepsleep()
 {
 	MODEM_SERIAL->println(F("AT+SM=LOCK_FOREVER"));
 	MODEM_SERIAL->flush();
+	MODEM_SERIAL->clear_rxbuf();
 
 	char wait_ok[] = "OK";
 
@@ -48,11 +50,12 @@ void M5311::clean_net_cache()
 
 	MODEM_SERIAL->println(F("AT+CFUN=0"));
 	MODEM_SERIAL->flush();
-	delay(5);
+	delay(1);
 
 	MODEM_SERIAL->println(F("AT+CLPLMN"));
 	MODEM_SERIAL->flush();
-	delay(5);
+
+	MODEM_SERIAL->clear_rxbuf();
 }
 
 bool M5311::reboot()
@@ -210,6 +213,7 @@ String M5311::get_net_time()
 	re_str = expect_rx_str(1000, wait_str, 8);
 
 	if (re_str != "") {
+		/* +CCLK: 21/02/26,06:22:38+32 */
 		return re_str;
 	}
 	return "";

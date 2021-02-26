@@ -40,6 +40,16 @@ inline uint32_t seconds() {
 	return secTicks;
 }
 
+inline void fix_seconds(int delta)
+{
+	secTicks += delta;
+}
+
+inline void update_seconds(uint32_t ep)
+{
+	secTicks = ep;
+}
+
 inline uint32_t micros() {
   uint32_t m  = msTicks;
   uint32_t u  = SysTick->LOAD - SysTick->VAL;

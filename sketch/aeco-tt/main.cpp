@@ -140,9 +140,9 @@ char *ftoa(char *a, float f, int preci)
 	return ret;
 }
 
-char *decode_vbat(float vbat)
+char *decode_vbat(float vb)
 {
-	ftoa(dev_vbat, (float)(vbat / 1000.0), 1);
+	ftoa(dev_vbat, vb, 1);
 	return dev_vbat;
 }
 
@@ -199,8 +199,7 @@ void reset_modem()
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
-	(void)id;
-	(void)user;
+	fix_seconds(sample_period);
 
 	WDOG_Feed();
 
@@ -322,13 +321,14 @@ qsetup_start:
 		//INFOLN("IMEI = " + modem.get_imei());
 		//INFOLN("IMSI = " + modem.get_imsi());
 
-		//INFOLN(modem.get_net_time());
 		//INFOLN(modem.check_ipaddr());
+
+		INFOLN(modem.get_net_time());
 
 	} else {
 		/* attach network timeout */
 		power_on_modem();
-		delay(500);
+		delay(100);
 		modem.clean_net_cache();
 	}
 
@@ -342,9 +342,9 @@ void setup()
 	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
 
 	/* Watchdog setup - Use defaults, excepts for these : */
-	//wInit.em2Run = true;
-	//wInit.em3Run = true;
-	//wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
+	wInit.em2Run = true;
+	wInit.em3Run = true;
+	wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -372,11 +372,11 @@ void setup()
 	WDOG_Init(&wInit);
 
 	/* bootup tx */
-	if (0 == digitalRead(KEY_PIN)) {
+	//if (0 == digitalRead(KEY_PIN)) {
 		/* storage mode */
 		tx_cause = RESET_TX;
 		need_push = 0x5a;
-	}
+	//}
 
 	INFOLN("\r\n\r\nAECO-TT setup OK");
 }
@@ -387,8 +387,6 @@ void push_data()
 	long start_send;
 	long end_send;
 
-	float vbat = 0.0;
-
 	uint8_t r_size;
 
 	int e = 0;
@@ -396,10 +394,9 @@ void push_data()
 	start_send = millis();
 
 	pt1000_init();
-
 	cur_temp = pt1000_get_temp();		// 'C
 
-	vbat = adc.readVbat();
+	float vbat = adc.readVbat();
 
 	if (qsetup()) {
 
@@ -443,25 +440,25 @@ void push_data()
 	} else {
 
 		// connect basestation failed
-
-		//power_off_dev();
+		WDOG_Feed();
+		//power_off_modem();
+		power_off_dev();
 	}
 
 	end_send = millis();
-
-	//power_off_dev();
 }
 
 void loop()
 {
 	if (0x5a == need_push) {
-		push_data();
+		INFO("Seconds: ");
+		INFOLN(seconds());
 
+		push_data();
 		need_push = 0;
 	}
 
 	//power_off_dev();
-
 	/*
 	 * Enable rtc timer before enter deep sleep
 	 * Stop rtc timer after enter check_sensor_data()
@@ -469,7 +466,4 @@ void loop()
 	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
 
 	EMU_EnterEM2(true);
-
-	//INFOLN("Loop heartbeat...");
-	//delay(5);
 }
