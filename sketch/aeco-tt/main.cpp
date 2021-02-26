@@ -48,7 +48,7 @@ static uint8_t need_push = 0;
 
 uint16_t tx_count = 0;
 
-#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s}"
+#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"tp\":%d}"
 
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
@@ -62,6 +62,15 @@ uint16_t tx_count = 0;
 #define INFOLN(param)
 #define FLUSHOUTPUT
 #endif
+
+#define	RESET_TX			0
+#define	DELTA_TX			1
+#define	TIMER_TX			2
+#define	KEY_TX				3
+#define	EL_TX				4
+#define	WL_TX				5
+
+int tx_cause = RESET_TX;
 
 M5311 modem;
 
@@ -215,10 +224,12 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	//power_off_dev();
 
 #ifdef TX_TESTING
+	tx_cause = TIMER_TX;
 	need_push = 0x5a;
 #else
 	if (fabsf(cur_temp - old_temp) > 1.0) {
 
+		tx_cause = KEY_TX;
 		need_push = 0x5a;
 	}
 #endif
@@ -229,6 +240,7 @@ void trig_check_sensor()
 	noInterrupts();
 
 	need_push = 0x5a;
+	tx_cause = KEY_TX;
 
 	interrupts();
 }
@@ -254,8 +266,9 @@ qsetup_start:
 	WDOG_Feed();
 
 	int ret;
-#if 0
-	int ret = modem.check_boot();
+
+#if 1
+	ret = modem.check_boot();
 	start_cnt++;
 
 	if (ret == 1) {
@@ -359,7 +372,11 @@ void setup()
 	WDOG_Init(&wInit);
 
 	/* bootup tx */
-	need_push = 0x5a;
+	if (0 == digitalRead(KEY_PIN)) {
+		/* storage mode */
+		tx_cause = RESET_TX;
+		need_push = 0x5a;
+	}
 
 	INFOLN("\r\n\r\nAECO-TT setup OK");
 }
@@ -393,15 +410,15 @@ void push_data()
 
 		wakeup_modem();
 		modem.mqtt_begin("mqtt.autoeco.net", 1883, devid);
-		//modem.mqtt_begin("39.106.95.136", 1883, devid);
 
-		char msg[64];
-		memset(msg, 0, 64);
+		char msg[128];
+		memset(msg, 0, 128);
 		sprintf(msg, MQTT_MSG,
 				seconds(),
 				devid,
 				decode_vbat(vbat),
-				decode_sensor_data(cur_temp)
+				decode_sensor_data(cur_temp),
+				tx_cause
 		);
 
 		wakeup_modem();
