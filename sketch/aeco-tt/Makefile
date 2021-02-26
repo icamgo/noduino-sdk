@@ -103,6 +103,7 @@ $(ARDUINO_CORES)/efm32/efm32init.c						\
 $(ARDUINO_CORES)/efm32/efm32gpio.c						\
 $(ARDUINO_CORES)/efm32/core_callback.c					\
 $(ARDUINO_CORES)/avr/dtostrf.c							\
+$(LIB_DIR)/time/timex.c									\
 $(LIB_DIR)/rtcdrv/rtcdriver.c
 
 #$(ARDUINO_CORES)/efm32/efm32dac.c						\
@@ -134,15 +135,18 @@ CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys 
 
 CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/m5311/					\
+			-I $(LIB_DIR)/time/						\
 			-I $(LIB_DIR)/pt1000/					\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I .									
 
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/m5311/					\
+			-I $(LIB_DIR)/time/						\
 			-I $(LIB_DIR)/pt1000/					\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I .
+
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 	-fdata-sections -nostdlib --param max-inline-insns-single=500 -Dprintf=iprintf

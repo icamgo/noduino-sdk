@@ -19,6 +19,10 @@
 #include "pt1000.h"
 #include "m5311.h"
 
+extern "C"{
+#include "timex.h"
+}
+
 #include "rtcdriver.h"
 #include "math.h"
 #include "em_wdog.h"
@@ -323,7 +327,17 @@ qsetup_start:
 
 		//INFOLN(modem.check_ipaddr());
 
-		INFOLN(modem.get_net_time());
+		char ntm[32];
+		memset(ntm, 0, 32);
+
+		modem.get_net_time().toCharArray(ntm, 32);
+
+		INFOLN(ntm);
+
+		uint32_t sec = str2seconds(ntm);
+
+		INFO("epoch = ");
+		INFOLN(sec);
 
 	} else {
 		/* attach network timeout */
