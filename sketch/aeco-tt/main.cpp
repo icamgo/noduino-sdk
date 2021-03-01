@@ -460,13 +460,11 @@ void push_data()
 #endif
 		modem.mqtt_end();
 
-	} else {
-
-		// connect basestation failed
-		WDOG_Feed();
-		//power_off_modem();
-		power_off_dev();
 	}
+
+	WDOG_Feed();
+	power_off_modem();
+	power_off_dev();
 
 	end_send = millis();
 }
@@ -481,7 +479,7 @@ void loop()
 		need_push = 0;
 	}
 
-	//power_off_dev();
+	power_off_dev();
 	/*
 	 * Enable rtc timer before enter deep sleep
 	 * Stop rtc timer after enter check_sensor_data()
