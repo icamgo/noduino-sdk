@@ -32,7 +32,7 @@ extern "C"{
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 120;		/* 240s */
+static uint32_t sample_period = 240;		/* 240s */
 
 static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			7200
@@ -40,7 +40,7 @@ static uint32_t sample_count = 0;
 static float old_temp = 0.0;
 static float cur_temp = 0.0;
 
-#define	TX_TESTING				1
+//#define	TX_TESTING				1
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define MODEM_ON_PIN			2		/* PIN6_PB8_D2 */
@@ -211,13 +211,14 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	sample_count++;
 
-#if 0
-	if (sample_count >= HEARTBEAT_TIME/20) {
+#if 1
+	if (sample_count >= HEARTBEAT_TIME/15) {
+		/* 4min * 15 =  60min */
 		need_push = 0x5a;
+		tx_cause = TIMER_TX;
 		sample_count = 0;
 	}
-#endif
-
+#else
 	power_on_dev();		// turn on device power
 
 	pt1000_init();	// initialization of the sensor
@@ -232,9 +233,11 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 #else
 	if (fabsf(cur_temp - old_temp) > 1.0) {
 
-		tx_cause = KEY_TX;
+		tx_cause = DELTA_TX;
 		need_push = 0x5a;
 	}
+#endif
+
 #endif
 }
 
