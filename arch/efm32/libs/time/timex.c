@@ -600,41 +600,49 @@ int settimeofday(tv_t * tv, tz_t * tz)
 	return (0);
 }
 
+/* return the UTC seconds */
 uint32_t str2seconds(char *buf)
 {
 	/* +CCLK: 21/02/26,06:22:38+32 */
 
 	tm_t tm;
+	int tz_h = 0;
 
-	tm.tm_year = tm.tm_mon = tm.tm_mday = tm.tm_hour = tm.tm_min =
-	    tm.tm_sec = 0;
+	tm.tm_year = 0;
+	tm.tm_mon = 0;
+	tm.tm_mday = 0;
+	tm.tm_hour = 0;
+	tm.tm_min = 0;
+	tm.tm_sec = 0;
 
 	sscanf(buf, "+CCLK: %d/%d/%d,%d:%d:%d+%d",
 	       &tm.tm_year,
-	       &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec);
+	       &tm.tm_mon,
+		   &tm.tm_mday,
+		   &tm.tm_hour,
+		   &tm.tm_min,
+		   &tm.tm_sec,
+		   &tz_h);
 
 	tm.tm_mon--;
+	tm.tm_year += 2000;
+	__tzone.tz_minuteswest = (tz_h % 24) * 60;
 
 	if (tm.tm_year < 1970 || tm.tm_year > 2038) {
-		TIME_DEBUG("invalid year: %d\n", tm.tm_year);
 		return (-1);
 	}
 	if (tm.tm_year >= 1900)
 		tm.tm_year -= 1900;
 	if (tm.tm_mon < 0 || tm.tm_mon > 11) {
-		TIME_DEBUG("invalid mon: %d\n", tm.tm_year);
 		return (-1);
 	}
 	if (tm.tm_mday < 1 || tm.tm_mday > 31) {
-		TIME_DEBUG("invalid day: %d\n", tm.tm_mday);
 		return (-1);
 	}
 	if (tm.tm_hour < 0 || tm.tm_hour > 23) {
-		TIME_DEBUG("invalid hour: %d\n", tm.tm_hour);
 		return (-1);
 	}
 	if (tm.tm_min < 0 || tm.tm_min > 59) {
-		TIME_DEBUG("invalid min: %d\n", tm.tm_min);
 		return (-1);
 	}
 

@@ -349,6 +349,8 @@ qsetup_start:
 	return network_ok;
 }
 
+char strtest[] = "+CCLK: 21/02/26,06:22:38+32";
+
 void setup()
 {
 	Ecode_t e;
@@ -393,6 +395,10 @@ void setup()
 	//}
 
 	INFOLN("\r\n\r\nAECO-TT setup OK");
+
+	uint32_t sec = str2seconds(strtest);
+	INFO("test = ");
+	INFOLN(sec);
 }
 
 

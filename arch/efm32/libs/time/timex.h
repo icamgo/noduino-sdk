@@ -28,8 +28,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "string.h"
 #include "stdint.h"
 
-#define TIME_DEBUG(format, ...)
-
 char *tm_wday_to_ascii(int i);
 char *tm_mon_to_ascii(int i);
 
