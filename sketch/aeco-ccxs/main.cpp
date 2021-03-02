@@ -35,7 +35,7 @@
 #define DEBUG_TX					1
 //#define DEBUG_RSSI					1
 //#define DEBUG_DEVID					1
-#define DEBUG_HEX_PKT				1
+//#define DEBUG_HEX_PKT				1
 #endif
 
 #define ENABLE_FLASH				1
@@ -52,7 +52,7 @@
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
-static uint32_t check_period = 54;	/* 60s */
+static uint32_t check_period = 27;	/* 30s */
 
 static uint32_t need_push = 0;
 static uint32_t need_push_mac = 0;
@@ -112,8 +112,8 @@ struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
 #endif
 
 #ifdef EFM32HG110F64
-#define ENABLE_OLED					1
-#define ENABLE_SH1106				1
+//#define ENABLE_OLED					1
+//#define ENABLE_SH1106				1
 //#define ENABLE_SSD1306			1
 #endif
 
@@ -323,7 +323,9 @@ float cur_vbat __attribute__((aligned(4))) = 0.0;
 bool vbat_low __attribute__((aligned(4))) = false;
 int cnt_vbat_low __attribute__((aligned(4))) = 0;
 int cnt_vbat_ok __attribute__((aligned(4))) = 0;
-//__attribute__((aligned(4)))
+
+static bool need_sleep __attribute__((aligned(4))) = false;
+uint32_t cnt_sleep __attribute__((aligned(4))) = 0;
 
 bool is_my_did(uint8_t *p);
 
@@ -1781,6 +1783,19 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 	/* reset the watchdog */
 	WDOG_Feed();
 
+	RTCDRV_StopTimer(xTimerForWakeUp);
+
+	++cnt_1min;
+
+	if (cnt_1min % 1 == 0 && need_sleep == false) {
+		need_sleep = true;
+	}
+
+	if (cnt_1min % 10 == 0 && need_sleep == true) {
+
+		need_sleep = false;
+	}
+
 	if (false == vbat_low) {
 
 		//////////////////////////////////////////////////////
@@ -1791,7 +1806,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 		}
 
-		++cnt_1min;
+		//++cnt_1min;
 
 		if (cnt_1min % 10 == 0) {
 			// 10min timer
@@ -1831,6 +1846,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 		}
 	}
 
+#if 0
 	////////////////////////////////////////////////////
 	// check the low vbat
 	cur_vbat = fetch_vbat();
@@ -1877,6 +1893,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 		cnt_vbat_low = 0;
 	}
+#endif
 }
 
 #if defined(EFM32ZG110F32) || defined(EFM32GG230F512)
@@ -1935,7 +1952,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_64k;	/* 64k 1kHz periods should give 64 seconds */
+	wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
@@ -2003,7 +2020,8 @@ void setup()
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, check_period * 1000, period_check_status, NULL);
+	//RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, check_period * 1000, period_check_status, NULL);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, check_period * 1000, period_check_status, NULL);
 
 	radio_setup();
 
@@ -2053,21 +2071,23 @@ void loop(void)
 	int e = 1;
 	static int c = 0;
 
-	if (vbat_low) {
+//	if (vbat_low || need_sleep) {
+	if (need_sleep == true) {
 
 		// sleep to waitting for recharge the battery
 
-		INFOLN("Enter into the deep sleep....");
-
-		if (oled_on) {
+		INFOLN("Switch to deep sleep...");
 
 		#ifdef ENABLE_OLED
+		if (oled_on) {
+
 			show_low_bat();
-		#endif
 			delay(2000);
 		}
+		#endif
 
 		deep_sleep();
+		delay(5000);
 
 	} else {
 
