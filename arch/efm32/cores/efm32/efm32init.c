@@ -26,7 +26,22 @@ uint16_t CRC_calc(uint8_t *start, uint8_t *end);
 volatile uint32_t msTicks;
 
 volatile uint32_t msTicks_cnt;
-volatile uint32_t secTicks;
+
+volatile static uint32_t secTicks;
+
+uint32_t seconds() {
+	return secTicks;
+}
+
+void fix_seconds(int32_t delta)
+{
+	secTicks += delta;
+}
+
+void update_seconds(uint32_t ep)
+{
+	secTicks = ep;
+}
 
 void systicCallback(void)  __attribute__ ((weak));
 void systicCallback(void){}
