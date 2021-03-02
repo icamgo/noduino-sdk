@@ -509,10 +509,10 @@ bool M5311::mqtt_pub(char topic[], char msg[])
 	MODEM_SERIAL->flush();
 	MODEM_SERIAL->clear_rxbuf();
 
-	char wait_str[] = "+MQTTPUBACK: 1";
+	char wait_str[] = "+MQTTPUBACK: ";
 
 #if 1
-	String ret_s = expect_rx_str(5000, wait_str, 14);
+	String ret_s = expect_rx_str(5000, wait_str, 13);
 #else
 	delay(5000);
 	String ret_s = find_rxbuf_str(wait_str, 9);
