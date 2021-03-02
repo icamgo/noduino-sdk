@@ -615,7 +615,7 @@ uint32_t str2seconds(char *buf)
 	tm.tm_min = 0;
 	tm.tm_sec = 0;
 
-	sscanf(buf, "+CCLK: %d/%d/%d,%d:%d:%d+%d",
+	sscanf(buf, "%d/%d/%d,%d:%d:%d+%d",
 	       &tm.tm_year,
 	       &tm.tm_mon,
 		   &tm.tm_mday,

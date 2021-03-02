@@ -204,13 +204,13 @@ String M5311::check_ipaddr()
 
 String M5311::get_net_time()
 {
-	char wait_str[] = "+CCLK: 2";
+	char wait_str[] = "+CCLK: ";
 	String re_str;
 
 	MODEM_SERIAL->println(F("AT+CCLK?"));
 	delay(200);
 
-	re_str = expect_rx_str(1000, wait_str, 8);
+	re_str = expect_rx_str(1000, wait_str, 7);
 
 	if (re_str != "") {
 		/* +CCLK: 21/02/26,06:22:38+32 */

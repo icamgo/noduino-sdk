@@ -146,7 +146,7 @@ char *ftoa(char *a, float f, int preci)
 
 char *decode_vbat(float vb)
 {
-	ftoa(dev_vbat, vb, 1);
+	ftoa(dev_vbat, vb, 3);
 	return dev_vbat;
 }
 
@@ -212,8 +212,10 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	sample_count++;
 
 #if 1
-	if (sample_count >= HEARTBEAT_TIME/15) {
+	if (sample_count >= 7) {
+
 		/* 4min * 15 =  60min */
+		/* 4min * 7 =  24min */
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 		sample_count = 0;
@@ -330,17 +332,20 @@ qsetup_start:
 
 		//INFOLN(modem.check_ipaddr());
 
-		char ntm[32];
-		memset(ntm, 0, 32);
+		char ntm[24];
+		memset(ntm, 0, 24);
 
-		modem.get_net_time().toCharArray(ntm, 32);
+		//char strtest[] = "21/02/26,06:22:38+32";
+		modem.get_net_time().toCharArray(ntm, 24);
 
 		INFOLN(ntm);
 
 		uint32_t sec = str2seconds(ntm);
 
+		update_seconds(sec);
+
 		INFO("epoch = ");
-		INFOLN(sec);
+		INFOLN(seconds());
 
 	} else {
 		/* attach network timeout */
@@ -352,7 +357,7 @@ qsetup_start:
 	return network_ok;
 }
 
-char strtest[] = "+CCLK: 21/02/26,06:22:38+32";
+char strtest[] = "21/02/26,06:22:38+32";
 
 void setup()
 {
