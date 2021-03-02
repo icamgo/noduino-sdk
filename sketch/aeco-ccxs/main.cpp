@@ -796,6 +796,16 @@ bool is_our_did(uint8_t *p)
 		return false;
 	}
 
+	// check dev_type
+	temp = devid / 1000000;
+	tt = (uint32_t)(temp / 100);
+	uint32_t type = (uint32_t)(temp - tt * 100);
+
+	if (type != 2 && type != 13) {
+		/* only re-tx 02 & 13 */
+		return false;
+	}
+
 	#ifdef DEBUG_DEVID
 	INFOLN("did ok");
 	#endif
@@ -1282,22 +1292,14 @@ bool is_route_ok(uint8_t *p)
 	return true;
 }
 
-bool is_cc_ok(uint8_t *p, int len)
+bool is_cced(uint8_t *p, int len)
 {
 	if (p[2] == 0x33 && len == 36) {
 
 		if (p[27] & 0x10) {
 
 			// new cc relayed pkt
-
-			if (4 >= p[17] && 1 <= p[17]) {
-
-				return is_route_ok(p);
-
-			} else {
-				return false;
-			}
-
+			return false;
 
 		} else {
 			// no cc relayed
@@ -1543,7 +1545,7 @@ void rx_irq_handler()
 
 		if ((true == is_our_pkt(p, plen))
 			&& (false == is_my_did(p))
-			&& (true == is_cc_ok(p, plen))
+			&& (true == is_cced(p, plen))
 			&& (false == is_pkt_in_ctrl(&g_cfifo, p, plen, seconds()))) {
 
 			// need to push into the tx queue buffer
