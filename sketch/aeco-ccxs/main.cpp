@@ -30,7 +30,7 @@
 
 #define ENABLE_TX5					1
 
-#if 0
+#if 1
 #define	DEBUG						1
 #define DEBUG_TX					1
 //#define DEBUG_RSSI					1
@@ -1329,14 +1329,14 @@ inline void set_mac_cmd(uint8_t cmd)
 
 inline void set_the_epoch(uint8_t *ep)
 {
-	extern uint32_t secTicks;
-	uint8_t *st_p = (uint8_t *)&secTicks;
+	uint32_t sec = seconds();
+	uint8_t *st_p = (uint8_t *)&sec;
 	st_p[0] = ep[3];
 	st_p[1] = ep[2];
 	st_p[2] = ep[1];
 	st_p[3] = ep[0];
 
-	reset_ctrl_ts(&g_cfifo, secTicks);
+	reset_ctrl_ts(&g_cfifo, sec);
 }
 
 void process_mac_cmds(uint8_t *p, int len)
@@ -1684,8 +1684,8 @@ void set_mac_status_pkt()
 
 	pkt[15] = tx_cause;
 
-	extern uint32_t secTicks;
-	uint8_t *ep = (uint8_t *)&secTicks;
+	uint32_t sec = seconds();
+	uint8_t *ep = (uint8_t *)&sec;
 	pkt[20] = ep[3];
 	pkt[21] = ep[2];
 	pkt[22] = ep[1];
@@ -1735,8 +1735,8 @@ void set_temp_pkt()
 	// tx_cause = TIMER_TX
 	pkt[15] = tx_cause;
 
-	extern uint32_t secTicks;
-	uint8_t *ep = (uint8_t *)&secTicks;
+	uint32_t sec = seconds();
+	uint8_t *ep = (uint8_t *)&sec;
 	pkt[20] = ep[3];
 	pkt[21] = ep[2];
 	pkt[22] = ep[1];
@@ -1995,9 +1995,10 @@ void setup()
 	WDOG_Init(&wInit);
 
 	/* reset epoch */
-	extern uint32_t secTicks;
-	secTicks = 1600155579;
-	reset_ctrl_ts(&g_cfifo, secTicks);
+	//extern uint32_t secTicks;
+	//secTicks = 1600155579;
+	update_seconds(160015579);
+	reset_ctrl_ts(&g_cfifo, seconds());
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
