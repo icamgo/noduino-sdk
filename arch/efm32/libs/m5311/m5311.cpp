@@ -221,7 +221,6 @@ String M5311::get_net_time()
 
 char str[BUF_MAX_SIZE];
 char modem_said[MODEM_RESP];
-//char *modem_said;
 
 String M5311::expect_rx_str(unsigned long period, char exp_str[], int len_check)
 {
@@ -475,14 +474,10 @@ bool M5311::mqtt_connect()
 	MODEM_SERIAL->flush();
 	MODEM_SERIAL->clear_rxbuf();
 
-	char wait_str[] = "+MQTTOPEN: OK";
+	//char wait_str[] = "+MQTTOPEN: OK";
+	char wait_str[] = "OK";
 
-#if 1
-	String ret_s = expect_rx_str(5000, wait_str, 13);
-#else
-	delay(5000);
-	String ret_s = find_rxbuf_str(wait_str, 13);
-#endif
+	String ret_s = expect_rx_str(6000, wait_str, 2);
 
 	if ( ret_s == "") {
 		return false;
@@ -491,12 +486,6 @@ bool M5311::mqtt_connect()
 	} else {
 		return true;
 	}
-
-/*
-	MODEM_SERIAL->print(F("AT+MQTTSTAT\r\n"));
-	MODEM_SERIAL->flush();
-	delay(100);
-*/
 }
 
 bool M5311::mqtt_pub(char topic[], char msg[])
@@ -511,12 +500,7 @@ bool M5311::mqtt_pub(char topic[], char msg[])
 
 	char wait_str[] = "+MQTTPUBACK: ";
 
-#if 1
-	String ret_s = expect_rx_str(5000, wait_str, 13);
-#else
-	delay(5000);
-	String ret_s = find_rxbuf_str(wait_str, 9);
-#endif
+	String ret_s = expect_rx_str(6000, wait_str, 13);
 
 	if (ret_s == "") {
 		return false;
@@ -535,7 +519,7 @@ void M5311::mqtt_end()
 	MODEM_SERIAL->flush();
 	MODEM_SERIAL->clear_rxbuf();
 
-	delay(200);
+	delay(800);
 	//expect_rx_str(200, wait_str, 2);
 
 	MODEM_SERIAL->println(F("AT+MQTTDEL\r\n"));
