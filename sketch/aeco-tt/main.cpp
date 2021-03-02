@@ -214,8 +214,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	fix_seconds(sample_period + sample_period/9);
 
-	INFO("check epoch: ");
-	INFOLN(seconds());
+	//INFOLN(seconds());
 
 	sample_count++;
 
@@ -434,9 +433,6 @@ void setup()
 	push_point(&g_cbuf, seconds(), cur_temp);
 }
 
-
-char msg[128];
-
 void push_data()
 {
 	long start_send;
@@ -485,8 +481,9 @@ void push_data()
 				WDOG_Feed();
 				wakeup_modem();
 
-				memset(msg, 0, 128);
-				sprintf(msg, MQTT_MSG,
+				extern char modem_said[MODEM_LEN];
+				memset(modem_said, 0, MODEM_LEN);
+				sprintf(modem_said, MQTT_MSG,
 						d.ts == 0 ? seconds() : d.ts,
 						devid,
 						decode_vbat(vbat),
@@ -494,7 +491,7 @@ void push_data()
 						tx_cause
 				);
 
-				if (modem.mqtt_pub("dev/gw", msg)) {
+				if (modem.mqtt_pub("dev/gw", modem_said)) {
 
 					//old_temp = cur_temp;
 					INFOLN("Pub OK, pop point");

@@ -1,5 +1,8 @@
 #include "M5311.h"
 
+char str[BUF_LEN];
+char modem_said[MODEM_LEN];
+
 void M5311::init(Stream & serial)
 {
 	MODEM_SERIAL = &serial;
@@ -219,8 +222,6 @@ String M5311::get_net_time()
 	return "";
 }
 
-char str[BUF_MAX_SIZE];
-char modem_said[MODEM_RESP];
 
 String M5311::expect_rx_str(unsigned long period, char exp_str[], int len_check)
 {
@@ -236,8 +237,8 @@ String M5311::expect_rx_str(unsigned long period, char exp_str[], int len_check)
 	char c;
 	char *x;
 
-	memset(modem_said, 0, MODEM_RESP);
-	memset(str, 0, BUF_MAX_SIZE);
+	memset(modem_said, 0, MODEM_LEN);
+	memset(str, 0, BUF_LEN);
 
 	INFOLN("expect");
 
@@ -256,7 +257,7 @@ String M5311::expect_rx_str(unsigned long period, char exp_str[], int len_check)
 			loop_out = true;
 		}
 
-		if (i >= MODEM_RESP-1) {
+		if (i >= MODEM_LEN-1) {
 			loop_out = true;
 		}
 	}
@@ -371,7 +372,7 @@ int M5311::check_match_index(char target[], char pattern[], int len_check)
 
 bool M5311::check_incoming_msg()
 {
-	char strCmd[BUF_MAX_SIZE / 2];
+	char strCmd[BUF_LEN / 2];
 	bool found = false;
 	int totalSocket = 1;
 	String checkIncmd = "AT+NSORF= ,8\r\n";
@@ -398,7 +399,7 @@ bool M5311::check_incoming_msg()
 
 int M5311::check_modem_signal()
 {
-	char resp_result[BUF_MAX_SIZE];
+	char resp_result[BUF_LEN];
 	int index = 0;
 	int ssi;
 	char ssi_str[3];

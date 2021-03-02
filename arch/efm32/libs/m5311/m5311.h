@@ -19,8 +19,8 @@
 #define FLUSHOUTPUT
 #endif
 
-#define BUF_MAX_SIZE			64
-#define MODEM_RESP				160
+#define BUF_LEN					64
+#define MODEM_LEN				160
 
 class M5311 {
 
