@@ -27,12 +27,15 @@ extern "C"{
 #include "math.h"
 #include "em_wdog.h"
 
+#include "circ_buf.h"
+
 #define	DEBUG					1
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 216;		/* 240s */
+//static uint32_t sample_period = 216;		/* 240s */
+static uint32_t sample_period = 108;		/* 120s */
 
 static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			7200
@@ -81,6 +84,8 @@ M5311 modem;
 char dev_id[24];
 char dev_vbat[6];
 char dev_data[8];
+
+static struct circ_buf g_cbuf __attribute__((aligned(4)));
 
 void push_data();
 
@@ -204,17 +209,31 @@ void reset_modem()
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
 	WDOG_Feed();
+
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
-	fix_seconds(sample_period);
+	fix_seconds(sample_period + sample_period/9);
+
+	INFO("check epoch: ");
+	INFOLN(seconds());
 
 	sample_count++;
 
 #if 1
-	if (sample_count >= 7) {
+	if (sample_count % 2 == 0) {
+
+		/* every 4x3 = 12min */
+		power_on_dev();		// turn on device power
+		pt1000_init();	// initialization of the sensor
+		cur_temp = pt1000_get_temp();
+		power_off_dev();
+
+		push_point(&g_cbuf, seconds(), cur_temp);
+	}
+
+	if (sample_count >= 5) {
 
 		/* 4min * 15 =  60min */
-		/* 4min * 7 =  28min */
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 		sample_count = 0;
@@ -334,6 +353,8 @@ qsetup_start:
 		char ntm[24];
 		memset(ntm, 0, 24);
 
+		WDOG_Feed();
+
 		//char strtest[] = "21/02/26,06:22:38+32";
 		modem.get_net_time().toCharArray(ntm, 24);
 
@@ -341,7 +362,9 @@ qsetup_start:
 
 		uint32_t sec = str2seconds(ntm);
 
-		update_seconds(sec);
+		if (sec > 1614665568) {
+			update_seconds(sec);
+		}
 
 		INFO("epoch = ");
 		INFOLN(seconds());
@@ -356,8 +379,6 @@ qsetup_start:
 	return network_ok;
 }
 
-char strtest[] = "21/02/26,06:22:38+32";
-
 void setup()
 {
 	Ecode_t e;
@@ -367,7 +388,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
+	wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -402,28 +423,44 @@ void setup()
 	//}
 
 	INFOLN("\r\n\r\nAECO-TT setup OK");
+	INFO("epoch = ");
+	INFOLN(seconds());
 
-	uint32_t sec = str2seconds(strtest);
-	INFO("test = ");
-	INFOLN(sec);
+	power_on_dev();	// turn on device power
+	pt1000_init();	// initialization of the sensor
+	cur_temp = pt1000_get_temp();
+	power_off_dev();
+
+	push_point(&g_cbuf, seconds(), cur_temp);
 }
 
+
+char msg[128];
 
 void push_data()
 {
 	long start_send;
 	long end_send;
 
-	uint8_t r_size;
-
-	int e = 0;
+	struct point d;
 
 	start_send = millis();
 
+#if 0
 	pt1000_init();
 	cur_temp = pt1000_get_temp();		// 'C
+#endif
 
 	float vbat = adc.readVbat();
+
+	int ret = get_1st_point(&g_cbuf, &d);
+
+	if (ret == 1) {
+		INFOLN("There is no point in buf");
+		return;
+	}
+
+	WDOG_Feed();
 
 	if (qsetup()) {
 
@@ -432,38 +469,46 @@ void push_data()
 
 		char *devid = decode_devid(get_devid());
 
+		WDOG_Feed();
 		wakeup_modem();
 		modem.mqtt_begin("mqtt.autoeco.net", 1883, devid);
 
-		char msg[128];
-		memset(msg, 0, 128);
-		sprintf(msg, MQTT_MSG,
-				seconds(),
-				devid,
-				decode_vbat(vbat),
-				decode_sensor_data(cur_temp),
-				tx_cause
-		);
-
+		WDOG_Feed();
 		wakeup_modem();
 
-#if 1
 		if (modem.mqtt_connect()) {
 
-			wakeup_modem();
+			WDOG_Feed();
 
-			if (modem.mqtt_pub("dev/gw", msg)) {
+			while (get_1st_point(&g_cbuf, &d) == 0) {
 
-				old_temp = cur_temp;
+				WDOG_Feed();
+				wakeup_modem();
+
+				memset(msg, 0, 128);
+				sprintf(msg, MQTT_MSG,
+						d.ts == 0 ? seconds() : d.ts,
+						devid,
+						decode_vbat(vbat),
+						decode_sensor_data(d.data),
+						tx_cause
+				);
+
+				if (modem.mqtt_pub("dev/gw", msg)) {
+
+					//old_temp = cur_temp;
+					INFOLN("Pub OK, pop point");
+					noInterrupts();
+					pop_point(&g_cbuf, &d);
+					interrupts();
+				} else {
+					INFOLN("Pub failed");
+				}
 			}
 		}
-#else
-		modem.mqtt_connect();
-		wakeup_modem();
-		modem.mqtt_pub("dev/gw", msg);
-#endif
-		modem.mqtt_end();
 
+		WDOG_Feed();
+		modem.mqtt_end();
 	}
 
 	WDOG_Feed();
