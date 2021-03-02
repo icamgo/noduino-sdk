@@ -40,7 +40,7 @@ inline uint32_t seconds() {
 	return secTicks;
 }
 
-inline void fix_seconds(int delta)
+inline void fix_seconds(int32_t delta)
 {
 	secTicks += delta;
 }
