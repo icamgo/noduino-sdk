@@ -475,10 +475,10 @@ bool M5311::mqtt_connect()
 	MODEM_SERIAL->flush();
 	MODEM_SERIAL->clear_rxbuf();
 
-	//char wait_str[] = "+MQTTOPEN: OK";
-	char wait_str[] = "OK";
+	char wait_str[] = "+MQTTOPEN: OK";
+	//char wait_str[] = "OK";
 
-	String ret_s = expect_rx_str(6000, wait_str, 2);
+	String ret_s = expect_rx_str(6000, wait_str, 13);
 
 	if ( ret_s == "") {
 		return false;
