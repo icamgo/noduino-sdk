@@ -59,8 +59,6 @@ struct tm {
 };
 typedef struct tm tm_t;
 
-extern volatile ts_t __clock;
-
 extern tz_t __tzone;
 
 #define EPOCH_YEAR       1970	/*< Thursday Jan 1 1970 */
@@ -86,9 +84,6 @@ extern tz_t __tzone;
 /* Length of month `m' (0 .. 11) */
 #define monthlen(m, y) (yr_days[0][(m)+1] - yr_days[0][m] + \
                         ((m) == 1 && leap(y)))
-
-/// @brief  System Clock Time
-volatile ts_t __clock;
 
 /// @brief  System Time Zone
 tz_t __tzone;
@@ -401,6 +396,8 @@ uint32_t timegm(tm_t * t)
 	return (seconds);
 }
 
+#if 0
+
 /// @todo  implement strftime() and strptime()
 
 /// @brief Convert tm_t *t structure into POSIX asctime() ASCII string *buf.
@@ -599,6 +596,7 @@ int settimeofday(tv_t * tv, tz_t * tz)
 
 	return (0);
 }
+#endif
 
 /* return the UTC seconds */
 uint32_t str2seconds(char *buf)

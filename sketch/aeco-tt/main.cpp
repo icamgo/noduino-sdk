@@ -349,17 +349,17 @@ qsetup_start:
 
 		//INFOLN(modem.check_ipaddr());
 
-		char ntm[24];
-		memset(ntm, 0, 24);
+		extern char str[BUF_LEN];
+		memset(str, 0, BUF_LEN);
 
 		WDOG_Feed();
 
 		//char strtest[] = "21/02/26,06:22:38+32";
-		modem.get_net_time().toCharArray(ntm, 24);
+		modem.get_net_time().toCharArray(str, BUF_LEN);
 
-		INFOLN(ntm);
+		INFOLN(str);
 
-		uint32_t sec = str2seconds(ntm);
+		uint32_t sec = str2seconds(str);
 
 		if (sec > 1614665568) {
 			update_seconds(sec);
@@ -481,10 +481,16 @@ void push_data()
 				WDOG_Feed();
 				wakeup_modem();
 
+				if (d.ts == 0) {
+					INFOLN("Do not use ts0, update ts");
+					d.ts = seconds();
+					INFOLN(seconds());
+				}
+
 				extern char modem_said[MODEM_LEN];
 				memset(modem_said, 0, MODEM_LEN);
 				sprintf(modem_said, MQTT_MSG,
-						d.ts == 0 ? seconds() : d.ts,
+						d.ts,
 						devid,
 						decode_vbat(vbat),
 						decode_sensor_data(d.data),
