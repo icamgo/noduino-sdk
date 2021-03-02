@@ -32,7 +32,7 @@ extern "C"{
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 240;		/* 240s */
+static uint32_t sample_period = 216;		/* 240s */
 
 static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			7200
@@ -203,11 +203,10 @@ void reset_modem()
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
-	fix_seconds(sample_period);
-
 	WDOG_Feed();
-
 	RTCDRV_StopTimer(xTimerForWakeUp);
+
+	fix_seconds(sample_period);
 
 	sample_count++;
 
@@ -215,7 +214,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	if (sample_count >= 7) {
 
 		/* 4min * 15 =  60min */
-		/* 4min * 7 =  24min */
+		/* 4min * 7 =  28min */
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 		sample_count = 0;
