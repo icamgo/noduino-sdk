@@ -1,7 +1,7 @@
 #include <Stream.h>
 #include <Arduino.h>
 
-#define	DEBUG_M5311				1
+//#define	DEBUG_M5311				1
 
 #ifdef DEBUG_M5311
 #define INFO(param)				Serial.print(param)

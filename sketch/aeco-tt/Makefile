@@ -23,6 +23,7 @@ LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
 #DEFS := -DUSE_AT -DUART_NO_RX_INT
 #DEFS := -DUSE_AT -DDEBUG_EFM
+#DEFS := -DUSE_AT -DDEBUG_M5311
 DEFS := -DUSE_AT
 
 MCU = cortex-m0plus
