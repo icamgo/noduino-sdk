@@ -1810,13 +1810,17 @@ extern "C" void seconds_callback()
 		return;
 	}
 
+	if (0 == digitalRead(KEY_PIN)) {
+		return;
+	}
+
 	WDOG_Feed();
 
 	INFOLN("xxxx");
 	++cnt_1min;
 
 	//if (cnt_1min % 150 == 0 && need_sleep == false) {
-	if (cnt_1min % 15 == 0 && need_sleep == false) {
+	if (cnt_1min % 5 == 0 && need_sleep == false) {
 		/* work 150min */
 		need_sleep = true;
 	}
@@ -2100,11 +2104,8 @@ void cc_worker();
 
 void loop(void)
 {
-	if (vbat_low == false && need_sleep == false) {
-		cc_worker();
-	}
-
-	if (need_sleep == true) {
+	if (need_sleep == true || 0 == digitalRead(KEY_PIN)) {
+		/* storage mode */
 
 		//INFOLN("deep sleep..");
 
@@ -2117,6 +2118,10 @@ void loop(void)
 		EMU_EnterEM2(true);
 
 		//delay(30000);
+	}
+
+	if (need_sleep == false && 1 == digitalRead(KEY_PIN)) {
+		cc_worker();
 	}
 }
 
