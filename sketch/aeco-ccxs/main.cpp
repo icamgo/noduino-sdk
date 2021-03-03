@@ -45,7 +45,7 @@
 
 #define ENABLE_ENG_MODE				1
 
-#define	FW_VER						"V3.9"
+#define	FW_VER						"V4.0"
 
 #define LOW_BAT_THRESHOLD			3.1
 #define RX_ERR_THRESHOLD			15
@@ -1819,8 +1819,8 @@ extern "C" void seconds_callback()
 	INFOLN("xxxx");
 	++cnt_1min;
 
-	//if (cnt_1min % 150 == 0 && need_sleep == false) {
-	if (cnt_1min % 5 == 0 && need_sleep == false) {
+	//if (cnt_1min % 5 == 0 && need_sleep == false) {
+	if (cnt_1min % 150 == 0 && need_sleep == false) {
 		/* work 150min */
 		need_sleep = true;
 	}
