@@ -46,6 +46,8 @@ void update_seconds(uint32_t ep)
 void systicCallback(void)  __attribute__ ((weak));
 void systicCallback(void){}
 
+void seconds_callback(void)  __attribute__ ((weak));
+
 #if (FREERTOS == 0)
 void SysTick_Handler(void)
 {
@@ -58,6 +60,8 @@ void SysTick_Handler(void)
 		secTicks++;
 
 		msTicks_cnt = 0;
+
+		seconds_callback();
 	}
 	systicCallback();   
 }
