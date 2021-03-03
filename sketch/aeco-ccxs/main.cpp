@@ -1829,7 +1829,7 @@ extern "C" void seconds_callback()
 		return;
 	}
 
-	if (false == vbat_low) {
+	//if (false == vbat_low) {
 
 		//////////////////////////////////////////////////////
 		/* check the rx_err in 1min */
@@ -1882,9 +1882,9 @@ extern "C" void seconds_callback()
 			reset_dev_sys();
 		}
 		#endif
-	}
+	//}
 
-#if 1
+#if 0
 	////////////////////////////////////////////////////
 	// check the low vbat
 	cur_vbat = fetch_vbat();
@@ -2117,7 +2117,7 @@ void loop(void)
 
 		EMU_EnterEM2(true);
 
-		//delay(30000);
+		delay(30000);
 	}
 
 	if (need_sleep == false && 1 == digitalRead(KEY_PIN)) {
