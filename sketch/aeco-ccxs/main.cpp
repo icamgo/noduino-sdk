@@ -801,8 +801,8 @@ bool is_our_did(uint8_t *p)
 	tt = (uint32_t)(temp / 100);
 	uint32_t type = (uint32_t)(temp - tt * 100);
 
-	if (type != 2 && type != 13) {
-		/* only re-tx 02 & 13 */
+	/* only re-tx 02 & 03 & 13 */
+	if (type != 2 && type != 3 && type != 13) {
 		return false;
 	}
 
@@ -1569,9 +1569,14 @@ int tx_pkt(uint8_t *p, int len)
 	bool need_cadon = true;
 	int e = 0;
 
-	if (false == is_our_did(p) || p[2] < 0x33) {
+	if (false == is_my_did(p)) {
 
-		return 5;
+		/* pkt is not my rpt pkt */
+
+		if (false == is_our_did(p) || p[2] < 0x33) {
+
+			return 5;
+		}
 	}
 
 	if (KEY_TX == p[15]) {
