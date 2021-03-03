@@ -32,13 +32,13 @@
 
 #if 1
 #define	DEBUG						1
-#define DEBUG_TX					1
+//#define DEBUG_TX					1
 //#define DEBUG_RSSI					1
 //#define DEBUG_DEVID					1
 //#define DEBUG_HEX_PKT				1
 #endif
 
-#define ENABLE_FLASH				1
+//#define ENABLE_FLASH				1
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 #define ENCODE_CCID_LOW1			1
@@ -52,7 +52,7 @@
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
-static uint32_t check_period = 27;	/* 30s */
+static uint32_t check_period = 54;	/* 30s */
 
 static uint32_t need_push = 0;
 static uint32_t need_push_mac = 0;
@@ -1780,22 +1780,49 @@ void reset_dev_sys()
 	NVIC_SystemReset();
 }
 
-void period_check_status(RTCDRV_TimerID_t id, void *user)
+void wakeup_check(RTCDRV_TimerID_t id, void *user)
 {
 	/* reset the watchdog */
 	WDOG_Feed();
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
+	INFOLN("wakeup check");
+
+	++cnt_sleep;
+
+#if 0
+	if (cnt_sleep % 130 == 0 && need_sleep == false) {
+		/* work 130min */
+		need_sleep = true;
+	}
+#endif
+
+	if (cnt_sleep % 1290 == 0 && need_sleep == true) {
+
+		need_sleep = false;
+	}
+}
+
+extern "C" void seconds_callback()
+{
+	if (seconds() % 60 != 0) {
+		return;
+	}
+
+	WDOG_Feed();
+
+	INFOLN("xxxx");
 	++cnt_1min;
 
-	if (cnt_1min % 1 == 0 && need_sleep == false) {
+	//if (cnt_1min % 150 == 0 && need_sleep == false) {
+	if (cnt_1min % 15 == 0 && need_sleep == false) {
+		/* work 150min */
 		need_sleep = true;
 	}
 
-	if (cnt_1min % 10 == 0 && need_sleep == true) {
-
-		need_sleep = false;
+	if (need_sleep == true) {
+		return;
 	}
 
 	if (false == vbat_low) {
@@ -1808,17 +1835,19 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 		}
 
-		//++cnt_1min;
-
 		if (cnt_1min % 10 == 0) {
 			// 10min timer
 
 			tx_cnt_1min = (tx_cnt - old_tx_cnt) / 10;
 			old_tx_cnt = tx_cnt;
+		}
+
+		if (cnt_1min % 30 == 0) {
 
 			// Timer report pkt
 			tx_cause = TIMER_TX;
 			need_push = 0x55;
+
 		}
 
 		if (MAC_CCTX_OFF == mac_cmd && (cnt_1min % 2 == 0)) {
@@ -1833,7 +1862,8 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 			if (rx_cnt == old_rx_cnt) {
 				// no rx pkt, reset the system
-				reset_dev_sys();
+				//reset_dev_sys();
+				need_reset_sx1272 = 0x55;
 
 			} else {
 
@@ -1842,13 +1872,15 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 		}
 
+		#if 0
 		if (cnt_1min % 1440 == 0) {
 			// 24h
 			reset_dev_sys();
 		}
+		#endif
 	}
 
-#if 0
+#if 1
 	////////////////////////////////////////////////////
 	// check the low vbat
 	cur_vbat = fetch_vbat();
@@ -1954,7 +1986,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
+	wInit.perSel = wdogPeriod_64k;	/* 256k 1kHz periods should give 256 seconds */
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
@@ -2014,8 +2046,6 @@ void setup()
 	WDOG_Init(&wInit);
 
 	/* reset epoch */
-	//extern uint32_t secTicks;
-	//secTicks = 1600155579;
 	update_seconds(160015579);
 	reset_ctrl_ts(&g_cfifo, seconds());
 
@@ -2023,7 +2053,7 @@ void setup()
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
 	//RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, check_period * 1000, period_check_status, NULL);
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, check_period * 1000, period_check_status, NULL);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, check_period * 1000, wakeup_check, NULL);
 
 	radio_setup();
 
@@ -2038,6 +2068,8 @@ void setup()
 #ifdef ENABLE_FLASH
 	flash_init();
 #endif
+
+	INFOLN("Start setup");
 }
 
 void deep_sleep()
@@ -2062,338 +2094,341 @@ void deep_sleep()
 
 	// reset the mode
 	omode = MODE_DECODE;
+}
 
-	EMU_EnterEM2(true);
+void cc_worker();
+
+void loop(void)
+{
+	if (vbat_low == false && need_sleep == false) {
+		cc_worker();
+	}
+
+	if (need_sleep == true) {
+
+		//INFOLN("deep sleep..");
+
+		WDOG_Feed();
+
+		deep_sleep();
+
+		RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, check_period * 1000, wakeup_check, NULL);
+
+		EMU_EnterEM2(true);
+
+		//delay(30000);
+	}
 }
 
 struct pkt d;
 
-void loop(void)
+void cc_worker()
 {
 	int e = 1;
 	static int c = 0;
 
-//	if (vbat_low || need_sleep) {
-	if (need_sleep == true) {
+	int rssi = sx1272.getRSSI();
+	if (rssi <= -155 ||
+		rssi == 0 ||
+		(sx1272.get_modem_stat() & 0xB0)) {
 
-		// sleep to waitting for recharge the battery
+		rx_hung_cnt++;
+	}
 
-		INFOLN("Switch to deep sleep...");
+	WDOG_Feed();
 
+	if (0x55 == need_reset_sx1272 || rx_hung_cnt >= 1) {
+
+		INFO_S("Reset lora module\n");
+		INFO("rx_err_cnt = ");
+		INFO(rx_err_cnt);
+		INFO(" rx_hung_cnt = ");
+		INFOLN(rx_hung_cnt);
+
+		if (rx_hung_cnt >= 1) {
+			power_off_dev();
+			delay(1000);
+			power_on_dev();
 		#ifdef ENABLE_OLED
-		if (oled_on) {
-
-			show_low_bat();
-			delay(2000);
-		}
+			u8g2.begin();
 		#endif
-
-		deep_sleep();
-		delay(5000);
-
-	} else {
-
-		int rssi = sx1272.getRSSI();
-		if (rssi <= -155 ||
-			rssi == 0 ||
-			(sx1272.get_modem_stat() & 0xB0)) {
-
-			rx_hung_cnt++;
 		}
 
-		if (0x55 == need_reset_sx1272 || rx_hung_cnt >= 1) {
+		sx1272.reset();
+		radio_setup();			/* reset and setup */
 
-			INFO_S("Reset lora module\n");
-			INFO("rx_err_cnt = ");
-			INFO(rx_err_cnt);
-			INFO(" rx_hung_cnt = ");
-			INFOLN(rx_hung_cnt);
+		need_reset_sx1272 = 0;
+		rx_err_cnt = 0;
+		rx_hung_cnt = 0;
+	}
 
-			if (rx_hung_cnt >= 1) {
-				power_off_dev();
-				delay(1000);
-				power_on_dev();
-			#ifdef ENABLE_OLED
-				u8g2.begin();
-			#endif
-			}
+#ifdef ENABLE_OLED
+	if (seconds() > oled_on_time) {
 
-			sx1272.reset();
-			radio_setup();			/* reset and setup */
+		oled_on_time = 0;
+		oled_on = false;
 
-			need_reset_sx1272 = 0;
-			rx_err_cnt = 0;
-			rx_hung_cnt = 0;
-		}
+		u8g2.setPowerSave(1);
 
-	#ifdef ENABLE_OLED
-		if (seconds() > oled_on_time) {
+		omode = MODE_DECODE;
+	}
+#endif
 
-			oled_on_time = 0;
-			oled_on = false;
+	noInterrupts();
+	int ret = get_pkt(&g_cbuf, &d);
+	interrupts();
 
-			u8g2.setPowerSave(1);
-
-			omode = MODE_DECODE;
-		}
+	if (ret != 0) {
+		// there is no pkt
+	#ifdef DEBUG_RSSI
+		INFO("No pkt, rssi = ");
+		INFOLN(sx1272.getRSSI());
 	#endif
+		goto process_rpt;
+	}
 
-		noInterrupts();
-		int ret = get_pkt(&g_cbuf, &d);
-		interrupts();
+	uint8_t *p = d.data;
+	int p_len = d.plen;
 
-		if (ret != 0) {
-			// there is no pkt
-		#ifdef DEBUG_RSSI
-			INFO("No pkt, rssi = ");
-			INFOLN(sx1272.getRSSI());
-		#endif
-			goto process_rpt;
-		}
+#ifdef DEBUG_HEX_PKT
+	int a = 0, b = 0;
 
-		uint8_t *p = d.data;
-		int p_len = d.plen;
+	for (; a < p_len; a++, b++) {
 
-	#ifdef DEBUG_HEX_PKT
-		int a = 0, b = 0;
+		if ((uint8_t) p[a] < 16)
+			INFO_S("0");
 
-		for (; a < p_len; a++, b++) {
+		INFO_HEX((uint8_t) p[a]);
+		INFO_S(" ");
+	}
 
-			if ((uint8_t) p[a] < 16)
-				INFO_S("0");
+	INFO_S("/");
+	INFO(d.rssi);
+	INFO_S("/");
+	INFOLN(p_len);
+#endif
 
-			INFO_HEX((uint8_t) p[a]);
-			INFO_S(" ");
-		}
+#ifdef ENABLE_CRYPTO
+	// (p[2] == 0x33 && 36 == len)
+	if (false == check_pkt_mic(p, p_len)) {
+		/* check the mic of pkt */
+		goto process_rpt;
+	}
+#endif
 
-		INFO_S("/");
-		INFO(d.rssi);
-		INFO_S("/");
-		INFOLN(p_len);
-	#endif
+	// filter the pkt
+	if (0x33 == p[2] && 36 == p_len) {
 
+		uint8_t mtype = p[27] & 0xE8;
+		if (0x28 == mtype || 0x68 == mtype) {
+
+			// down & crypto pkt
 	#ifdef ENABLE_CRYPTO
-		// (p[2] == 0x33 && 36 == len)
-		if (false == check_pkt_mic(p, p_len)) {
-			/* check the mic of pkt */
-			goto process_rpt;
-		}
+			payload_decrypt(p, p_len, ae33kk);
 	#endif
 
-		// filter the pkt
-		if (0x33 == p[2] && 36 == p_len) {
+			if (is_did_for_me(p)) {
+				process_mac_cmds(p, p_len);
+			}
 
-			uint8_t mtype = p[27] & 0xE8;
-			if (0x28 == mtype || 0x68 == mtype) {
-
-				// down & crypto pkt
-		#ifdef ENABLE_CRYPTO
-				payload_decrypt(p, p_len, ae33kk);
-		#endif
-
-				if (is_did_for_me(p)) {
-					process_mac_cmds(p, p_len);
-				}
-
-				if (true == is_my_did(p)) {
-					/*
-					 * is only for me or send by me
-					 * no need to re-tx or show
-					*/
-					goto process_rpt;
-				}
+			if (true == is_my_did(p)) {
+				/*
+				 * is only for me or send by me
+				 * no need to re-tx or show
+				*/
+				goto process_rpt;
 			}
 		}
+	}
 
-	#if 0
-		/* Is need to re-tx ? */
-		if (is_cc_ok(p, p_len) == false) {
+#if 0
+	/* Is need to re-tx ? */
+	if (is_cc_ok(p, p_len) == false) {
 
-			/* cc flag and count is not ok */
-			goto process_rpt;
-		}
+		/* cc flag and count is not ok */
+		goto process_rpt;
+	}
 
-		if (true == is_pkt_in_ctrl(&g_cfifo, p, p_len, seconds())) {
-			/* cc ctrl is not passed */
-			goto process_rpt;
-		}
+	if (true == is_pkt_in_ctrl(&g_cfifo, p, p_len, seconds())) {
+		/* cc ctrl is not passed */
+		goto process_rpt;
+	}
+#endif
+
+	if (false == is_our_did(p)) {
+		/* filter the did */
+		goto process_rpt;
+	}
+
+#ifdef ENABLE_OLED
+	if (oled_on == true) {
+
+		//memset(p+p_len, 0, MAX_PAYLOAD-p_len);
+		decode_devid(p);
+
+	#ifdef DEBUG
+		sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
+			dev_id,
+			decode_vbat(p),
+			decode_sensor_type(),
+			decode_sensor_data(p),
+			decode_cmd(p),
+			decode_ver(p),
+			d.rssi);
+
+			INFOLN(cmd);
 	#endif
 
-		if (false == is_our_did(p)) {
-			/* filter the did */
-			goto process_rpt;
-		}
+		if (MODE_RAW == omode) {
 
-	#ifdef ENABLE_OLED
-		if (oled_on == true) {
+			// only show raw message, <= 32bytes
+			sprintf(frame_buf[0], "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
+				p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
 
-			//memset(p+p_len, 0, MAX_PAYLOAD-p_len);
-			decode_devid(p);
+			sprintf(frame_buf[1], "%02X%02X %d %d %s%4d",
+				p[9], p[10], p_len, check_crc(p, p_len), decode_vbat(p), d.rssi);
 
-		#ifdef DEBUG
-			sprintf(cmd, "%s/U/%s/%s/%s/c/%d/v/%d/rssi/%d",
+			show_frame(0, omode, false);
+
+		} else if (MODE_STATIS == omode) {
+
+			sprintf(frame_buf[0], " RX: %4d", rx_cnt);
+			sprintf(frame_buf[1], " TX: %4d", tx_cnt);
+
+			show_frame(0, omode, false);
+
+		} else if (MODE_DECODE == omode) {
+
+			sprintf(frame_buf[0], "%s %4d",
 				dev_id,
-				decode_vbat(p),
-				decode_sensor_type(),
-				decode_sensor_data(p),
-				decode_cmd(p),
-				decode_ver(p),
 				d.rssi);
 
-				INFOLN(cmd);
+			decode_vbat(p);
+			decode_sensor_type();
+			decode_sensor_data(p);
+
+			if (dev_id[3] == '0' && (dev_id[4] == '8')) {
+
+				sprintf(frame_buf[1], "%s %s %s",
+					dev_type,
+					dev_data,
+					dev_vbat
+					);
+			} else {
+				sprintf(frame_buf[1], " %s %s %s",
+					dev_type,
+					dev_data,
+					dev_vbat
+					);
+			}
+
+			show_frame(0, omode, p[15] & 0x04);
+
+		} else if (MODE_VER == omode) {
+			sprintf(frame_buf[0], " FW: %s", FW_VER);
+			//sprintf(frame_buf[1], " EP: %d", seconds());
+
+			uint64_to_str(get_devid());
+			sprintf(frame_buf[1], " ID: %s", dev_id);
+
+			show_frame(0, omode, false);
+		}
+	}
+#endif
+
+	if (tx_on) {
+
+		if (process_pkt(p, &p_len, d.rssi) == true) {
+
+		#ifdef ENABLE_CRYPTO
+			set_pkt_mic(p, p_len);
 		#endif
 
-			if (MODE_RAW == omode) {
+			e = tx_pkt(p, p_len);
 
-				// only show raw message, <= 32bytes
-				sprintf(frame_buf[0], "%02X%02X%02X%02X%02X%02X%02X%02X%02X",
-					p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
+			if (0 == e) {
 
-				sprintf(frame_buf[1], "%02X%02X %d %d %s%4d",
-					p[9], p[10], p_len, check_crc(p, p_len), decode_vbat(p), d.rssi);
+				tx_cnt++;
 
-				show_frame(0, omode, false);
-
-			} else if (MODE_STATIS == omode) {
-
-				sprintf(frame_buf[0], " RX: %4d", rx_cnt);
-				sprintf(frame_buf[1], " TX: %4d", tx_cnt);
-
-				show_frame(0, omode, false);
-
-			} else if (MODE_DECODE == omode) {
-
-				sprintf(frame_buf[0], "%s %4d",
-					dev_id,
-					d.rssi);
-
-				decode_vbat(p);
-				decode_sensor_type();
-				decode_sensor_data(p);
-
-				if (dev_id[3] == '0' && (dev_id[4] == '8')) {
-
-					sprintf(frame_buf[1], "%s %s %s",
-						dev_type,
-						dev_data,
-						dev_vbat
-						);
-				} else {
-					sprintf(frame_buf[1], " %s %s %s",
-						dev_type,
-						dev_data,
-						dev_vbat
-						);
-				}
-
-				show_frame(0, omode, p[15] & 0x04);
-
-			} else if (MODE_VER == omode) {
-				sprintf(frame_buf[0], " FW: %s", FW_VER);
-				//sprintf(frame_buf[1], " EP: %d", seconds());
-
-				uint64_to_str(get_devid());
-				sprintf(frame_buf[1], " ID: %s", dev_id);
-
-				show_frame(0, omode, false);
+			} else if (5 != e) {
+				// valide pkt, other tx failed issue
+				noInterrupts();
+				push_pkt(&g_cbuf, p, d.rssi, p_len);
+				interrupts();
 			}
+
+			sx1272.rx_v0();
 		}
-	#endif
-
-		if (tx_on) {
-
-			if (process_pkt(p, &p_len, d.rssi) == true) {
-
-			#ifdef ENABLE_CRYPTO
-				set_pkt_mic(p, p_len);
-			#endif
-
-				e = tx_pkt(p, p_len);
-
-				if (0 == e) {
-
-					tx_cnt++;
-
-				} else if (5 != e) {
-					// valide pkt, other tx failed issue
-					noInterrupts();
-					push_pkt(&g_cbuf, p, d.rssi, p_len);
-					interrupts();
-				}
-
-				sx1272.rx_v0();
-			}
-		}
+	}
 
 process_rpt:
 
-		if (0x55 == need_push) {
+	if (0x55 == need_push) {
 
-			set_temp_pkt();
+		set_temp_pkt();
+	#ifdef ENABLE_CRYPTO
+		set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
+	#endif
+
+		if (tx_on) {
+			noInterrupts();
+			push_pkt(&g_cbuf, rpt_pkt, 0, PAYLOAD_LEN+6);
+			interrupts();
+
+			need_push = 0;
+		} else {
+
 		#ifdef ENABLE_CRYPTO
 			set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
 		#endif
 
-			if (tx_on) {
-				noInterrupts();
-				push_pkt(&g_cbuf, rpt_pkt, 0, PAYLOAD_LEN+6);
-				interrupts();
+			e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
 
+			if (0 == e) {
 				need_push = 0;
-			} else {
-
-			#ifdef ENABLE_CRYPTO
-				set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
-			#endif
-
-				e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
-
-				if (0 == e) {
-					need_push = 0;
-				}
-
-				sx1272.rx_v0();
 			}
+
+			sx1272.rx_v0();
 		}
+	}
 
-		if (0x55 == need_push_mac) {
+	if (0x55 == need_push_mac) {
 
-			set_mac_status_pkt();
+		set_mac_status_pkt();
+
+	#ifdef ENABLE_CRYPTO
+		set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
+	#endif
+
+		if (tx_on) {
+			noInterrupts();
+			push_pkt(&g_cbuf, rpt_pkt, 0, PAYLOAD_LEN+6);
+			interrupts();
+
+			need_push_mac = 0;
+
+			if (MAC_RESET_CC == mac_cmd) {
+				NVIC_SystemReset();
+			}
+
+		} else {
 
 		#ifdef ENABLE_CRYPTO
 			set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
 		#endif
 
-			if (tx_on) {
-				noInterrupts();
-				push_pkt(&g_cbuf, rpt_pkt, 0, PAYLOAD_LEN+6);
-				interrupts();
+			e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
 
+			if (0 == e) {
+				// tx successful
 				need_push_mac = 0;
 
 				if (MAC_RESET_CC == mac_cmd) {
 					NVIC_SystemReset();
 				}
-
-			} else {
-
-			#ifdef ENABLE_CRYPTO
-				set_pkt_mic(rpt_pkt, PAYLOAD_LEN+6);
-			#endif
-
-				e = tx_pkt(rpt_pkt, PAYLOAD_LEN+6);		/* 36B */
-
-				if (0 == e) {
-					// tx successful
-					need_push_mac = 0;
-
-					if (MAC_RESET_CC == mac_cmd) {
-						NVIC_SystemReset();
-					}
-				}
-
-				sx1272.rx_v0();
 			}
+
+			sx1272.rx_v0();
 		}
 	}
 }
