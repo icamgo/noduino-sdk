@@ -52,7 +52,7 @@
 
 #define ENABLE_ENG_MODE				1
 
-#define	FW_VER						"V4.0"
+#define	FW_VER						"V4.1"
 
 #define LOW_BAT_THRESHOLD			3.1
 #define RX_ERR_THRESHOLD			15
