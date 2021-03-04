@@ -30,7 +30,14 @@
 
 #define ENABLE_TX5					1
 
-#if 1
+#define CC_OPEN_WIN				150
+//#define CC_CLOSE_WIN			1290
+#define CC_CLOSE_WIN			6
+#define CC_RPT_PERIOD			45
+#define CC_HUNG_PERIOD 			(CC_RPT_PERIOD + 2)
+#define CCTX_OFF_RPT_PERIOD		10
+
+#if 0
 #define	DEBUG						1
 //#define DEBUG_TX					1
 //#define DEBUG_RSSI					1
@@ -1572,7 +1579,6 @@ int tx_pkt(uint8_t *p, int len)
 	if (false == is_my_did(p)) {
 
 		/* pkt is not my rpt pkt */
-
 		if (false == is_our_did(p) || p[2] < 0x33) {
 
 			return 5;
@@ -1803,7 +1809,7 @@ void wakeup_check(RTCDRV_TimerID_t id, void *user)
 	}
 #endif
 
-	if (cnt_sleep % 1290 == 0 && need_sleep == true) {
+	if (cnt_sleep % CC_CLOSE_WIN == 0 && need_sleep == true) {
 
 		need_sleep = false;
 	}
@@ -1825,7 +1831,7 @@ extern "C" void seconds_callback()
 	++cnt_1min;
 
 	//if (cnt_1min % 5 == 0 && need_sleep == false) {
-	if (cnt_1min % 150 == 0 && need_sleep == false) {
+	if (cnt_1min % CC_OPEN_WIN == 0 && need_sleep == false) {
 		/* work 150min */
 		need_sleep = true;
 	}
@@ -1844,14 +1850,11 @@ extern "C" void seconds_callback()
 
 		}
 
-		if (cnt_1min % 10 == 0) {
+		if (cnt_1min % CC_RPT_PERIOD == 0) {
 			// 10min timer
 
-			tx_cnt_1min = (tx_cnt - old_tx_cnt) / 10;
+			tx_cnt_1min = (tx_cnt - old_tx_cnt) / CC_RPT_PERIOD;
 			old_tx_cnt = tx_cnt;
-		}
-
-		if (cnt_1min % 30 == 0) {
 
 			// Timer report pkt
 			tx_cause = TIMER_TX;
@@ -1859,19 +1862,20 @@ extern "C" void seconds_callback()
 
 		}
 
-		if (MAC_CCTX_OFF == mac_cmd && (cnt_1min % 2 == 0)) {
+		if (MAC_CCTX_OFF == mac_cmd && (cnt_1min % CCTX_OFF_RPT_PERIOD == 0)) {
 			// if cc-off, 2min report
 			tx_cause = TIMER_TX;
 			need_push_mac = 0x55;
 		}
 
-		if (cnt_1min % 12 == 0) {
+		if (cnt_1min % CC_HUNG_PERIOD == 0) {
 
 			// 12min timer
 
 			if (rx_cnt == old_rx_cnt) {
 				// no rx pkt, reset the system
 				//reset_dev_sys();
+				rx_hung_cnt = 30;
 				need_reset_sx1272 = 0x55;
 
 			} else {
@@ -2265,7 +2269,7 @@ void cc_worker()
 	}
 #endif
 
-	if (false == is_our_did(p)) {
+	if (false == is_our_did(p) && false == is_my_did(p)) {
 		/* filter the did */
 		goto process_rpt;
 	}
