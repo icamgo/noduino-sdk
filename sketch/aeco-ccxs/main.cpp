@@ -1299,7 +1299,7 @@ bool is_route_ok(uint8_t *p)
 	return true;
 }
 
-bool is_cced(uint8_t *p, int len)
+bool is_not_cced(uint8_t *p, int len)
 {
 	if (p[2] == 0x33 && len == 36) {
 
@@ -1552,7 +1552,7 @@ void rx_irq_handler()
 
 		if ((true == is_our_pkt(p, plen))
 			&& (false == is_my_did(p))
-			&& (true == is_cced(p, plen))
+			&& (true == is_not_cced(p, plen))
 			&& (false == is_pkt_in_ctrl(&g_cfifo, p, plen, seconds()))) {
 
 			// need to push into the tx queue buffer
