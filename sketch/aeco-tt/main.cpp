@@ -36,11 +36,24 @@ extern "C"{
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-//static uint32_t sample_period = 216;		/* 240s */
-static uint32_t sample_period = 108;		/* 120s */
+#if 1
+static uint32_t check_period = 216;		/* 240s = 4min */
+
+#ifdef EFM32ZG110F32
+#define SAMPLE_PERIOD			5		/* check_period x SAMPLE_PERIOD */
+#define PUSH_PERIOD				30		/* check_period x PUSH_PERIOD   */
+#elif EFM32HG110F64
+#define SAMPLE_PERIOD			3		/* check_period x SAMPLE_PERIOD */
+#define PUSH_PERIOD				15		/* check_period x PUSH_PERIOD   */
+#endif
+
+#else
+static uint32_t check_period = 108;	/* 120s = 2min */
+#define SAMPLE_PERIOD			2		/* check_period x SAMPLE_PERIOD */
+#define PUSH_PERIOD				5		/* check_period x PUSH_PERIOD   */
+#endif
 
 static uint32_t sample_count = 0;
-#define		HEARTBEAT_TIME			7200
 
 static float old_temp = 0.0;
 static float cur_temp = 0.0;
@@ -214,25 +227,25 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
-	fix_seconds(sample_period + sample_period/9);
+	fix_seconds(check_period + check_period/9);
 
 	//INFOLN(seconds());
 
 	sample_count++;
 
 #if 1
-	if (sample_count % 2 == 0) {
+	if (sample_count % SAMPLE_PERIOD == 0) {
 
-		/* every 4x3 = 12min */
-		power_on_dev();		// turn on device power
-		pt1000_init();	// initialization of the sensor
+		/* every 4x3 = 12min, sample a point */
+		power_on_dev();
+		pt1000_init();
 		cur_temp = pt1000_get_temp();
 		power_off_dev();
 
 		push_point(&g_cbuf, seconds(), cur_temp);
 	}
 
-	if (sample_count >= 5) {
+	if (sample_count >= PUSH_PERIOD) {
 
 		/* 4min * 15 =  60min */
 		need_push = 0x5a;
@@ -389,7 +402,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_128k;	/* 128k 1kHz periods should give 128 seconds */
+	wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -444,6 +457,8 @@ void push_data()
 
 	start_send = millis();
 
+	WDOG_Feed();
+
 #if 0
 	pt1000_init();
 	cur_temp = pt1000_get_temp();		// 'C
@@ -457,8 +472,6 @@ void push_data()
 		INFOLN("There is no point in buf");
 		return;
 	}
-
-	WDOG_Feed();
 
 	if (qsetup()) {
 
@@ -538,7 +551,7 @@ void loop()
 	 * Enable rtc timer before enter deep sleep
 	 * Stop rtc timer after enter check_sensor_data()
 	 */
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, check_period * 1000, check_sensor, NULL);
 
 	EMU_EnterEM2(true);
 }
