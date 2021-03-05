@@ -35,8 +35,8 @@
 #define CC_OPEN_WIN				10
 //#define CC_CLOSE_WIN			1290
 #define CC_CLOSE_WIN			1
-#define CC_RPT_PERIOD			30
-#define CC_HUNG_PERIOD 			(CC_RPT_PERIOD + 2)
+#define CC_RPT_PERIOD			60
+#define CC_HUNG_PERIOD 			12
 #define CCTX_OFF_RPT_PERIOD		10
 
 #if 0
@@ -2064,7 +2064,7 @@ void setup()
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
 	//RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, check_period * 1000, period_check_status, NULL);
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, check_period * 1000, wakeup_check, NULL);
+	//RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, check_period * 1000, wakeup_check, NULL);
 
 	radio_setup();
 
