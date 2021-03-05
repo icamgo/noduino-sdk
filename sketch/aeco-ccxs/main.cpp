@@ -30,10 +30,12 @@
 
 #define ENABLE_TX5					1
 
-#define CC_OPEN_WIN				150
+#define	FW_VER						"V4.2"
+
+#define CC_OPEN_WIN				10
 //#define CC_CLOSE_WIN			1290
-#define CC_CLOSE_WIN			6
-#define CC_RPT_PERIOD			45
+#define CC_CLOSE_WIN			1
+#define CC_RPT_PERIOD			30
 #define CC_HUNG_PERIOD 			(CC_RPT_PERIOD + 2)
 #define CCTX_OFF_RPT_PERIOD		10
 
@@ -51,8 +53,6 @@
 #define ENCODE_CCID_LOW1			1
 
 #define ENABLE_ENG_MODE				1
-
-#define	FW_VER						"V4.1"
 
 #define LOW_BAT_THRESHOLD			3.1
 #define RX_ERR_THRESHOLD			15
@@ -1874,9 +1874,9 @@ extern "C" void seconds_callback()
 
 			if (rx_cnt == old_rx_cnt) {
 				// no rx pkt, reset the system
-				//reset_dev_sys();
-				rx_hung_cnt = 30;
-				need_reset_sx1272 = 0x55;
+				reset_dev_sys();
+				//rx_hung_cnt = 30;
+				//need_reset_sx1272 = 0x55;
 
 			} else {
 
@@ -1885,12 +1885,10 @@ extern "C" void seconds_callback()
 
 		}
 
-		#if 0
 		if (cnt_1min % 1440 == 0) {
 			// 24h
 			reset_dev_sys();
 		}
-		#endif
 	//}
 
 #if 0
