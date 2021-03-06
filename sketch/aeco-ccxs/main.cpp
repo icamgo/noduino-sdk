@@ -30,16 +30,16 @@
 
 #define ENABLE_TX5					1
 
-#define	FW_VER						"V4.2"
+#define	FW_VER						"V4.3"
 
-#define CC_OPEN_WIN				10
+#define CC_OPEN_WIN				5
 //#define CC_CLOSE_WIN			1290
 #define CC_CLOSE_WIN			1
 #define CC_RPT_PERIOD			60
 #define CC_HUNG_PERIOD 			12
 #define CCTX_OFF_RPT_PERIOD		10
 
-#if 0
+#if 1
 #define	DEBUG						1
 //#define DEBUG_TX					1
 //#define DEBUG_RSSI					1
@@ -338,7 +338,6 @@ bool is_my_did(uint8_t *p);
 
 void radio_setup()
 {
-
 #ifdef CONFIG_V0
 	sx1272.setup_v0(CH_01_472, 20);
 	//sx1272.setPreambleLength(6);
@@ -351,6 +350,8 @@ void radio_setup()
 
 	sx1272.init_rx_int();
 	sx1272.rx_v0();
+
+	INFOLN("radio setup");
 }
 
 #ifdef CONFIG_V0
@@ -1788,6 +1789,7 @@ void reset_dev_sys()
 {
 	power_off_dev();
 	i2c_delay(6000*I2C_1MS);			/* delay 6000ms */
+	power_on_dev();
 	NVIC_SystemReset();
 }
 
@@ -1827,7 +1829,8 @@ extern "C" void seconds_callback()
 
 	WDOG_Feed();
 
-	INFOLN("xxxx");
+	INFO(need_sleep);
+	INFOLN("xxx");
 	++cnt_1min;
 
 	//if (cnt_1min % 5 == 0 && need_sleep == false) {
@@ -2111,10 +2114,14 @@ void cc_worker();
 
 void loop(void)
 {
+	if (need_sleep == false && 1 == digitalRead(KEY_PIN)) {
+		cc_worker();
+	}
+
 	if (need_sleep == true || 0 == digitalRead(KEY_PIN)) {
 		/* storage mode */
 
-		//INFOLN("deep sleep..");
+		INFOLN("deep sleep..");
 
 		WDOG_Feed();
 
@@ -2124,11 +2131,10 @@ void loop(void)
 
 		EMU_EnterEM2(true);
 
-		delay(30000);
-	}
-
-	if (need_sleep == false && 1 == digitalRead(KEY_PIN)) {
-		cc_worker();
+		if (need_sleep == false) {
+			power_on_dev();
+			radio_setup();
+		}
 	}
 }
 
@@ -2159,7 +2165,7 @@ void cc_worker()
 
 		if (rx_hung_cnt >= 1) {
 			power_off_dev();
-			delay(1000);
+			delay(1200);
 			power_on_dev();
 		#ifdef ENABLE_OLED
 			u8g2.begin();
