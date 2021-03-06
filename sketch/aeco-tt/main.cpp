@@ -299,16 +299,30 @@ bool qsetup()
 qsetup_start:
 
 	power_on_dev();		// turn on device power
-	power_on_modem();
-
-	modem.init_modem();
 
 	WDOG_Feed();
 
-	int ret;
+	power_on_modem();
+
+	delay(2200);
+	INFOLN("Init modem...");
+
+#if 0
+	for (int i = 0; i < 3; i++) {
+
+		if (modem.check_at_ready()) {
+			modem.init_modem();
+			break;
+		}
+
+		WDOG_Feed();
+	}
+#endif
+
+	modem.init_modem();
 
 #if 1
-	ret = modem.check_boot();
+	int ret = modem.check_boot();
 	start_cnt++;
 
 	if (ret == 1) {
@@ -332,7 +346,7 @@ qsetup_start:
 			network_ok = true;
 			break;
 
-		} else if (ret == 2){
+		} else {
 
 			INFOLN("Try to wakeup modem");
 			wakeup_modem();
@@ -469,7 +483,7 @@ void push_data()
 	int ret = get_1st_point(&g_cbuf, &d);
 
 	if (ret == 1) {
-		INFOLN("There is no point in buf");
+		INFOLN("No point in buf");
 		return;
 	}
 
