@@ -148,7 +148,7 @@
 #endif
 #endif
 
-#ifdef USE_AT
+#if (defined(EFM32ZG110F32) || defined(EFM32HG110F64)) && defined(USE_AT)
 #define USE_USART1  1
 #endif
 

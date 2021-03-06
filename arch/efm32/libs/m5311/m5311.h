@@ -44,6 +44,7 @@ public:
 	int check_modem_status();
 	int check_network();
 	int check_boot();
+	int check_at_ready();
 
 	void clean_net_cache();
 

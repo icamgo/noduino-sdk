@@ -138,6 +138,26 @@ int M5311::check_boot()
  * 1: OK
  * 2: timeout
 */
+int M5311::check_at_ready()
+{
+	char wait_str[] = "*ATREADY:";
+
+	String ret_s = expect_rx_str(1200, wait_str, 9);
+
+	if ( ret_s == "") {
+		return 0;
+	} else if (ret_s == "T") {
+		return 2;
+	} else {
+		return 1;
+	}
+}
+
+/*
+ * 0: Failed
+ * 1: OK
+ * 2: timeout
+*/
 int M5311::check_modem_status()
 {
 	MODEM_SERIAL->println(F("AT"));
