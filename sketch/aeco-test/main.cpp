@@ -377,7 +377,9 @@ void push_data()
 		INFO("Could not switch into sleep mode");
 
 	digitalWrite(SX1272_RST, LOW);
-	spi_end();
+
+	sx1272.OFF();					// spi_end()
+
 	power_off_dev();
 
 #elif USE_SX126X
