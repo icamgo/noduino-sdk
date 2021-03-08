@@ -30,7 +30,7 @@
 {                                                                         \
   USART1,                       /* USART port                       */    \
   _USART_ROUTE_LOCATION_LOC0,   /* USART pins location number       */    \
-  2000000,                      /* Bitrate                          */    \
+  1000000,                      /* Bitrate                          */    \
   8,                            /* Frame length                     */    \
   0,                            /* Dummy tx value for rx only funcs */    \
   spidrvMaster,                 /* SPI mode                         */    \
@@ -552,10 +552,9 @@ void SX1272::OFF()
 #endif
 
 #ifdef USE_SOFTSPI
-
+	spi_end();
 #else
-	//SPI.end();
-	//SPIDRV_DeInit(spi_hdl);
+	SPIDRV_DeInit(spi_hdl);
 #endif
 
 #if (DEBUG_MODE > 1)
@@ -567,10 +566,12 @@ byte SX1272::readRegister(byte address)
 {
 	byte value = 0x00;
 
+#ifdef USE_SOFTSPI
 	digitalWrite(_SX1272_SS, LOW);
 
-#ifdef USE_SOFTSPI
 	value = spi_read_reg(address & 0x7f);
+
+	digitalWrite(_SX1272_SS, HIGH);
 #else
 	//bitClear(address, 7);	// Bit 7 cleared to write in registers
 	//SPI.transfer(address);
@@ -579,40 +580,50 @@ byte SX1272::readRegister(byte address)
 	//SPIDRV_MTransferSingleItemB(spi_hdl, address & 0x7f, &value);
 	//SPIDRV_MTransferSingleItemB(spi_hdl, 0, &value);
 
+#if 1
+	uint8_t rx[2];
+	rx[0] = address & 0x7f;
+	rx[1] = 0;
+
+	SPIDRV_MTransferB(spi_hdl, rx, rx, 2);
+
+	value = rx[1];
+#else
 	spihw_transfer(address & 0x7f);
 	value = spihw_transfer(0);
 #endif
-
-	digitalWrite(_SX1272_SS, HIGH);
+#endif
 
 	return value;
 }
 
 void SX1272::writeRegister(byte address, byte data)
 {
+#ifdef USE_SOFTSPI
 	digitalWrite(_SX1272_SS, LOW);
 
-#ifdef USE_SOFTSPI
 	spi_write_reg(address | 0x80, data);
+
+	digitalWrite(_SX1272_SS, HIGH);
 #else
 	//bitSet(address, 7);	// Bit 7 set to read from registers
 	//SPI.transfer(address);
 	//SPI.transfer(data);
 
-	//uint8_t tx[2];
-	//tx[0] = address | 0x80;
-	//tx[1] = data;
-	//SPIDRV_MTransmitB(spi_hdl, tx, 2);
-
-	//uint8_t value = 0;
-	//SPIDRV_MTransferSingleItemB(spi_hdl, address | 0x80, &value);
-	//SPIDRV_MTransferSingleItemB(spi_hdl, data, &value);
-
+#if 1
+	uint8_t tx[2];
+	tx[0] = address | 0x80;
+	tx[1] = data;
+	SPIDRV_MTransmitB(spi_hdl, tx, 2);
+#else
 	spihw_transfer(address | 0x80);
 	spihw_transfer(data);
 #endif
 
-	digitalWrite(_SX1272_SS, HIGH);
+	//uint8_t value = 0;
+	//SPIDRV_MTransferSingleItemB(spi_hdl, address | 0x80, &value);
+	//SPIDRV_MTransferSingleItemB(spi_hdl, data, &value);
+#endif
 }
 
 /*
