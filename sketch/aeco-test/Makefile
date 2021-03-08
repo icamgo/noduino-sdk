@@ -22,9 +22,11 @@ ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 #ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
-#DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
+DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
+#DEFS := -DCONFIG_V0
 #DEFS := -DUSE_SX126X -DUART_NO_RX_INT
-DEFS := -DUSE_SX126X -DUART_NO_RX_INT -DDEBUG_SX126X
+
+#DEFS := -DUSE_SX126X -DUART_NO_RX_INT -DDEBUG_SX126X
 
 MCU = cortex-m0plus
 #F_CPU = 7000000
@@ -57,7 +59,7 @@ endif
 
 OPENOCD_FW = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; shutdown"
 
-OPENOCD_FLASH = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
+OPENOCD_FLASH = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; shutdown"
 OPENOCD_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
 
 OPENOCD_ERASE_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; flash banks; reset init; reset halt; wait_halt; flash erase_sector 0 0 31; reset run; shutdown"
@@ -339,7 +341,7 @@ go: $(fw) .u.bin
 upload: build/main.bin
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
 
-flash: build/main.bin
+flash: $(fw)
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
 
 user: .u.bin
