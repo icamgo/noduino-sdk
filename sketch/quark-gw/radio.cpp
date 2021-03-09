@@ -406,17 +406,17 @@ char *decode_sensor_data(uint8_t *pkt)
 			// water level (pressure), unit is 'M'
 			dd = (float)(data / 100.0);
 			ftoa(data_buf, dd, 2);
-			sprintf(dev_data, "L/%s", data_buf);
+			sprintf(dev_data, "L/%s/iT/%d", data_buf, (int8_t)(pkt[21]));
 			break;
 		case 8:
 			// Humi&Temp Sensor
-			sprintf(dev_data, "H/%d/T/%d", (int)(data/10.0+0.5), (int8_t)(pkt[20]));
+			sprintf(dev_data, "H/%d/T/%d/iT/%d", (int)(data/10.0+0.5), (int8_t)(pkt[20]), (int8_t)(pkt[21]));
 			break;
 		case 16:
 			// Temp&Humi Sensor
 			dd = (float)(data / 10.0);
 			ftoa(data_buf, dd, 1);
-			sprintf(dev_data, "T/%d/H/%d", data_buf, (int8_t)(pkt[20]));
+			sprintf(dev_data, "T/%d/H/%d/iT/%d", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]));
 			break;
 		case 9:
 			// Moving Sensor, unit is 'mm'
@@ -430,7 +430,7 @@ char *decode_sensor_data(uint8_t *pkt)
 			// Float & Temp Sensor
 			dd = (float)(data / 10.0);
 			ftoa(data_buf, dd, 1);
-			sprintf(dev_data, "T/%s/L/%d", data_buf, (int8_t)(pkt[20]));
+			sprintf(dev_data, "T/%s/L/%d/iT/%d", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]));
 			break;
 		case 14:
 			// Water Leak Sensor

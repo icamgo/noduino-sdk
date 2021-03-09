@@ -55,7 +55,6 @@ IPAddress ip9(10,0,0,254);
 
 #ifdef CONFIG_V0
 char cos_serv[] = "192.168.2.97";
-//char cos_serv[] = "iot.autoeco.net";
 #else
 char cos_serv[] = "api.noduino.org";
 #endif
