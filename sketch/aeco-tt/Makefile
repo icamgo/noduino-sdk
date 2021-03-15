@@ -23,8 +23,9 @@ LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
 #DEFS := -DUSE_AT -DUART_NO_RX_INT
 #DEFS := -DUSE_AT -DDEBUG_EFM
-#DEFS := -DUSE_AT -DDEBUG_M5311
-DEFS := -DUSE_AT
+#DEFS := -DUSE_AT -DDEBUG_M5311 -DDEBUG_UART
+DEFS := -DUSE_AT -DDEBUG_M5311
+#DEFS := -DUSE_AT
 
 MCU = cortex-m0plus
 #F_CPU = 7000000
@@ -60,7 +61,7 @@ OPENOCD_FW = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; tar
 OPENOCD_FLASH = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; shutdown"
 OPENOCD_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
 
-OPENOCD_ERASE_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; flash banks; reset init; reset halt; wait_halt; flash erase_sector 0 0 31; reset run; shutdown"
+OPENOCD_ERASE_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; flash banks; reset init; reset halt; wait_halt; flash erase_sector 0 0 63; reset run; shutdown"
 #OPENOCD_ERASE_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; flash banks; reset init; reset halt; wait_halt; flash erase_sector 1 0 0; reset run; shutdown"
 OPENOCD_ERASE_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; reset run; shutdown"
 
@@ -134,14 +135,14 @@ CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I
 
 CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32HG/Include -I$(ARDUINO_CORES)/../variants/efm32hg110 
 
-CINCS		+= -I  $(LIB_DIR)/softspi/				\
+CINCS		+= 				\
 			-I $(LIB_DIR)/m5311/					\
 			-I $(LIB_DIR)/time/						\
 			-I $(LIB_DIR)/pt1000/					\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I .									
 
-CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
+CXXINCS		+= 				\
 			-I $(LIB_DIR)/m5311/					\
 			-I $(LIB_DIR)/time/						\
 			-I $(LIB_DIR)/pt1000/					\
@@ -347,7 +348,7 @@ dumpuser:
 
 erase:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_ERASE_MAIN)
-	-$(Q) echo "Erase the 32KB main data"
+	-$(Q) echo "Erase the whole main data"
 
 eraseflash:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_ERASE_MAIN)

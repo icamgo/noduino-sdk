@@ -31,7 +31,7 @@ extern "C"{
 
 #define	DEBUG					1
 
-#define	FW_VER						"V1.1"
+#define	FW_VER						"V1.2"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -92,6 +92,8 @@ uint16_t tx_count = 0;
 #define	EL_TX				4
 #define	WL_TX				5
 
+struct circ_buf g_cbuf;
+
 int tx_cause = RESET_TX;
 
 M5311 modem;
@@ -100,7 +102,7 @@ char dev_id[24];
 char dev_vbat[6];
 char dev_data[8];
 
-static struct circ_buf g_cbuf __attribute__((aligned(4)));
+//__attribute__((aligned(4)));
 
 void push_data();
 
@@ -285,88 +287,106 @@ void trig_check_sensor()
 	interrupts();
 }
 
-bool qsetup()
+int qsetup()
 {
 	bool network_ok = false;
 	int start_cnt = 0;
 
-	Serial1.setRouteLoc(0);
-	Serial1.begin(115200);
+	power_on_dev();		// turn on device power
 
-	//Serial1.println("Hello");
-	modem.init(Serial1);
+	INFOLN("....");
+	SerialUSART1.setRouteLoc(0);
+	INFOLN("....");
+	SerialUSART1.begin(115200);
+	INFOLN("xxxx");
+
+	modem.init(&SerialUSART1);
 
 qsetup_start:
 
-	power_on_dev();		// turn on device power
-
+	INFOLN(__LINE__);
 	WDOG_Feed();
-
+	INFOLN(__LINE__);
 	power_on_modem();
-
-	delay(2200);
-	INFOLN("Init modem...");
+	INFOLN(__LINE__);
 
 #if 0
-	for (int i = 0; i < 3; i++) {
+	int ii;
+	for (ii = 0; ii < 5; ii++) {
 
-		if (modem.check_at_ready()) {
+		if (modem.wait_modem()) {
 			modem.init_modem();
 			break;
 		}
 
+		delay(1000);
+
 		WDOG_Feed();
 	}
+
+	if (ii >= 5) {
+
+		// modem serial is not  OK,
+		// goto sleep
+		return 2;
+	}
+
+#else
+	delay(1200);
+	modem.init_modem();
 #endif
 
-	modem.init_modem();
+	int ret = 0;
 
-#if 1
-	int ret = modem.check_boot();
+	ret = modem.check_boot();
 	start_cnt++;
 
 	if (ret == 1) {
 
 		network_ok = true;
 
-	} else if (ret == 2 && start_cnt < 3) {
-
+	} else if ((ret == 2 || ret == 0) && start_cnt < 3) {
+		INFOLN(__LINE__);
 		power_off_dev();
+		INFOLN(__LINE__);
 		delay(1000);
+		INFOLN(__LINE__);
 		goto qsetup_start;
-	}
-#endif
+		INFOLN(__LINE__);
+	} else {
 
-	for (int i = 0; i < 30; i++) {
+		for (int i = 0; i < 30; i++) {
 
-		WDOG_Feed();
-		ret = modem.check_network();
+			WDOG_Feed();
+			ret = modem.check_network();
 
-		if (ret == 1) {
-			network_ok = true;
-			break;
+			if (ret == 1) {
+				network_ok = true;
+				break;
 
-		} else {
+			} else {
 
-			INFOLN("Try to wakeup modem");
-			wakeup_modem();
+				INFOLN("Try to wakeup modem");
+				wakeup_modem();
+			}
+
+			delay(1000);
+
+			INFOLN("network check");
+
+		#if 0
+			power_off_dev();
+			delay(1000);
+			power_on_dev();
+
+			power_on_modem();
+		#else
+			//reset_modem();
+		#endif
+
+			//modem.init_modem();
 		}
 
-		delay(1000);
-
-		INFOLN("network check");
-
-	#if 0
-		power_off_dev();
-		delay(1000);
-		power_on_dev();
-
-		power_on_modem();
-	#else
-		//reset_modem();
-	#endif
-
-		//modem.init_modem();
 	}
 
 	if (network_ok) {
@@ -402,6 +422,8 @@ qsetup_start:
 		power_on_modem();
 		delay(100);
 		modem.clean_net_cache();
+		modem.enter_deepsleep();
+		delay(2000);
 	}
 
 	return network_ok;
@@ -487,7 +509,8 @@ void push_data()
 		return;
 	}
 
-	if (qsetup()) {
+	ret = qsetup();
+	if (ret == 1) {
 
 		modem.mqtt_end();
 		delay(100);
@@ -541,13 +564,25 @@ void push_data()
 
 		WDOG_Feed();
 		modem.mqtt_end();
+
+	} else if (ret == 2) {
+		// modem serial is hung
+
+		WDOG_Feed();
+		power_off_modem();
+		power_off_dev();
+
+		return;
+
+	} else if (ret == 0) {
+
+		WDOG_Feed();
+
+		modem.enter_deepsleep();
+
+		power_off_modem();
+		power_off_dev();
 	}
-
-	WDOG_Feed();
-	power_off_modem();
-	power_off_dev();
-
-	end_send = millis();
 }
 
 void loop()
