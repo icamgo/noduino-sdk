@@ -282,6 +282,7 @@ void HardwareSerial::begin(USART_Mode_TypeDef spiMode){
 void HardwareSerial::begin(const uint32_t baud,uint8_t config){
   this->baud = baud;
   this->config = config;
+
   if (buf == NULL) {
     buf = (USART_Buf_TypeDef*)malloc(sizeof(USART_Buf_TypeDef));
     buf->instance = this->instance;
@@ -317,7 +318,9 @@ void HardwareSerial::begin(const uint32_t baud,uint8_t config){
     USART_InitAsync(this->instance, &initasync);
     this->instance->IFC = _USART_IFC_MASK;
 	#ifndef UART_NO_RX_INT
+	Serial.println(__LINE__);
 	this->instance->IEN = USART_IEN_RXDATAV;
+	Serial.println(__LINE__);
     this->instance->ROUTE |=  USART_ROUTE_TXPEN | USART_ROUTE_RXPEN | USART_ROUTE_LOCATION_LOCx;
 	#else
     this->instance->ROUTE |=  USART_ROUTE_TXPEN | USART_ROUTE_LOCATION_LOCx;
@@ -464,6 +467,7 @@ void HardwareSerial::initPort(void) {
 #endif
 #if defined(USART1)&& (USE_USART1 >0)
   if (this->instance == USART1) {
+
     NVIC_ClearPendingIRQ(USART1_RX_IRQn);
     NVIC_EnableIRQ(USART1_RX_IRQn);
     NVIC_ClearPendingIRQ(USART1_TX_IRQn);
@@ -573,7 +577,9 @@ int HardwareSerial::peek(void)
 }
 
 void HardwareSerial::flush(void) {
+#ifndef DEBUG_UART
   while (buf->txEnd != buf-> txStart);
+#endif
 }
 
 int HardwareSerial::read(void) {
@@ -649,7 +655,6 @@ void USART0_TX_IRQHandler(void)
   uint32_t flags = USART_IntGet(USART0);
   USART_IntClear(USART0, flags);
   if (flags & USART_IF_TXC) usart0_txCallbBck(USART0_buf);
-//  if (flags & USART_IF_TXC) USART_TXCallback(USART0_buf);
 }
 HardwareSerial Serial0(USART0);
 #endif
