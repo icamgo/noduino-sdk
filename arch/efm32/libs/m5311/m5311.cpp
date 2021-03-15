@@ -3,23 +3,44 @@
 char str[BUF_LEN];
 char modem_said[MODEM_LEN];
 
-void M5311::init(Stream & serial)
+void M5311::init(HardwareSerial *serial)
 {
-	MODEM_SERIAL = &serial;
+	MODEM_SERIAL = serial;
+}
+
+bool M5311::wait_modem()
+{
+	char wait_ok[] = "READY";
+
+	if (expect_rx_str(2000, wait_ok, 5) != "") {
+
+		return true;
+
+	} else {
+
+		return false;
+	}
 }
 
 bool M5311::init_modem()
 {
 	INFOLN("Initial Modem");
 
-	MODEM_SERIAL->println(F("AT*CMBAND=8"));
+#if 0
+	MODEM_SERIAL->println(F("AT+CFUN=1"));
 	MODEM_SERIAL->flush();
+	delay(1);
+#endif
+
+	MODEM_SERIAL->println(F("AT*CMBAND=8"));
 	MODEM_SERIAL->flush();
 	delay(1);
 
+#if 1
 	MODEM_SERIAL->println(F("AT+SM=LOCK"));
 	MODEM_SERIAL->flush();
 	delay(1);
+#endif
 
 	MODEM_SERIAL->clear_rxbuf();
 }
@@ -27,7 +48,6 @@ bool M5311::init_modem()
 bool M5311::disable_deepsleep()
 {
 	MODEM_SERIAL->println(F("AT+SM=LOCK_FOREVER"));
-	MODEM_SERIAL->flush();
 	MODEM_SERIAL->clear_rxbuf();
 
 	char wait_ok[] = "OK";
@@ -42,11 +62,30 @@ bool M5311::disable_deepsleep()
 	}
 }
 
-/*
+#if 0
 bool M5311::set_band()
 {
 }
-*/
+
+void M5311::sw_power_off()
+{
+	MODEM_SERIAL->println(F("AT+CPOF"));
+	MODEM_SERIAL->flush();
+	delay(10);
+}
+#endif
+
+void M5311::enter_deepsleep()
+{
+	MODEM_SERIAL->println(F("AT+SM=UNLOCK"));
+	MODEM_SERIAL->flush();
+	delay(1);
+
+	MODEM_SERIAL->println(F("AT+CFUN=0"));
+	MODEM_SERIAL->flush();
+	delay(1);
+}
+
 void M5311::clean_net_cache()
 {
 	INFOLN("cleanup net cache");
@@ -66,7 +105,7 @@ bool M5311::reboot()
 	//MODEM_SERIAL->println("AT+COLDRB");
 
 	MODEM_SERIAL->println(F("AT+CMRB"));
-	MODEM_SERIAL->flush();
+	//MODEM_SERIAL->flush();
 	delay(1000);
 
 	char wait_str[] = "REBOOT";
@@ -550,41 +589,4 @@ void M5311::mqtt_end()
 	delay(200);
 
 	//expect_rx_str(200, wait_str, 2);
-}
-
-String M5311::hex2str(String hexData)
-{
-
-	String converted;
-	char fetchC;
-	_hexData = hexData;
-
-	for (int hexCnt = 0; hexCnt < _hexData.length(); hexCnt += 2) {
-		fetchC =
-		    byte_convert(_hexData[hexCnt]) << 4 |
-		    byte_convert(_hexData[hexCnt + 1]);
-		converted += fetchC;
-	}
-	return converted;
-}
-
-char M5311::byte_convert(char c)
-{
-
-	char _byte;
-	char _c = c;
-
-	if ((_c >= '0') && (_c <= '9')) {
-		_byte = _c - 0x30;
-	} else {
-		//..
-	}
-
-	if ((_c >= 'A') && (_c <= 'F')) {
-		_byte = _c - 55;
-	} else {
-		//..
-	}
-
-	return _byte;
 }

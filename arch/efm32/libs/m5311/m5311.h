@@ -25,8 +25,11 @@
 class M5311 {
 
 public:
-	void init(Stream & serial);
+	void init(HardwareSerial *serial);
+	//void init() { MODEM_SERIAL = &Serial1; };
 	bool reboot();
+
+	bool wait_modem();
 
 	String get_imsi();
 	String get_imei();
@@ -50,6 +53,10 @@ public:
 
 	bool disable_deepsleep();
 
+#if 0
+	void sw_power_off();
+#endif
+	void enter_deepsleep();
 
 	String check_ipaddr();
 	String get_net_time();
@@ -65,11 +72,6 @@ public:
 	bool mqtt_pub(char topic[], char msg[]);
 	void mqtt_end();
 
-	String check_udp_incoming_str();
-	String hex2str(String hexData);
-	char byte_convert(char c);
-
 private:
-	Stream *MODEM_SERIAL;
-	String _hexData;
+	HardwareSerial *MODEM_SERIAL;
 };
