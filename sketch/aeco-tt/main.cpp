@@ -70,7 +70,7 @@ static uint8_t need_push = 0;
 
 uint16_t tx_count = 0;
 
-#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"tp\":%d}"
+#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d}"
 
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
@@ -429,6 +429,17 @@ qsetup_start:
 	return network_ok;
 }
 
+int8_t fetch_mcu_temp()
+{
+	float temp = 0.0;
+	for(int i=0; i<3; i++) {
+		temp += adc.temperatureCelsius();
+	}
+	temp /= 3.0;
+
+	return (int8_t)roundf(temp);
+}
+
 void setup()
 {
 	Ecode_t e;
@@ -538,6 +549,7 @@ void push_data()
 						devid,
 						decode_vbat(vbat),
 						decode_sensor_data(d.data),
+						fetch_mcu_temp(),
 						tx_cause
 				);
 
