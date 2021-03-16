@@ -438,7 +438,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
+	wInit.perSel = wdogPeriod_256k;	/* 32k 1kHz periods should give 32 seconds */
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -486,19 +486,11 @@ void setup()
 
 void push_data()
 {
-	long start_send;
-	long end_send;
+	long cnt_fail = 0;
 
 	struct point d;
 
-	start_send = millis();
-
 	WDOG_Feed();
-
-#if 0
-	pt1000_init();
-	cur_temp = pt1000_get_temp();		// 'C
-#endif
 
 	float vbat = adc.readVbat();
 
@@ -528,7 +520,7 @@ void push_data()
 
 			WDOG_Feed();
 
-			while (get_1st_point(&g_cbuf, &d) == 0) {
+			while (get_1st_point(&g_cbuf, &d) == 0 && cnt_fail < 3) {
 
 				WDOG_Feed();
 				wakeup_modem();
@@ -556,7 +548,10 @@ void push_data()
 					noInterrupts();
 					pop_point(&g_cbuf, &d);
 					interrupts();
+
 				} else {
+
+					cnt_fail++;
 					INFOLN("Pub failed");
 				}
 			}
