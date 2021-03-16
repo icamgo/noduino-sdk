@@ -27,8 +27,7 @@ LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 DEFS := -DUSE_AT
 
 MCU = cortex-m0plus
-#F_CPU = 7000000
-F_CPU = 14000000
+F_CPU = 7000000
 
 VERSION=187
 
@@ -134,14 +133,14 @@ CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I
 
 CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
 
-CINCS		+= -I  $(LIB_DIR)/softspi/				\
+CINCS		+= 				\
 			-I $(LIB_DIR)/m5311/					\
 			-I $(LIB_DIR)/time/						\
 			-I $(LIB_DIR)/pt1000/					\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I .									
 
-CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
+CXXINCS		+= 				\
 			-I $(LIB_DIR)/m5311/					\
 			-I $(LIB_DIR)/time/						\
 			-I $(LIB_DIR)/pt1000/					\
