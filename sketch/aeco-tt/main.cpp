@@ -36,17 +36,16 @@ extern "C"{
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t check_period = 27;		/* 30s = 0.5min */
+static uint32_t check_period = 18;		/* 20s = 0.33min */
 
 #define WDOG_PERIOD				wdogPeriod_32k			/* 32k 1kHz periods should give 32 seconds */
-//#define WDOG_PERIOD				wdogPeriod_256k
 
 #ifdef EFM32ZG110F32
-#define SAMPLE_PERIOD			40		/* check_period x SAMPLE_PERIOD = 1200s (20min) */
-#define PUSH_PERIOD				240		/* check_period x PUSH_PERIOD = 120min */
+#define SAMPLE_PERIOD			60		/* check_period x SAMPLE_PERIOD = 1200s (20min) */
+#define PUSH_PERIOD				360		/* check_period x PUSH_PERIOD = 7200s */
 #elif EFM32HG110F64
-#define SAMPLE_PERIOD			24		/* check_period x SAMPLE_PERIOD = 12min */
-#define PUSH_PERIOD				240		/* check_period x PUSH_PERIOD = 120min */
+#define SAMPLE_PERIOD			36		/* check_period x SAMPLE_PERIOD = 720s (12min) */
+#define PUSH_PERIOD				360		/* check_period x PUSH_PERIOD = 120min */
 #endif
 
 static uint32_t sample_count = 0;
@@ -567,7 +566,14 @@ void push_data()
 
 		WDOG_Feed();
 		modem.mqtt_end();
+#if 1
+	}
 
+	WDOG_Feed();
+
+	power_off_modem();
+	power_off_dev();
+#else
 	} else if (ret == 2) {
 		// modem serial is hung
 
@@ -586,6 +592,7 @@ void push_data()
 		power_off_modem();
 		power_off_dev();
 	}
+#endif
 }
 
 void loop()
@@ -596,6 +603,8 @@ void loop()
 
 		push_data();
 		need_push = 0;
+
+		WDOG_Feed();
 	}
 
 	power_off_dev();
