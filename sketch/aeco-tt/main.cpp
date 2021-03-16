@@ -36,21 +36,17 @@ extern "C"{
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-#if 1
-static uint32_t check_period = 216;		/* 240s = 4min */
+static uint32_t check_period = 27;		/* 30s = 0.5min */
+
+#define WDOG_PERIOD				wdogPeriod_32k			/* 32k 1kHz periods should give 32 seconds */
+//#define WDOG_PERIOD				wdogPeriod_256k
 
 #ifdef EFM32ZG110F32
-#define SAMPLE_PERIOD			5		/* check_period x SAMPLE_PERIOD */
-#define PUSH_PERIOD				30		/* check_period x PUSH_PERIOD   */
+#define SAMPLE_PERIOD			40		/* check_period x SAMPLE_PERIOD = 1200s (20min) */
+#define PUSH_PERIOD				240		/* check_period x PUSH_PERIOD = 120min */
 #elif EFM32HG110F64
-#define SAMPLE_PERIOD			3		/* check_period x SAMPLE_PERIOD */
-#define PUSH_PERIOD				15		/* check_period x PUSH_PERIOD   */
-#endif
-
-#else
-static uint32_t check_period = 108;	/* 120s = 2min */
-#define SAMPLE_PERIOD			2		/* check_period x SAMPLE_PERIOD */
-#define PUSH_PERIOD				5		/* check_period x PUSH_PERIOD   */
+#define SAMPLE_PERIOD			24		/* check_period x SAMPLE_PERIOD = 12min */
+#define PUSH_PERIOD				240		/* check_period x PUSH_PERIOD = 120min */
 #endif
 
 static uint32_t sample_count = 0;
@@ -449,7 +445,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_256k;	/* 32k 1kHz periods should give 32 seconds */
+	wInit.perSel = WDOG_PERIOD;
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
