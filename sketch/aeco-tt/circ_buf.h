@@ -9,14 +9,14 @@
 */
 
 #ifdef EFM32HG110F64
-#define	CIRC_BUF_SIZE		20
+#define	CIRC_BUF_SIZE		80
 
 #elif EFM32GG230F512
 #define	CIRC_BUF_SIZE		6656
 
 #elif EFM32ZG110F32
 //#define	CIRC_BUF_SIZE		52
-#define	CIRC_BUF_SIZE		12
+#define	CIRC_BUF_SIZE		20
 #endif
 
 
