@@ -100,6 +100,7 @@ char dev_data[8];
 //__attribute__((aligned(4)));
 
 void push_data();
+int8_t fetch_mcu_temp();
 
 uint64_t get_devid()
 {
@@ -239,7 +240,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		cur_temp = pt1000_get_temp();
 		power_off_dev();
 
-		push_point(&g_cbuf, seconds(), cur_temp);
+		push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
 	}
 
 	if (sample_count >= PUSH_PERIOD) {
@@ -487,7 +488,7 @@ void setup()
 	cur_temp = pt1000_get_temp();
 	power_off_dev();
 
-	push_point(&g_cbuf, seconds(), cur_temp);
+	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
 }
 
 void push_data()
@@ -543,8 +544,8 @@ void push_data()
 						d.ts,
 						devid,
 						decode_vbat(vbat),
-						decode_sensor_data(d.data),
-						fetch_mcu_temp(),
+						decode_sensor_data(d.data / 10.0),
+						d.iT,
 						tx_cause
 				);
 
