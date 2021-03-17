@@ -650,8 +650,12 @@ void USART_TXCallback(USART_Buf_TypeDef *interruptUART) {
 }
 void USART_RXCallback(USART_Buf_TypeDef *interruptUART) {
   if (((interruptUART->rxEnd + 1) % SERIAL_RX_BUFFER_SIZE) == interruptUART->rxStart) return; /*over*/
-  interruptUART->rxBuffer[interruptUART->rxEnd++] = USART_Rx(interruptUART->instance);
-  interruptUART->rxEnd %= SERIAL_RX_BUFFER_SIZE;
+
+  if (interruptUART->instance->STATUS & USART_STATUS_RXDATAV) {
+    interruptUART->rxBuffer[interruptUART->rxEnd++] = USART_RxDataGet(interruptUART->instance);
+    //interruptUART->rxBuffer[interruptUART->rxEnd++] = USART_Rx(interruptUART->instance);
+    interruptUART->rxEnd %= SERIAL_RX_BUFFER_SIZE;
+  }
 }
 #if defined(USART0) && (USE_USART0 >0)
 void (*usart0_rxCallbBck)(USART_Buf_TypeDef *interruptUART) = USART_RXCallback;
@@ -836,9 +840,14 @@ void LEUART_TXCallback(USART_Buf_TypeDef *interruptUART) {
 }
 #ifndef UART_NO_RX_INT
 void LEUART_RXCallback(USART_Buf_TypeDef *interruptUART) {
+
   if (((interruptUART->rxEnd + 1) % SERIAL_RX_BUFFER_SIZE) == interruptUART->txStart) return; /*over*/
-  interruptUART->rxBuffer[interruptUART->rxEnd++] = LEUART_Rx((LEUART_TypeDef *)interruptUART->instance);
-  interruptUART->rxEnd %= SERIAL_RX_BUFFER_SIZE;
+
+  if (interruptUART->instance->STATUS & USART_STATUS_RXDATAV) {
+    interruptUART->rxBuffer[interruptUART->rxEnd++] = LEUART_RxDataGet((LEUART_TypeDef *)interruptUART->instance);
+    //interruptUART->rxBuffer[interruptUART->rxEnd++] = LEUART_Rx((LEUART_TypeDef *)interruptUART->instance);
+    interruptUART->rxEnd %= SERIAL_RX_BUFFER_SIZE;
+  }
 }
 #endif
 #if defined(LEUART0) && (USE_LEUART0 >0)
