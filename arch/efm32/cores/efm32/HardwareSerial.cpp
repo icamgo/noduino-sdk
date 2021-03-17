@@ -150,13 +150,26 @@ void HardwareSerial::initSerialGpio(void) {
 
 #if   defined(USART1)&& (USE_USART1 >0)
   if (this->instance == USART1) {
+	/*
+	 * gpioModePushPull: Push-pull output
+	 * gpioModePushPullDrive: Push-pull output with drive-strength set by DRIVEMODE
+	 * gpioModeWiredAnd: Open-drain output
+	 * gpioModeWiredAndFilter: Open-drain output with filter
+	 * gpioModeWiredAndPullUp: Open-drain output with pullup
+	*/
     GPIO_PinModeSet((GPIO_Port_TypeDef)AF_USART1_TX_PORT(this->routeLoc),
                     AF_USART1_TX_PIN(this->routeLoc),
                     gpioModePushPull, 1);
 
+	/*
+	 * gpioModeInputPull: Input enabled. DOUT determines pull direction
+	 * gpioModeInput: Input enabled. Filter if DOUT is set
+	 * gpioModeInputPullFilter: Input enabled with filter. DOUT determines pull direction
+	*/
     GPIO_PinModeSet((GPIO_Port_TypeDef)AF_USART1_RX_PORT(this->routeLoc),
                     AF_USART1_RX_PIN(this->routeLoc),
-                    gpioModeInputPull, 0);
+                    gpioModeInputPullFilter, 1);	/* DOUT = 0: pull-down */
+
 	buf->mode = USART_TYPE;
   }
 #endif
@@ -233,6 +246,7 @@ void HardwareSerial::initSerialGpio(void) {
     GPIO_PinModeSet((GPIO_Port_TypeDef)AF_UART1_RX_PORT(this->routeLoc),
                     AF_UART1_RX_PIN(this->routeLoc),
                     gpioModeInputPull, 0);
+
 	buf->mode = UART_TYPE;
   }
 #endif
@@ -245,7 +259,7 @@ void HardwareSerial::initSerialGpio(void) {
 	#ifndef UART_NO_RX_INT
     GPIO_PinModeSet((GPIO_Port_TypeDef)AF_LEUART0_RX_PORT(this->routeLoc),
                     AF_LEUART0_RX_PIN(this->routeLoc),
-                    gpioModeInputPull, 0);
+                    gpioModeInputPullFilter, 1);
 	#endif
 
 	buf->mode = LEUART_TYPE;
@@ -319,7 +333,7 @@ void HardwareSerial::begin(const uint32_t baud,uint8_t config){
     this->instance->IFC = _USART_IFC_MASK;
 	#ifndef UART_NO_RX_INT
 	Serial.println(__LINE__);
-	this->instance->IEN = USART_IEN_RXDATAV;
+	this->instance->IEN = USART_IEN_RXDATAV;			/* RX Data Valid Interrupt Enable */
 	Serial.println(__LINE__);
     this->instance->ROUTE |=  USART_ROUTE_TXPEN | USART_ROUTE_RXPEN | USART_ROUTE_LOCATION_LOCx;
 	#else
