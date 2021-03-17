@@ -9,14 +9,14 @@
 */
 
 #ifdef EFM32HG110F64
-#define	CIRC_BUF_SIZE		80
+#define	CIRC_BUF_SIZE		512
 
 #elif EFM32GG230F512
 #define	CIRC_BUF_SIZE		6656
 
 #elif EFM32ZG110F32
-//#define	CIRC_BUF_SIZE		52
-#define	CIRC_BUF_SIZE		20
+#define	CIRC_BUF_SIZE		64
+//#define	CIRC_BUF_SIZE		20
 #endif
 
 
@@ -44,7 +44,9 @@
 
 struct point {
 	uint32_t ts;
-	float data;
+	int16_t data;
+	int8_t iT;
+	int8_t pad;
 };
 
 struct circ_buf {
@@ -53,12 +55,13 @@ struct circ_buf {
 	int tail;
 };
 
-int push_point(struct circ_buf *cbuf, uint32_t ts, float dd)
+int push_point(struct circ_buf *cbuf, uint32_t ts, int16_t dd, int8_t itt)
 {
 	if (cbuf != NULL && CIRC_SPACE(cbuf->head, cbuf->tail, CIRC_BUF_SIZE) >= 1) {
 
 		cbuf->point[cbuf->head].ts = ts;
 		cbuf->point[cbuf->head].data = dd;
+		cbuf->point[cbuf->head].iT = itt;
 
 		cbuf->head += 1;
 
@@ -77,6 +80,7 @@ int pop_point(struct circ_buf *cbuf, struct point *odata)
 	
 		odata->ts = cbuf->point[cbuf->tail].ts;
 		odata->data = cbuf->point[cbuf->tail].data;
+		odata->iT = cbuf->point[cbuf->tail].iT;
 
 		cbuf->tail += 1;
 		cbuf->tail %= CIRC_BUF_SIZE;
@@ -95,6 +99,7 @@ int get_1st_point(struct circ_buf *cbuf, struct point *odata)
 	
 		odata->ts = cbuf->point[cbuf->tail].ts;
 		odata->data = cbuf->point[cbuf->tail].data;
+		odata->iT = cbuf->point[cbuf->tail].iT;
 
 		return 0;
 
