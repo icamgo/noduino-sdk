@@ -35,7 +35,7 @@ typedef struct DateTime {
 // 32-bit times as seconds since 1/1/1970
 uint32_t dt_unixtime(void);
 
-void pcf8563_init(uint8_t scl, uint8_t sda)
+void pcf8563_init(uint8_t scl, uint8_t sda);
 void pcf8563_set(const DateTime_t *dt);
 void pcf8563_set_from_seconds(uint32_t t);
 void pcf8563_set_from_str(const char* date, const char* time);
@@ -43,6 +43,5 @@ void pcf8563_set_from_int(uint16_t y, uint8_t m, uint8_t d,
 							uint8_t hh, uint8_t mm, uint8_t ss);
 
 uint32_t pcf8563_now();
-void pcf8563_print();
 
 #endif

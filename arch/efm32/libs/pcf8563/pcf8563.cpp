@@ -230,14 +230,16 @@ void pcf8563_set_from_seconds(uint32_t t)
 	pcf8563_set(NULL);
 }
 
+#if 0
 void pcf8563_print()
 {
 	char msg[40];
 	sprintf(msg, "PCF8563 Time: %04d-%02d-%02d %02d:%02d:%02d",
 			dt.yOff+2000, dt.m, dt.d, dt.hh, dt.mm, dt.ss);
 
-	Serial.println(msg);
+	//Serial.println(msg);
 }
+#endif
 
 uint32_t pcf8563_now()
 {
