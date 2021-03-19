@@ -297,10 +297,10 @@ uint8_t SX126x::rx(uint8_t *pkt, uint16_t len)
 	return rx_len;
 }
 
-bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
+int SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 {
 	uint16_t irq;
-	bool rv = false;
+	int rv = 1;
 
 	if (tx_active == false) {
 
@@ -342,10 +342,10 @@ bool SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 			//set_rx(0xFFFFFF);
 
 			if (irq != SX126X_IRQ_TIMEOUT)
-				rv = true;
+				rv = 0;
 
 		} else {
-			rv = true;
+			rv = 0;
 		}
 	}
 

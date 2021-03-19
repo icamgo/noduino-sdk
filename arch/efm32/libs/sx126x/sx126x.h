@@ -368,7 +368,7 @@ class SX126x {
 
 	uint8_t rx(uint8_t *p, uint16_t len);
 
-	bool send(uint8_t *data, uint8_t len, uint8_t mode);
+	int send(uint8_t *data, uint8_t len, uint8_t mode);
 
 	bool enter_rx(void);
 	bool rx_mode(void);
