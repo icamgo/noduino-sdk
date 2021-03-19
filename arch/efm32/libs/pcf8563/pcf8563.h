@@ -43,5 +43,9 @@ void pcf8563_set_from_int(uint16_t y, uint8_t m, uint8_t d,
 							uint8_t hh, uint8_t mm, uint8_t ss);
 
 uint32_t pcf8563_now();
+uint8_t pcf8563_get_ctrl2();
+
+void pcf8563_reset_timer();
+void pcf8563_set_timer(uint8_t m);
 
 #endif

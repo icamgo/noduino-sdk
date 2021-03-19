@@ -24,7 +24,7 @@
 #define PCF8563_ADDR				(PCF8563_R >> 1)
 
 /* register addresses in the rtc */
-#define PCF8563_STAT1_ADDR			0x0
+#define PCF8563_STAT1_ADDR			0x00
 #define PCF8563_STAT2_ADDR			0x01
 #define PCF8563_SEC_ADDR  			0x02
 #define PCF8563_MIN_ADDR 			0x03
@@ -33,8 +33,13 @@
 #define PCF8563_WEEKDAY_ADDR		0x06
 #define PCF8563_MONTH_ADDR			0x07
 #define PCF8563_YEAR_ADDR 			0x08
-#define PCF8563_ALRM_MIN_ADDR 	    0x09
-#define PCF8563_SQW_ADDR 	        0x0D
+#define PCF8563_MIN_ALARM			0x09
+#define PCF8563_HOUR_ALARM			0x0A
+#define PCF8563_DAY_ALARM			0x0B
+#define PCF8563_WEEKDAY_ALARM		0x0C
+#define PCF8563_CLKOUT_CTRL	        0x0D
+#define PCF8563_TIMER_CTRL			0x0E
+#define PCF8563_TIMER				0x0F
 
 #define SECONDS_PER_DAY				86400L
 #define SECONDS_FROM_1970_TO_2000	946684800UL
@@ -258,4 +263,34 @@ uint32_t pcf8563_now()
 
 	set_dt_from_int(y, m, d, hh, mm, ss);
 	return unixtime(&dt);
+}
+
+uint8_t pcf8563_get_ctrl2()
+{
+	wire_beginTransmission(PCF8563_ADDR);
+    wire_write(PCF8563_STAT2_ADDR);
+	wire_endTransmission();
+
+	wire_requestFrom(PCF8563_ADDR, 1);
+	return wire_read();
+}
+
+void pcf8563_reset_timer()
+{
+	uint8_t status = 0x09;	/* AF = 1, TF = 0, AIE = 0, TIE = 1 */
+    wire_beginTransmission(PCF8563_ADDR);
+    wire_write(PCF8563_STAT2_ADDR);
+    wire_write(status);
+    wire_endTransmission();
+}
+
+void pcf8563_set_timer(uint8_t m)
+{
+	pcf8563_reset_timer();
+
+    wire_beginTransmission(PCF8563_ADDR);
+    wire_write(PCF8563_TIMER_CTRL);
+    wire_write(0x83);			/* 1/60 Hz = 1 interrupt/min, enable timer */
+    wire_write(m);				/* m min */
+    wire_endTransmission();
 }
