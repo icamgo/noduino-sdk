@@ -19,6 +19,8 @@
 #include "softi2c.h"
 #include "sht2x.h"
 #include "sht3x.h"
+#include "pcf8563.h"
+
 #include "rtcdriver.h"
 #include "math.h"
 #include "em_wdog.h"
@@ -52,6 +54,7 @@ SX126x sx126x(2,			// Pin: SPI CS,PIN06-PB08-D2
 
 #define FW_VER					"Ver 1.2"
 
+#ifndef USE_EXTERNAL_RTC
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
@@ -64,6 +67,7 @@ static float old_temp = 0.0;
 static float cur_temp = 0.0;
 static float old_humi = 0.0;
 static float cur_humi = 0.0;
+#endif
 
 static float cur_curr = 0.0;
 
@@ -80,6 +84,8 @@ static uint32_t need_push = 0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
+
+#define	RTC_INT_PIN				16		/* PIN21_PF02_D16 */
 
 #define SDA_PIN					12		/* PIN23_PE12 */
 #define SCL_PIN					13		/* PIN24_PE13 */
@@ -204,6 +210,7 @@ float fetch_current()
 }
 #endif
 
+#ifndef USE_EXTERNAL_RTC
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
 	(void)id;
@@ -250,12 +257,19 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	}
 #endif
 }
+#endif
 
 void trig_check_sensor()
 {
 	need_push = 0x5a;
-
 	tx_cause = KEY_TX;
+}
+
+void check_rtc()
+{
+	pcf8563_reset_timer();
+	need_push = 0x5a;
+	tx_cause = TIMER_TX;
 }
 
 void setup()
@@ -264,10 +278,16 @@ void setup()
 
 	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
 
+#ifdef USE_EXTERNAL_RTC
 	/* Watchdog setup - Use defaults, excepts for these : */
+	wInit.em2Run = false;
+	wInit.em3Run = false;
+	wInit.perSel = wdogPeriod_1k;	/* 32k 1kHz periods should give 32 seconds */
+#else
 	wInit.em2Run = true;
 	wInit.em3Run = true;
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+#endif
 
 #ifdef ENABLE_CRYPTO
 	crypto_init();
@@ -280,9 +300,18 @@ void setup()
 	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
+	pinMode(RTC_INT_PIN, INPUT);
+	attachInterrupt(RTC_INT_PIN, check_rtc, FALLING);
+
+#ifdef USE_EXTERNAL_RTC
+	pcf8563_init(SCL_PIN, SDA_PIN);
+	pcf8563_set_from_int(2020, 3, 19, 17, 21, 25);
+	pcf8563_set_timer(10);
+#else
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
+#endif
 
 #ifdef DEBUG
 	Serial.setRouteLoc(1);
@@ -295,6 +324,7 @@ void setup()
 	/* bootup tx */
 	tx_cause = RESET_TX;
 	need_push = 0x5a;
+
 }
 
 void qsetup()
@@ -367,7 +397,7 @@ void push_data()
 
 	power_on_dev();
 
-	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
+	if (KEY_TX == tx_cause || RESET_TX == tx_cause || TIMER_TX == tx_cause) {
 
 	#ifdef ENABLE_SHT2X
 		sht2x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
@@ -506,7 +536,11 @@ void push_data()
 
 	power_on_dev();
 
+	WDOG_Feed();
+
 	qsetup();
+
+	WDOG_Feed();
 
 #ifdef DEBUG
 	startSend = millis();
@@ -528,11 +562,15 @@ void push_data()
 	sx126x.set_sleep();
 #endif
 
+	WDOG_Feed();
+
+#ifndef USE_EXTERNAL_RTC
 	if (!e) {
 		// send message succesful, update the old data
 		old_temp = cur_temp;
 		old_humi = cur_humi;
 	}
+#endif
 
 #ifdef DEBUG
 	endSend = millis();
@@ -550,6 +588,8 @@ void push_data()
 void loop()
 {
 	if (0x5a == need_push) {
+		WDOG_Feed();
+
 		push_data();
 
 		need_push = 0;
@@ -562,11 +602,13 @@ void loop()
 	spi_end();
 #endif
 
+#ifndef USE_EXTERNAL_RTC
 	/*
 	 * Enable rtc timer before enter deep sleep
 	 * Stop rtc timer after enter check_sensor_data()
 	 */
 	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
+#endif
 
 	//wire_end();
 	digitalWrite(SCL_PIN, HIGH);
