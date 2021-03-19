@@ -25,8 +25,8 @@ DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
 #DEFS = -DUSE_SOFTSPI
 
 MCU = cortex-m0plus
-#F_CPU = 7000000
-F_CPU = 14000000
+F_CPU = 1000000
+#F_CPU = 14000000
 
 VERSION=187
 
@@ -55,7 +55,7 @@ endif
 
 OPENOCD_FW = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; shutdown"
 
-OPENOCD_FLASH = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program build/main.bin verify reset; shutdown"
+OPENOCD_FLASH = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; shutdown"
 OPENOCD_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
 
 OPENOCD_ERASE_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; flash banks; reset init; reset halt; wait_halt; flash erase_sector 0 0 31; reset run; shutdown"
@@ -71,9 +71,6 @@ OPENOCD_GET_UUID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; ini
 OPENOCD_GO = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
 
 OPENOCD_RESET = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset; shutdown"
-
-OPENOCD_UNLOCK = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; flash protect 0 0 last off; flash protect 1 0 0 off; shutdown"
-
 
 CC	:= $(TOOLCHAIN_DIR)/arm-none-eabi-gcc
 CXX	:= $(TOOLCHAIN_DIR)/arm-none-eabi-g++
@@ -120,7 +117,7 @@ $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/softspi/softspi.cpp							\
-$(LIB_DIR)/pt1000/pt1000.cpp							\
+$(LIB_DIR)/pt1000/pt1000.cpp								\
 $(LIB_DIR)/sx127x/sx1272.cpp
 
 
@@ -135,17 +132,13 @@ CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys 
 
 CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
-			-I $(LIB_DIR)/pt1000/					\
-			-I $(LIB_DIR)/U8g2/src					\
-			-I $(LIB_DIR)/U8g2/src/clib				\
+			-I $(LIB_DIR)/pt1000/						\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I $(LIB_DIR)/sx127x					\
 			-I .									
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
-			-I $(LIB_DIR)/pt1000/					\
-			-I $(LIB_DIR)/U8g2/src					\
-			-I $(LIB_DIR)/U8g2/src/clib				\
+			-I $(LIB_DIR)/pt1000/						\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I $(LIB_DIR)/sx127x					\
 			-I .
@@ -287,9 +280,9 @@ endif
 
 ifndef id
 id = $$(($(id_base)+$(rand)%10000))
+endif
 
 id_ok = $$(cat .idused | grep $(id))
-endif
 
 hex_id = $$(printf "%016X" $(id) | fold -w2 | tac | tr -d "\n")
 
@@ -301,6 +294,9 @@ ifndef fw
 fw := build/main.bin
 endif
 
+#
+# while true; do make produce && beep; echo " " && sleep 4; done
+#
 # make produce (write firmware main.bin into main flash, set a random devid and log it)
 # make produce fw=xxx.bin (write firmware xxx.bin into main flash, set a random devid and log it)
 produce: $(fw)
@@ -327,10 +323,10 @@ go: $(fw) .u.bin
 		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 
-upload:
-	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FW)
+upload: build/main.bin
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
 
-flash: build/main.bin
+flash: $(fw)
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FLASH)
 
 user: .u.bin
@@ -382,26 +378,25 @@ getuuid:
 # make setid id=xxx (set id=xxx, do not log it)
 setid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
-	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;  \
-		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
-	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
+	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER) && echo $(id) >> .idused;
 	@rm -f .u.bin
 
 # same as setid
 setdid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
-	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;  \
-		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
-	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
+	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER) && echo $(id) >> .idused;
 	@rm -f .u.bin
 
 reset:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_RESET)
-
-unlock:
-	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_UNLOCK)
 
 clean:
 	$(RM) build/main.hex build/main.eep build/main.cof build/main.elf \
