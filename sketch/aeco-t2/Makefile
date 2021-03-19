@@ -21,12 +21,13 @@ ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
 ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
-DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
+#DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
+DEFS := -DUSE_SX126X -DUART_NO_RX_INT -DDEBUG_SX126X
 #DEFS = -DUSE_SOFTSPI
+#DEFS := -DUSE_SX126X -DUART_NO_RX_INT
 
 MCU = cortex-m0plus
 F_CPU = 1000000
-#F_CPU = 14000000
 
 VERSION=187
 
@@ -99,6 +100,9 @@ $(ARDUINO_CORES)/efm32/efm32init.c						\
 $(ARDUINO_CORES)/efm32/efm32gpio.c						\
 $(ARDUINO_CORES)/efm32/core_callback.c					\
 $(ARDUINO_CORES)/avr/dtostrf.c							\
+$(LIB_DIR)/dmadrv/dmadrv.c								\
+$(LIB_DIR)/dmadrv/dmactrl.c								\
+$(LIB_DIR)/spidrv/spidrv.c								\
 $(LIB_DIR)/rtcdrv/rtcdriver.c
 
 #$(ARDUINO_CORES)/efm32/efm32dac.c						\
@@ -117,7 +121,8 @@ $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/softspi/softspi.cpp							\
-$(LIB_DIR)/pt1000/pt1000.cpp								\
+$(LIB_DIR)/pt1000/pt1000.cpp							\
+$(LIB_DIR)/sx126x/sx126x.cpp							\
 $(LIB_DIR)/sx127x/sx1272.cpp
 
 
@@ -132,14 +137,20 @@ CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys 
 
 CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
-			-I $(LIB_DIR)/pt1000/						\
+			-I $(LIB_DIR)/pt1000/					\
 			-I $(LIB_DIR)/rtcdrv					\
+			-I $(LIB_DIR)/dmadrv					\
+			-I $(LIB_DIR)/spidrv					\
+			-I $(LIB_DIR)/sx126x/					\
 			-I $(LIB_DIR)/sx127x					\
 			-I .									
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
-			-I $(LIB_DIR)/pt1000/						\
+			-I $(LIB_DIR)/pt1000/					\
 			-I $(LIB_DIR)/rtcdrv					\
+			-I $(LIB_DIR)/dmadrv					\
+			-I $(LIB_DIR)/spidrv					\
+			-I $(LIB_DIR)/sx126x/					\
 			-I $(LIB_DIR)/sx127x					\
 			-I .
 

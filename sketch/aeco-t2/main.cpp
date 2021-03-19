@@ -47,8 +47,17 @@ static uint32_t cnt_01 = 0;
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 
 #ifdef ENABLE_RF
+#ifdef CONFIG_V0
 #include "softspi.h"
 #include "sx1272.h"
+#elif USE_SX126X
+#include "sx126x.h"
+SX126x sx126x(2,			// Pin: SPI CS,PIN06-PB08-D2
+				9,			// Pin: RESET, PIN18-PC15-D9
+				5,			// PIN: Busy,  PIN11-PB14-D5, The RX pin
+				3			// Pin: DIO1,  PIN08-PB11-D3
+);
+#endif
 #endif
 
 #ifdef ENABLE_CRYPTO
@@ -84,8 +93,12 @@ static uint32_t need_push = 0;
 #define DEST_ADDR				1
 
 #ifdef CONFIG_V0
-#define TXRX_CH				CH_01_472
-#define LORA_MODE			12
+#define TXRX_CH					CH_01_472
+#define MAX_DBM					20
+#elif USE_SX126X
+#define TXRX_CH					472500000
+#define MAX_DBM					22
+#endif
 
 #define	RESET_TX			0
 #define	DELTA_TX			1
@@ -94,22 +107,11 @@ static uint32_t need_push = 0;
 #define	EL_TX				4
 #define	WL_TX				5
 
-#else
-#define node_addr				110
-
-#define TXRX_CH				CH_00_470
-#define LORA_MODE			11
-#endif
-
-#define MAX_DBM					20
-
 uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4))) = { 0x47, 0x4F, 0x33 };
 
-#ifdef CONFIG_V0
 uint32_t tx_cause = RESET_TX;
 uint16_t tx_count __attribute__((aligned(4))) = 0;
 uint32_t tx_ok_cnt = 0;
-#endif
 
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
@@ -272,9 +274,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 void trig_check_sensor()
 {
 	need_push = 0x5a;
-#ifdef CONFIG_V0
 	tx_cause = KEY_TX;
-#endif
 }
 
 void setup()
@@ -330,18 +330,18 @@ void qsetup()
 {
 #ifdef CONFIG_V0
 	sx1272.setup_v0(TXRX_CH, MAX_DBM);
-#else
-	sx1272.sx1278_qsetup(TXRX_CH, MAX_DBM);
-	sx1272._nodeAddress = node_addr;
-#endif
-
 #ifdef ENABLE_CAD
 	sx1272._enableCarrierSense = true;
+#endif
+
+#elif USE_SX126X
+	sx126x.wakeup();
+	sx126x.init();
+	sx126x.setup_v0(TXRX_CH, MAX_DBM);
 #endif
 }
 #endif
 
-#ifdef CONFIG_V0
 uint64_t get_devid()
 {
 	uint64_t *p;
@@ -361,7 +361,6 @@ uint16_t get_crc(uint8_t *pp, int len)
 	}
 	return hh;
 }
-#endif
 
 #ifdef ENABLE_RF
 void push_data(bool cad_on)
@@ -371,12 +370,10 @@ void push_data(bool cad_on)
 
 	int e;
 
-#ifdef CONFIG_V0
 	uint8_t *pkt = message;
 
 	memset(pkt, 0, PAYLOAD_LEN+6);
 	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
-#endif
 
 	WDOG_Feed();
 
@@ -404,7 +401,6 @@ void push_data(bool cad_on)
 		cur_temp = pt1000_get_temp();
 	}
 
-#ifdef CONFIG_V0
 	uint64_t devid = get_devid();
 
 	uint8_t *p = (uint8_t *) &devid;
@@ -460,12 +456,14 @@ void push_data(bool cad_on)
 	set_pkt_mic(pkt, PAYLOAD_LEN+6);
 #endif
 	/////////////////////////////////////////////////////////
-#else
-	// not CONFIG_V0
-
-#endif
 
 	qsetup();
+
+#ifdef DEBUG
+	start = millis();
+#endif
+
+#ifdef CONFIG_V0
 
 #ifdef ENABLE_CAD
 	if (cad_on) {
@@ -475,19 +473,18 @@ void push_data(bool cad_on)
 		sx1272._enableCarrierSense = false;
 	}
 #endif
-
-#ifdef DEBUG
-	start = millis();
-#endif
-
-#ifdef CONFIG_V0
 	if (cad_on) {
 		e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
 	} else {
 		e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, 300);
 	}
-#else
+	sx1272.setSleepMode();
+	digitalWrite(SX1272_RST, LOW);
+	spi_end();
 
+#elif USE_SX126X
+	e = sx126x.send(message, PAYLOAD_LEN+6, SX126x_TXMODE_SYNC);
+	sx126x.set_sleep();
 #endif
 
 	if (!e) {
@@ -497,6 +494,7 @@ void push_data(bool cad_on)
 	#endif
 		tx_ok_cnt++;
 	}
+
 
 #ifdef DEBUG
 	end = millis();
@@ -511,15 +509,7 @@ void push_data(bool cad_on)
 	INFOLN(e);
 #endif
 
-	if (cad_on) {
-		sx1272.setSleepMode();
-		digitalWrite(SX1272_RST, LOW);
-
-		spi_end();
-
-		// dev power off
-		power_off_dev();
-	}
+	power_off_dev();
 }
 #endif
 
@@ -534,7 +524,7 @@ void loop()
 
 	power_off_dev();
 
-#ifdef ENABLE_RF
+#if defined(ENABLE_RF) && defined(CONFIG_V0)
 	digitalWrite(SX1272_RST, LOW);
 	spi_end();
 #endif
