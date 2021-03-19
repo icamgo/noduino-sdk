@@ -23,7 +23,7 @@
 #include "math.h"
 #include "em_wdog.h"
 
-#define	DEBUG					1
+//#define	DEBUG					1
 
 //#define	TX_TESTING				1
 
@@ -365,7 +365,10 @@ void push_data()
 
 	vbat = adc.readVbat();
 
+	power_on_dev();
+
 	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
+
 	#ifdef ENABLE_SHT2X
 		sht2x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
 		cur_temp = sht2x_get_temp();
@@ -377,8 +380,6 @@ void push_data()
 		cur_humi = sht3x_get_humi();
 	#endif
 	}
-
-	power_on_dev();
 
 	INFO("Temp: ");
 	INFOLN(cur_temp);
@@ -502,6 +503,8 @@ void push_data()
 
 	//pkt[38] = 0; pkt[39] = 0; pkt[40] = 0; pkt[41] = 0;
 	#endif
+
+	power_on_dev();
 
 	qsetup();
 
