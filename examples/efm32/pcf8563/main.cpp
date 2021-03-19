@@ -24,22 +24,45 @@
 #include "softi2c.h"
 #include "pcf8563.h"
 
-#if 0
-#define SDA_PIN					11		/* PIN14_PD7 */
-#define SCL_PIN					16		/* PIN21_PF2 */
-#else
+#include "rtcdriver.h"
+#include "em_emu.h"
+
 #define SDA_PIN					12		/* PIN23_PE12 */
 #define SCL_PIN					13		/* PIN24_PE13 */
-#endif
+
+#define	INT_PIN					16		/* PIN21_PF02_D16 */
+
+void check_rtc()
+{
+	pcf8563_reset_timer();
+
+	Serial.print("check ctrl2: ");
+	Serial.println(pcf8563_get_ctrl2(), HEX);
+}
 
 void setup()
 {
+	/* Initialize EM23 with default parameters */
+	//EMU_EM23Init_TypeDef em23Init = EMU_EM23INIT_DEFAULT;
+	//EMU_EM23Init(&em23Init);
+	//CMU_OscillatorEnable(cmuOsc_LFXO, false, true);
+	//RTCDRV_Init();
+
+	pinMode(INT_PIN, INPUT);
+	attachInterrupt(INT_PIN, check_rtc, FALLING);
+
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
 
 	pcf8563_init(SCL_PIN, SDA_PIN);
+	pcf8563_set_from_int(2020, 3, 19, 17, 21, 25);
 
 	Serial.println("RTC testing start...");
+
+	pcf8563_set_timer(1);
+
+	Serial.print("CTRL2: ");
+	Serial.println(pcf8563_get_ctrl2(), HEX);
 }
 
 void loop()
@@ -47,5 +70,7 @@ void loop()
 	Serial.print("Now = ");
 	Serial.println(pcf8563_now());
 
-	delay(3000);
+	delay(5000);
+
+	EMU_EnterEM2(true);
 }

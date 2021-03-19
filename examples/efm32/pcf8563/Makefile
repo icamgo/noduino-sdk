@@ -17,8 +17,7 @@ ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
 MCU = cortex-m0plus
-#F_CPU = 7000000
-F_CPU = 14000000
+F_CPU = 7000000
 
 VERSION=187
 
