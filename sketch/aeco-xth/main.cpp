@@ -17,8 +17,6 @@
 */
 
 #include "softi2c.h"
-#include "sht2x.h"
-#include "sht3x.h"
 #include "pcf8563.h"
 
 #include "rtcdriver.h"
@@ -26,6 +24,7 @@
 #include "em_wdog.h"
 
 //#define	DEBUG					1
+#define USE_EXTERNAL_RTC		1
 
 //#define	TX_TESTING				1
 
@@ -64,10 +63,11 @@ static uint32_t sample_count = 0;
 #define		HEARTBEAT_TIME			6600
 
 static float old_temp = 0.0;
-static float cur_temp = 0.0;
 static float old_humi = 0.0;
-static float cur_humi = 0.0;
 #endif
+
+static float cur_temp = 0.0;
+static float cur_humi = 0.0;
 
 static float cur_curr = 0.0;
 
@@ -75,8 +75,10 @@ static float cur_curr = 0.0;
 #define ENABLE_SHT3X			1
 
 #ifdef ENABLE_SHT2X
+#include "sht2x.h"
 #define	DELTA_HUMI				3
 #elif ENABLE_SHT3X
+#include "sht3x.h"
 #define	DELTA_HUMI				2
 #endif
 
@@ -140,10 +142,6 @@ uint16_t tx_count = 0;
 #define INFOHEX(param)
 #define FLUSHOUTPUT
 
-#endif
-
-#ifdef WITH_ACK
-#define	NB_RETRIES			2
 #endif
 
 void push_data();
@@ -267,7 +265,15 @@ void trig_check_sensor()
 
 void check_rtc()
 {
+	power_on_dev();
+
 	pcf8563_reset_timer();
+
+	Serial.print("check ctrl2: ");
+	Serial.println(pcf8563_get_ctrl2(), HEX);
+
+	power_off_dev();
+
 	need_push = 0x5a;
 	tx_cause = TIMER_TX;
 }
@@ -300,22 +306,27 @@ void setup()
 	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
-	pinMode(RTC_INT_PIN, INPUT);
-	attachInterrupt(RTC_INT_PIN, check_rtc, FALLING);
+#ifdef DEBUG
+	Serial.setRouteLoc(1);
+	Serial.begin(115200);
+#endif
 
 #ifdef USE_EXTERNAL_RTC
+	power_on_dev();
 	pcf8563_init(SCL_PIN, SDA_PIN);
-	pcf8563_set_from_int(2020, 3, 19, 17, 21, 25);
+	pcf8563_set_from_int(2020, 3, 20, 2, 0, 0);
 	pcf8563_set_timer(10);
+
+	INFO("RTC ctrl2: ");
+	Serial.println(pcf8563_get_ctrl2(), HEX);
+	power_off_dev();
+
+	pinMode(RTC_INT_PIN, INPUT);
+	attachInterrupt(RTC_INT_PIN, check_rtc, FALLING);
 #else
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
-#endif
-
-#ifdef DEBUG
-	Serial.setRouteLoc(1);
-	Serial.begin(115200);
 #endif
 
 	/* Start watchdog */
