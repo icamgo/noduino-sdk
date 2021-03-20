@@ -29,10 +29,7 @@
 //#define CONFIG_2MIN					1
 
 #define ENABLE_CRYPTO				1
-
 #define ENABLE_CAD					1
-
-#define ENABLE_RF					1
 
 #define ENABLE_T_TEST				1
 
@@ -46,7 +43,6 @@ static uint32_t cnt_01 = 0;
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 
-#ifdef ENABLE_RF
 #ifdef CONFIG_V0
 #include "softspi.h"
 #include "sx1272.h"
@@ -57,7 +53,6 @@ SX126x sx126x(2,			// Pin: SPI CS,PIN06-PB08-D2
 				5,			// PIN: Busy,  PIN11-PB14-D5, The RX pin
 				3			// Pin: DIO1,  PIN08-PB11-D3
 );
-#endif
 #endif
 
 #ifdef ENABLE_CRYPTO
@@ -210,8 +205,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
-#ifdef ENABLE_RF
-
 #ifndef CONFIG_2MIN
 	sample_count++;
 
@@ -266,8 +259,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	// 2min fixed interval
 	need_push = 0x5a;
 	tx_cause = TIMER_TX;
-#endif
-
 #endif
 }
 
@@ -325,7 +316,6 @@ void setup()
 	need_push = 0x5a;
 }
 
-#ifdef ENABLE_RF
 void qsetup()
 {
 #ifdef CONFIG_V0
@@ -340,7 +330,6 @@ void qsetup()
 	sx126x.setup_v0(TXRX_CH, MAX_DBM);
 #endif
 }
-#endif
 
 uint64_t get_devid()
 {
@@ -362,7 +351,6 @@ uint16_t get_crc(uint8_t *pp, int len)
 	return hh;
 }
 
-#ifdef ENABLE_RF
 void push_data(bool cad_on)
 {
 	long start;
@@ -511,20 +499,17 @@ void push_data(bool cad_on)
 
 	power_off_dev();
 }
-#endif
 
 void loop()
 {
-#ifdef ENABLE_RF
 	if (0x5a == need_push) {
 		push_data(true);
 		need_push = 0;
 	}
-#endif
 
 	power_off_dev();
 
-#if defined(ENABLE_RF) && defined(CONFIG_V0)
+#if defined(CONFIG_V0)
 	digitalWrite(SX1272_RST, LOW);
 	spi_end();
 #endif
