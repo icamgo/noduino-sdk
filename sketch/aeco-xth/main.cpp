@@ -269,8 +269,9 @@ void check_rtc()
 
 	pcf8563_reset_timer();
 
-	Serial.print("check ctrl2: ");
-	Serial.println(pcf8563_get_ctrl2(), HEX);
+	INFO("check ctrl2: ");
+	INFOHEX(pcf8563_get_ctrl2());
+	INFOLN("");
 
 	power_off_dev();
 
@@ -318,7 +319,8 @@ void setup()
 	pcf8563_set_timer(10);
 
 	INFO("RTC ctrl2: ");
-	Serial.println(pcf8563_get_ctrl2(), HEX);
+	INFOHEX(pcf8563_get_ctrl2());
+	INFOLN("");
 	power_off_dev();
 
 	pinMode(RTC_INT_PIN, INPUT);
