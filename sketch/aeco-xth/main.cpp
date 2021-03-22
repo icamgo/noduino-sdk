@@ -44,7 +44,7 @@ SX126x sx126x(2,			// Pin: SPI CS,PIN06-PB08-D2
 //#define CONFIG_PROTO_V34			1
 
 #ifdef CONFIG_PROTO_V33
-#define ENABLE_CRYPTO				1
+//#define ENABLE_CRYPTO				1
 #endif
 
 #ifdef ENABLE_CRYPTO
@@ -112,7 +112,8 @@ uint8_t tx_cause = RESET_TX;
 #define MAX_DBM					20
 #elif USE_SX126X
 #define TXRX_CH					472500000
-#define MAX_DBM					22
+//#define MAX_DBM					22
+#define MAX_DBM					17
 #endif
 
 #ifdef CONFIG_PROTO_V33
@@ -289,7 +290,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = false;
 	wInit.em3Run = false;
-	wInit.perSel = wdogPeriod_1k;	/* 32k 1kHz periods should give 32 seconds */
+	wInit.perSel = wdogPeriod_4k;	/* 32k 1kHz periods should give 4 seconds */
 #else
 	wInit.em2Run = true;
 	wInit.em3Run = true;
@@ -315,7 +316,7 @@ void setup()
 #ifdef USE_EXTERNAL_RTC
 	power_on_dev();
 	pcf8563_init(SCL_PIN, SDA_PIN);
-	pcf8563_set_from_int(2020, 3, 20, 2, 0, 0);
+	pcf8563_set_from_int(2020, 3, 20, 15, 46, 0);
 	pcf8563_set_timer(10);
 
 	INFO("RTC ctrl2: ");
