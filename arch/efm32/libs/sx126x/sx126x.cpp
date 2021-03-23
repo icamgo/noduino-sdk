@@ -349,7 +349,7 @@ int SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 		}
 	}
 
-	if (rv)
+	if (rv == 0)
 		INFOLN("TX OK");
 	else
 		INFOLN("TX failed");

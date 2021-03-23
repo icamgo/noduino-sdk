@@ -64,7 +64,7 @@ RTCDRV_TimerID_t xTimerForWakeUp;
 
 #ifndef CONFIG_2MIN
 static uint32_t sample_period = 18;			/* 20s */
-static uint32_t sample_count = 0;
+static uint32_t cnt_20s = 0;
 #define		HEARTBEAT_TIME			6600	/* 120min */
 static float old_temp = 0.0;
 #else
@@ -206,26 +206,21 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
 #ifndef CONFIG_2MIN
-	sample_count++;
+	cnt_20s++;
 
-	if (sample_count >= HEARTBEAT_TIME/20) {
+	if (cnt_20s >= HEARTBEAT_TIME/20) {
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
-		sample_count = 0;
+		cnt_20s = 0;
+		return;
 	}
-#endif
 
 	power_on_dev();	// turn on device power
-
 	pt1000_init();	// initialization of the sensor
-
 	cur_temp = pt1000_get_temp();
-
 	power_off_dev();
 
-#ifndef CONFIG_2MIN
 	float dp = fabsf(cur_temp - old_temp);
-
 	if (dp >= DELTA_T) {
 
 		need_push = 0x5a;
@@ -475,13 +470,13 @@ void push_data(bool cad_on)
 	sx126x.set_sleep();
 #endif
 
-	if (!e) {
+	//if (!e) {
 		// send message succesful, update the old_temp
 	#ifndef CONFIG_2MIN
 		old_temp = cur_temp;
 	#endif
 		tx_ok_cnt++;
-	}
+	//}
 
 
 #ifdef DEBUG
