@@ -1045,6 +1045,8 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 	INFOLN(" ");
 #endif
 
+	delay(5);
+
 #endif
 
 	while (digitalRead(_pin_busy)) ;
