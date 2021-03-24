@@ -47,5 +47,6 @@ uint8_t pcf8563_get_ctrl2();
 
 void pcf8563_reset_timer();
 void pcf8563_set_timer(uint8_t m);
+uint8_t pcf8563_get_timer();
 
 #endif

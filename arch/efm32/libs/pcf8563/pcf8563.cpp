@@ -294,3 +294,13 @@ void pcf8563_set_timer(uint8_t m)
     wire_write(m);				/* m min */
     wire_endTransmission();
 }
+
+uint8_t pcf8563_get_timer()
+{
+	wire_beginTransmission(PCF8563_ADDR);
+    wire_write(PCF8563_TIMER);
+	wire_endTransmission();
+
+	wire_requestFrom(PCF8563_ADDR, 1);
+	return wire_read();
+}
