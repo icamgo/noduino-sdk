@@ -113,7 +113,7 @@ uint8_t tx_cause = RESET_TX;
 #elif USE_SX126X
 #define TXRX_CH					472500000
 //#define MAX_DBM					22
-#define MAX_DBM					17
+#define MAX_DBM					14
 #endif
 
 #ifdef CONFIG_PROTO_V33
@@ -324,7 +324,7 @@ void setup()
 	INFOLN("");
 	power_off_dev();
 
-	pinMode(RTC_INT_PIN, INPUT);
+	pinMode(RTC_INT_PIN, INPUT_PULLUP);
 	attachInterrupt(RTC_INT_PIN, check_rtc, FALLING);
 #else
 	/* Initialize RTC timer. */
