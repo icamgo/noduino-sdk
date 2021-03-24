@@ -35,7 +35,7 @@ extern void pinMode(uint8_t ucPin, uint32_t u32Mode )
     case INPUT_PULLUP:
       GPIO_PinModeSet(g_Pin2PortMapArray[ucPin].GPIOx_Port,
                       g_Pin2PortMapArray[ucPin].Pin_abstraction,
-                      gpioModeInputPull, 0);
+                      gpioModeInputPull, 1);
       break ;
 
     case OUTPUT:
