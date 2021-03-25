@@ -369,7 +369,7 @@ qsetup_start:
 		INFOLN(__LINE__);
 	} else {
 
-		for (int i = 0; i < 20; i++) {
+		for (int i = 0; i < 15; i++) {
 
 			WDOG_Feed();
 			ret = modem.check_network();
