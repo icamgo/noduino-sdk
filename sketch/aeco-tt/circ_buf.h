@@ -68,10 +68,23 @@ int push_point(struct circ_buf *cbuf, uint32_t ts, int16_t dd, int8_t itt)
 		cbuf->head %= CIRC_BUF_SIZE;
 
 		return 0;
+
 	} else {
+		/*
+		 * cbuf is full
+		 * replace a random point
+		*/
+		randomSeed(millis());
+		uint32_t pos = random() % CIRC_BUF_SIZE;
+
+		cbuf->point[pos].ts = ts;
+		cbuf->point[pos].data = dd;
+		cbuf->point[pos].iT = itt;
+
 		return 1;
 	}
 }
+
 
 int pop_point(struct circ_buf *cbuf, struct point *odata)
 {

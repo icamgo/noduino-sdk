@@ -37,6 +37,7 @@ extern "C"{
 RTCDRV_TimerID_t xTimerForWakeUp;
 
 static uint32_t check_period = 18;		/* 20s = 0.33min */
+static uint32_t sample_period = 60;
 
 #define WDOG_PERIOD				wdogPeriod_32k			/* 32k 1kHz periods should give 32 seconds */
 
@@ -221,6 +222,8 @@ void reset_modem()
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
+	int ret = 0;
+
 	WDOG_Feed();
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
@@ -232,7 +235,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	sample_count++;
 
 #if 1
-	if (sample_count % SAMPLE_PERIOD == 0) {
+	if (sample_count % sample_period == 0) {
 
 		/* every 4x3 = 12min, sample a point */
 		power_on_dev();
@@ -240,7 +243,22 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		cur_temp = pt1000_get_temp();
 		power_off_dev();
 
-		push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
+		ret = push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
+
+		if (ret == 0) {
+			/*
+			 * point is saved ok
+			 * reset sample period to 20min
+			*/
+			sample_period = 60;
+
+		} else if (ret == 1) {
+			/*
+			 * cbuf is full
+			 * change the sample period to 60min
+			*/
+			sample_period = 180;
+		}
 	}
 
 	if (sample_count >= PUSH_PERIOD) {
@@ -527,7 +545,7 @@ void push_data()
 
 			WDOG_Feed();
 
-			while (get_1st_point(&g_cbuf, &d) == 0 && cnt_fail < 3) {
+			while (get_1st_point(&g_cbuf, &d) == 0 && cnt_fail < 15) {
 
 				WDOG_Feed();
 				wakeup_modem();
