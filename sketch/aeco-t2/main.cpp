@@ -26,7 +26,7 @@
 
 #define FW_VER						"Ver 1.2"
 
-//#define CONFIG_2MIN					1
+#define CONFIG_2MIN					1
 
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
@@ -63,13 +63,14 @@ SX126x sx126x(2,			// Pin: SPI CS,PIN06-PB08-D2
 RTCDRV_TimerID_t xTimerForWakeUp;
 
 #ifndef CONFIG_2MIN
-static uint32_t sample_period = 18;			/* 20s */
+static uint32_t check_period = 18;			/* 20s */
 static uint32_t cnt_20s = 0;
 #define		HEARTBEAT_TIME			6600	/* 120min */
 static float old_temp = 0.0;
 #else
-//static uint32_t sample_period = 110;		/* 120s */
-static uint32_t sample_period = 18;			/* 20s */
+static uint32_t cnt_20s = 0;
+static uint32_t check_period = 18;			/* 20s */
+static uint32_t sample_period = 360;		/* 180x20 = 3600s */
 #endif
 
 static float cur_temp = 0.0;
@@ -251,9 +252,14 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	}
 	#endif
 #else
-	// 2min fixed interval
-	need_push = 0x5a;
-	tx_cause = TIMER_TX;
+	// fixed interval
+	cnt_20s++;
+
+	if (cnt_20s >= sample_period) {
+		need_push = 0x5a;
+		tx_cause = TIMER_TX;
+		cnt_20s = 0;
+	}
 #endif
 }
 
@@ -379,7 +385,8 @@ void push_data(bool cad_on)
 
 	power_on_dev();		// turn on device power
 
-	if (KEY_TX == tx_cause || RESET_TX == tx_cause) {
+	if (KEY_TX == tx_cause || RESET_TX == tx_cause ||
+		TIMER_TX == tx_cause) {
 		pt1000_init();
 		cur_temp = pt1000_get_temp();
 	}
@@ -513,7 +520,7 @@ void loop()
 	 * Enable rtc timer before enter deep sleep
 	 * Stop rtc timer after enter check_sensor_data()
 	 */
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, sample_period * 1000, check_sensor, NULL);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, check_period * 1000, check_sensor, NULL);
 
 	EMU_EnterEM2(true);
 }
