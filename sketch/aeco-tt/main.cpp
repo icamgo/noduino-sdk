@@ -31,7 +31,7 @@ extern "C"{
 
 #define	DEBUG					1
 
-#define	FW_VER						"V1.2"
+#define	FW_VER						"V1.3"
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
