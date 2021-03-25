@@ -23,7 +23,7 @@
 #include "math.h"
 #include "em_wdog.h"
 
-//#define	DEBUG					1
+#define	DEBUG					1
 #define USE_EXTERNAL_RTC		1
 
 //#define	TX_TESTING				1
@@ -297,6 +297,9 @@ void setup()
 	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
 #endif
 
+	/* Start watchdog */
+	WDOG_Init(&wInit);
+
 #ifdef ENABLE_CRYPTO
 	crypto_init();
 #endif
@@ -314,13 +317,26 @@ void setup()
 #endif
 
 #ifdef USE_EXTERNAL_RTC
-	power_on_dev();
+	power_on_dev();		/* To consume the current ? */
 	pcf8563_init(SCL_PIN, SDA_PIN);
-	pcf8563_set_from_int(2020, 3, 20, 15, 46, 0);
+
+	int ctrl = pcf8563_get_ctrl2();
+	INFO("RTC ctrl2: ");
+	INFOHEX(ctrl);
+	INFOLN("");
+
+	if (ctrl == 0xFF) {
+		while(true) {
+		}
+	}
+
+	pcf8563_set_from_int(2020, 3, 25, 14, 46, 0);
+
 	pcf8563_set_timer(10);
 
 	INFO("RTC ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
+	INFOLN("");
 	INFO("RTC timer: ");
 	INFOHEX(pcf8563_get_timer());
 	INFOLN("");
@@ -333,9 +349,6 @@ void setup()
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
 #endif
-
-	/* Start watchdog */
-	WDOG_Init(&wInit);
 
 	/* bootup tx */
 	tx_cause = RESET_TX;
