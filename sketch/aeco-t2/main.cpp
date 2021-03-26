@@ -70,7 +70,7 @@ static float old_temp = 0.0;
 #else
 static uint32_t cnt_20s = 0;
 static uint32_t check_period = 18;			/* 20s */
-static uint32_t sample_period = 360;		/* 180x20 = 3600s */
+static uint32_t sample_period = 180;		/* 180x20 = 3600s */
 #endif
 
 static float cur_temp = 0.0;
