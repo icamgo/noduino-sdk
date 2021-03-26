@@ -30,7 +30,7 @@
 
 #define ENABLE_TX5					1
 
-#define	FW_VER						"V4.3"
+#define	FW_VER						"V4.5"
 
 #define CC_OPEN_WIN				5
 //#define CC_CLOSE_WIN			1290
@@ -54,12 +54,12 @@
 
 #define ENABLE_ENG_MODE				1
 
-#define LOW_BAT_THRESHOLD			3.1
+#define LOW_BAT_THRESHOLD			3.3
 #define RX_ERR_THRESHOLD			15
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
-static uint32_t check_period = 54;	/* 30s */
+static uint32_t check_period = 54;	/* 60s */
 
 static uint32_t need_push = 0;
 static uint32_t need_push_mac = 0;
@@ -1812,9 +1812,42 @@ void wakeup_check(RTCDRV_TimerID_t id, void *user)
 #endif
 
 	if (cnt_sleep % CC_CLOSE_WIN == 0 && need_sleep == true) {
-
+		/* sleep 1 min */
 		need_sleep = false;
 	}
+
+	////////////////////////////////////////////////////
+	// check the low vbat
+	cur_vbat = fetch_vbat();
+	if (cur_vbat <= LOW_BAT_THRESHOLD) {
+
+		cnt_vbat_low++;
+
+		if (cnt_vbat_low >= 2) {
+			/*
+			 * vbat is less than 3.3V in 2min
+			 * my battery is low
+			*/
+			vbat_low = true;
+			cnt_vbat_low = 0;
+		}
+		cnt_vbat_ok = 0;
+
+	} else {
+		cnt_vbat_ok++;
+
+		if (cnt_vbat_ok >= 4) {
+
+			if (vbat_low) {
+				/* Reset the system */
+				reset_dev_sys();
+			}
+			vbat_low = false;
+			cnt_vbat_ok = 0;
+		}
+		cnt_vbat_low = 0;
+	}
+	////////////////////////////////////////////////////
 }
 
 extern "C" void seconds_callback()
@@ -1833,7 +1866,39 @@ extern "C" void seconds_callback()
 	INFOLN("xxx");
 	++cnt_1min;
 
-	//if (cnt_1min % 5 == 0 && need_sleep == false) {
+	////////////////////////////////////////////////////
+	// check the low vbat
+	cur_vbat = fetch_vbat();
+	if (cur_vbat <= LOW_BAT_THRESHOLD) {
+
+		cnt_vbat_low++;
+
+		if (cnt_vbat_low >= 2) {
+			/*
+			 * vbat is less than 3.3V in 2min
+			 * my battery is low
+			*/
+			vbat_low = true;
+			cnt_vbat_low = 0;
+		}
+		cnt_vbat_ok = 0;
+
+	} else {
+		cnt_vbat_ok++;
+
+		if (cnt_vbat_ok >= 4) {
+
+			if (vbat_low) {
+				/* Reset the system */
+				reset_dev_sys();
+			}
+			vbat_low = false;
+			cnt_vbat_ok = 0;
+		}
+		cnt_vbat_low = 0;
+	}
+	////////////////////////////////////////////////////
+
 	if (cnt_1min % CC_OPEN_WIN == 0 && need_sleep == false) {
 		/* work 150min */
 		need_sleep = true;
@@ -1843,7 +1908,7 @@ extern "C" void seconds_callback()
 		return;
 	}
 
-	//if (false == vbat_low) {
+	if (false == vbat_low) {
 
 		//////////////////////////////////////////////////////
 		/* check the rx_err in 1min */
@@ -1892,93 +1957,13 @@ extern "C" void seconds_callback()
 			// 24h
 			reset_dev_sys();
 		}
-	//}
-
-#if 0
-	////////////////////////////////////////////////////
-	// check the low vbat
-	cur_vbat = fetch_vbat();
-
-	if (cur_vbat <= LOW_BAT_THRESHOLD) {
-
-		cnt_vbat_low++;
-
-		if (cnt_vbat_low >= 5) {
-			// my battery is low
-
-			vbat_low = true;
-			cnt_vbat_low = 0;
-
-			need_push = 0x55;
-			tx_cause = DELTA_TX;
-		}
-
-		cnt_vbat_ok = 0;
-
-	} else {
-
-		cnt_vbat_ok++;
-
-		if (cnt_vbat_ok >= 10) {
-
-			if (vbat_low) {
-			#if 1
-				/* Reset the system */
-				reset_dev_sys();
-			#else
-				/*
-				 * Recover from low vbat state
-				 * Set the flag to reset the lora
-				*/
-				need_reset_sx1272 = 0x55;
-				rx_hung_cnt = 4;
-			#endif
-			}
-
-			vbat_low = false;
-			cnt_vbat_ok = 0;
-		}
-
-		cnt_vbat_low = 0;
 	}
-#endif
+
 }
 
 #if defined(EFM32ZG110F32) || defined(EFM32GG230F512)
 void key_report_status()
 {
-	#if 0
-	uint8_t *pkt = rpt_pkt;
-
-	uint64_t devid = get_devid();
-
-	uint8_t *p = (uint8_t *) &devid;
-
-	// set devid
-	int i = 0;
-	for(i = 0; i < 8; i++) {
-		pkt[3+i] = p[7-i];
-	}
-
-	int16_t ui16 = get_encode_mcu_temp();
-	p = (uint8_t *) &ui16;
-	pkt[11] = p[1]; pkt[12] = p[0];
-
-	ui16 = get_encode_vbat();
-	pkt[13] = p[1]; pkt[14] = p[0];
-
-	// tx_cause = KEY_TX
-	pkt[15] = KEY_TX;
-
-	p = (uint8_t *) &tx_count;
-	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
-	tx_count++;
-
-	ui16 = get_crc(pkt, PAYLOAD_LEN);
-	p = (uint8_t *) &ui16;
-	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
-	#endif
-
 	tx_cause = KEY_TX;
 	need_push = 0x55;
 }
@@ -2001,6 +1986,11 @@ void setup()
 	wInit.em2Run = true;
 	wInit.em3Run = true;
 	wInit.perSel = wdogPeriod_64k;	/* 256k 1kHz periods should give 256 seconds */
+
+	cur_vbat = fetch_vbat();
+	if (cur_vbat <= 2.2) {
+		vbat_low = true;
+	}
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
@@ -2114,12 +2104,13 @@ void cc_worker();
 
 void loop(void)
 {
-	if (need_sleep == false && 1 == digitalRead(KEY_PIN)) {
+	if (need_sleep == false && 1 == digitalRead(KEY_PIN) && vbat_low == false) {
+		/* storage mode */
 		cc_worker();
 	}
 
-	if (need_sleep == true || 0 == digitalRead(KEY_PIN)) {
-		/* storage mode */
+	if (need_sleep == true || 0 == digitalRead(KEY_PIN)
+		|| vbat_low == true) {
 
 		INFOLN("deep sleep..");
 
@@ -2131,7 +2122,7 @@ void loop(void)
 
 		EMU_EnterEM2(true);
 
-		if (need_sleep == false) {
+		if (need_sleep == false && vbat_low == false) {
 			power_on_dev();
 			radio_setup();
 		}
