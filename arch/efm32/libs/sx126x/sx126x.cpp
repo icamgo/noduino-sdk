@@ -1,5 +1,5 @@
 #include "Arduino.h"
-#include "SX126x.h"
+#include "sx126x.h"
 
 #ifdef USE_SOFTSPI
 #include "softspi.h"
