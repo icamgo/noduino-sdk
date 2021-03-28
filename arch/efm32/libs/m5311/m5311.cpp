@@ -1,4 +1,4 @@
-#include "M5311.h"
+#include "m5311.h"
 
 char str[BUF_LEN];
 char modem_said[MODEM_LEN];
