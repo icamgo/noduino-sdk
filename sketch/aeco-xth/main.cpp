@@ -113,7 +113,7 @@ uint8_t tx_cause = RESET_TX;
 #elif USE_SX126X
 #define TXRX_CH					472500000
 //#define MAX_DBM					22
-#define MAX_DBM					17
+#define MAX_DBM					14
 #endif
 
 #ifdef CONFIG_PROTO_V33
@@ -330,9 +330,9 @@ void setup()
 		}
 	}
 
-	pcf8563_set_from_int(2020, 3, 25, 14, 46, 0);
+	pcf8563_set_from_int(2020, 3, 28, 16, 47, 0);
 
-	pcf8563_set_timer(10);
+	pcf8563_set_timer(6);
 
 	INFO("RTC ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
