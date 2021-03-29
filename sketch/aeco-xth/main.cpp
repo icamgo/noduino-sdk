@@ -330,13 +330,14 @@ void setup()
 		}
 	}
 
-	pcf8563_set_from_int(2020, 3, 28, 16, 47, 0);
+	pcf8563_set_from_int(2021, 3, 29, 17, 20, 0);
 
 	pcf8563_set_timer(6);
 
 	INFO("RTC ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
 	INFOLN("");
+	INFOLN(pcf8563_now());
 	INFO("RTC timer: ");
 	INFOHEX(pcf8563_get_timer());
 	INFOLN("");
@@ -485,6 +486,16 @@ void push_data()
 #else
 	pkt[23] = 0;
 #endif
+
+	// pkt[27] = 0b100, set bit 2, HTimer rpt pkt
+	pkt[PAYLOAD_LEN-3] = 0x4;
+
+	uint32_t ep = pcf8563_now();
+	p = (uint8_t *) &ep;
+	pkt[18] = p[3];
+	pkt[19] = p[2];
+	pkt[24] = p[1];
+	pkt[25] = p[0];
 
 	p = (uint8_t *) &tx_count;
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
