@@ -206,6 +206,11 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
+	/* storage mode */
+	if (0 == digitalRead(KEY_PIN)) {
+		return ;
+	}
+
 #ifndef CONFIG_2MIN
 	cnt_20s++;
 
@@ -313,8 +318,11 @@ void setup()
 	WDOG_Init(&wInit);
 
 	/* bootup tx */
-	tx_cause = RESET_TX;
-	need_push = 0x5a;
+	if (0 == digitalRead(KEY_PIN)) {
+		/* storage mode */
+		tx_cause = RESET_TX;
+		need_push = 0x5a;
+	}
 }
 
 void qsetup()
