@@ -24,7 +24,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.2"
+#define FW_VER						"Ver 1.3"
 
 /* 1 hour - 1 point */
 #define CONFIG_2MIN					1
@@ -41,7 +41,7 @@ static uint32_t cnt_01 = 0;
 #define DELTA_T						1.0
 #endif
 
-
+#define LOW_BAT_THRESHOLD			3.5
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 
 #ifdef CONFIG_V0
@@ -66,7 +66,7 @@ RTCDRV_TimerID_t xTimerForWakeUp;
 #ifndef CONFIG_2MIN
 static uint32_t check_period = 18;			/* 20s */
 static uint32_t cnt_20s = 0;
-#define		HEARTBEAT_TIME			360		/* 360x20 = 120min */
+static uint32_t sample_period = 360;		/* 360x20 = 7200s */
 static float old_temp = 0.0;
 #else
 static uint32_t cnt_20s = 0;
@@ -76,6 +76,9 @@ static uint32_t sample_period = 180;		/* 180x20 = 3600s */
 
 static float cur_temp = 0.0;
 static float cur_vbat = 0.0;
+bool vbat_low __attribute__((aligned(4))) = false;
+int cnt_vbat_low __attribute__((aligned(4))) = 0;
+int cnt_vbat_ok __attribute__((aligned(4))) = 0;
 
 #ifdef MONITOR_CURRENT
 static float cur_curr = 0.0;
@@ -212,10 +215,47 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		return ;
 	}
 
+	////////////////////////////////////////////////////
+	// check the low vbat
+	cur_vbat = fetch_vbat();
+	if (cur_vbat <= LOW_BAT_THRESHOLD) {
+
+		cnt_vbat_low++;
+
+		if (cnt_vbat_low >= 30) {
+			/*
+			 * vbat is less than 3.5V in 10min
+			 * my battery is low
+			*/
+			cnt_vbat_low = 0;
+
+		#ifdef CONFIG_2MIN
+			sample_period = 360;	/* 2h */
+		#endif
+		}
+		cnt_vbat_ok = 0;
+
+	} else {
+		cnt_vbat_ok++;
+
+		if (cnt_vbat_ok >= 6) {
+			/* vbat is great than 3.5V in 2min */
+
+			vbat_low = false;
+			cnt_vbat_ok = 0;
+
+		#ifdef CONFIG_2MIN
+			sample_period = 180;	/* 1h */
+		#endif
+
+		}
+		cnt_vbat_low = 0;
+	}
+
 #ifndef CONFIG_2MIN
 	cnt_20s++;
 
-	if (cnt_20s >= HEARTBEAT_TIME) {
+	if (cnt_20s >= sample_period) {
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 		cnt_20s = 0;
@@ -257,6 +297,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		cnt_01 = 0;
 	}
 	#endif
+
 #else
 	// fixed interval
 	cnt_20s++;
@@ -297,6 +338,9 @@ void setup()
 #endif
 
 	cur_vbat = fetch_vbat();
+	if (cur_vbat <= 2.2) {
+		vbat_low = true;
+	}
 
 	// init dev power ctrl pin
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -513,7 +557,7 @@ void push_data(bool cad_on)
 
 void loop()
 {
-	if (0x5a == need_push) {
+	if (0x5a == need_push && vbat_low == false) {
 		push_data(true);
 		need_push = 0;
 	}
