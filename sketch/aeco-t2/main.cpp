@@ -26,6 +26,7 @@
 
 #define FW_VER						"Ver 1.2"
 
+/* 1 hour - 1 point */
 #define CONFIG_2MIN					1
 
 #define ENABLE_CRYPTO				1
@@ -65,7 +66,7 @@ RTCDRV_TimerID_t xTimerForWakeUp;
 #ifndef CONFIG_2MIN
 static uint32_t check_period = 18;			/* 20s */
 static uint32_t cnt_20s = 0;
-#define		HEARTBEAT_TIME			6600	/* 120min */
+#define		HEARTBEAT_TIME			360		/* 360x20 = 120min */
 static float old_temp = 0.0;
 #else
 static uint32_t cnt_20s = 0;
@@ -214,7 +215,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 #ifndef CONFIG_2MIN
 	cnt_20s++;
 
-	if (cnt_20s >= HEARTBEAT_TIME/20) {
+	if (cnt_20s >= HEARTBEAT_TIME) {
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 		cnt_20s = 0;
@@ -485,13 +486,13 @@ void push_data(bool cad_on)
 	sx126x.set_sleep();
 #endif
 
-	//if (!e) {
+	if (!e) {
 		// send message succesful, update the old_temp
 	#ifndef CONFIG_2MIN
 		old_temp = cur_temp;
 	#endif
 		tx_ok_cnt++;
-	//}
+	}
 
 
 #ifdef DEBUG
