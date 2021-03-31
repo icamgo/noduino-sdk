@@ -29,7 +29,7 @@
 
 //#define USE_PT1K_X1					1
 
-#define FW_VER					"Ver 1.4"
+#define FW_VER					"Ver 1.5"
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 #define ENABLE_CRYPTO				1
@@ -64,6 +64,12 @@ static uint32_t median_tx_count = 0;
 
 static float old_temp = 0.0;
 static float cur_temp = 0.0;
+
+#define LOW_BAT_THRESHOLD			3.4
+static float cur_vbat = 0.0;
+bool vbat_low __attribute__((aligned(4))) = false;
+int cnt_vbat_low __attribute__((aligned(4))) = 0;
+int cnt_vbat_ok __attribute__((aligned(4))) = 0;
 
 static int8_t old_water = LEVEL_UNKNOWN;
 static int8_t cur_water = LEVEL_UNKNOWN;
@@ -165,6 +171,28 @@ void power_on_dev()
 void power_off_dev()
 {
 	digitalWrite(PWR_CTRL_PIN, LOW);
+}
+
+float fetch_mcu_temp()
+{
+	float temp = 0.0;
+	for(int i=0; i<3; i++) {
+		temp += adc.temperatureCelsius();
+	}
+	temp /= 3.0;
+
+	return temp;
+}
+
+float fetch_vbat()
+{
+	float vbat = 0;
+
+	for (int i = 0; i < 5; i++) {
+		vbat += adc.readVbat();
+	}
+
+	return vbat/5.0;
 }
 
 #ifdef USE_PT1K_X1
@@ -354,6 +382,39 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		return ;
 	}
 
+	////////////////////////////////////////////////////
+	// check the low vbat
+	cur_vbat = fetch_vbat();
+	if (cur_vbat <= LOW_BAT_THRESHOLD) {
+
+		cnt_vbat_low++;
+
+		if (cnt_vbat_low >= 30) {
+			/*
+			 * vbat is less than 3.4V in 10min
+			 * my battery is low
+			*/
+			cnt_vbat_low = 0;
+
+			sample_period = 54;	/* 60s */
+		}
+		cnt_vbat_ok = 0;
+
+	} else {
+		cnt_vbat_ok++;
+
+		if (cnt_vbat_ok >= 6) {
+			/* vbat is great than 3.4V in 2min */
+
+			vbat_low = false;
+			cnt_vbat_ok = 0;
+
+			sample_period = 20;
+		}
+		cnt_vbat_low = 0;
+	}
+	////////////////////////////////////////////////////
+
 	sample_count++;
 
 	power_on_dev();
@@ -482,11 +543,16 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+	wInit.perSel = wdogPeriod_64k;	/* 32k 1kHz periods should give 64 seconds */
 
 #ifdef ENABLE_CRYPTO
 	crypto_init();
 #endif
+
+	cur_vbat = fetch_vbat();
+	if (cur_vbat <= 2.5) {
+		vbat_low = true;
+	}
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -557,8 +623,6 @@ void push_data(bool alarm)
 	long startSend;
 	long endSend;
 
-	float vbat = 0.0;
-
 	uint8_t r_size;
 
 	int e;
@@ -581,7 +645,7 @@ void push_data(bool alarm)
 
 	}
 
-	vbat = adc.readVbat();
+	cur_vbat = fetch_vbat();
 
 #ifdef CONFIG_V0
 	uint8_t *pkt = message;
@@ -624,12 +688,12 @@ void push_data(bool alarm)
 
 	pkt[11] = p[1]; pkt[12] = p[0];
 
-	ui16 = vbat * 1000;
+	ui16 = cur_vbat * 1000;
 	pkt[13] = p[1]; pkt[14] = p[0];
 
 	pkt[15] = tx_cause;
 
-	float chip_temp = adc.temperatureCelsius();
+	float chip_temp = fetch_mcu_temp();
 
 	// Humidity Sensor data	or Water Leak Sensor data
 	pkt[20] = cur_water;
@@ -787,7 +851,7 @@ void loop()
 	//INFOLN(CMU_ClockFreqGet(cmuClock_CORE));
 	//INFOLN("Feed the watchdog");
 
-	if (0x5a == need_push) {
+	if (0x5a == need_push && vbat_low == false) {
 		push_data(false);
 
 		need_push = 0;
