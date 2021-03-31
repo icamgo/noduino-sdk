@@ -363,10 +363,14 @@ bool SX126x::enter_rx(void)
 
 	if (tx_active == false) {
 
+		set_rf_freq(_tx_freq);
+
 		config_dio_irq(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT,
 						SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT,
 						SX126X_IRQ_NONE,
 						SX126X_IRQ_NONE);
+
+		clear_irq_status(0xFFFF);
 
 		set_rx(0xFFFFFF);
 

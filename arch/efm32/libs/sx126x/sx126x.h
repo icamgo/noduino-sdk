@@ -387,6 +387,9 @@ class SX126x {
 	uint8_t get_status(void);
 	void wakeup(void);
 
+	uint16_t get_irq_status(void);
+	void clear_irq_status(uint16_t irq);
+
  private:
 	uint8_t pkt_params[6];
 	bool tx_active;
@@ -441,9 +444,6 @@ class SX126x {
 
 	void set_modulation_params(uint8_t sf, uint8_t bw, uint8_t cr,
 				 uint8_t lowDataRateOptimize);
-
-	uint16_t get_irq_status(void);
-	void clear_irq_status(uint16_t irq);
 
 	void set_rx(uint32_t timeout);
 	void set_tx(uint32_t timeout_ms);
