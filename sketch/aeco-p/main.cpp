@@ -26,12 +26,11 @@
 #include "em_wdog.h"
 
 //#define	DEBUG					1
-
 //#define CONFIG_2MIN				1
 
 #define ENABLE_P_TEST			1
 
-#define FW_VER					"Ver 1.4"
+#define FW_VER					"Ver 1.5"
 
 #ifdef ENABLE_P_TEST
 #define DELTA_P					0.2			/* 3x0.1 count */
@@ -41,13 +40,8 @@
 
 #define ENABLE_CAD				1
 
-#if 0
-#define	PAYLOAD_LEN					26		/* 26+2+4 = 32B */
-//#define	PAYLOAD_LEN					18		/* 18+2+4 = 24B */
-#else
 #define ENABLE_CRYPTO				1
-#define	PAYLOAD_LEN					30		/* 26+2+4 = 32B */
-#endif
+#define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 
 #ifdef ENABLE_CRYPTO
 #include "crypto.h"
@@ -92,8 +86,10 @@ static uint8_t need_push = 0;
 #define DEST_ADDR				1
 
 #ifdef CONFIG_V0
-#define TXRX_CH				CH_01_472
-#define LORA_MODE			12
+#define TXRX_CH					CH_01_472
+#define LORA_MODE				12
+#define MAX_DBM					20
+#endif
 
 #define	RESET_TX			0
 #define	DELTA_TX			1
@@ -102,47 +98,32 @@ static uint8_t need_push = 0;
 #define	EL_TX				4
 #define	WL_TX				5
 
-#else
-#define node_addr				110
 
-#define TXRX_CH				CH_00_470
-#define LORA_MODE			11
-#endif
-
-#define MAX_DBM					20
-
-//#define WITH_ACK
-
-#ifdef CONFIG_V0
 uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 int tx_cause = RESET_TX;
 uint16_t tx_count = 0;
-#else
-uint8_t message[32];
-#endif
+
 
 #ifdef DEBUG
-
 #define INFO_S(param)			Serial.print(F(param))
 #define INFO_HEX(param)			Serial.print(param,HEX)
 #define INFO(param)				Serial.print(param)
 #define INFOLN(param)			Serial.println(param)
 #define FLUSHOUTPUT					Serial.flush();
-
 #else
-
 #define INFO_S(param)
 #define INFO(param)
 #define INFOLN(param)
 #define FLUSHOUTPUT
-
-#endif
-
-#ifdef WITH_ACK
-#define	NB_RETRIES			2
 #endif
 
 uint8_t tx_err_cnt = 0;
+
+#define LOW_BAT_THRESHOLD			3.4
+static float cur_vbat = 0.0;
+bool vbat_low __attribute__((aligned(4))) = false;
+int cnt_vbat_low __attribute__((aligned(4))) = 0;
+int cnt_vbat_ok __attribute__((aligned(4))) = 0;
 
 void push_data();
 
@@ -206,6 +187,17 @@ float fetch_current()
 	return cur_curr;
 }
 
+float fetch_vbat()
+{
+	float vbat = 0;
+
+	for (int i = 0; i < 5; i++) {
+		vbat += adc.readVbat();
+	}
+
+	return vbat/5.0;
+}
+
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
 	(void)id;
@@ -219,6 +211,39 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	if (0 == digitalRead(KEY_PIN)) {
 		return ;
 	}
+
+	////////////////////////////////////////////////////
+	// check the low vbat
+	cur_vbat = fetch_vbat();
+	if (cur_vbat <= LOW_BAT_THRESHOLD) {
+
+		cnt_vbat_low++;
+
+		if (cnt_vbat_low >= 30) {
+			/*
+			 * vbat is less than 3.4V in 10min
+			 * my battery is low
+			*/
+			cnt_vbat_low = 0;
+
+			sample_period = 54;	/* 60s */
+		}
+		cnt_vbat_ok = 0;
+
+	} else {
+		cnt_vbat_ok++;
+
+		if (cnt_vbat_ok >= 6) {
+			/* vbat is great than 3.4V in 2min */
+
+			vbat_low = false;
+			cnt_vbat_ok = 0;
+
+			sample_period = 20;
+		}
+		cnt_vbat_low = 0;
+	}
+	////////////////////////////////////////////////////
 
 #ifndef CONFIG_2MIN
 	cnt_20s++;
@@ -292,9 +317,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 void trig_check_sensor()
 {
 	need_push = 0x5a;
-#ifdef CONFIG_V0
 	tx_cause = KEY_TX;
-#endif
 }
 
 void setup()
@@ -312,10 +335,15 @@ void setup()
 #endif
 
 #ifndef CONFIG_2MIN
-	wInit.perSel = wdogPeriod_32k;	/* 32k 1kHz periods should give 32 seconds */
+	wInit.perSel = wdogPeriod_64k;	/* 32k 1kHz periods should give 64 seconds */
 #else
 	wInit.perSel = wdogPeriod_128k;	/* 128 seconds watchdog */
 #endif
+
+	cur_vbat = fetch_vbat();
+	if (cur_vbat <= 2.5) {
+		vbat_low = true;
+	}
 
 	// init dev power ctrl pin
 	pinMode(PWR_CTRL_PIN, OUTPUT);
@@ -359,7 +387,6 @@ void qsetup()
 
 }
 
-#ifdef CONFIG_V0
 uint64_t get_devid()
 {
 	uint64_t *p;
@@ -379,7 +406,6 @@ uint16_t get_crc(uint8_t *pp, int len)
 	}
 	return hh;
 }
-#endif
 
 uint16_t get_encode_vbat()
 {
@@ -413,12 +439,10 @@ void push_data()
 
 	int e;
 
-#ifdef CONFIG_V0
 	uint8_t *pkt = message;
 
 	memset(pkt, 0, PAYLOAD_LEN+6);
 	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
-#endif
 
 	////////////////////////////////
 	cur_curr = fetch_current();
@@ -442,7 +466,6 @@ void push_data()
 		cur_pres = get_pressure();		// hPa (mbar)
 	}
 
-#ifdef CONFIG_V0
 	// set devid
 	uint64_t devid = get_devid();
 	uint8_t *p = (uint8_t *) &devid;
@@ -492,21 +515,6 @@ void push_data()
 	set_pkt_mic(pkt, PAYLOAD_LEN+6);
 #endif
 	/////////////////////////////////////////////////////////
-#else
-	uint8_t r_size;
-
-	char vbat_s[10], pres_s[10];
-	ftoa(vbat_s, vbat, 2);
-	ftoa(pres_s, cur_pres, 2);
-
-	r_size = sprintf((char *)message, "\\!U/%s/P/%s", vbat_s, pres_s);
-
-	INFO("Sending ");
-	INFOLN((char *)message);
-
-	INFO("Real payload size is ");
-	INFOLN(r_size);
-#endif
 
 	qsetup();
 
@@ -520,37 +528,6 @@ void push_data()
 
 #ifdef CONFIG_V0
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
-#else
-	// just a simple data packet
-	sx1272.setPacketType(PKT_TYPE_DATA);
-
-	// Send message to the gateway and print the result
-	// with the app key if this feature is enabled
-#ifdef WITH_ACK
-	int n_retry = NB_RETRIES;
-
-	do {
-		e = sx1272.sendPacketTimeoutACK(DEST_ADDR,
-						message, r_size);
-
-		if (e == 3)
-			INFO("No ACK");
-
-		n_retry--;
-
-		if (n_retry)
-			INFO("Retry");
-		else
-			INFO("Abort");
-
-	} while (e && n_retry);
-#else
-	// 10ms max tx time
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
-#endif
-
-	INFO("LoRa pkt size ");
-	INFOLN(r_size);
 #endif
 
 #ifndef CONFIG_2MIN
@@ -597,7 +574,7 @@ void push_data()
 void loop()
 {
 
-	if (0x5a == need_push) {
+	if (0x5a == need_push && vbat_low == false) {
 		push_data();
 
 		need_push = 0;
