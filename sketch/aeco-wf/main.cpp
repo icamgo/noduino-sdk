@@ -65,12 +65,6 @@ static uint32_t median_tx_count = 0;
 static float old_temp = 0.0;
 static float cur_temp = 0.0;
 
-#define LOW_BAT_THRESHOLD			3.4
-static float cur_vbat = 0.0;
-bool vbat_low __attribute__((aligned(4))) = false;
-int cnt_vbat_low __attribute__((aligned(4))) = 0;
-int cnt_vbat_ok __attribute__((aligned(4))) = 0;
-
 static int8_t old_water = LEVEL_UNKNOWN;
 static int8_t cur_water = LEVEL_UNKNOWN;
 
@@ -109,15 +103,9 @@ static uint8_t need_push = 0;
 
 #define	T_FIX					0
 
-//#define WITH_ACK
-
-#ifdef CONFIG_V0
 uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 uint8_t tx_cause = RESET_TX;
 uint16_t tx_count = 0;
-#else
-uint8_t message[32];
-#endif
 
 #ifdef DEBUG
 
@@ -136,32 +124,13 @@ uint8_t message[32];
 
 #endif
 
-#ifdef WITH_ACK
-#define	NB_RETRIES			2
-#endif
+#define LOW_BAT_THRESHOLD			3.4
+static float cur_vbat = 0.0;
+bool vbat_low __attribute__((aligned(4))) = false;
+int cnt_vbat_low __attribute__((aligned(4))) = 0;
+int cnt_vbat_ok __attribute__((aligned(4))) = 0;
 
 void push_data(bool al);
-
-#ifndef CONFIG_V0
-char *ftoa(char *a, double f, int precision)
-{
-	long p[] =
-	    { 0, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000 };
-
-	char *ret = a;
-	long heiltal = (long)f;
-	itoa(heiltal, a, 10);
-	while (*a != '\0')
-		a++;
-	*a++ = '.';
-	long desimal = abs((long)((f - heiltal) * p[precision]));
-	if (desimal < p[precision - 1]) {
-		*a++ = '0';
-	}
-	itoa(desimal, a, 10);
-	return ret;
-}
-#endif
 
 void power_on_dev()
 {
@@ -524,16 +493,6 @@ void trig_check_sensor()
 	tx_cause = KEY_TX;
 }
 
-#if 0
-void water_leak_alarm()
-{
-	need_push = 0x5a;
-#ifdef CONFIG_V0
-	tx_cause = WATER_LEAK_TX;
-#endif
-}
-#endif
-
 void setup()
 {
 	Ecode_t e;
@@ -596,7 +555,6 @@ void qsetup()
 
 }
 
-#ifdef CONFIG_V0
 uint64_t get_devid()
 {
 	uint64_t *p;
@@ -616,7 +574,6 @@ uint16_t get_crc(uint8_t *pp, int len)
 	}
 	return hh;
 }
-#endif
 
 void push_data(bool alarm)
 {
@@ -647,7 +604,6 @@ void push_data(bool alarm)
 
 	cur_vbat = fetch_vbat();
 
-#ifdef CONFIG_V0
 	uint8_t *pkt = message;
 
 	memset(pkt, 0, PAYLOAD_LEN+6);
@@ -663,29 +619,19 @@ void push_data(bool alarm)
 		pkt[3+i] = p[7-i];
 	}
 
-#ifdef	ONLY_WATER_LEAK
 	int16_t ui16 = 0;
 
+#ifdef	ONLY_WATER_LEAK
 	if (cur_temp >= 300.0) {
 		ui16 = (int16_t)(cur_water * 10);
 	} else {
 		ui16 = (int16_t)(cur_temp * 10);
 	}
 #else
-	int16_t ui16 = 0;
-
-	//if (cur_temp == LEVEL_LOW) {
-
-	//	ui16 = (int16_t)(LEVEL_LOW * 10);
-
-	//} else {
-
-		ui16 = (int16_t)(cur_temp * 10);
-	//}
+	ui16 = (int16_t)(cur_temp * 10);
 #endif
 
 	p = (uint8_t *) &ui16;
-
 	pkt[11] = p[1]; pkt[12] = p[0];
 
 	ui16 = cur_vbat * 1000;
@@ -726,20 +672,6 @@ void push_data(bool alarm)
 #endif
 	/////////////////////////////////////////////////////////
 
-#else
-	char vbat_s[10], pres_s[10];
-	ftoa(vbat_s, vbat, 2);
-	ftoa(pres_s, cur_temp, 2);
-
-	r_size = sprintf((char *)message, "\\!U/%s/P/%s", vbat_s, pres_s);
-
-	INFO("Sending ");
-	INFOLN((char *)message);
-
-	INFO("Real payload size is ");
-	INFOLN(r_size);
-#endif
-
 	power_on_dev();
 	qsetup();
 
@@ -751,34 +683,6 @@ void push_data(bool alarm)
 
 #ifdef CONFIG_V0
 	e = sx1272.sendPacketTimeout(DEST_ADDR, message, PAYLOAD_LEN+6, TX_TIME);
-#else
-	// just a simple data packet
-	sx1272.setPacketType(PKT_TYPE_DATA);
-
-	// Send message to the gateway and print the result
-	// with the app key if this feature is enabled
-#ifdef WITH_ACK
-	int n_retry = NB_RETRIES;
-
-	do {
-		e = sx1272.sendPacketTimeoutACK(DEST_ADDR,
-						message, r_size);
-
-		if (e == 3)
-			INFO("No ACK");
-
-		n_retry--;
-
-		if (n_retry)
-			INFO("Retry");
-		else
-			INFO("Abort");
-
-	} while (e && n_retry);
-#else
-	// 10ms max tx time
-	e = sx1272.sendPacketTimeout(DEST_ADDR, message, r_size, TX_TIME);
-#endif
 #endif
 
 	INFO("oT: ");
