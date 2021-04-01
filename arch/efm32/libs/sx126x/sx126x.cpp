@@ -299,9 +299,9 @@ uint8_t SX126x::rx(uint8_t *pkt, uint16_t len)
 
 	if (irq & SX126X_IRQ_RX_DONE) {
 
-		clear_irq_status(SX126X_IRQ_RX_DONE);
-
 		read_buf(pkt, &rx_len, len);
+
+		clear_irq_status(SX126X_IRQ_RX_DONE);
 	}
 
 	return rx_len;
@@ -832,12 +832,13 @@ uint8_t SX126x::read_buf(uint8_t *data, uint8_t *len, uint8_t max_len)
 
 	memset(ptx, 0, *len+3);
 
-	ptx[0] = SX126X_CMD_WRITE_BUFFER;
-	ptx[1] = 0;								/* offset */
-
-	memcpy(ptx+3, data, *len);
+	ptx[0] = SX126X_CMD_READ_BUFFER;
+	ptx[1] = offset;								/* offset */
+	ptx[2] = SX126X_CMD_NOP;
 
 	SPIDRV_MTransferB(spi_hdl, ptx, ptx, *len+3);
+
+	memcpy(data, ptx+3, *len);
 
 #ifdef DEBUG_SX126X
 	for (uint16_t i = 0; i < *len; i++) {
