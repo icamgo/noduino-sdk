@@ -43,9 +43,9 @@ void rx_irq_handler()
 	//int len = lora.rx(g_buf, 64);
 	//Serial.print(len);
 
-	//uint16_t irq = lora.get_irq_status();
+	uint16_t irq = lora.get_irq_status();
+	Serial.println(irq, HEX);
 	Serial.println("rx");
-	//lora.clear_irq_status(SX126X_IRQ_RX_DONE);
 
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
@@ -80,27 +80,21 @@ void loop()
 	uint16_t irq = 0;
 	irq = lora.get_irq_status();
 
-	Serial.println(irq, HEX);
+	//Serial.println(irq, HEX);
 
 	if (irq & SX126X_IRQ_RX_DONE) {
 		int len = lora.rx(g_buf, 64);
 		Serial.print(len);
 		Serial.println(" Bytes RXed");
+
 		lora.clear_irq_status(SX126X_IRQ_RX_DONE);
+		//lora.enter_rx();
+
+	} else if (irq & SX126X_IRQ_TIMEOUT) {
+
+		lora.clear_irq_status(SX126X_IRQ_TIMEOUT);
 	}
 
-	lora.clear_irq_status(0xFFFF);
 
-	#if 0
-	while ((!(irq & SX126X_IRQ_TX_DONE))
-		   && (!(irq & SX126X_IRQ_TIMEOUT))) {
-		irq = get_irq_status();
-	}
-	#endif
-
-	//lora.wakeup();
-
-	lora.enter_rx();
-
-	delay(3000);
+	//delay(5000);
 }

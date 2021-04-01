@@ -21,8 +21,8 @@ ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
 ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
-DEFS := -DUART_NO_RX_INT -DDEBUG_SX126X
-#DEFS := -DUART_NO_RX_INT
+#DEFS := -DUART_NO_RX_INT -DDEBUG_SX126X
+DEFS := -DUART_NO_RX_INT
 
 MCU = cortex-m0plus
 F_CPU = 7000000
