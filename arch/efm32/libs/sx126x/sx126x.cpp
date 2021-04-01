@@ -97,12 +97,17 @@ int16_t SX126x::setup_v0(uint32_t freq_hz, int8_t dbm)
 
 	_tx_power = dbm;
 
-	set_stop_rx_timer_on_preamble(false);
+	set_stop_rx_timer_on_preamble(true);
 
 	set_packet_type(SX126X_PACKET_TYPE_LORA);
 	set_lora_symb_num_timeout(0);
 
 	set_modulation_params(_sf, _bw, _cr, _ldro);
+
+	// set_packet_params()
+	pkt_params[2] = 0x00;	// Explicit header
+	pkt_params[3] = 0xFF;	// pkt len
+	write_op_cmd(SX126X_CMD_SET_PACKET_PARAMS, pkt_params, 6);
 }
 
 int16_t SX126x::setup_v1(uint32_t freq_hz, int8_t dbm)
@@ -128,6 +133,11 @@ int16_t SX126x::setup_v1(uint32_t freq_hz, int8_t dbm)
 	set_lora_symb_num_timeout(0);
 
 	set_modulation_params(_sf, _bw, _cr, _ldro);
+
+	// set_packet_params()
+	pkt_params[2] = 0x00;	// Explicit header
+	pkt_params[3] = 0xFF;	// pkt len
+	write_op_cmd(SX126X_CMD_SET_PACKET_PARAMS, pkt_params, 6);
 }
 
 int16_t SX126x::init()
@@ -138,7 +148,7 @@ int16_t SX126x::init()
 	pkt_params[1] = _preamble_len;
 
 	pkt_params[2] = 0x00;	/* Explicit Header */
-	pkt_params[3] = 0x24;	/* 36 Bytes payload len */
+	pkt_params[3] = 0x30;	/* 48 Bytes payload len */
 
 	pkt_params[4] = 0x01;	/* crc on */
 	pkt_params[5] = 0x00;	/* no inverted iq */
@@ -365,10 +375,12 @@ bool SX126x::enter_rx(void)
 
 		set_rf_freq(_tx_freq);
 
+		delay(1);
 		config_dio_irq(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT,
 						SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT,
 						SX126X_IRQ_NONE,
 						SX126X_IRQ_NONE);
+		delay(1);
 
 		clear_irq_status(0xFFFF);
 
