@@ -23,7 +23,7 @@ void power_off_dev()
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
-uint8_t g_buf[64];
+uint8_t g_buf[256];
 
 void rx_irq_handler()
 {
@@ -51,6 +51,23 @@ void rx_irq_handler()
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
 	NVIC_EnableIRQ(GPIO_ODD_IRQn);
 	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
+}
+
+void hex_pkt(uint8_t *p, int plen)
+{
+	int a = 0;
+
+	for (; a < plen; a++) {
+
+		if ((uint8_t) p[a] < 16)
+			Serial.print("0");
+
+		Serial.print((uint8_t) p[a], HEX);
+		Serial.print(" ");
+	}
+
+	Serial.print("/");
+	Serial.println(plen);
 }
 
 void setup()
@@ -83,18 +100,18 @@ void loop()
 	//Serial.println(irq, HEX);
 
 	if (irq & SX126X_IRQ_RX_DONE) {
-		int len = lora.rx(g_buf, 64);
-		Serial.print(len);
-		Serial.println(" Bytes RXed");
 
-		lora.clear_irq_status(SX126X_IRQ_RX_DONE);
-		//lora.enter_rx();
+		int len = lora.rx(g_buf, 128);		// clear the irq flag in this func
+
+		//Serial.print(len);
+		//Serial.println(" Bytes RXed");
+
+		hex_pkt(g_buf, len);
 
 	} else if (irq & SX126X_IRQ_TIMEOUT) {
 
 		lora.clear_irq_status(SX126X_IRQ_TIMEOUT);
 	}
-
 
 	//delay(5000);
 }
