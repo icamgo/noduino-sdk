@@ -372,14 +372,14 @@ class SX126x {
 
 	bool enter_rx(void);
 	bool rx_mode(void);
-	void rx_status(uint8_t *rssi_pkt, uint8_t *snr_pkt);
 	void set_txPower(int8_t dbm);
 
 	uint16_t get_dev_errors(void);
 	void clear_dev_errors(void);
 	void set_tx_power(int8_t dbm);
 
-	int8_t get_rssi();
+	int get_rssi();
+	int get_pkt_rssi();
 
 	void reset(void);
 	void set_sleep();

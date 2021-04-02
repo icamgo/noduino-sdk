@@ -376,8 +376,8 @@ bool SX126x::enter_rx(void)
 		set_rf_freq(_tx_freq);
 
 		delay(1);
-		config_dio_irq(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT,
-						SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT,
+		config_dio_irq(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR,
+						SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR,
 						SX126X_IRQ_NONE,
 						SX126X_IRQ_NONE);
 		delay(1);
@@ -395,14 +395,18 @@ bool SX126x::enter_rx(void)
 	return rv;
 }
 
-void SX126x::rx_status(uint8_t *rssi, uint8_t *snr)
+int SX126x::get_pkt_rssi()
 {
 	uint8_t buf[3];
+	int rssi = 0;
+
+	memset(buf, 0, 3);
 
 	read_op_cmd(SX126X_CMD_GET_PACKET_STATUS, buf, 3);
 
-	(buf[1] < 128) ? (*snr = buf[1] >> 2) : (*snr = ((buf[1] - 256) >> 2));
-	*rssi = -buf[0] >> 1;
+	//(buf[1] < 128) ? (*snr = buf[1] >> 2) : (*snr = ((buf[1] - 256) >> 2));
+	rssi = -buf[0] >> 1;
+	return rssi;
 }
 
 void SX126x::reset(void)
@@ -776,10 +780,10 @@ void SX126x::set_tx_power(int8_t dbm)
     write_op_cmd(SX126X_CMD_SET_TX_PARAMS, buf, 2);
 }
 
-int8_t SX126x::get_rssi()
+int SX126x::get_rssi()
 {
     uint8_t buf;
-    int8_t rssi = 0;
+    int rssi = 0;
 
     write_op_cmd(SX126X_CMD_GET_RSSI_INST, &buf, 1);
 	rssi = -buf >> 1;
