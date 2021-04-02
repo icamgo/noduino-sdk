@@ -1,5 +1,7 @@
 
 #include "sx126x.h"
+#include "crypto.h"
+
 
 #define TXRX_CH			472500000	// Hz center frequency
 #define TX_PWR			22			// dBm tx output power
@@ -30,22 +32,9 @@ void rx_irq_handler()
 	NVIC_DisableIRQ(GPIO_ODD_IRQn);
 	NVIC_DisableIRQ(GPIO_EVEN_IRQn);
 
-#if 0
-	int8_t e = 0;
-
-	if (!e) {
-
-	}
-	
-
-#endif
-
-	//int len = lora.rx(g_buf, 64);
-	//Serial.print(len);
-
 	uint16_t irq = lora.get_irq_status();
-	Serial.println(irq, HEX);
-	Serial.println("rx");
+	Serial.print(irq, HEX);
+	Serial.println(" ,rx");
 
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
@@ -53,7 +42,7 @@ void rx_irq_handler()
 	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
 }
 
-void hex_pkt(uint8_t *p, int plen)
+void hex_pkt(uint8_t *p, int rssi, int plen)
 {
 	int a = 0;
 
@@ -67,11 +56,18 @@ void hex_pkt(uint8_t *p, int plen)
 	}
 
 	Serial.print("/");
-	Serial.println(plen);
+	Serial.print(rssi);
+	Serial.print("/");
+	Serial.print(plen);
+
+	Serial.print("/");
+	Serial.println(check_pkt_mic(p, plen));
 }
 
 void setup()
 {
+	crypto_init();
+
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
 
@@ -101,12 +97,15 @@ void loop()
 
 	if (irq & SX126X_IRQ_RX_DONE) {
 
-		int len = lora.rx(g_buf, 128);		// clear the irq flag in this func
+		int len = lora.rx(g_buf, 48);		// clear the irq flag in this func
+		int rssi = lora.get_pkt_rssi();
 
-		//Serial.print(len);
-		//Serial.println(" Bytes RXed");
+		hex_pkt(g_buf, rssi, len);
 
-		hex_pkt(g_buf, len);
+		if (irq & SX126X_IRQ_CRC_ERR) {
+			Serial.println("CRC error");
+			lora.clear_irq_status(SX126X_IRQ_CRC_ERR);
+		}
 
 	} else if (irq & SX126X_IRQ_TIMEOUT) {
 
