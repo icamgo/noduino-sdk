@@ -7,7 +7,7 @@
 #define TX_PWR			22			// dBm tx output power
 
 #define	PWR_CTRL_PIN			8	// PC14-D8
-#define RX_INT_PIN				3
+#define RF_INT_PIN				3
 
 SX126x lora(2,		// Pin: SPI CS,PIN06-PB08-D2
 	    9,				// Pin: RESET, PIN18-PC15-D9
@@ -71,9 +71,9 @@ void setup()
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
 
-	// RF RX Interrupt pin
-	pinMode(RX_INT_PIN, INPUT);
-	attachInterrupt(RX_INT_PIN, rx_irq_handler, RISING);
+	// RF Interrupt pin
+	pinMode(RF_INT_PIN, INPUT);
+	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
 
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 	power_on_dev();
