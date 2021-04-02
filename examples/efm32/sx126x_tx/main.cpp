@@ -1,43 +1,25 @@
 
 #include "sx126x.h"
 
+//#define TX_ASYNC 				1
+
 #define RF_FREQ			470000000	// Hz center frequency
 #define TX_PWR			22			// dBm tx output power
 
-#if 0
-#define LORA_BW			6
-#define LORA_SF			10			
-#define LORA_CR			2
-#define	CRC				true
-#define INVERTED_IQ		false
-
-#define LORA_PREAMBLE_LEN				8	// 8
-#define LORA_PAYLOAD_LEN				0	// 0: variable receive length
-#endif
-							      			// 1..255 payloadlength
+#define	PWR_CTRL_PIN			8	// PC14-D8
+#define RF_INT_PIN				3
 
 SX126x lora(SW_CS,		// Pin: SPI CS,PIN06-PB08-D2
 	    9,				// Pin: RESET, PIN18-PC15-D9
-		#if 1
 	    5,				// PIN: Busy,  PIN11-PB14-D5, The RX pin
-		#else
-	    0,				// PIN: Busy,  PIN1-D0, The KEY pin
-		#endif
 	    3				// Pin: DIO1,  PIN08-PB11-D3
     );
 
 void radio_init()
 {
-#if 0
-	lora.begin(RF_FREQ, TX_PWR);
-	lora.lora_config(LORA_SF, LORA_BW, LORA_CR, LORA_PREAMBLE_LEN, LORA_PAYLOAD_LEN, CRC, INVERTED_IQ);
-#else
 	lora.init();
 	lora.setup_v0(RF_FREQ, TX_PWR);
-#endif
 }
-
-#define	PWR_CTRL_PIN			8
 
 void power_on_dev()
 {
@@ -48,6 +30,28 @@ void power_off_dev()
 {
 	digitalWrite(PWR_CTRL_PIN, LOW);
 }
+
+#ifdef TX_ASYNC
+void rx_irq_handler()
+{
+	NVIC_DisableIRQ(GPIO_ODD_IRQn);
+	NVIC_DisableIRQ(GPIO_EVEN_IRQn);
+
+	uint16_t irq = lora.get_irq_status();
+
+	if (irq & SX126X_IRQ_TX_DONE) {
+		lora.clear_tx_active();
+
+	} else if (irq & SX126X_IRQ_TIMEOUT) {
+		lora.clear_tx_active();
+	}
+
+	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
+	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
+	NVIC_EnableIRQ(GPIO_ODD_IRQn);
+	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
+}
+#endif
 
 void setup()
 {
@@ -60,6 +64,14 @@ void setup()
 	delay(100);
 
 	radio_init();
+
+#ifdef TX_ASYNC
+	// RF Interrupt pin
+	pinMode(RF_INT_PIN, INPUT);
+	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
+#endif
+
+	lora.clear_irq_status(SX126X_IRQ_ALL);
 }
 
 /* 20430011 */
@@ -72,13 +84,36 @@ uint8_t p[36] = {
 	0xF3, 0x01, 0x2B, 0x21
 };
 
-//47 4F 33 00 00 00 02 CB 63 09 E7 0B B8 0E 45 02 C4 D8 05 9D 22 A5 4A A3
-
 void loop()
 {
 	Serial.println("TX testing...");
 
-	lora.send(p, 36, SX126x_TXMODE_SYNC);
+	int start = 0, end = 0;
+
+	start = millis();
+
+#ifdef TX_ASYNC
+	int e = lora.send(p, 36, SX126x_TXMODE_ASYNC);
+#else
+	/*
+	 * setup_v0 15:00: 18B - 142ms; 24B - 168ms; 36B - 207ms
+	 * setup_v0 17:00: 18B - 123ms; 24B - 147ms; 36B - 184ms
+	 */
+	int e = lora.send(p, 36, SX126x_TXMODE_SYNC);
+#endif
+
+	end = millis();
+
+	if (e != 0) {
+		if (e == 1)
+			Serial.println("TX timeout ...");
+
+		if (e == 2)
+			Serial.println("TX failed ...");
+	}
+
+	Serial.print("TX time: ");
+	Serial.println(end-start);
 
 	delay(6000);
 }
