@@ -33,7 +33,8 @@ SX126x sx126x(2,			// Pin: SPI CS,PIN06-PB08-D2
 );
 #endif
 
-#define ENABLE_CRYPTO				1
+//#define ENABLE_CRYPTO				1
+#define ENABLE_CAD					1
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 
 //#define	DEBUG					1
@@ -86,7 +87,6 @@ static uint8_t need_push = 0;
 //#define TXRX_CH				CH_00_470
 #define TXRX_CH				CH_01_472
 #define LORA_MODE			12
-#define ENABLE_CAD				1
 #define	TX_TIME					2300		// 2300ms
 #define DEST_ADDR				1
 #define MAX_DBM					20
@@ -384,6 +384,9 @@ void push_data()
 
 #elif USE_SX126X
 
+	#ifdef ENABLE_CAD
+	sx126x.enable_cad();
+	#endif
 	sx126x.send(message, PAYLOAD_LEN+6, SX126x_TXMODE_SYNC);
 	sx126x.set_sleep();
 	power_off_dev();
