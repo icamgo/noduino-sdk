@@ -391,6 +391,9 @@ class SX126x {
 	void clear_irq_status(uint16_t irq);
 
 	void clear_tx_active(void);
+	void carrier_sense();
+	void enable_cad();
+	void disable_cad();
 
  private:
 	uint8_t pkt_params[6];
@@ -400,6 +403,8 @@ class SX126x {
 	int _pin_busy;
 	int _pin_reset;
 	int _pin_dio1;
+
+	bool _cad_on;
 
 	void set_cad_params(uint8_t sym_num, uint8_t det_pek, uint8_t det_min,
 							uint8_t exit_mode, uint32_t timeout);

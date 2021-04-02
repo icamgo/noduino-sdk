@@ -57,6 +57,8 @@ SX126x::SX126x(int cs, int reset, int busy, int interrupt)
 	_pin_busy = busy;
 	_pin_dio1 = interrupt;
 
+	_cad_on = false;
+
 	tx_active = false;
 
 	_ldro = true;
@@ -311,6 +313,16 @@ uint8_t SX126x::rx(uint8_t *pkt, uint16_t len)
 	return rx_len;
 }
 
+void SX126x::enable_cad()
+{
+	_cad_on = true;
+}
+
+void SX126x::disable_cad()
+{
+	_cad_on = true;
+}
+
 int SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 {
 	uint16_t irq;
@@ -325,18 +337,22 @@ int SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 		pkt_params[3] = len;
 		write_op_cmd(SX126X_CMD_SET_PACKET_PARAMS, pkt_params, 6);
 
+		write_buf(data, len);
+
+		workaround_tx();
+
+		if (_cad_on) {
+			carrier_sense();
+		}
+
 		config_dio_irq(SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT,
 						SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT,
 						SX126X_IRQ_NONE,
 						SX126X_IRQ_NONE);
 
-		clear_irq_status(SX126X_IRQ_TX_DONE | SX126X_IRQ_TIMEOUT);
+		clear_irq_status(SX126X_IRQ_ALL);
 
-		write_buf(data, len);
-
-		workaround_tx();
-
-		// timeout = 600ms
+		// timeout = 200ms
 		set_tx(200);
 
 		if (mode & SX126x_TXMODE_SYNC) {
@@ -529,6 +545,49 @@ void SX126x::set_cad_params(uint8_t sym_num, uint8_t det_pek, uint8_t det_min,
     buf[6] = (uint8_t)(timeout & 0xFF);
 
 	write_op_cmd(SX126X_CMD_SET_CAD_PARAMS, buf, 7);
+}
+
+void SX126x::carrier_sense()
+{
+	int start = 0, end = 0;
+
+	/*
+	 * SF10: sym_num = 4, det_pek = 24, det_min = 10
+	 * SF10: sym_num = 4, det_pek = 28, det_min = 10
+	 */
+	set_cad_params(0x2, 24, 10, SX126X_CAD_GOTO_STDBY, 0);
+
+	config_dio_irq(SX126X_IRQ_CAD_DONE | SX126X_IRQ_CAD_DETECTED,
+					SX126X_IRQ_NONE,
+					SX126X_IRQ_NONE,
+					SX126X_IRQ_NONE);
+
+	start = millis();
+	end = start + 220;
+
+	do {
+		clear_irq_status(SX126X_IRQ_CAD_DONE | SX126X_IRQ_CAD_DETECTED);
+
+		set_cad();
+
+		uint16_t irq = get_irq_status();
+		while ((!(irq & SX126X_IRQ_CAD_DONE))
+			   && (!(irq & SX126X_IRQ_CAD_DETECTED))) {
+			irq = get_irq_status();
+		}
+
+		if ((irq & SX126X_IRQ_CAD_DETECTED) == false) {
+
+			INFOLN("cad is not detected");
+			return;
+
+		} else if (irq & SX126X_IRQ_CAD_DONE) {
+			INFOLN("cad is done");
+		}
+
+		start = millis();
+
+	} while (start < end);
 }
 
 void SX126x::set_dio3_as_tcxo_ctrl(uint8_t volt, uint32_t timeout)
@@ -849,7 +908,7 @@ uint8_t SX126x::read_buf(uint8_t *data, uint8_t *len, uint8_t max_len)
 
 	memcpy(data, ptx+3, *len);
 
-#ifdef DEBUG_SX126X
+#ifdef DEBUG_SX126X_SPI
 	for (uint16_t i = 0; i < *len; i++) {
 		INFO_HEX(ptx[i+3]);
 		INFO(" ");
@@ -869,9 +928,11 @@ uint8_t SX126x::read_buf(uint8_t *data, uint8_t *len, uint8_t max_len)
 
 uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
 {
+#ifdef DEBUG_SX126X_SPI
 	INFO("SPI write: CMD=0x");
 	INFO_HEX(SX126X_CMD_WRITE_BUFFER);
 	INFO(" TX: ");
+#endif
 
 #ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, LOW);
@@ -880,11 +941,15 @@ uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
 	spi_transfer(0);	//offset in tx fifo
 
 	for (uint16_t i = 0; i < len; i++) {
+	#ifdef DEBUG_SX126X_SPI
 		INFO_HEX(data[i]);
 		INFO(" ");
+	#endif
 		spi_transfer(data[i]);
 	}
+	#ifdef DEBUG_SX126X_SPI
 	INFOLN("");
+	#endif
 
 	digitalWrite(_spi_cs, HIGH);
 #else
@@ -905,7 +970,7 @@ uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
 
 	SPIDRV_MTransmitB(spi_hdl, ptx, len+2);
 
-#ifdef DEBUG_SX126X
+#ifdef DEBUG_SX126X_SPI
 	for (uint16_t i = 0; i < len; i++) {
 		INFO_HEX(ptx[i+2]);
 		INFO(" ");
@@ -1033,18 +1098,25 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 
 	spi_transfer(cmd);
 
+#ifdef DEBUG_SX126X_SPI
 	INFO("SPI write: CMD=0x");
 	INFO_HEX(cmd);
 	INFO(" TX: ");
+#endif
 
 	for (uint8_t n = 0; n < len; n++) {
 
 		spi_transfer(data[n]);
 
+#ifdef DEBUG_SX126X_SPI
 		INFO_HEX(data[n]);
 		INFO(" ");
+#endif
 	}
+
+#ifdef DEBUG_SX126X_SPI
 	INFOLN(" ");
+#endif
 
 	// stop transfer
 	digitalWrite(_spi_cs, HIGH);
@@ -1059,7 +1131,7 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 
 	SPIDRV_MTransmitB(spi_hdl, tx, len+1);
 
-#ifdef DEBUG_SX126X
+#ifdef DEBUG_SX126X_SPI
 	INFO("SPI write: CMD=0x");
 	INFO_HEX(cmd);
 	INFO(" TX: ");
@@ -1095,19 +1167,25 @@ uint8_t SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 	spi_transfer(cmd);
 	spi_transfer(0);
 
+#ifdef DEBUG_SX126X_SPI
 	INFO("SPI read: CMD=0x");
 	INFO_HEX(cmd);
 	INFO(" RX: ");
+#endif
 
 	for (uint8_t i = 0; i < len; i++) {
 
 		data[i] = spi_transfer(0);
 
+#ifdef DEBUG_SX126X_SPI
 		INFO_HEX(data[i]);
 		INFO(" ");
+#endif
 	}
 
+#ifdef DEBUG_SX126X_SPI
 	INFOLN(" ");
+#endif
 
 	// stop transfer
 	digitalWrite(_spi_cs, HIGH);
@@ -1123,7 +1201,7 @@ uint8_t SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 		memcpy(data, rx+2, len);
 	}
 
-#ifdef DEBUG_SX126X
+#ifdef DEBUG_SX126X_SPI
 	INFO("SPI read: CMD=0x");
 	INFO_HEX(cmd);
 	INFO(" RX: ");
