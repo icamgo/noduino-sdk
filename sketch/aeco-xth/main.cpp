@@ -602,6 +602,11 @@ void push_data()
 	digitalWrite(SX1272_RST, LOW);
 	spi_end();
 #elif USE_SX126X
+
+	#ifdef ENABLE_CAD
+	sx126x.enable_cad();
+	#endif
+
 	e = sx126x.send(message, PAYLOAD_LEN+6, SX126x_TXMODE_SYNC);
 	sx126x.set_sleep();
 
