@@ -103,6 +103,8 @@ int16_t SX126x::setup_v0(uint32_t freq_hz, int8_t dbm)
 	set_lora_symb_num_timeout(0);
 
 	set_modulation_params(_sf, _bw, _cr, _ldro);
+	set_rf_freq(_tx_freq);
+	set_tx_power(_tx_power);
 
 	// set_packet_params()
 	pkt_params[2] = 0x00;	// Explicit header
@@ -133,6 +135,8 @@ int16_t SX126x::setup_v1(uint32_t freq_hz, int8_t dbm)
 	set_lora_symb_num_timeout(0);
 
 	set_modulation_params(_sf, _bw, _cr, _ldro);
+	set_rf_freq(_tx_freq);
+	set_tx_power(_tx_power);
 
 	// set_packet_params()
 	pkt_params[2] = 0x00;	// Explicit header
@@ -315,11 +319,7 @@ int SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 	if (tx_active == false) {
 
 		tx_active = true;
-#if 1
-		//set_modulation_params(_sf, _bw, _cr, _ldro);
-		set_rf_freq(_tx_freq);
-		set_tx_power(_tx_power);
-#endif
+
 		// set_packet_params()
 		pkt_params[2] = 0x00;	// Explicit header
 		pkt_params[3] = len;
@@ -336,7 +336,8 @@ int SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 
 		workaround_tx();
 
-		set_tx(600);		// timeout = 50ms
+		// timeout = 600ms
+		set_tx(200);
 
 		if (mode & SX126x_TXMODE_SYNC) {
 
@@ -349,10 +350,13 @@ int SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 
 			tx_active = false;
 
-			//set_rx(0xFFFFFF);
-
-			if (irq != SX126X_IRQ_TIMEOUT)
+			if (irq == SX126X_IRQ_TX_DONE) {
 				rv = 0;
+			} else if (irq == SX126X_IRQ_TIMEOUT) {
+				rv = 1;
+			} else {
+				rv = 2;
+			}
 
 		} else {
 			rv = 0;
@@ -367,20 +371,21 @@ int SX126x::send(uint8_t *data, uint8_t len, uint8_t mode)
 	return rv;
 }
 
+void SX126x::clear_tx_active()
+{
+	tx_active = false;
+}
+
 bool SX126x::enter_rx(void)
 {
 	bool rv = false;
 
 	if (tx_active == false) {
 
-		set_rf_freq(_tx_freq);
-
-		delay(1);
 		config_dio_irq(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR,
 						SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR,
 						SX126X_IRQ_NONE,
 						SX126X_IRQ_NONE);
-		delay(1);
 
 		clear_irq_status(0xFFFF);
 

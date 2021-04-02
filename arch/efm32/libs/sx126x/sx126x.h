@@ -390,6 +390,8 @@ class SX126x {
 	uint16_t get_irq_status(void);
 	void clear_irq_status(uint16_t irq);
 
+	void clear_tx_active(void);
+
  private:
 	uint8_t pkt_params[6];
 	bool tx_active;
