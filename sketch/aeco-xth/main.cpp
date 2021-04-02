@@ -23,7 +23,7 @@
 #include "math.h"
 #include "em_wdog.h"
 
-#define	DEBUG					1
+//#define	DEBUG					1
 #define USE_EXTERNAL_RTC		1
 
 //#define	TX_TESTING				1
@@ -33,10 +33,11 @@
 #include "sx1272.h"
 #elif USE_SX126X
 #include "sx126x.h"
-SX126x sx126x(2,			// Pin: SPI CS,PIN06-PB08-D2
-				9,			// Pin: RESET, PIN18-PC15-D9
-				5,			// PIN: Busy,  PIN11-PB14-D5, The RX pin
-				3			// Pin: DIO1,  PIN08-PB11-D3
+#define SX126X_RST				9
+SX126x sx126x(2,					// Pin: SPI CS,PIN06-PB08-D2
+				SX126X_RST,			// Pin: RESET, PIN18-PC15-D9
+				5,					// PIN: Busy,  PIN11-PB14-D5, The RX pin
+				3					// Pin: DIO1,  PIN08-PB11-D3
 );
 #endif
 
@@ -72,7 +73,7 @@ static float cur_humi = 0.0;
 static float cur_curr = 0.0;
 
 //#define ENABLE_SHT2X			1
-#define ENABLE_SHT3X			1
+//#define ENABLE_SHT3X			1
 
 #ifdef ENABLE_SHT2X
 #include "sht2x.h"
@@ -332,7 +333,7 @@ void setup()
 
 	pcf8563_set_from_int(2021, 3, 29, 17, 20, 0);
 
-	pcf8563_set_timer(6);
+	pcf8563_set_timer(1);
 
 	INFO("RTC ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
@@ -438,6 +439,9 @@ void push_data()
 		sht3x_init(SCL_PIN, SDA_PIN);		// initialization of the sensor
 		cur_temp = sht3x_get_temp();
 		cur_humi = sht3x_get_humi();
+	#else
+		cur_temp = fetch_mcu_temp();
+		cur_humi = 0;
 	#endif
 	}
 
@@ -600,6 +604,9 @@ void push_data()
 #elif USE_SX126X
 	e = sx126x.send(message, PAYLOAD_LEN+6, SX126x_TXMODE_SYNC);
 	sx126x.set_sleep();
+
+	power_off_dev();
+	//digitalWrite(SX126X_RST, LOW);
 #endif
 
 	WDOG_Feed();
@@ -621,8 +628,6 @@ void push_data()
 	INFO("Packet sent, state ");
 	INFOLN(e);
 #endif
-
-	power_off_dev();
 }
 
 void loop()
@@ -634,8 +639,6 @@ void loop()
 
 		need_push = 0;
 	}
-
-	power_off_dev();
 
 #if defined(CONFIG_V0)
 	digitalWrite(SX1272_RST, LOW);
@@ -653,6 +656,8 @@ void loop()
 	//wire_end();
 	digitalWrite(SCL_PIN, HIGH);
 	digitalWrite(SDA_PIN, HIGH);
+
+	//power_off_dev();
 
 	EMU_EnterEM2(true);
 }
