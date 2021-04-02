@@ -30,7 +30,7 @@
 
 #define ENABLE_TX5					1
 
-#define	FW_VER						"V4.5"
+#define	FW_VER						"V4.6"
 
 #define CC_OPEN_WIN				5
 //#define CC_CLOSE_WIN			1290
@@ -54,7 +54,7 @@
 
 #define ENABLE_ENG_MODE				1
 
-#define LOW_BAT_THRESHOLD			3.3
+#define LOW_BAT_THRESHOLD			3.1
 #define RX_ERR_THRESHOLD			15
 
 /* Timer used for bringing the system back to EM0. */
@@ -1838,12 +1838,13 @@ void wakeup_check(RTCDRV_TimerID_t id, void *user)
 
 		if (cnt_vbat_ok >= 4) {
 
+			vbat_low = false;
+			cnt_vbat_ok = 0;
+
 			if (vbat_low) {
 				/* Reset the system */
 				reset_dev_sys();
 			}
-			vbat_low = false;
-			cnt_vbat_ok = 0;
 		}
 		cnt_vbat_low = 0;
 	}
