@@ -1537,7 +1537,7 @@ void rx_irq_handler()
 
 		rx_cnt++;
 
-		if (plen > PKT_LEN) return;
+		if (plen > PKT_LEN) goto irq_out;
 
 		if ((true == is_our_pkt(p, plen))
 			&& (false == is_my_did(p))
@@ -1553,6 +1553,7 @@ void rx_irq_handler()
 		rx_err_cnt++;
 	}
 
+irq_out:
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
 	NVIC_EnableIRQ(GPIO_ODD_IRQn);

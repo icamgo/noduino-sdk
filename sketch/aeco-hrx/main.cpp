@@ -747,7 +747,7 @@ void rx_irq_handler()
 		uint8_t plen = sx1272._payloadlength;
 		uint8_t *p = sx1272.packet_received.data;
 
-		if (plen > PKT_LEN) return;
+		if (plen > PKT_LEN) goto irq_out;
 
 		if (omode == MODE_RAW ||
 			(omode == MODE_KEY && is_our_pkt(p, plen) && (p[15]&0x0F) >= 3) ||
@@ -766,6 +766,9 @@ void rx_irq_handler()
 
 	//sx1272.rx_v0();
 #endif
+
+irq_out:
+
 	interrupts();
 }
 
