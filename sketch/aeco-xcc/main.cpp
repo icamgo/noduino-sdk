@@ -60,6 +60,10 @@ SX126x lora(2,		// Pin: SPI CS,PIN06-PB08-D2
 struct circ_buf g_cbuf __attribute__((aligned(4)));
 struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
 
+int32_t cnt_rtc_min __attribute__((aligned(4))) = 0;
+uint32_t rtc_period __attribute__((aligned(4))) = 60;
+bool need_work __attribute__((aligned(4))) = true;
+
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
 #define INFOHEX(param)			Serial.print(param,HEX)
@@ -173,6 +177,15 @@ bool is_my_pkt(uint8_t *p, int len)
 	return true;
 }
 
+void sync_rtc()
+{
+	rtc_period = 60;
+	cnt_rtc_min = 0;
+
+	pcf8563_clear_timer();
+	pcf8563_set_timer_s(rtc_period);
+}
+
 void rx_irq_handler()
 {
 	int len = 0, rssi = 0;
@@ -186,7 +199,13 @@ void rx_irq_handler()
 
 	if (len > PKT_LEN || len < 0) goto irq_out;
 
-	if (is_my_pkt(p, len)) {
+	if (is_my_pkt(p, len) && need_work) {
+		// if the devid is the white id
+		// reset the timer
+		sync_rtc();
+
+		need_work = false;
+
 		push_pkt(&g_cbuf, p, rssi, len);
 	}
 
@@ -231,8 +250,27 @@ void key_irq_handler()
 
 void rtc_irq_handler()
 {
-	pcf8563_reset_timer();
+	cnt_rtc_min++;
 
+	if (cnt_rtc_min % 10 == 9) {
+
+		rtc_period = 55;
+
+	} else if (cnt_rtc_min % 10 == 0) {
+
+		need_work = true;
+		rtc_period = 65;
+
+	} else {
+
+		rtc_period = 60;
+	}
+
+	pcf8563_set_timer_s(rtc_period);
+	//pcf8563_reset_timer();
+
+	INFO("rtc, ");
+	INFOLN(cnt_rtc_min);
 	//need_push = 0x5a;
 	//tx_cause = TIMER_TX;
 }
@@ -277,7 +315,9 @@ void setup()
 
 	pcf8563_set_from_int(2021, 4, 3, 17, 20, 0);
 
-	pcf8563_set_timer(1);
+	//pcf8563_reset_timer();
+	//sync_rtc();
+	pcf8563_clear_timer();
 
 	INFO("RTC ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
