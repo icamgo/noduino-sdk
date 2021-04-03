@@ -28,12 +28,28 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
+#define DEBUG			1
+
 
 #define TXRX_CH			472500000	// Hz center frequency
 #define TX_PWR			22			// dBm tx output power
 
-#define	PWR_CTRL_PIN			8	// PC14-D8
-#define RF_INT_PIN				3
+////////////////////////////////////////////////////////////
+#ifdef EFM32GG230F512
+/* EFM32GG */
+#define	PWR_CTRL_PIN			4		/* PIN05_PA04_D4 */
+#define	KEY_PIN					54		/* PIN53_PF04_D54 */
+#define	RF_INT_PIN				8		/* PIN18_PA09_D8 */
+#else
+/* EFM32ZG & EFM32HG */
+#define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
+#define	KEY_PIN					0		/* PIN01_PA00_D0 */
+#define	RF_INT_PIN				3		/* PIN8_PB11_D3 */
+#define	RTC_INT_PIN				16		/* PIN21_PF02_D16 */
+
+#define SDA_PIN					12		/* PIN23_PE12 */
+#define SCL_PIN					13		/* PIN24_PE13 */
+#endif
 
 SX126x lora(2,		// Pin: SPI CS,PIN06-PB08-D2
 	    9,				// Pin: RESET, PIN18-PC15-D9
@@ -43,6 +59,20 @@ SX126x lora(2,		// Pin: SPI CS,PIN06-PB08-D2
 
 struct circ_buf g_cbuf __attribute__((aligned(4)));
 struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
+
+#ifdef DEBUG
+#define INFO_S(param)			Serial.print(F(param))
+#define INFOHEX(param)			Serial.print(param,HEX)
+#define INFO(param)				Serial.print(param)
+#define INFOLN(param)			Serial.println(param)
+#define FLUSHOUTPUT				Serial.flush();
+#else
+#define INFO_S(param)
+#define INFO(param)
+#define INFOLN(param)
+#define INFOHEX(param)
+#define FLUSHOUTPUT
+#endif
 
 void power_on_dev()
 {
@@ -190,12 +220,35 @@ void hex_pkt(uint8_t *p, int rssi, int plen)
 	Serial.println(check_pkt_mic(p, plen));
 }
 
+void key_irq_handler()
+{
+	/*
+	 * 1. report white list id
+	 * 2. waiting 30s? for the new white list id
+	*/
+
+}
+
+void rtc_irq_handler()
+{
+	pcf8563_reset_timer();
+
+	//need_push = 0x5a;
+	//tx_cause = TIMER_TX;
+}
+
 void setup()
 {
 	crypto_init();
 
+#ifdef DEBUG
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
+#endif
+
+	// Key connected to D0
+	pinMode(KEY_PIN, INPUT);
+	attachInterrupt(KEY_PIN, key_irq_handler, FALLING);
 
 	// RF Interrupt pin
 	pinMode(RF_INT_PIN, INPUT);
@@ -210,6 +263,32 @@ void setup()
 	lora.init();
 	lora.setup_v0(TXRX_CH, TX_PWR);
 	lora.enter_rx();
+
+	pcf8563_init(SCL_PIN, SDA_PIN);
+	int ctrl = pcf8563_get_ctrl2();
+	INFO("RTC ctrl2: ");
+	INFOHEX(ctrl);
+	INFOLN("");
+
+	if (ctrl == 0xFF) {
+		while(true) {
+		}
+	}
+
+	pcf8563_set_from_int(2021, 4, 3, 17, 20, 0);
+
+	pcf8563_set_timer(1);
+
+	INFO("RTC ctrl2: ");
+	INFOHEX(pcf8563_get_ctrl2());
+	INFOLN("");
+	INFOLN(pcf8563_now());
+	INFO("RTC timer: ");
+	INFOHEX(pcf8563_get_timer());
+	INFOLN("");
+
+	pinMode(RTC_INT_PIN, INPUT_PULLUP);
+	attachInterrupt(RTC_INT_PIN, rtc_irq_handler, FALLING);
 
 	Serial.println("RX testing...");
 }
