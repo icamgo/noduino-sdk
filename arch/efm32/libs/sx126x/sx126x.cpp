@@ -34,6 +34,9 @@ uint8_t spi_transfer(uint8_t data)
 }
 #endif
 
+#define SX_1MS				(F_CPU/1000)		/* 14MHz, 1Tick = 1/14us, 14000tick = 1000us */
+#define sx_delay(x)			do{for(int i=0;i<x*SX_1MS;i++) {asm volatile("nop");}}while(0)
+
 #ifdef DEBUG_SX126X
 #define INFO_S(param)			Serial.print(F(param))
 #define INFO_HEX(param)			Serial.print(param,HEX)
@@ -298,14 +301,50 @@ int16_t SX126x::lora_config(uint8_t sf, uint8_t bw,
 	set_modulation_params(_sf, _bw, _cr, _ldro);
 }
 
-uint8_t SX126x::rx(uint8_t *pkt, uint16_t len)
+/* ret:
+ *  -1: rx_data_len > pkt_len
+ *  -2: alloc failed
+ *  -3: crc error
+ *  -4: unknown interrupt
+*/
+int SX126x::get_rx_pkt(uint8_t *pkt, uint16_t len)
 {
-	uint8_t rx_len = 0;
+	int rx_len = 0;
+	uint16_t irq = get_irq_status();
+
+	if (false == (irq & SX126X_IRQ_CRC_ERR)) {
+
+		if ((irq & SX126X_IRQ_RX_DONE) || (irq & SX126X_IRQ_TIMEOUT)) {
+
+			/* ret:
+			 *  -1: rx_data_len > pkt_len
+			 *  -2: alloc failed
+			*/
+			rx_len = read_buf(pkt, len);
+
+		} else {
+
+			rx_len = -4;
+		}
+
+	} else {
+		// crc error
+		rx_len = -3;
+	}
+
+	clear_irq_status(SX126X_IRQ_RX_DONE | SX126X_IRQ_CRC_ERR | SX126X_IRQ_TIMEOUT);
+
+	return rx_len;
+}
+
+int SX126x::rx(uint8_t *pkt, uint16_t len)
+{
+	int rx_len = 0;
 	uint16_t irq = get_irq_status();
 
 	if (irq & SX126X_IRQ_RX_DONE) {
 
-		read_buf(pkt, &rx_len, len);
+		rx_len = read_buf(pkt, len);
 
 		clear_irq_status(SX126X_IRQ_RX_DONE);
 	}
@@ -403,7 +442,7 @@ bool SX126x::enter_rx(void)
 						SX126X_IRQ_NONE,
 						SX126X_IRQ_NONE);
 
-		clear_irq_status(0xFFFF);
+		clear_irq_status(SX126X_IRQ_ALL);
 
 		set_rx(0xFFFFFF);
 
@@ -865,14 +904,21 @@ void SX126x::test_tx_preamble()
 	write_op_cmd(SX126X_CMD_SET_TX_INFINITE_PREAMBLE, NULL, 0);
 }
 
-uint8_t SX126x::read_buf(uint8_t *data, uint8_t *len, uint8_t max_len)
+/*
+ * Reture value:
+ *  >= 0: rxdata_len
+ *    -1: rxdata_len > buf_len
+ *    -2: alloc failed
+*/
+int SX126x::read_buf(uint8_t *data, uint8_t d_len)
 {
 	uint8_t offset = 0;
+	uint8_t len = 0;
 
-	get_rxbuf_status(len, &offset);
+	get_rxbuf_status(&len, &offset);
 
-	if (*len> max_len) {
-		return 1;
+	if (len > d_len) {
+		return -1;
 	}
 
 	while (digitalRead(_pin_busy)) ;
@@ -884,32 +930,32 @@ uint8_t SX126x::read_buf(uint8_t *data, uint8_t *len, uint8_t max_len)
 	spi_transfer(offset);
 	spi_transfer(SX126X_CMD_NOP);
 
-	for (uint16_t i = 0; i < *len; i++) {
+	for (uint16_t i = 0; i < len; i++) {
 		data[i] = spi_transfer(SX126X_CMD_NOP);
 	}
 
 	digitalWrite(_spi_cs, HIGH);
 #else
 
-	uint8_t *ptx = (uint8_t *)malloc(*len+3);
+	uint8_t *ptx = (uint8_t *)malloc(len+3);
 
 	if (ptx == NULL) {
 		INFOLN("alloc failed");
-		return;
+		return -2;
 	}
 
-	memset(ptx, 0, *len+3);
+	memset(ptx, 0, len+3);
 
 	ptx[0] = SX126X_CMD_READ_BUFFER;
 	ptx[1] = offset;								/* offset */
 	ptx[2] = SX126X_CMD_NOP;
 
-	SPIDRV_MTransferB(spi_hdl, ptx, ptx, *len+3);
+	SPIDRV_MTransferB(spi_hdl, ptx, ptx, len+3);
 
-	memcpy(data, ptx+3, *len);
+	memcpy(data, ptx+3, len);
 
 #ifdef DEBUG_SX126X_SPI
-	for (uint16_t i = 0; i < *len; i++) {
+	for (uint16_t i = 0; i < len; i++) {
 		INFO_HEX(ptx[i+3]);
 		INFO(" ");
 	}
@@ -923,7 +969,7 @@ uint8_t SX126x::read_buf(uint8_t *data, uint8_t *len, uint8_t max_len)
 
 	while (digitalRead(_pin_busy)) ;
 
-	return 0;
+	return len;
 }
 
 uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
@@ -1143,7 +1189,7 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 	INFOLN(" ");
 #endif
 
-	delay(5);
+	sx_delay(5);
 
 #endif
 

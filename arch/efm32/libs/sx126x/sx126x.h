@@ -366,13 +366,13 @@ class SX126x {
 	int16_t setup_v0(uint32_t freq_hz, int8_t dbm);
 	int16_t setup_v1(uint32_t freq_hz, int8_t dbm);
 
-	uint8_t rx(uint8_t *p, uint16_t len);
+	int get_rx_pkt(uint8_t *pkt, uint16_t len);
+	int rx(uint8_t *p, uint16_t len);
 
 	int send(uint8_t *data, uint8_t len, uint8_t mode);
 
 	bool enter_rx(void);
 	bool rx_mode(void);
-	void set_txPower(int8_t dbm);
 
 	uint16_t get_dev_errors(void);
 	void clear_dev_errors(void);
@@ -457,7 +457,7 @@ class SX126x {
 
 	void get_rxbuf_status(uint8_t *plen, uint8_t *buf);
 
-	uint8_t read_buf(uint8_t *rx_data, uint8_t *rx_len, uint8_t max_len);
+	int read_buf(uint8_t *pkt, uint8_t pkt_len);
 	uint8_t write_buf(uint8_t *tx_data, uint8_t len);
 
 	void set_sync_word(uint16_t syncw);
