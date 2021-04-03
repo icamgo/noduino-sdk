@@ -108,7 +108,7 @@ bool is_my_pkt(uint8_t *p, int len)
 		return false;
 	}
 
-	if (p[2] < 0x32 || p[2] > 0x36) {
+	if (p[2] < 0x33 || p[2] > 0x36) {
 
 		// support only the 0x33/34/35/36 version
 		return false;
@@ -119,8 +119,12 @@ bool is_my_pkt(uint8_t *p, int len)
 		return false;
 	}
 
+	if (20 == get_dev_type(p)) {
+		return false;
+	}
+
 	// pkt[27] = 0b100, set bit 2, HTimer rpt pkt
-	if (20 != get_dev_type(p) && 0 == (p[len-9] & 0x4)) {
+	if (0 == (p[len-9] & 0x4)) {
 		// It's not the HTimer rpt pkt
 		return false;
 	}
