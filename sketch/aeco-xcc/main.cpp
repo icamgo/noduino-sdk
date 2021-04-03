@@ -72,7 +72,21 @@ bool check_crc(uint8_t *p, int plen)
 		return false;
 }
 
-bool is_our_pkt(uint8_t *p, int len)
+uint32_t get_dev_type(uint8_t *p)
+{
+	uint64_t devid = 0UL;
+	uint8_t *pd = (uint8_t *) &devid;
+
+	for(int i = 0; i < 8; i++) {
+		pd[7-i] = p[3+i];
+	}
+
+	uint64_t temp = devid / 1000000;
+	uint32_t tt = (uint32_t)(temp / 100);
+	return (uint32_t)(temp - tt * 100);
+}
+
+bool is_my_pkt(uint8_t *p, int len)
 {
 	/*
 	 * 31: 17
@@ -106,7 +120,7 @@ bool is_our_pkt(uint8_t *p, int len)
 	}
 
 	// pkt[27] = 0b100, set bit 2, HTimer rpt pkt
-	if (0 == (p[len-9] & 0x4)) {
+	if (20 != get_dev_type(p) && 0 == (p[len-9] & 0x4)) {
 		// It's not the HTimer rpt pkt
 		return false;
 	}
@@ -138,7 +152,7 @@ void rx_irq_handler()
 
 	if (len > PKT_LEN || len < 0) goto irq_out;
 
-	if (is_our_pkt(p, len)) {
+	if (is_my_pkt(p, len)) {
 		push_pkt(&g_cbuf, p, rssi, len);
 	}
 
