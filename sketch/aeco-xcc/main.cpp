@@ -30,6 +30,7 @@
 
 #define DEBUG			1
 
+#define RTC_PERIOD		30
 
 #define TXRX_CH			472500000	// Hz center frequency
 #define TX_PWR			22			// dBm tx output power
@@ -61,8 +62,10 @@ struct circ_buf g_cbuf __attribute__((aligned(4)));
 struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
 
 int32_t cnt_rtc_min __attribute__((aligned(4))) = 0;
-uint32_t rtc_period __attribute__((aligned(4))) = 60;
+uint32_t rtc_period __attribute__((aligned(4))) = RTC_PERIOD;
 bool need_work __attribute__((aligned(4))) = true;
+
+bool vbat_low __attribute__((aligned(4))) = false;
 
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
@@ -179,7 +182,7 @@ bool is_my_pkt(uint8_t *p, int len)
 
 void sync_rtc()
 {
-	rtc_period = 60;
+	rtc_period = RTC_PERIOD;
 	cnt_rtc_min = 0;
 
 	pcf8563_clear_timer();
@@ -190,6 +193,8 @@ void rx_irq_handler()
 {
 	int len = 0, rssi = 0;
 	uint8_t p[48];
+
+	INFOLN("rx");
 
 	NVIC_DisableIRQ(GPIO_ODD_IRQn);
 	NVIC_DisableIRQ(GPIO_EVEN_IRQn);
@@ -203,8 +208,6 @@ void rx_irq_handler()
 		// if the devid is the white id
 		// reset the timer
 		sync_rtc();
-
-		need_work = false;
 
 		push_pkt(&g_cbuf, p, rssi, len);
 	}
@@ -245,39 +248,96 @@ void key_irq_handler()
 	 * 1. report white list id
 	 * 2. waiting 30s? for the new white list id
 	*/
+	INFOLN("key");
 
+	INFOHEX(pcf8563_get_ctrl2());
+	INFOLN("");
+
+	INFOHEX(pcf8563_get_timer());
+	INFOLN("");
 }
 
 void rtc_irq_handler()
 {
+#if 0
+	NVIC_DisableIRQ(GPIO_ODD_IRQn);
+	NVIC_DisableIRQ(GPIO_EVEN_IRQn);
+#endif
+	power_on_dev();
+
+	WDOG_Feed();
+
 	cnt_rtc_min++;
 
-	if (cnt_rtc_min % 10 == 9) {
+	if (need_work) {
+		// only work a rtc period
+		need_work = false;
+	}
 
-		rtc_period = 55;
+	if (cnt_rtc_min % 20 == 19) {
 
-	} else if (cnt_rtc_min % 10 == 0) {
+		rtc_period = 25;
+
+	} else if (cnt_rtc_min % 20 == 0) {
 
 		need_work = true;
-		rtc_period = 65;
+
+		rtc_period = 35;
 
 	} else {
 
-		rtc_period = 60;
+		rtc_period = RTC_PERIOD;
 	}
 
+	pcf8563_init(SCL_PIN, SDA_PIN);
+
+	i2c_delay(50*I2C_1MS);
+	pcf8563_clear_timer();
 	pcf8563_set_timer_s(rtc_period);
-	//pcf8563_reset_timer();
 
 	INFO("rtc, ");
 	INFOLN(cnt_rtc_min);
+
+
+	INFOHEX(pcf8563_get_ctrl2());
+	INFOLN("");
+
+	INFOHEX(pcf8563_get_timer());
+	INFOLN("");
+
+	power_off_dev();
 	//need_push = 0x5a;
 	//tx_cause = TIMER_TX;
+
+#if 0
+	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
+	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
+	NVIC_EnableIRQ(GPIO_ODD_IRQn);
+	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
+#endif
+}
+
+inline void radio_setup()
+{
+#if 1
+	lora.reset();
+#else
+	lora.wakeup();
+#endif
+	lora.init();
+	lora.setup_v0(TXRX_CH, TX_PWR);
 }
 
 void setup()
 {
 	crypto_init();
+
+	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
+
+	/* Watchdog setup - Use defaults, excepts for these : */
+	wInit.em2Run = true;
+	wInit.em3Run = true;
+	wInit.perSel = wdogPeriod_64k;	/* 256k 1kHz periods should give 256 seconds */
 
 #ifdef DEBUG
 	Serial.setRouteLoc(1);
@@ -297,11 +357,6 @@ void setup()
 
 	delay(100);
 
-	lora.reset();
-	lora.init();
-	lora.setup_v0(TXRX_CH, TX_PWR);
-	lora.enter_rx();
-
 	pcf8563_init(SCL_PIN, SDA_PIN);
 	int ctrl = pcf8563_get_ctrl2();
 	INFO("RTC ctrl2: ");
@@ -315,9 +370,7 @@ void setup()
 
 	pcf8563_set_from_int(2021, 4, 3, 17, 20, 0);
 
-	//pcf8563_reset_timer();
-	//sync_rtc();
-	pcf8563_clear_timer();
+	sync_rtc();
 
 	INFO("RTC ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
@@ -327,26 +380,72 @@ void setup()
 	INFOHEX(pcf8563_get_timer());
 	INFOLN("");
 
-	pinMode(RTC_INT_PIN, INPUT_PULLUP);
+	pinMode(RTC_INT_PIN, INPUT);
 	attachInterrupt(RTC_INT_PIN, rtc_irq_handler, FALLING);
 
+	radio_setup();
+	lora.enter_rx();
+
 	Serial.println("RX testing...");
+
+	/* Start watchdog */
+	WDOG_Init(&wInit);
+}
+
+void deep_sleep()
+{
+	lora.set_sleep();
+
+	// dev power off
+	power_off_dev();
+
+	//wire_end();
+	digitalWrite(SCL_PIN, HIGH);
+	digitalWrite(SDA_PIN, HIGH);
 }
 
 struct pkt d;
 
+void cc_worker();
+
 void loop()
 {
+	if (need_work == true && 1 == digitalRead(KEY_PIN)
+		&& vbat_low == false) {
+
+		power_on_dev();
+		radio_setup();
+		lora.enter_rx();
+
+		cc_worker();
+	}
+
+	if (need_work == false || 0 == digitalRead(KEY_PIN)
+		|| vbat_low == true) {
+
+		WDOG_Feed();
+
+		deep_sleep();
+
+		INFOLN("s");
+
+		EMU_EnterEM2(true);
+	}
+}
+
+void cc_worker()
+{
+	WDOG_Feed();
+
 	noInterrupts();
 	int ret = get_pkt(&g_cbuf, &d);
 	interrupts();
 
 	if (ret != 0) {
 		// there is no pkt
-		//Serial.print(".");
+		// Serial.print(".");
 	} else {
 		hex_pkt(d.data, d.rssi, d.plen);
+		need_work = false;
 	}
-
-	//delay(5000);
 }
