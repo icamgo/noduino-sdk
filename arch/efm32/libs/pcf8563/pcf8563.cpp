@@ -272,7 +272,20 @@ uint8_t pcf8563_get_ctrl2()
 	wire_endTransmission();
 
 	wire_requestFrom(PCF8563_ADDR, 1);
+
+	i2c_delay(I2C_1MS);
+
 	return wire_read();
+}
+
+void pcf8563_clear_timer()
+{
+	wire_beginTransmission(PCF8563_ADDR);
+	wire_write(PCF8563_STAT2_ADDR);
+	wire_write(0x0);
+	wire_endTransmission();
+
+	i2c_delay(I2C_1MS);
 }
 
 void pcf8563_reset_timer()
@@ -282,6 +295,8 @@ void pcf8563_reset_timer()
     wire_write(PCF8563_STAT2_ADDR);
     wire_write(status);
     wire_endTransmission();
+
+	i2c_delay(I2C_1MS);
 }
 
 void pcf8563_set_timer(uint8_t m)
@@ -293,6 +308,21 @@ void pcf8563_set_timer(uint8_t m)
     wire_write(0x83);			/* 1/60 Hz = 1 interrupt/min, enable timer */
     wire_write(m);				/* m min */
     wire_endTransmission();
+
+	i2c_delay(I2C_1MS);
+}
+
+void pcf8563_set_timer_s(uint8_t s)
+{
+	wire_beginTransmission(PCF8563_ADDR);
+	wire_write(PCF8563_TIMER_CTRL);
+	wire_write(0x82);			/* 1 Hz = 1 interrupt/s, enable timer */
+	wire_write(s);				/* m min */
+	wire_endTransmission();
+
+	i2c_delay(I2C_1MS);
+
+	pcf8563_reset_timer();
 }
 
 uint8_t pcf8563_get_timer()
@@ -302,5 +332,8 @@ uint8_t pcf8563_get_timer()
 	wire_endTransmission();
 
 	wire_requestFrom(PCF8563_ADDR, 1);
+
+	i2c_delay(I2C_1MS);
+
 	return wire_read();
 }
