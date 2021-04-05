@@ -156,7 +156,9 @@ bool is_my_pkt(uint8_t *p, int len)
 		return false;
 	}
 
-	if (20 == get_dev_type(p)) {
+	uint32_t dtype = get_dev_type(p);
+
+	if (20 == dtype || 21 == dtype) {
 		return false;
 	}
 
@@ -189,27 +191,28 @@ void sync_rtc()
 	pcf8563_set_timer_s(rtc_period);
 }
 
+uint8_t pbuf[48];
+
 void rx_irq_handler()
 {
 	int len = 0, rssi = 0;
-	uint8_t p[48];
 
 	INFOLN("rx");
 
 	NVIC_DisableIRQ(GPIO_ODD_IRQn);
 	NVIC_DisableIRQ(GPIO_EVEN_IRQn);
 
-	len = lora.get_rx_pkt(p, 48);
+	len = lora.get_rx_pkt(pbuf, 48);
 	rssi = lora.get_pkt_rssi();
 
 	if (len > PKT_LEN || len < 0) goto irq_out;
 
-	if (is_my_pkt(p, len) && need_work) {
+	if (is_my_pkt(pbuf, len) && need_work) {
 		// if the devid is the white id
 		// reset the timer
 		sync_rtc();
 
-		push_pkt(&g_cbuf, p, rssi, len);
+		push_pkt(&g_cbuf, pbuf, rssi, len);
 	}
 
 irq_out:
@@ -257,9 +260,11 @@ void key_irq_handler()
 	INFOLN("");
 }
 
+void radio_setup();
+
 void rtc_irq_handler()
 {
-#if 0
+#if 1
 	NVIC_DisableIRQ(GPIO_ODD_IRQn);
 	NVIC_DisableIRQ(GPIO_EVEN_IRQn);
 #endif
@@ -278,7 +283,14 @@ void rtc_irq_handler()
 
 		rtc_period = 25;
 
+
 	} else if (cnt_rtc_min % 20 == 0) {
+
+		power_on_dev();
+
+		//radio_setup();
+
+		lora.enter_rx();
 
 		need_work = true;
 
@@ -305,11 +317,13 @@ void rtc_irq_handler()
 	INFOHEX(pcf8563_get_timer());
 	INFOLN("");
 
-	power_off_dev();
+	if (need_work == false) {
+		power_off_dev();
+	}
 	//need_push = 0x5a;
 	//tx_cause = TIMER_TX;
 
-#if 0
+#if 1
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
 	NVIC_EnableIRQ(GPIO_ODD_IRQn);
@@ -370,7 +384,7 @@ void setup()
 
 	pcf8563_set_from_int(2021, 4, 3, 17, 20, 0);
 
-	sync_rtc();
+	//sync_rtc();
 
 	INFO("RTC ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
@@ -413,10 +427,6 @@ void loop()
 	if (need_work == true && 1 == digitalRead(KEY_PIN)
 		&& vbat_low == false) {
 
-		power_on_dev();
-		radio_setup();
-		lora.enter_rx();
-
 		cc_worker();
 	}
 
@@ -436,6 +446,19 @@ void loop()
 void cc_worker()
 {
 	WDOG_Feed();
+
+	int len = lora.rx(pbuf, 48);
+	int rssi = lora.get_pkt_rssi();
+
+	if (len > PKT_LEN || len < 0) return;
+
+	if (is_my_pkt(pbuf, len) && need_work) {
+		// if the devid is the white id
+		// reset the timer
+		sync_rtc();
+
+		push_pkt(&g_cbuf, pbuf, rssi, len);
+	}
 
 	noInterrupts();
 	int ret = get_pkt(&g_cbuf, &d);
