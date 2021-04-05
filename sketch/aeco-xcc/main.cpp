@@ -481,6 +481,7 @@ void cc_worker()
 		// there is no pkt
 		// Serial.print(".");
 	} else {
+
 		tx_pkt(d.data, d.plen);
 
 		hex_pkt(d.data, d.rssi, d.plen);
@@ -499,8 +500,12 @@ int tx_pkt(uint8_t *p, int len)
 
 	set_pkt_mic(p, len);
 
+	lora.set_standby(SX126X_STANDBY_RC);
+
 	lora.enable_cad();
 	int e = lora.send(p, len, SX126x_TXMODE_SYNC);
+
+	lora.enter_rx();
 
 	return e;
 }
