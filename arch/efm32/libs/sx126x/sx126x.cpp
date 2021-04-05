@@ -165,7 +165,7 @@ int16_t SX126x::init()
 	while (0x22 != get_status()) {
 		set_standby(SX126X_STANDBY_RC);
 		set_regulator_mode(SX126X_REGULATOR_DC_DC);
-		delay(50);
+		sx_delay(50);
 	}
 
 	get_status();
@@ -472,9 +472,9 @@ int SX126x::get_pkt_rssi()
 void SX126x::reset(void)
 {
 	digitalWrite(_pin_reset, LOW);
-	delay(50);
+	sx_delay(80);
 	digitalWrite(_pin_reset, HIGH);
-	delay(20);
+	sx_delay(40);
 	while (digitalRead(_pin_busy)) ;
 }
 
