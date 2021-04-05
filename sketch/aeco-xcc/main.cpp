@@ -182,6 +182,17 @@ bool is_my_pkt(uint8_t *p, int len)
 	return true;
 }
 
+uint16_t get_crc(uint8_t *pp, int len)
+{
+	int i;
+	uint16_t hh = 0;
+
+	for (i = 0; i < len; i++) {
+		hh += pp[i];
+	}
+	return hh;
+}
+
 void sync_rtc()
 {
 	rtc_period = RTC_PERIOD;
@@ -443,6 +454,8 @@ void loop()
 	}
 }
 
+int tx_pkt(uint8_t *p, int len);
+
 void cc_worker()
 {
 	WDOG_Feed();
@@ -468,7 +481,26 @@ void cc_worker()
 		// there is no pkt
 		// Serial.print(".");
 	} else {
+		tx_pkt(d.data, d.plen);
+
 		hex_pkt(d.data, d.rssi, d.plen);
 		need_work = false;
 	}
+}
+
+int tx_pkt(uint8_t *p, int len)
+{
+	p[27] |= 0x10;		// mark as cc-relayed
+	p[17] = 1;			// increment the cc-relayed-cnt
+
+	uint16_t ui16 = get_crc(p, len-6);
+	uint8_t *pcrc = (uint8_t *) &ui16;
+	p[len-6] = pcrc[1]; p[len-5] = pcrc[0];
+
+	set_pkt_mic(p, len);
+
+	lora.enable_cad();
+	int e = lora.send(p, len, SX126x_TXMODE_SYNC);
+
+	return e;
 }
