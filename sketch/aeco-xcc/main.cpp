@@ -27,6 +27,7 @@
 
 #include "tx_ctrl.h"
 #include "circ_buf.h"
+#include "flash.h"
 
 #define DEBUG			1
 
@@ -367,6 +368,8 @@ inline void radio_setup()
 void setup()
 {
 	crypto_init();
+
+	flash_init();
 
 	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
 
