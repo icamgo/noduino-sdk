@@ -67,6 +67,8 @@ bool need_work __attribute__((aligned(4))) = true;
 
 bool vbat_low __attribute__((aligned(4))) = false;
 
+bool need_paired __attribute__((aligned(4))) = false;
+
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
 #define INFOHEX(param)			Serial.print(param,HEX)
@@ -262,6 +264,15 @@ void key_irq_handler()
 	 * 1. report white list id
 	 * 2. waiting 30s? for the new white list id
 	*/
+	power_on_dev();
+
+	WDOG_Feed();
+
+	pcf8563_clear_timer();
+
+	lora.enter_rx();
+	need_work = true;
+
 	INFOLN("key");
 
 	INFOHEX(pcf8563_get_ctrl2());
@@ -435,13 +446,15 @@ void cc_worker();
 
 void loop()
 {
-	if (need_work == true && 1 == digitalRead(KEY_PIN)
+//	if (need_work == true && 1 == digitalRead(KEY_PIN)
+	if (need_work == true
 		&& vbat_low == false) {
 
 		cc_worker();
 	}
 
-	if (need_work == false || 0 == digitalRead(KEY_PIN)
+//	if (need_work == false || 0 == digitalRead(KEY_PIN)
+	if (need_work == false
 		|| vbat_low == true) {
 
 		WDOG_Feed();
