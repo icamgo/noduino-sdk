@@ -395,6 +395,8 @@ class SX126x {
 	void enable_cad();
 	void disable_cad();
 
+	void set_standby(uint8_t mode);
+
  private:
 	uint8_t pkt_params[6];
 	bool tx_active;
@@ -425,8 +427,6 @@ class SX126x {
 	void set_dio3_as_tcxo_ctrl(uint8_t tcxo_volt, uint32_t timeout);
 	void set_dio2_as_rfswitch_ctrl(uint8_t enable);
 
-
-	void set_standby(uint8_t mode);
 	void wait_on_busy(void);
 
 	void set_rf_freq(uint32_t frequency);
