@@ -64,10 +64,12 @@ bool is_our_pkt(uint8_t *p, int len)
 		return false;
 	}
 
+	#if 0
 	if (check_crc(p, len) == false) {
 
 		return false;
 	}
+	#endif
 
 	if (p[3] != 0 || p[4] != 0 || p[5] != 0) {
 
