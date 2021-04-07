@@ -41,8 +41,7 @@ SX126x sx126x(2,					// Pin: SPI CS,PIN06-PB08-D2
 #endif
 
 #define ENABLE_CRYPTO				1
-#define ENABLE_CAD				1
-
+#define ENABLE_CAD					1
 
 #ifdef ENABLE_CRYPTO
 #include "crypto.h"
@@ -114,13 +113,19 @@ uint16_t tx_count = 0;
 
 #endif
 
+
+#define RTC_PERIOD					30
+#define TX_PERIOD					120
 uint32_t cnt_rtc_min __attribute__((aligned(4))) = 0;
+//uint32_t rtc_period __attribute__((aligned(4))) = RTC_PERIOD;
+//uint32_t tx_period __attribute__((aligned(4))) = 600;
 
 #define LOW_BAT_THRESHOLD			3.4
 static float cur_vbat = 0.0;
 bool vbat_low __attribute__((aligned(4))) = false;
 int cnt_vbat_low __attribute__((aligned(4))) = 0;
 int cnt_vbat_ok __attribute__((aligned(4))) = 0;
+
 
 void push_data();
 
@@ -363,7 +368,7 @@ void rtc_irq_handler()
 	INFOHEX(pcf8563_get_ctrl2());
 	INFOLN("");
 
-	if (cnt_rtc_min % 20 == 0) {
+	if (cnt_rtc_min % (TX_PERIOD/RTC_PERIOD) == 0) {
 		/* 10 min */
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
@@ -576,7 +581,7 @@ void push_data()
 	 * 2. crc
 	 * 3. set mic
 	*/
-	#if 1
+	#if 0
 	uint16_t ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
