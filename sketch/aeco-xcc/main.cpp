@@ -378,10 +378,15 @@ void setup()
 	wInit.em3Run = true;
 	wInit.perSel = wdogPeriod_64k;	/* 256k 1kHz periods should give 256 seconds */
 
+	/* Start watchdog */
+	WDOG_Init(&wInit);
+
 #ifdef DEBUG
 	Serial.setRouteLoc(1);
 	Serial.begin(115200);
 #endif
+
+	pinMode(PWR_CTRL_PIN, OUTPUT);
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
@@ -391,12 +396,8 @@ void setup()
 	pinMode(RF_INT_PIN, INPUT);
 	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
 
-	pinMode(PWR_CTRL_PIN, OUTPUT);
-	power_on_dev();
-
-	delay(100);
-
 	pcf8563_init(SCL_PIN, SDA_PIN);
+
 	int ctrl = pcf8563_get_ctrl2();
 	INFO("RTC ctrl2: ");
 	INFOHEX(ctrl);
@@ -422,13 +423,12 @@ void setup()
 	pinMode(RTC_INT_PIN, INPUT);
 	attachInterrupt(RTC_INT_PIN, rtc_irq_handler, FALLING);
 
+	power_on_dev();
+
 	radio_setup();
 	lora.enter_rx();
 
 	Serial.println("RX testing...");
-
-	/* Start watchdog */
-	WDOG_Init(&wInit);
 }
 
 void deep_sleep()
