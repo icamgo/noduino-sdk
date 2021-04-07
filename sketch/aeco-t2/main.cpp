@@ -24,7 +24,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.3"
+#define FW_VER						"Ver 1.4"
 
 /* 1 hour - 1 point */
 #define CONFIG_2MIN					1
@@ -526,6 +526,7 @@ void push_data(bool cad_on)
 	spi_end();
 
 #elif USE_SX126X
+	sx126x.enable_cad();
 	e = sx126x.send(message, PAYLOAD_LEN+6, SX126x_TXMODE_SYNC);
 	sx126x.set_sleep();
 #endif
