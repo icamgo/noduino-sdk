@@ -150,6 +150,17 @@ float fetch_mcu_temp()
 	return temp;
 }
 
+float fetch_vbat()
+{
+	float vbat = 0;
+
+	for (int i = 0; i < 5; i++) {
+		vbat += adc.readVbat();
+	}
+
+	return vbat/5.0;
+}
+
 #ifdef USE_PT1K_X1
 int get_water()
 {
@@ -485,8 +496,6 @@ void push_data()
 	long startSend;
 	long endSend;
 
-	float vbat = 0.0;
-
 	int e;
 
 	uint8_t *pkt = message;
@@ -511,7 +520,7 @@ void push_data()
 #endif
 	////////////////////////////////
 
-	vbat = adc.readVbat();
+	cur_vbat = fetch_vbat();
 
 	power_on_dev();
 	cur_water = get_water();
