@@ -84,6 +84,24 @@ bool need_paired __attribute__((aligned(4))) = false;
 #define FLUSHOUTPUT
 #endif
 
+inline uint64_t get_devid()
+{
+	uint64_t *p;
+
+	p = (uint64_t *)0x0FE00008;
+
+	return *p;
+}
+
+inline uint32_t get_prog_ts()
+{
+	uint32_t *p;
+
+	p = (uint32_t *)0x0FE00004;
+
+	return *p;
+}
+
 void power_on_dev()
 {
 	digitalWrite(PWR_CTRL_PIN, HIGH);
@@ -408,8 +426,7 @@ void setup()
 		}
 	}
 
-	pcf8563_set_from_int(2021, 4, 3, 17, 20, 0);
-
+	pcf8563_set_from_seconds(get_prog_ts());
 	//sync_rtc();
 
 	INFO("RTC ctrl2: ");

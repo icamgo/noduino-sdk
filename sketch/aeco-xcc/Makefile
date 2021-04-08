@@ -285,7 +285,7 @@ coff: build/main.elf
 	$(NM) -n $< > $@
 
 ############################################################
-dev_type	:= 08
+dev_type	:= 28
 year		:= $(shell date +%y)
 week		:= $(shell date +%V)
 
@@ -299,9 +299,9 @@ endif
 
 ifndef id
 id = $$(($(id_base)+$(rand)%10000))
+endif
 
 id_ok = $$(cat .idused | grep $(id))
-endif
 
 hex_id = $$(printf "%016X" $(id) | fold -w2 | tac | tr -d "\n")
 
@@ -313,13 +313,17 @@ ifndef fw
 fw := build/main.bin
 endif
 
+TS=$$(date +%s)
+HEX_TS = $$(printf "%08X" $(TS) | fold -w2 | tac | tr -d "\n")
+
 # make produce (write firmware main.bin into main flash, set a random devid and log it)
 # make produce fw=xxx.bin (write firmware xxx.bin into main flash, set a random devid and log it)
 produce: $(fw)
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FW)
 	-$(Q) echo "Generating the random DevID: $(id)"
-	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
-		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused;				\
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;			\
+		echo $(TS) | xxd -r -s 4 -p - .u.bin; 												\
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
@@ -335,8 +339,9 @@ go: $(fw) .u.bin
 
 .u.bin:
 	-$(Q) echo $(id)
-	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
-		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused;			\
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;		\
+		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;										\
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 
 upload: build/main.bin
@@ -394,7 +399,8 @@ getuuid:
 # make setid id=xxx (set id=xxx, do not log it)
 setid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
-	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;  \
+	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;	\
+		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;								\
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
@@ -403,7 +409,8 @@ setid:
 # same as setid
 setdid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
-	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;  \
+	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;	\
+		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;								\
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
