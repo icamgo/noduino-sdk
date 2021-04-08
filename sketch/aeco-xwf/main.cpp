@@ -25,7 +25,7 @@
 #include "math.h"
 #include "em_wdog.h"
 
-//#define	DEBUG					1
+#define	DEBUG					1
 
 #ifdef CONFIG_V0
 #include "softspi.h"
@@ -161,105 +161,13 @@ float fetch_vbat()
 	return vbat/5.0;
 }
 
-#ifdef USE_PT1K_X1
 int get_water()
 {
 	int ret = 0;
 	uint32_t rt = 0;
 
-	power_on_dev();
 	pt1000_init();
 	rt = pt1000_get_rt();
-	power_off_dev();
-
-	/* 1 - LOW, 2 - Median, 0 - High */
-	ret = rt / 10000;
-
-	switch (ret) {
-		case 1:
-			ret = LEVEL_LOW;
-			break;
-		case 2:
-			ret = LEVEL_MEDIAN;
-			break;
-		case 0:
-			ret = LEVEL_HIGH;
-			break;
-		default:
-			ret = LEVEL_UNKNOWN;
-	}
-
-	/* (pt1K + 1.1K) para. 1.1K, [7223.35, 7624.92] */
-	/* (pt1k + 0.5K) para. 0.5K, [3752.43, 3951.83] */
-	/* 3pt1k, [6692.67, 9234] */
-	if (ret == LEVEL_HIGH && (rt > 7625 || rt < 7223)) {
-
-		ret = LEVEL_UNKNOWN;
-	}
-
-	/* 1 x pt1K+ 1.1K, (21039, 24851] */
-	/* 1 x pt1k+ 0.5K, (15039, 18851] */
-	/* 3pt1k, [20078, 27702 */
-	if (ret == LEVEL_MEDIAN && (rt > 24851 || rt < 21039)) {
-
-		ret = LEVEL_UNKNOWN;
-	}
-
-	/* 1 x pt1K, (10039, 13851] */
-	if (ret == LEVEL_LOW && (rt > 13851 || rt < 10039)) {
-
-		ret = LEVEL_UNKNOWN;
-	}
-
-	return ret;
-}
-
-float get_temp()
-{
-	int n = 0;
-	uint32_t rt = 0;
-
-	pt1000_init();
-	rt = pt1000_get_rt();
-
-	n = rt / 10000;
-
-	if (2 == n) {
-		/* median */
-
-		rt -= 11000;
-
-	} else if (0 == n) {
-		/* high */
-
-		//rt = 1.0 / (1.0/(double)rt - 1.0/11000.0) - 11000;
-		rt = 11000.0*(double)rt / (double)(11000.0 - rt) - 11000;
-
-	} // n >= 3, rt = rt
-
-	// n == 1, rt = rt
-
-	if (n != 3 && (rt > 13851 || rt <= 10039)) {
-
-		// n = 0, 1, 2, 4...
-
-		return -2.0;
-	}
-
-	// n = 3 is the 300'C, no sensor connected
-
-	return cal_temp(rt);
-}
-#else
-int get_water()
-{
-	int ret = 0;
-	uint32_t rt = 0;
-
-	power_on_dev();
-	pt1000_init();
-	rt = pt1000_get_rt();
-	power_off_dev();
 
 	/* 1 - LOW, 2 - Median, 0 - High */
 	ret = rt / 10000;
@@ -307,6 +215,9 @@ float get_temp()
 	pt1000_init();
 	rt = pt1000_get_rt();
 
+	INFO("rt = ");
+	INFOLN(rt);
+
 	n = rt / 10000;
 
 	if (2 == n) {
@@ -332,7 +243,6 @@ float get_temp()
 
 	return cal_temp(rt);
 }
-#endif
 
 #ifdef MONITOR_CURRENT
 float fetch_current()
@@ -523,8 +433,11 @@ void push_data()
 	cur_vbat = fetch_vbat();
 
 	power_on_dev();
-	cur_water = get_water();
 	cur_temp = get_temp() + T_FIX;
+	cur_water = get_water();
+
+	INFO("T = ");
+	INFOLN((int)(cur_temp));
 
 	uint64_t devid = get_devid();
 
