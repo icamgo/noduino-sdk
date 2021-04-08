@@ -429,6 +429,7 @@ char *decode_sensor_data(uint8_t *pkt)
 			sprintf(dev_data, "V/%d", data);
 			break;
 		case 13:
+		case 29:
 			// Float & Temp Sensor
 			dd = (float)(data / 10.0);
 			ftoa(data_buf, dd, 1);
@@ -446,6 +447,12 @@ char *decode_sensor_data(uint8_t *pkt)
 			ftoa(data_buf, dd, 1);
 			sprintf(dev_data, "T/%s", data_buf);
 			break;
+		case 28:
+			// Paired-TCC
+			// max did: 0x02.FF.FF.FF.FF = 12884901887
+			dd = (float)(data / 10.0);
+			ftoa(data_buf, dd, 1);
+			sprintf(dev_data, "T/%s/PID/%d", data_buf, pkt[20] << 24 | pkt[21] << 16 | pkt[22] << 8 | pkt[23]);
 	}
 	return dev_data;
 }
