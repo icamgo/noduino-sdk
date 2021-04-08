@@ -93,7 +93,9 @@ uint8_t tx_cause = RESET_TX;
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 
-uint16_t tx_count = 0;
+uint32_t tx_count __attribute__((aligned(4))) = 0;
+uint32_t tx_ts __attribute__((aligned(4))) = 0;
+
 
 #ifdef DEBUG
 
@@ -215,9 +217,6 @@ float get_temp()
 	pt1000_init();
 	rt = pt1000_get_rt();
 
-	INFO("rt = ");
-	INFOLN(rt);
-
 	n = rt / 10000;
 
 	if (2 == n) {
@@ -266,7 +265,7 @@ float fetch_current()
 }
 #endif
 
-void trig_check_sensor()
+void key_irq_handler()
 {
 	need_push = 0x5a;
 	tx_cause = KEY_TX;
@@ -293,6 +292,8 @@ void rtc_irq_handler()
 		/* 10 min */
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
+
+		tx_ts = pcf8563_now();
 	}
 
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
@@ -324,7 +325,7 @@ void setup()
 	power_off_dev();
 
 	pinMode(KEY_PIN, INPUT);
-	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
+	attachInterrupt(KEY_PIN, key_irq_handler, FALLING);
 
 #ifdef DEBUG
 	Serial.setRouteLoc(1);
@@ -482,13 +483,12 @@ void push_data()
 	// pkt[27] = 0b100, set bit 2, HTimer rpt pkt
 	pkt[PAYLOAD_LEN-3] = 0x4;
 
-	uint32_t ep = pcf8563_now();
-
-	if (ep < 1617783965) {
-		ep = 0;
+	//tx_ts = pcf8563_now();
+	if (tx_ts < 1617783965) {
+		tx_ts = 0;
 	}
 
-	p = (uint8_t *) &ep;
+	p = (uint8_t *) &tx_ts;
 	pkt[18] = p[3];
 	pkt[19] = p[2];
 	pkt[24] = p[1];
@@ -552,8 +552,8 @@ void push_data()
 #ifdef DEBUG
 	endSend = millis();
 
-	//INFO("LoRa Sent in ");
-	//INFOLN(endSend - startSend);
+	INFO("TX time: ");
+	INFOLN(endSend - startSend);
 #endif
 
 	INFO("TX state: ");
