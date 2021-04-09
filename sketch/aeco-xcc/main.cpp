@@ -36,6 +36,8 @@
 #define TXRX_CH			472500000	// Hz center frequency
 #define TX_PWR			22			// dBm tx output power
 
+#define	PAYLOAD_LEN		30			/* 30+2+4 = 36B */
+
 ////////////////////////////////////////////////////////////
 #ifdef EFM32GG230F512
 /* EFM32GG */
@@ -59,6 +61,7 @@ SX126x lora(2,		// Pin: SPI CS,PIN06-PB08-D2
 	    3				// Pin: DIO1,  PIN08-PB11-D3
     );
 
+uint8_t rpt_pkt[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 struct circ_buf g_cbuf __attribute__((aligned(4)));
 struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
 
@@ -69,6 +72,16 @@ bool need_work __attribute__((aligned(4))) = true;
 bool vbat_low __attribute__((aligned(4))) = false;
 
 bool need_paired __attribute__((aligned(4))) = false;
+bool tx_rpt __attribute__((aligned(4))) = false;
+
+uint32_t tx_cnt_1h __attribute__((aligned(4))) = 0;
+bool need_rpt __attribute__((aligned(4))) = false;
+
+#define	RESET_TX			0
+#define	DELTA_TX			1
+#define	TIMER_TX			2
+#define	KEY_TX				3
+#define	MAC_TX				10
 
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
@@ -83,6 +96,12 @@ bool need_paired __attribute__((aligned(4))) = false;
 #define INFOHEX(param)
 #define FLUSHOUTPUT
 #endif
+
+void radio_setup();
+int tx_pkt(uint8_t *p, int len);
+void set_cc_rpt();
+void cc_worker();
+void rx_worker();
 
 inline uint64_t get_devid()
 {
@@ -100,6 +119,17 @@ inline uint32_t get_prog_ts()
 	p = (uint32_t *)0x0FE00004;
 
 	return *p;
+}
+
+inline float fetch_vbat()
+{
+	float vbat = 0;
+
+	for (int i = 0; i < 3; i++) {
+		vbat += adc.readVbat();
+	}
+
+	return vbat/3.0;
 }
 
 void power_on_dev()
@@ -244,6 +274,9 @@ void rx_irq_handler()
 		// reset the timer
 		sync_rtc();
 
+		// paired
+		need_paired = false;
+
 		push_pkt(&g_cbuf, pbuf, rssi, len);
 	}
 
@@ -287,11 +320,21 @@ void key_irq_handler()
 
 	WDOG_Feed();
 
+	/* disable the rtc timer */
 	pcf8563_clear_timer();
 
-	lora.enter_rx();
-	need_work = true;
+	/* report the paired id */
+	set_cc_rpt();
+	g_cfg.tx_cause = KEY_TX;
+	push_pkt(&g_cbuf, rpt_pkt, 0, PAYLOAD_LEN+6);
 
+
+	/* open the rx window */
+	need_work = true;
+	need_paired = true;
+	lora.enter_rx();
+
+#ifdef DEBUG
 	INFOLN("key");
 
 	INFOHEX(pcf8563_get_ctrl2());
@@ -299,9 +342,8 @@ void key_irq_handler()
 
 	INFOHEX(pcf8563_get_timer());
 	INFOLN("");
+#endif
 }
-
-void radio_setup();
 
 void rtc_irq_handler()
 {
@@ -324,14 +366,7 @@ void rtc_irq_handler()
 
 		rtc_period = 25;
 
-
 	} else if (cnt_rtc_min % 20 == 0) {
-
-		power_on_dev();
-
-		//radio_setup();
-
-		lora.enter_rx();
 
 		need_work = true;
 
@@ -360,7 +395,11 @@ void rtc_irq_handler()
 
 	if (need_work == false) {
 		power_off_dev();
+	} else {
+		//radio_setup();
+		lora.enter_rx();
 	}
+
 	//need_push = 0x5a;
 	//tx_cause = TIMER_TX;
 
@@ -427,6 +466,7 @@ void setup()
 	}
 
 	pcf8563_set_from_seconds(get_prog_ts());
+	pcf8563_clear_timer();
 	//sync_rtc();
 
 	INFO("RTC ctrl2: ");
@@ -462,14 +502,12 @@ void deep_sleep()
 
 struct pkt d;
 
-void cc_worker();
-
 void loop()
 {
 //	if (need_work == true && 1 == digitalRead(KEY_PIN)
 	if (need_work == true
 		&& vbat_low == false) {
-
+		rx_worker();
 		cc_worker();
 	}
 
@@ -487,9 +525,7 @@ void loop()
 	}
 }
 
-int tx_pkt(uint8_t *p, int len);
-
-void cc_worker()
+void rx_worker()
 {
 	WDOG_Feed();
 
@@ -506,6 +542,10 @@ void cc_worker()
 		push_pkt(&g_cbuf, pbuf, rssi, len);
 	}
 
+}
+
+void cc_worker()
+{
 	noInterrupts();
 	int ret = get_pkt(&g_cbuf, &d);
 	interrupts();
@@ -514,24 +554,32 @@ void cc_worker()
 		// there is no pkt
 		// Serial.print(".");
 	} else {
-
 		tx_pkt(d.data, d.plen);
-
 		hex_pkt(d.data, d.rssi, d.plen);
-		need_work = false;
+
+		if (need_paired && 0 == get_pkt_cnt(&g_cbuf)) {
+			/* cbuf is null, close the tx window */
+			need_work = false;
+		}
 	}
 }
 
 int tx_pkt(uint8_t *p, int len)
 {
-	p[27] |= 0x10;		// mark as cc-relayed
-	p[17] = 1;			// increment the cc-relayed-cnt
+	if (p[27] != 0) {
+		/*
+		 * It's not the cc report pkt
+		 * Need to process it
+		*/
+		p[27] |= 0x10;		// mark as cc-relayed
+		p[17] = 1;			// increment the cc-relayed-cnt
 
-	uint16_t ui16 = get_crc(p, len-6);
-	uint8_t *pcrc = (uint8_t *) &ui16;
-	p[len-6] = pcrc[1]; p[len-5] = pcrc[0];
+		uint16_t ui16 = get_crc(p, len-6);
+		uint8_t *pcrc = (uint8_t *) &ui16;
+		p[len-6] = pcrc[1]; p[len-5] = pcrc[0];
 
-	set_pkt_mic(p, len);
+		set_pkt_mic(p, len);
+	}
 
 	lora.set_standby(SX126X_STANDBY_RC);
 
@@ -541,4 +589,92 @@ int tx_pkt(uint8_t *p, int len)
 	lora.enter_rx();
 
 	return e;
+}
+
+int16_t get_encode_mcu_temp()
+{
+	float temp = 0.0;
+	for(int i=0; i<3; i++) {
+		temp += adc.temperatureCelsius();
+	}
+	temp /= 3.0;
+
+	int16_t ret = (int16_t)(temp + 0.5) * 10;
+
+	uint8_t xbit = 0;
+#ifdef ENCODE_FULL_CCID
+	/*
+	 * x_bit0: tx_on
+	 * x_bit1: cad_on
+	 * x_bit2: first_ccid
+	*/
+	xbit = first_ccid << 2 | cad_on << 1 | tx_on;
+#endif
+
+	return ret >= 0 ? (ret + xbit) : (ret - xbit);
+}
+
+uint16_t get_encode_vbat()
+{
+	/*
+	 *  1: encode the tx_cnt/min
+	 * 10: encode the tx_cnt/min
+	*/
+	float vbat = fetch_vbat();
+	uint16_t ui16 = vbat * 100;
+
+	ui16 *= 10;
+
+	if (tx_cnt_1h > 9) {
+		tx_cnt_1h = 9;
+	}
+
+	ui16 += (uint16_t)tx_cnt_1h;
+
+	return ui16;
+}
+
+void set_cc_rpt()
+{
+	uint8_t *pkt = rpt_pkt;
+
+	memset(pkt, 0, 32);
+	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
+
+	uint64_t devid = get_devid();
+	uint8_t *p = (uint8_t *) &devid;
+
+	// set devid
+	int i = 0;
+	for(i = 0; i < 8; i++) {
+		pkt[3+i] = p[7-i];
+	}
+
+	int16_t ui16 = get_encode_mcu_temp();
+	p = (uint8_t *) &ui16;
+	pkt[11] = p[1]; pkt[12] = p[0];
+
+	ui16 = get_encode_vbat();
+	p = (uint8_t *) &ui16;
+	pkt[13] = p[1]; pkt[14] = p[0];
+
+	// tx_cause = TIMER_TX
+	pkt[15] = g_cfg.tx_cause;
+
+	uint32_t sec = pcf8563_now();
+	uint8_t *ep = (uint8_t *)&sec;
+	pkt[20] = ep[3];
+	pkt[21] = ep[2];
+	pkt[22] = ep[1];
+	pkt[23] = ep[0];
+
+	pkt[27] = 0;		/* data up pkt, no crypto */
+
+	p = (uint8_t *) &(g_cfg.tx_cnt);
+	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
+	g_cfg.tx_cnt++;
+
+	ui16 = get_crc(pkt, PAYLOAD_LEN);
+	p = (uint8_t *) &ui16;
+	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 }

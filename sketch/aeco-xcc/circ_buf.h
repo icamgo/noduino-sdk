@@ -97,4 +97,15 @@ int get_pkt(struct circ_buf *cbuf, struct pkt *odata)
 	}
 }
 
+int get_pkt_cnt(struct circ_buf *cbuf)
+{
+	int cnt = CIRC_CNT(cbuf->head, cbuf->tail, CIRC_BUF_SIZE);
+
+	if (cnt > 0) {
+		return cnt;
+	} else {
+		return 0;
+	}
+}
+
 #endif

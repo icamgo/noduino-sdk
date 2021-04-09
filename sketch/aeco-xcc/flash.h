@@ -14,8 +14,10 @@ uint32_t *cfg_addr = ((uint32_t *) CFGDATA_BASE);
 typedef struct cfg_data {
 	uint32_t init_flag;
 	uint32_t epoch;
-	uint32_t tx_count;
+	uint32_t tx_cnt;
+	uint32_t tx_cause;
 	uint64_t paired_did;
+	uint32_t paired_rx_ts;
 } cfg_data_t;
 
 cfg_data_t g_cfg __attribute__((aligned(4)));
