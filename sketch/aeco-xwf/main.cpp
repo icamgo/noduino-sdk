@@ -25,7 +25,7 @@
 #include "math.h"
 #include "em_wdog.h"
 
-#define	DEBUG					1
+//#define	DEBUG					1
 
 #ifdef CONFIG_V0
 #include "softspi.h"
@@ -87,7 +87,7 @@ uint8_t tx_cause = RESET_TX;
 #define	TX_TIME					1800
 #elif USE_SX126X
 #define TXRX_CH					472500000
-#define MAX_DBM					14
+#define MAX_DBM					22
 #endif
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
