@@ -25,7 +25,7 @@
 #include "math.h"
 #include "em_wdog.h"
 
-//#define	DEBUG					1
+#define	DEBUG					1
 
 #ifdef CONFIG_V0
 #include "softspi.h"
@@ -352,15 +352,11 @@ void setup()
 	power_on_dev();		/* To consume the current ? */
 	pcf8563_init(SCL_PIN, SDA_PIN);
 
+	i2c_delay_ms(10);
 	int ctrl = pcf8563_get_ctrl2();
 	INFO("RTC ctrl2: ");
 	INFOHEX(ctrl);
 	INFOLN("");
-
-	if (ctrl == 0xFF) {
-		while(true) {
-		}
-	}
 
 	pcf8563_set_from_seconds(get_prog_ts());
 
