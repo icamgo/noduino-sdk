@@ -31,14 +31,19 @@
 
 #define DEBUG			1
 
+/*
+ *
+*/
+#define SRC_TX_PERIOD	120
+#define RPT_TX_PERIOD	600
 #define RTC_PERIOD		30
 
-#define TXRX_CH			472500000	// Hz center frequency
-#define TX_PWR			22			// dBm tx output power
-
-#define	PAYLOAD_LEN		30			/* 30+2+4 = 36B */
+#define TX_PWR			17			// dBm tx output power
 
 ////////////////////////////////////////////////////////////
+#define TXRX_CH			472500000	// Hz center frequency
+#define	PAYLOAD_LEN		30			/* 30+2+4 = 36B */
+
 #ifdef EFM32GG230F512
 /* EFM32GG */
 #define	PWR_CTRL_PIN			4		/* PIN05_PA04_D4 */
@@ -103,7 +108,7 @@ void set_cc_rpt();
 void cc_worker();
 void rx_worker();
 
-inline uint64_t get_devid()
+inline uint64_t read_devid()
 {
 	uint64_t *p;
 
@@ -172,6 +177,17 @@ uint32_t get_dev_type(uint8_t *p)
 	uint64_t temp = devid / 1000000;
 	uint32_t tt = (uint32_t)(temp / 100);
 	return (uint32_t)(temp - tt * 100);
+}
+
+uint64_t get_devid(uint8_t *p)
+{
+	uint64_t devid = 0UL;
+	uint8_t *pd = (uint8_t *) &devid;
+
+	for(int i = 0; i < 8; i++) {
+		pd[7-i] = p[3+i];
+	}
+	return devid;
 }
 
 bool is_my_pkt(uint8_t *p, int len)
@@ -274,8 +290,10 @@ void rx_irq_handler()
 		// reset the timer
 		sync_rtc();
 
-		// paired
+		// paired ok
 		need_paired = false;
+		g_cfg.paired_did = get_devid(pbuf);
+		g_cfg.paired_rx_ts = pcf8563_now();
 
 		push_pkt(&g_cbuf, pbuf, rssi, len);
 	}
@@ -507,6 +525,9 @@ void loop()
 //	if (need_work == true && 1 == digitalRead(KEY_PIN)
 	if (need_work == true
 		&& vbat_low == false) {
+
+		WDOG_Feed();
+
 		rx_worker();
 		cc_worker();
 	}
@@ -527,8 +548,6 @@ void loop()
 
 void rx_worker()
 {
-	WDOG_Feed();
-
 	int len = lora.rx(pbuf, 48);
 	int rssi = lora.get_pkt_rssi();
 
@@ -539,9 +558,13 @@ void rx_worker()
 		// reset the timer
 		sync_rtc();
 
+		// paired ok
+		need_paired = false;
+		g_cfg.paired_did = get_devid(pbuf);
+		g_cfg.paired_rx_ts = pcf8563_now();
+
 		push_pkt(&g_cbuf, pbuf, rssi, len);
 	}
-
 }
 
 void cc_worker()
@@ -641,7 +664,7 @@ void set_cc_rpt()
 	memset(pkt, 0, 32);
 	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
 
-	uint64_t devid = get_devid();
+	uint64_t devid = read_devid();
 	uint8_t *p = (uint8_t *) &devid;
 
 	// set devid
@@ -661,8 +684,12 @@ void set_cc_rpt()
 	// tx_cause = TIMER_TX
 	pkt[15] = g_cfg.tx_cause;
 
+#if 0
 	uint32_t sec = pcf8563_now();
 	uint8_t *ep = (uint8_t *)&sec;
+#else
+	uint8_t *ep = (uint8_t *)&(g_cfg.paired_did);
+#endif
 	pkt[20] = ep[3];
 	pkt[21] = ep[2];
 	pkt[22] = ep[1];
