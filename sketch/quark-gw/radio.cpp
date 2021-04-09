@@ -72,7 +72,7 @@ bool is_our_pkt(uint8_t *p, int len)
 	#endif
 
 	if (p[3] != 0 || p[4] != 0 || p[5] != 0) {
-
+		// 0xFF_FFFF_FFFF = 1099511627775 (len=13)
 		// invalid devid
 		return false;
 	}
@@ -270,7 +270,7 @@ int CarrierSense(bool onlyOnce = false)
 #endif
 
 #ifdef CONFIG_V0
-char devid_buf[24];
+char devid_buf[16];
 char dev_vbat[6];
 char dev_data[48];
 
@@ -452,7 +452,15 @@ char *decode_sensor_data(uint8_t *pkt)
 			// max did: 0x02.FF.FF.FF.FF = 12884901887
 			dd = (float)(data / 10.0);
 			ftoa(data_buf, dd, 1);
-			sprintf(dev_data, "T/%s/PID/%d", data_buf, pkt[20] << 24 | pkt[21] << 16 | pkt[22] << 8 | pkt[23]);
+
+			// uint32_t ddid = (pkt[20] << 24 | pkt[21] << 16 | pkt[22] << 8 | pkt[23]);
+			uint64_t ddid = 0UL;
+			char ppid[12];
+			*(((uint8_t *)&ddid) + 4) = 0x2;
+			for (int i = 0; i <= 3; i++) {
+				*(((uint8_t *)&ddid) + 3 - i) = pkt[20+i];
+			}
+			sprintf(dev_data, "T/%s/PID/%s", data_buf, uint64_to_str(ppid, ddid));
 	}
 	return dev_data;
 }

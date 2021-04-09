@@ -557,7 +557,7 @@ void cc_worker()
 		tx_pkt(d.data, d.plen);
 		hex_pkt(d.data, d.rssi, d.plen);
 
-		if (need_paired && 0 == get_pkt_cnt(&g_cbuf)) {
+		if (false == need_paired && 0 == get_pkt_cnt(&g_cbuf)) {
 			/* cbuf is null, close the tx window */
 			need_work = false;
 		}
