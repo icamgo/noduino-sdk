@@ -681,7 +681,7 @@ bool is_our_pkt(uint8_t *p, int len)
 
 	if (p[2] < 0x31 || p[2] > 0x35) return false;
 
-	if (check_crc(p, len) == false) return false;
+	//if (check_crc(p, len) == false) return false;
 
 	return true;
 }
