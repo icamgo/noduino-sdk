@@ -25,7 +25,6 @@
 #include "sx126x.h"
 #include "crypto.h"
 
-#include "tx_ctrl.h"
 #include "circ_buf.h"
 #include "flash.h"
 
@@ -39,6 +38,9 @@
 #define RTC_PERIOD		30
 
 #define TX_PWR			17			// dBm tx output power
+
+uint32_t work_win __attribute__((aligned(4))) = 10;
+uint32_t pair_win __attribute__((aligned(4))) = 20;
 
 ////////////////////////////////////////////////////////////
 #define TXRX_CH			472500000	// Hz center frequency
@@ -60,6 +62,13 @@
 #define SCL_PIN					13		/* PIN24_PE13 */
 #endif
 
+#define	RESET_TX			0
+#define	DELTA_TX			1
+#define	TIMER_TX			2
+#define	KEY_TX				3
+#define	MAC_TX				10
+
+
 SX126x lora(2,		// Pin: SPI CS,PIN06-PB08-D2
 	    9,				// Pin: RESET, PIN18-PC15-D9
 	    5,				// PIN: Busy,  PIN11-PB14-D5, The RX pin
@@ -68,25 +77,19 @@ SX126x lora(2,		// Pin: SPI CS,PIN06-PB08-D2
 
 uint8_t rpt_pkt[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 struct circ_buf g_cbuf __attribute__((aligned(4)));
-struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
+
+bool need_work __attribute__((aligned(4))) = true;
+bool vbat_low __attribute__((aligned(4))) = false;
+bool need_paired __attribute__((aligned(4))) = false;
+bool tx_rpt __attribute__((aligned(4))) = false;
+bool need_rpt __attribute__((aligned(4))) = false;
 
 int32_t cnt_rtc_min __attribute__((aligned(4))) = 0;
 uint32_t rtc_period __attribute__((aligned(4))) = RTC_PERIOD;
-bool need_work __attribute__((aligned(4))) = true;
 
-bool vbat_low __attribute__((aligned(4))) = false;
-
-bool need_paired __attribute__((aligned(4))) = false;
-bool tx_rpt __attribute__((aligned(4))) = false;
-
+uint32_t pair_start_ts __attribute__((aligned(4))) = 0;
 uint32_t tx_cnt_1h __attribute__((aligned(4))) = 0;
-bool need_rpt __attribute__((aligned(4))) = false;
-
-#define	RESET_TX			0
-#define	DELTA_TX			1
-#define	TIMER_TX			2
-#define	KEY_TX				3
-#define	MAC_TX				10
+uint32_t tx_cause = RESET_TX;
 
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
@@ -285,7 +288,7 @@ void rx_irq_handler()
 
 	if (len > PKT_LEN || len < 0) goto irq_out;
 
-	if (is_my_pkt(pbuf, len) && need_work) {
+	if (is_my_pkt(pbuf, len) && need_work && pbuf[15] == TIMER_TX) {
 		// if the devid is the white id
 		// reset the timer
 		sync_rtc();
@@ -330,46 +333,39 @@ void hex_pkt(uint8_t *p, int rssi, int plen)
 
 void key_irq_handler()
 {
+	NVIC_DisableIRQ(GPIO_ODD_IRQn);
+	NVIC_DisableIRQ(GPIO_EVEN_IRQn);
 	/*
 	 * 1. report white list id
 	 * 2. waiting 30s? for the new white list id
 	*/
-	power_on_dev();
-
-	WDOG_Feed();
 
 	/* disable the rtc timer */
 	pcf8563_clear_timer();
 
-	/* report the paired id */
-	set_cc_rpt();
-	g_cfg.tx_cause = KEY_TX;
-	push_pkt(&g_cbuf, rpt_pkt, 0, PAYLOAD_LEN+6);
-
+	/* need to report the paired id */
+	tx_cause = KEY_TX;
+	need_rpt = true;
 
 	/* open the rx window */
 	need_work = true;
 	need_paired = true;
+	pair_start_ts = seconds();
+
 	lora.enter_rx();
 
-#ifdef DEBUG
 	INFOLN("key");
 
-	INFOHEX(pcf8563_get_ctrl2());
-	INFOLN("");
-
-	INFOHEX(pcf8563_get_timer());
-	INFOLN("");
-#endif
+	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
+	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
+	NVIC_EnableIRQ(GPIO_ODD_IRQn);
+	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
 }
 
 void rtc_irq_handler()
 {
-#if 1
 	NVIC_DisableIRQ(GPIO_ODD_IRQn);
 	NVIC_DisableIRQ(GPIO_EVEN_IRQn);
-#endif
-	power_on_dev();
 
 	WDOG_Feed();
 
@@ -380,33 +376,32 @@ void rtc_irq_handler()
 		need_work = false;
 	}
 
-	if (cnt_rtc_min % 20 == 19) {
+	if (cnt_rtc_min % (SRC_TX_PERIOD/RTC_PERIOD) == (SRC_TX_PERIOD/RTC_PERIOD)-1) {
 
-		rtc_period = 25;
+		rtc_period = RTC_PERIOD - 5;
 
-	} else if (cnt_rtc_min % 20 == 0) {
+	} else if (cnt_rtc_min % (SRC_TX_PERIOD/RTC_PERIOD) == 0) {
 
 		need_work = true;
 
-		rtc_period = 35;
+		rtc_period = RTC_PERIOD + 5;
 
 	} else {
 
 		rtc_period = RTC_PERIOD;
 	}
 
-	pcf8563_init(SCL_PIN, SDA_PIN);
+	//pcf8563_init(SCL_PIN, SDA_PIN);
+	//i2c_delay(5*I2C_1MS);
 
-	i2c_delay(50*I2C_1MS);
 	pcf8563_clear_timer();
 	pcf8563_set_timer_s(rtc_period);
 
 	INFO("rtc, ");
 	INFOLN(cnt_rtc_min);
 
-
-	INFOHEX(pcf8563_get_ctrl2());
-	INFOLN("");
+	//INFOHEX(pcf8563_get_ctrl2());
+	//INFOLN("");
 
 	INFOHEX(pcf8563_get_timer());
 	INFOLN("");
@@ -418,24 +413,15 @@ void rtc_irq_handler()
 		lora.enter_rx();
 	}
 
-	//need_push = 0x5a;
-	//tx_cause = TIMER_TX;
-
-#if 1
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
 	NVIC_EnableIRQ(GPIO_ODD_IRQn);
 	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
-#endif
 }
 
 inline void radio_setup()
 {
-#if 1
 	lora.reset();
-#else
-	lora.wakeup();
-#endif
 	lora.init();
 	lora.setup_v0(TXRX_CH, TX_PWR);
 }
@@ -472,9 +458,10 @@ void setup()
 	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
 
 	pcf8563_init(SCL_PIN, SDA_PIN);
+	i2c_delay_ms(10);
 
 	int ctrl = pcf8563_get_ctrl2();
-	INFO("RTC ctrl2: ");
+	INFO("ctrl2: ");
 	INFOHEX(ctrl);
 	INFOLN("");
 
@@ -483,54 +470,99 @@ void setup()
 		}
 	}
 
-	pcf8563_set_from_seconds(get_prog_ts());
-	pcf8563_clear_timer();
-	//sync_rtc();
+	if (g_cfg.init_flag != 0x55aa) {
+		/* first bootup */
+		pcf8563_set_from_seconds(get_prog_ts());
+	}
 
-	INFO("RTC ctrl2: ");
+	/* stop the rtc timer */
+	pcf8563_clear_timer();
+
+	INFO("ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
 	INFOLN("");
 	INFOLN(pcf8563_now());
-	INFO("RTC timer: ");
-	INFOHEX(pcf8563_get_timer());
-	INFOLN("");
 
 	pinMode(RTC_INT_PIN, INPUT);
 	attachInterrupt(RTC_INT_PIN, rtc_irq_handler, FALLING);
 
 	power_on_dev();
-
 	radio_setup();
-	lora.enter_rx();
 
-	Serial.println("RX testing...");
+	if (g_cfg.paired_did <= 99999999999ULL && g_cfg.paired_did > 0ULL) {
+		/*
+		 * paired is ok
+		 * wdt reset, need to restore the timer
+		*/
+		need_work = false;
+		need_paired = false;
+
+		uint32_t delta = SRC_TX_PERIOD - (pcf8563_now() - g_cfg.paired_rx_ts) % SRC_TX_PERIOD - 5;
+		pcf8563_set_timer_s(delta);
+
+		INFO("RTC timer: ");
+		INFOHEX(pcf8563_get_timer());
+		INFOLN("");
+	} else {
+		// pair is not ok, need to start pair
+
+		need_work = true;
+		need_paired = true;
+		pair_start_ts = seconds();
+
+		lora.enter_rx();
+
+		INFOLN("Wait pair...");
+	}
+
+	need_rpt = true;
+	set_cc_rpt();
+	tx_cause = RESET_TX;
+	push_pkt(&g_cbuf, rpt_pkt, 0, PAYLOAD_LEN+6);
 }
 
 void deep_sleep()
 {
+	lora.set_standby(SX126X_STANDBY_RC);
+	delay(5);
 	lora.set_sleep();
 
 	// dev power off
 	power_off_dev();
 
 	//wire_end();
-	digitalWrite(SCL_PIN, HIGH);
-	digitalWrite(SDA_PIN, HIGH);
+	//digitalWrite(SCL_PIN, HIGH);
+	//digitalWrite(SDA_PIN, HIGH);
 }
 
 struct pkt d;
 
 void loop()
 {
+	if (need_rpt == true) {
+
+		INFO("rptx");
+
+		WDOG_Feed();
+
+		set_cc_rpt();
+		tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
+
+		need_rpt = false;
+	}
+
 //	if (need_work == true && 1 == digitalRead(KEY_PIN)
 	if (need_work == true
 		&& vbat_low == false) {
+
+		//INFO("wk");
 
 		WDOG_Feed();
 
 		rx_worker();
 		cc_worker();
 	}
+
 
 //	if (need_work == false || 0 == digitalRead(KEY_PIN)
 	if (need_work == false
@@ -540,7 +572,7 @@ void loop()
 
 		deep_sleep();
 
-		INFOLN("s");
+		INFO(".");
 
 		EMU_EnterEM2(true);
 	}
@@ -553,7 +585,7 @@ void rx_worker()
 
 	if (len > PKT_LEN || len < 0) return;
 
-	if (is_my_pkt(pbuf, len) && need_work) {
+	if (is_my_pkt(pbuf, len) && need_work && pbuf[15] == TIMER_TX) {
 		// if the devid is the white id
 		// reset the timer
 		sync_rtc();
@@ -578,6 +610,7 @@ void cc_worker()
 		// Serial.print(".");
 	} else {
 		tx_pkt(d.data, d.plen);
+
 		hex_pkt(d.data, d.rssi, d.plen);
 
 		if (false == need_paired && 0 == get_pkt_cnt(&g_cbuf)) {
@@ -625,14 +658,6 @@ int16_t get_encode_mcu_temp()
 	int16_t ret = (int16_t)(temp + 0.5) * 10;
 
 	uint8_t xbit = 0;
-#ifdef ENCODE_FULL_CCID
-	/*
-	 * x_bit0: tx_on
-	 * x_bit1: cad_on
-	 * x_bit2: first_ccid
-	*/
-	xbit = first_ccid << 2 | cad_on << 1 | tx_on;
-#endif
 
 	return ret >= 0 ? (ret + xbit) : (ret - xbit);
 }
@@ -682,14 +707,15 @@ void set_cc_rpt()
 	pkt[13] = p[1]; pkt[14] = p[0];
 
 	// tx_cause = TIMER_TX
-	pkt[15] = g_cfg.tx_cause;
+	pkt[15] = tx_cause;
 
-#if 0
-	uint32_t sec = pcf8563_now();
-	uint8_t *ep = (uint8_t *)&sec;
-#else
-	uint8_t *ep = (uint8_t *)&(g_cfg.paired_did);
-#endif
+	uint8_t *ep;
+	if (g_cfg.paired_did <= 99999999999ULL && g_cfg.paired_did > 12026109999ULL) {
+		devid = g_cfg.paired_did;
+	} else {
+		devid = 0;
+	}
+	ep = (uint8_t *)&devid;
 	pkt[20] = ep[3];
 	pkt[21] = ep[2];
 	pkt[22] = ep[1];
@@ -704,4 +730,6 @@ void set_cc_rpt()
 	ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
+
+	set_pkt_mic(pkt, PAYLOAD_LEN+6);
 }

@@ -23,11 +23,9 @@ LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
 #DEFS := -DUSE_SX126X -DUART_NO_RX_INT -DDEBUG_SX126X
 DEFS := -DUSE_SX126X -DUART_NO_RX_INT
-#DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
-#DEFS = -DUSE_SOFTSPI
 
 MCU = cortex-m0plus
-F_CPU = 1000000
+F_CPU = 7000000
 
 VERSION=187
 
@@ -118,12 +116,8 @@ $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
-$(LIB_DIR)/softspi/softspi.cpp							\
-$(LIB_DIR)/sht2x/sht2x.cpp								\
-$(LIB_DIR)/sht3x/sht3x.cpp								\
 $(LIB_DIR)/pcf8563/pcf8563.cpp							\
 $(LIB_DIR)/sx126x/sx126x.cpp							\
-$(LIB_DIR)/sx127x/sx1272.cpp
 
 
 CXX_APP = main.cpp
@@ -135,31 +129,22 @@ CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I
 
 CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
 
-CINCS		+= -I  $(LIB_DIR)/softspi/				\
+CINCS		+= 										\
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/pcf8563/					\
-			-I $(LIB_DIR)/sht2x/					\
-			-I $(LIB_DIR)/sht3x/					\
-			-I $(LIB_DIR)/U8g2/src					\
-			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I $(LIB_DIR)/dmadrv					\
 			-I $(LIB_DIR)/spidrv					\
 			-I $(LIB_DIR)/sx126x/					\
-			-I $(LIB_DIR)/sx127x					\
 			-I .
-CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
+
+CXXINCS		+= 							  			\
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/pcf8563/					\
-			-I $(LIB_DIR)/sht2x/					\
-			-I $(LIB_DIR)/sht3x/					\
-			-I $(LIB_DIR)/U8g2/src					\
-			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I $(LIB_DIR)/dmadrv					\
 			-I $(LIB_DIR)/spidrv					\
 			-I $(LIB_DIR)/sx126x/					\
-			-I $(LIB_DIR)/sx127x					\
 			-I .
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
