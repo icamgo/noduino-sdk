@@ -433,7 +433,7 @@ char *decode_sensor_data(uint8_t *pkt)
 			// Float & Temp Sensor
 			dd = (float)(data / 10.0);
 			ftoa(data_buf, dd, 1);
-			sprintf(dev_data, "T/%s/L/%d/iT/%d/TS/%d", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]), pkt[18] << 24 | pkt[19] << 16 | pkt[24] << 8 | pkt[25]);
+			sprintf(dev_data, "T/%s/L/%d/iT/%d/TS/%lu", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]), (uint32_t)(pkt[18] << 24 | pkt[19] << 16 | pkt[24] << 8 | pkt[25]));
 			break;
 		case 14:
 			// Water Leak Sensor
@@ -454,7 +454,7 @@ char *decode_sensor_data(uint8_t *pkt)
 			ftoa(data_buf, dd, 1);
 
 			// uint32_t ddid = (pkt[20] << 24 | pkt[21] << 16 | pkt[22] << 8 | pkt[23]);
-			uint64_t ddid = 0UL;
+			uint64_t ddid = 0ULL;
 			char ppid[12];
 			*(((uint8_t *)&ddid) + 4) = 0x2;
 			for (int i = 0; i <= 3; i++) {
