@@ -352,8 +352,6 @@ void key_irq_handler()
 	need_paired = true;
 	pair_start_ts = seconds();
 
-	lora.enter_rx();
-
 	INFOLN("key");
 
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
@@ -409,7 +407,8 @@ void rtc_irq_handler()
 	if (need_work == false) {
 		power_off_dev();
 	} else {
-		//radio_setup();
+		power_on_dev();
+		radio_setup();
 		lora.enter_rx();
 	}
 
@@ -544,6 +543,9 @@ void loop()
 		INFO("rptx");
 
 		WDOG_Feed();
+
+		power_on_dev();
+		radio_setup();
 
 		set_cc_rpt();
 		tx_pkt(rpt_pkt, PAYLOAD_LEN+6);
