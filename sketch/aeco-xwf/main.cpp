@@ -25,7 +25,7 @@
 #include "math.h"
 #include "em_wdog.h"
 
-#define	DEBUG					1
+//#define	DEBUG					1
 
 #ifdef CONFIG_V0
 #include "softspi.h"
@@ -128,8 +128,25 @@ bool vbat_low __attribute__((aligned(4))) = false;
 int cnt_vbat_low __attribute__((aligned(4))) = 0;
 int cnt_vbat_ok __attribute__((aligned(4))) = 0;
 
-
 void push_data();
+
+inline uint64_t get_devid()
+{
+	uint64_t *p;
+
+	p = (uint64_t *)0x0FE00008;
+
+	return *p;
+}
+
+inline uint32_t get_prog_ts()
+{
+	uint32_t *p;
+
+	p = (uint32_t *)0x0FE00004;
+
+	return *p;
+}
 
 void power_on_dev()
 {
@@ -345,7 +362,7 @@ void setup()
 		}
 	}
 
-	pcf8563_set_from_int(2021, 4, 7, 16, 36, 0);
+	pcf8563_set_from_seconds(get_prog_ts());
 
 	//pcf8563_set_timer(1);
 	pcf8563_set_timer_s(30);
@@ -380,15 +397,6 @@ void qsetup()
 	sx126x.init();
 	sx126x.setup_v0(TXRX_CH, MAX_DBM);
 #endif
-}
-
-uint64_t get_devid()
-{
-	uint64_t *p;
-
-	p = (uint64_t *)0x0FE00008;
-
-	return *p;
 }
 
 uint16_t get_crc(uint8_t *pp, int len)
