@@ -39,7 +39,7 @@
 
 #define TX_PWR			17			// dBm tx output power
 
-uint32_t work_win __attribute__((aligned(4))) = 10;
+uint32_t work_win __attribute__((aligned(4))) = 6;
 uint32_t pair_win __attribute__((aligned(4))) = 30;
 
 ////////////////////////////////////////////////////////////
@@ -87,7 +87,7 @@ bool need_rpt __attribute__((aligned(4))) = false;
 int32_t cnt_rtc_min __attribute__((aligned(4))) = 0;
 uint32_t rtc_period __attribute__((aligned(4))) = RTC_PERIOD;
 
-uint32_t pair_start_ts __attribute__((aligned(4))) = 0;
+uint32_t start_ts __attribute__((aligned(4))) = 0;
 uint32_t tx_cnt_1h __attribute__((aligned(4))) = 0;
 uint32_t tx_cause = RESET_TX;
 
@@ -350,7 +350,7 @@ void key_irq_handler()
 	/* open the rx window */
 	need_work = true;
 	need_paired = true;
-	pair_start_ts = seconds();
+	start_ts = seconds();
 
 	INFOLN("key");
 
@@ -376,13 +376,13 @@ void rtc_irq_handler()
 
 	if (cnt_rtc_min % (SRC_TX_PERIOD/RTC_PERIOD) == (SRC_TX_PERIOD/RTC_PERIOD)-1) {
 
-		rtc_period = RTC_PERIOD - 5;
+		rtc_period = RTC_PERIOD - 3;
 
 	} else if (cnt_rtc_min % (SRC_TX_PERIOD/RTC_PERIOD) == 0) {
 
 		need_work = true;
 
-		rtc_period = RTC_PERIOD + 5;
+		rtc_period = RTC_PERIOD + 3;
 
 	} else {
 
@@ -410,6 +410,7 @@ void rtc_irq_handler()
 		power_on_dev();
 		radio_setup();
 		lora.enter_rx();
+		start_ts = seconds();
 	}
 
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
@@ -507,7 +508,7 @@ void setup()
 
 		need_work = true;
 		need_paired = true;
-		pair_start_ts = seconds();
+		start_ts = seconds();
 
 		lora.enter_rx();
 
@@ -557,20 +558,28 @@ void loop()
 	if (need_work == true
 		&& vbat_low == false) {
 
-		//INFO("wk");
-
-		if (need_paired) {
-			if (seconds() > (pair_start_ts + pair_win)) {
-				need_paired = false;
-				need_work = false;
-				INFOLN("pair end");
-			}
-		}
-
 		WDOG_Feed();
+
+		//INFO("wk");
 
 		rx_worker();
 		cc_worker();
+
+		if (need_paired) {
+			if (seconds() > (start_ts + pair_win)) {
+				need_paired = false;
+				need_work = false;
+				start_ts = 0;
+				INFOLN("pair end");
+			}
+
+		} else {
+
+			if (seconds() > (start_ts + work_win)) {
+				need_work = false;
+				start_ts = 0;
+			}
+		}
 	}
 
 
