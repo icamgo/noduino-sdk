@@ -40,7 +40,7 @@
 #define TX_PWR			17			// dBm tx output power
 
 uint32_t work_win __attribute__((aligned(4))) = 10;
-uint32_t pair_win __attribute__((aligned(4))) = 20;
+uint32_t pair_win __attribute__((aligned(4))) = 30;
 
 ////////////////////////////////////////////////////////////
 #define TXRX_CH			472500000	// Hz center frequency
@@ -558,6 +558,14 @@ void loop()
 		&& vbat_low == false) {
 
 		//INFO("wk");
+
+		if (need_paired) {
+			if (seconds() > (pair_start_ts + pair_win)) {
+				need_paired = false;
+				need_work = false;
+				INFOLN("pair end");
+			}
+		}
 
 		WDOG_Feed();
 
