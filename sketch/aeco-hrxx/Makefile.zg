@@ -18,12 +18,12 @@ TARGET		= main.cpp
 
 SDK_BASE	?= ../..
 ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
-ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
+ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
+#ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
 #DEFS := -DCONFIG_V0 -DUSE_SOFTSPI -DUSE_SOFTI2C
 DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
-#DEFS = -DUSE_SOFTSPI
 
 MCU = cortex-m0plus
 #F_CPU = 7000000
@@ -139,6 +139,8 @@ $(LIB_DIR)/U8g2/src/clib/u8x8_u8toa.c					\
 $(LIB_DIR)/rtcdrv/rtcdriver.c
 
 #$(ARDUINO_CORES)/efm32/efm32dac.c						\
+$(LIB_DIR)/U8g2/src/clib/u8x8_d_ssd1306_128x32.c		\
+$(LIB_DIR)/U8g2/src/clib/u8x8_d_ssd1306_128x64_noname.c	\
 
 CXX_MODULES = 										\
 $(ARDUINO_CORES)/abi.cpp 								\
@@ -162,9 +164,9 @@ MODULES = $(C_MODULES) $(CXX_MODULES)
 SRC = $(C_MODULES)
 CXXSRC = $(CXX_MODULES) $(CXX_APP)
 
-CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32HG/Include -I$(ARDUINO_CORES)/../variants/efm32hg110 
+CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
 
-CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32HG/Include -I$(ARDUINO_CORES)/../variants/efm32hg110 
+CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
 
 CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
@@ -173,8 +175,7 @@ CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/U8g2/src/clib				\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I $(LIB_DIR)/sx127x					\
-			-I .							
-
+			-I .									
 CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/pc10/						\
@@ -189,7 +190,7 @@ CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 
 CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mfp16-format=ieee -mthumb -MMD
 
-DEFS += -DARDUINO_efm32hg110f64 -DEFM32HG -DEFM32HG110F64 			\
+DEFS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
 	-DARM_MATH_CM0PLUS 													\
 	-DF_CPU=$(F_CPU)													\
 	-DUSE_HFRCO															\
@@ -197,7 +198,7 @@ DEFS += -DARDUINO_efm32hg110f64 -DEFM32HG -DEFM32HG110F64 			\
 	-DUSE_LFBLFRCO=1													\
 	-DMENU_SERIAL=SerialLEUART0 										\
 	-DEMDRV_RTCDRV_USE_LFRCO											\
-	-DRAM_LENGTH=4096 -DFLASH_LENGTH=65536 -DEFM32GENERIC	 			\
+	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 			\
 	-DARDUINO_ARCH_EFM32 -DARDUINO=$(VERSION)
 
 CXXFLAGS := -g -Os -w -fno-exceptions -std=gnu++14 -fpermissive			\
@@ -213,7 +214,7 @@ LDFLAGS := -mcpu=$(MCU) -mthumb -Os -Wl,--cref					\
 	-u _sbrk -u link -u _close -u _fstat -u _isatty -u _lseek -u _read	\
 	-u _write -u _exit -u kill -u _getpid
 
-LDFLAGS += "-T$(ARDUINO_BOARD)/ld/efm32hg110f64.ld"
+LDFLAGS += "-T$(ARDUINO_BOARD)/ld/efm32zg110f32.ld"
 
 
 OBJ = $(SRC:.c=.o) $(CXXSRC:.cpp=.o) $(ASRC:.S=.o)
@@ -362,7 +363,7 @@ go: $(fw)
 .u.bin:
 	-$(Q) echo $(id)
 	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
-		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo "Generating the u.bin ..."; cp $(ARDUINO_BOARD)/user.bin .u.bin;				  \
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 
 upload: build/main.bin
