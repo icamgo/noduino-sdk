@@ -25,6 +25,8 @@
 #include "math.h"
 #include "em_wdog.h"
 
+#include "flash.h"
+
 //#define	DEBUG					1
 
 #ifdef CONFIG_V0
@@ -93,8 +95,8 @@ uint8_t tx_cause = RESET_TX;
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 
-uint32_t tx_count __attribute__((aligned(4))) = 0;
-uint32_t tx_ts __attribute__((aligned(4))) = 0;
+//uint32_t tx_count __attribute__((aligned(4))) = 0;
+//uint32_t tx_ts __attribute__((aligned(4))) = 0;
 
 
 #ifdef DEBUG
@@ -117,9 +119,11 @@ uint32_t tx_ts __attribute__((aligned(4))) = 0;
 
 
 #define RTC_PERIOD					30
-#define TX_PERIOD					120
+#define TX_PERIOD					600
+#define INIT_TS						1614665566UL
 uint32_t cnt_rtc_min __attribute__((aligned(4))) = 0;
-//uint32_t rtc_period __attribute__((aligned(4))) = RTC_PERIOD;
+uint32_t rtc_period __attribute__((aligned(4))) = RTC_PERIOD;
+uint32_t rtc_ok __attribute__((aligned(4))) = false;
 //uint32_t tx_period __attribute__((aligned(4))) = 600;
 
 #define LOW_BAT_THRESHOLD			3.4
@@ -297,6 +301,36 @@ void rtc_irq_handler()
 
 	cnt_rtc_min++;
 
+	if (rtc_ok == false) {
+		/*
+		 * rtc_period is: [0, 255], (255, 600)
+		 *
+		 * and rtc_period % 60 == 0 or != 0
+		 *
+		*/
+		uint32_t pps = rtc_period % 60;
+
+		if (rtc_period <= 255 || pps == 0) {
+
+			/* reset to normal rtc_period */
+			rtc_period = RTC_PERIOD;
+			pcf8563_set_timer_s(rtc_period);
+
+			rtc_ok = true;
+			cnt_rtc_min = 0;
+
+		} else if (pps != 0) {
+
+			/* pps: (0, 59] */
+			rtc_period = pps;
+
+			/* waiting for first tx */
+			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
+
+			return;
+		}
+	}
+
 	pcf8563_init(SCL_PIN, SDA_PIN);
 	//i2c_delay(I2C_1MS);
 	pcf8563_reset_timer();
@@ -310,7 +344,7 @@ void rtc_irq_handler()
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 
-		tx_ts = pcf8563_now();
+		g_cfg.tx_ts = pcf8563_now();
 	}
 
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
@@ -321,6 +355,7 @@ void rtc_irq_handler()
 
 void setup()
 {
+	uint32_t cur_ts = 0;
 	Ecode_t e;
 
 	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
@@ -332,6 +367,8 @@ void setup()
 
 	/* Start watchdog */
 	WDOG_Init(&wInit);
+
+	flash_init();
 
 #ifdef ENABLE_CRYPTO
 	crypto_init();
@@ -358,15 +395,9 @@ void setup()
 	INFOHEX(ctrl);
 	INFOLN("");
 
-	pcf8563_set_from_seconds(get_prog_ts());
+	cur_ts = pcf8563_now();
+	INFOLN(cur_ts);
 
-	//pcf8563_set_timer(1);
-	pcf8563_set_timer_s(30);
-
-	INFO("RTC ctrl2: ");
-	INFOHEX(pcf8563_get_ctrl2());
-	INFOLN("");
-	INFOLN(pcf8563_now());
 	INFO("RTC timer: ");
 	INFOHEX(pcf8563_get_timer());
 	INFOLN("");
@@ -374,6 +405,68 @@ void setup()
 
 	pinMode(RTC_INT_PIN, INPUT_PULLUP);
 	attachInterrupt(RTC_INT_PIN, rtc_irq_handler, FALLING);
+
+	if (cur_ts < INIT_TS || g_cfg.tx_ts < INIT_TS) {
+		/*
+		 * First bootup
+		 * TODO: make the tx_ts % 600 == 0
+		 *
+		*/
+		cur_ts = get_prog_ts();
+		pcf8563_set_from_seconds(cur_ts);
+
+		rtc_period = TX_PERIOD - cur_ts % TX_PERIOD;
+
+		if (rtc_period > 0 && rtc_period <= 255) {
+
+			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
+
+		} else {
+			/* rtc_period: (255, 600) */
+			pcf8563_set_timer(rtc_period/60);			/* max: 0xff, 255min */
+		}
+
+	} else {
+		/*
+		 * wdog reset bootup
+		 * TODO: need to restore the tx period
+		*/
+		rtc_ok = false;
+
+		int delta = (cur_ts - g_cfg.tx_ts);
+
+		if (delta >= 0) {
+
+			int dd = delta % TX_PERIOD;
+
+			if (dd > 0) {
+
+				rtc_period = TX_PERIOD - dd;
+
+			} else {
+				rtc_period = RTC_PERIOD;
+				rtc_ok = true;
+			}
+
+			if (rtc_period > 0 && rtc_period <= 255) {
+
+				pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
+
+			} else {
+				/* rtc_period: (255, 600) */
+				pcf8563_set_timer(rtc_period/60);			/* max: 0xff, 255min */
+			}
+
+		} else {
+			/*
+			 * Exception
+			 * reset the tx_ts
+			*/
+			g_cfg.tx_ts = 0;
+			g_cfg.init_flag = 0x55aa;
+			flash_update();
+		}
+	}
 
 	/* bootup tx */
 	tx_cause = RESET_TX;
@@ -487,20 +580,19 @@ void push_data()
 	// pkt[27] = 0b100, set bit 2, HTimer rpt pkt
 	pkt[PAYLOAD_LEN-3] = 0x4;
 
-	//tx_ts = pcf8563_now();
-	if (tx_ts < 1617783965) {
-		tx_ts = 0;
+	if (g_cfg.tx_ts < INIT_TS) {
+		g_cfg.tx_ts = 0;
 	}
 
-	p = (uint8_t *) &tx_ts;
+	p = (uint8_t *) &(g_cfg.tx_ts);
 	pkt[18] = p[3];
 	pkt[19] = p[2];
 	pkt[24] = p[1];
 	pkt[25] = p[0];
 
-	p = (uint8_t *) &tx_count;
+	p = (uint8_t *) &(g_cfg.tx_cnt);
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
-	tx_count++;
+	g_cfg.tx_cnt++;
 
 	/////////////////////////////////////////////////////////
 	/*
