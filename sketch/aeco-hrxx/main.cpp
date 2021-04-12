@@ -369,6 +369,7 @@ char *decode_sensor_type(uint32_t dvt)
 
 char *decode_sensor_data(uint8_t *pkt, uint32_t dvt)
 {
+	uint64_t ddid = 0ULL;
 	int16_t data = 0;
 	float dd  = 0;
 
@@ -390,11 +391,13 @@ char *decode_sensor_data(uint8_t *pkt, uint32_t dvt)
 			ftoa(dev_data, dd, 2);
 			sprintf(dev_data, "%s", dev_data);
 			break;
+		#if 0
 		case 5:
 			// ET-Pump
 			dd = data;
 			sprintf(dev_data, "0x%X", data);
 			break;
+		#endif
 		case 7:
 			// water level (pressure)
 			dd = (float)(data / 100.0);
@@ -438,12 +441,14 @@ char *decode_sensor_data(uint8_t *pkt, uint32_t dvt)
 			ftoa(dev_data, dd, 1);
 			sprintf(dev_data, "%s", dev_data);
 			break;
+
 		case 21:
 			// Internal Temprature of ABC Sensor
 			dd = (float)(data / 10.0);
 			ftoa(dev_data, dd, 1);
 			sprintf(dev_data, "%s", dev_data);
 			break;
+
 		case 29:
 			uint32_t dat = pkt[18] << 24 | pkt[19] << 16 | pkt[24] << 8 | pkt[25];
 			//*(((uint8_t *)&dat) + 3) = pkt[18];
@@ -456,19 +461,25 @@ char *decode_sensor_data(uint8_t *pkt, uint32_t dvt)
 			//sprintf(dev_data, "%d", pkt[18]);
 			//sprintf(dev_data, "%d", dvt);
 			break;
-		case 28:
-			uint64_t ddid = 0ULL;
-			*(((uint8_t *)&ddid) + 4) = 0x2;
-			for (int i = 0; i <= 3; i++) {
-				*(((uint8_t *)&ddid) + 3 - i) = pkt[20+i];
-			}
-			sprintf(dev_data, "%s", uint64_to_str(ddid));
+
+		default:
+			sprintf(dev_data, "0x%04X", data);
 			break;
+	}
+
+	if (dvt == 28) {
+		*(((uint8_t *)&ddid) + 4) = 0x2;
+		for (int i = 0; i <= 3; i++) {
+			*(((uint8_t *)&ddid) + 3 - i) = pkt[20+i];
+		}
+		sprintf(dev_data, "%s", uint64_to_str(ddid));
 	}
 
 	return dev_data;
 }
+#endif
 
+#ifdef DEBUG
 uint8_t decode_cmd(uint8_t *pkt)
 {
 	uint8_t cmdx = 0;
@@ -491,7 +502,6 @@ uint8_t decode_ver(uint8_t *pkt)
 {
 	return pkt[2];
 }
-
 #endif
 
 #ifdef ENABLE_OLED
