@@ -667,6 +667,13 @@ void loop()
 		need_push = 0;
 	}
 
+	if (g_cfg.tx_cnt % 100 == 0) {
+		/* tx_cnt = 100x, about 1000min */
+		g_cfg.init_flag = 0x55aa;
+
+		flash_update();
+	}
+
 #if defined(CONFIG_V0)
 	digitalWrite(SX1272_RST, LOW);
 	spi_end();
