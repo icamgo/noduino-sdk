@@ -12,7 +12,7 @@
 #elif EFM32GG230F512
 #define	CIRC_BUF_SIZE		1024
 #else
-#define	CIRC_BUF_SIZE		6
+#define	CIRC_BUF_SIZE		4
 #endif
 
 #define	PKT_LEN				48
@@ -40,13 +40,6 @@
 	  n <= end ? n : end+1;})
 
 struct pkt {
-/*
-	char head[2];
-	uint8_t ver;
-	uint64_t did;
-	int16_t val;
-	int16_t vbat;
-*/
 	uint8_t data[PKT_LEN];
 	int16_t rssi;
 	int16_t plen;
