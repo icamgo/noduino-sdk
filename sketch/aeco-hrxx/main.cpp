@@ -444,6 +444,18 @@ char *decode_sensor_data(uint8_t *pkt, uint32_t dvt)
 			ftoa(dev_data, dd, 1);
 			sprintf(dev_data, "%s", dev_data);
 			break;
+		case 29:
+			uint32_t dat = pkt[18] << 24 | pkt[19] << 16 | pkt[24] << 8 | pkt[25];
+			//*(((uint8_t *)&dat) + 3) = pkt[18];
+			//*(((uint8_t *)&dat) + 2) = pkt[19];
+			//*(((uint8_t *)&dat) + 1) = pkt[24];
+			//*(((uint8_t *)&dat) + 0) = pkt[25];
+			sprintf(dev_data, "%u", dat);
+
+			//sprintf(dev_data, "%02X%02X%02X%02X", pkt[18], pkt[19], pkt[24], pkt[25]);
+			//sprintf(dev_data, "%d", pkt[18]);
+			//sprintf(dev_data, "%d", dvt);
+			break;
 		case 28:
 			uint64_t ddid = 0ULL;
 			*(((uint8_t *)&ddid) + 4) = 0x2;
@@ -451,9 +463,6 @@ char *decode_sensor_data(uint8_t *pkt, uint32_t dvt)
 				*(((uint8_t *)&ddid) + 3 - i) = pkt[20+i];
 			}
 			sprintf(dev_data, "%s", uint64_to_str(ddid));
-			break;
-		case 29:
-			sprintf(dev_data, "%lu", (uint32_t)(pkt[18] << 24 | pkt[19] << 16 | pkt[24] << 8 | pkt[25]));
 			break;
 	}
 
@@ -1212,11 +1221,13 @@ void loop(void)
 						decode_sensor_data(p, dev_t),
 						decode_vbat(p)
 						);
-				} else if (dev_t == 28 || dev_t == 29) {
+				} else if (28 == dev_t || 29 == dev_t) {
+
 					sprintf(frame_buf[fi + 1], "%s %s",
 						decode_vbat(p),
 						decode_sensor_data(p, dev_t)
 						);
+
 				} else {
 					sprintf(frame_buf[fi + 1], " %s %s %s",
 						decode_sensor_type(dev_t),
