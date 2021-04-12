@@ -276,12 +276,14 @@ uint8_t pbuf[48];
 
 void rx_irq_handler()
 {
-	int len = 0, rssi = 0;
-
-	INFOLN("rx");
-
 	NVIC_DisableIRQ(GPIO_ODD_IRQn);
 	NVIC_DisableIRQ(GPIO_EVEN_IRQn);
+
+	int len = 0, rssi = 0;
+
+	WDOG_Feed();
+
+	INFOLN("rx");
 
 	len = lora.get_rx_pkt(pbuf, 48);
 	rssi = lora.get_pkt_rssi();
@@ -437,7 +439,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_64k;	/* 256k 1kHz periods should give 256 seconds */
+	wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
 
 	/* Start watchdog */
 	WDOG_Init(&wInit);
@@ -458,7 +460,7 @@ void setup()
 	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
 
 	pcf8563_init(SCL_PIN, SDA_PIN);
-	i2c_delay_ms(10);
+	i2c_delay_ms(1000);
 
 	int ctrl = pcf8563_get_ctrl2();
 	INFO("ctrl2: ");
@@ -466,8 +468,8 @@ void setup()
 	INFOLN("");
 
 	if (ctrl == 0xFF) {
-		while(true) {
-		}
+		/* Incorrect state of pcf8563 */
+		NVIC_SystemReset();
 	}
 
 	if (g_cfg.init_flag != 0x55aa) {
