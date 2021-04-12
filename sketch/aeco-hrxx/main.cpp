@@ -298,9 +298,9 @@ uint32_t get_dev_type(uint8_t *p)
 }
 
 // after decode_devid()
-char *decode_sensor_type(uint32_t dev_t)
+char *decode_sensor_type(uint32_t dvt)
 {
-	switch(dev_t) {
+	switch(dvt) {
 		case 0:
 			strcpy(dev_type, "GOT1K");
 			break;
@@ -367,14 +367,14 @@ char *decode_sensor_type(uint32_t dev_t)
 	return dev_type;
 }
 
-char *decode_sensor_data(uint8_t *pkt, uint32_t dev_type)
+char *decode_sensor_data(uint8_t *pkt, uint32_t dvt)
 {
 	int16_t data = 0;
 	float dd  = 0;
 
 	data = (pkt[11]  << 8) | pkt[12];
 
-	switch(dev_type) {
+	switch(dvt) {
 		case 0:
 		case 2:
 		case 4:
