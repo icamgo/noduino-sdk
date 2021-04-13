@@ -27,7 +27,7 @@
 
 #include "flash.h"
 
-#define	DEBUG					1
+//#define	DEBUG					1
 
 #ifdef CONFIG_V0
 #include "softspi.h"
