@@ -37,7 +37,7 @@
 /*
  *
 */
-#define SRC_TX_PERIOD	120
+#define SRC_TX_PERIOD	600
 #define RPT_TX_PERIOD	600
 #define RTC_PERIOD		30
 
@@ -490,7 +490,7 @@ void setup()
 
 	if (g_cfg.init_flag != 0x55aa) {
 		/* first bootup */
-		pcf8563_set_from_seconds(1 + get_prog_ts());
+		pcf8563_set_from_seconds(6 + get_prog_ts());
 	}
 
 	/* stop the rtc timer */
