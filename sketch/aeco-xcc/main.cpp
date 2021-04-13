@@ -684,9 +684,10 @@ void rx_worker()
 
 			ptx_ts = (uint32_t)(pbuf[22] << 8 | pbuf[23]);
 			if (ptx_ts < SRC_TX_PERIOD) {
-				rtc_period = SRC_TX_PERIOD - ptx_ts;
+				rtc_period = SRC_TX_PERIOD - ptx_ts - 5;
 			} else {
 				/* invalid delta time */
+				return;
 			}
 
 			if (rtc_period > 0 && rtc_period <= 255) {
