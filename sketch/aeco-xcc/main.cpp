@@ -23,13 +23,17 @@
 #include "pcf8563.h"
 
 #include "sx126x.h"
-#include "crypto.h"
 
 #include "circ_buf.h"
 #include "flash.h"
 
-#define DEBUG			1
+#define DEBUG					1
+//#define ENABLE_CRYPTO			1
 
+
+#ifdef ENABLE_CRYPTO
+#include "crypto.h"
+#endif
 /*
  *
 */
@@ -244,9 +248,11 @@ bool is_my_pkt(uint8_t *p, int len)
 		return false;
 	}
 
+	#ifdef ENABLE_CRYPTO
 	if (check_pkt_mic(p, len) == 0) {
 		return false;		
 	}
+	#endif
 #endif
 
 	return true;
@@ -312,6 +318,7 @@ irq_out:
 	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
 }
 
+#ifdef DEBUG
 void hex_pkt(uint8_t *p, int rssi, int plen)
 {
 	int a = 0;
@@ -330,9 +337,15 @@ void hex_pkt(uint8_t *p, int rssi, int plen)
 	Serial.print("/");
 	Serial.print(plen);
 
+	#ifndef ENABLE_CRYPTO
+	Serial.println("/");
+	#else
 	Serial.print("/");
 	Serial.println(check_pkt_mic(p, plen));
+	#endif
+
 }
+#endif
 
 void key_irq_handler()
 {
@@ -431,7 +444,9 @@ inline void radio_setup()
 
 void setup()
 {
+#ifdef ENABLE_CRYPTO
 	crypto_init();
+#endif
 
 	flash_init();
 
@@ -651,7 +666,9 @@ void cc_worker()
 	} else {
 		tx_pkt(d.data, d.plen);
 
+		#ifdef DEBUG
 		hex_pkt(d.data, d.rssi, d.plen);
+		#endif
 
 		if (false == need_paired && 0 == get_pkt_cnt(&g_cbuf)) {
 			/* cbuf is null, close the tx window */
@@ -674,7 +691,9 @@ int tx_pkt(uint8_t *p, int len)
 		uint8_t *pcrc = (uint8_t *) &ui16;
 		p[len-6] = pcrc[1]; p[len-5] = pcrc[0];
 
+		#ifdef ENABLE_CRYPTO
 		set_pkt_mic(p, len);
+		#endif
 	}
 
 	lora.set_standby(SX126X_STANDBY_RC);
@@ -771,5 +790,7 @@ void set_cc_rpt()
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 
+	#ifdef ENABLE_CRYPTO
 	set_pkt_mic(pkt, PAYLOAD_LEN+6);
+	#endif
 }
