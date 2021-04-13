@@ -27,7 +27,7 @@
 
 #include "flash.h"
 
-//#define	DEBUG					1
+#define	DEBUG					1
 
 #ifdef CONFIG_V0
 #include "softspi.h"
@@ -124,7 +124,7 @@ uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 uint32_t cnt_rtc_min __attribute__((aligned(4))) = 0;
 uint32_t rtc_period __attribute__((aligned(4))) = RTC_PERIOD;
 uint32_t rtc_ok __attribute__((aligned(4))) = false;
-//uint32_t tx_period __attribute__((aligned(4))) = 600;
+uint32_t cur_ts __attribute__((aligned(4))) = 0;
 
 #define LOW_BAT_THRESHOLD			3.4
 static float cur_vbat = 0.0;
@@ -355,7 +355,6 @@ void rtc_irq_handler()
 
 void setup()
 {
-	uint32_t cur_ts = 0;
 	Ecode_t e;
 
 	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
@@ -386,21 +385,22 @@ void setup()
 	Serial.begin(115200);
 #endif
 
-	power_on_dev();		/* To consume the current ? */
+	//power_on_dev();		/* To consume the current ? */
 	pcf8563_init(SCL_PIN, SDA_PIN);
 
-	i2c_delay_ms(10);
+	i2c_delay_ms(1000);
+
 	int ctrl = pcf8563_get_ctrl2();
 	INFO("RTC ctrl2: ");
 	INFOHEX(ctrl);
 	INFOLN("");
 
-	cur_ts = pcf8563_now();
-	INFOLN(cur_ts);
-
-	INFO("RTC timer: ");
-	INFOHEX(pcf8563_get_timer());
-	INFOLN("");
+#if 0
+	if (ctrl == 0xFF) {
+		/* Incorrect state of pcf8563 */
+		NVIC_SystemReset();
+	}
+#endif
 
 	pcf8563_clear_timer();
 
@@ -414,7 +414,11 @@ void setup()
 		 *
 		*/
 		cur_ts = get_prog_ts();
-		pcf8563_set_from_seconds(cur_ts);
+
+		pcf8563_set_from_seconds(cur_ts + 5);
+
+		cur_ts = pcf8563_now();
+		INFOLN(cur_ts);
 
 		rtc_period = TX_PERIOD - cur_ts % TX_PERIOD;
 
@@ -469,7 +473,7 @@ void setup()
 		}
 	}
 
-	power_off_dev();
+	//power_off_dev();
 
 	/* bootup tx */
 	tx_cause = RESET_TX;
