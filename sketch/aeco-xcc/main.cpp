@@ -474,7 +474,7 @@ void setup()
 
 	if (g_cfg.init_flag != 0x55aa) {
 		/* first bootup */
-		pcf8563_set_from_seconds(get_prog_ts());
+		pcf8563_set_from_seconds(1 + get_prog_ts());
 	}
 
 	/* stop the rtc timer */
