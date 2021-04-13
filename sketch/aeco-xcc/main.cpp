@@ -402,11 +402,7 @@ void rtc_irq_handler()
 			/* reset to normal rtc_period */
 			rtc_period = RTC_PERIOD;
 
-			/* open the rx window */
-			need_work = true;
-			need_paired = true;
-			start_ts = seconds();
-
+			/* open or close the every 30s rx win */
 			pcf8563_clear_timer();
 
 		} else if (pps != 0) {
@@ -417,6 +413,11 @@ void rtc_irq_handler()
 			/* waiting for first tx */
 			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
 		}
+
+		/* re-open the rx window */
+		need_work = true;
+		need_paired = true;
+		start_ts = seconds();
 
 		return;
 
