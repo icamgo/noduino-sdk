@@ -600,6 +600,18 @@ void loop()
 		}
 	}
 
+	if (g_cfg.tx_cnt % 100 == 0) {
+		/* tx_cnt = 100x, about 1000min */
+		g_cfg.init_flag = 0x55aa;
+
+		flash_update();
+	}
+
+	if (rtc_period > 240) {
+		WDOG_Enable(0);
+	} else {
+		WDOG_Enable(1);
+	}
 
 //	if (need_work == false || 0 == digitalRead(KEY_PIN)
 	if (need_work == false
