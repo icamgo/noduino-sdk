@@ -372,9 +372,12 @@ uint32_t get_dev_type(uint8_t *p)
 
 char *decode_sensor_data(uint8_t *pkt)
 {
+	uint64_t ddid = 0ULL;
 	int16_t data = 0;
 	float dd  = 0;
 	char data_buf[8] = {0};
+	char ppid[12];
+	uint32_t ttss = 0;
 
 	data = (pkt[11]  << 8) | pkt[12];
 
@@ -429,11 +432,10 @@ char *decode_sensor_data(uint8_t *pkt)
 			sprintf(dev_data, "V/%d", data);
 			break;
 		case 13:
-		case 29:
 			// Float & Temp Sensor
 			dd = (float)(data / 10.0);
 			ftoa(data_buf, dd, 1);
-			sprintf(dev_data, "T/%s/L/%d/iT/%d/TS/%lu", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]), (uint32_t)(pkt[18] << 24 | pkt[19] << 16 | pkt[24] << 8 | pkt[25]));
+			sprintf(dev_data, "T/%s/L/%d/iT/%d", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]));
 			break;
 		case 14:
 			// Water Leak Sensor
@@ -447,20 +449,34 @@ char *decode_sensor_data(uint8_t *pkt)
 			ftoa(data_buf, dd, 1);
 			sprintf(dev_data, "T/%s", data_buf);
 			break;
-		case 28:
-			// Paired-TCC
-			// max did: 0x02.FF.FF.FF.FF = 12884901887
-			dd = (float)(data / 10.0);
-			ftoa(data_buf, dd, 1);
+		default:
+			sprintf(dev_data, "0x%04X", data);
+			break;
+	}
 
-			// uint32_t ddid = (pkt[20] << 24 | pkt[21] << 16 | pkt[22] << 8 | pkt[23]);
-			uint64_t ddid = 0ULL;
-			char ppid[12];
-			*(((uint8_t *)&ddid) + 4) = 0x2;
-			for (int i = 0; i <= 3; i++) {
-				*(((uint8_t *)&ddid) + 3 - i) = pkt[20+i];
-			}
-			sprintf(dev_data, "T/%s/PID/%s", data_buf, uint64_to_str(ppid, ddid));
+	if (dev_t == 28) {
+		// Paired-TCC
+		// max did: 0x02.FF.FF.FF.FF = 12884901887
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+
+		*(((uint8_t *)&ddid) + 4) = 0x2;
+		for (int i = 0; i <= 3; i++) {
+			*(((uint8_t *)&ddid) + 3 - i) = pkt[20+i];
+		}
+		sprintf(dev_data, "T/%s/PID/%s", data_buf, uint64_to_str(ppid, ddid));
+	}
+
+	if (dev_t == 29) {
+		// Float & Temp Sensor dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+		//ttss = (pkt[18] << 24 | pkt[19] << 16 | pkt[24] << 8 | pkt[25]);
+		*(((uint8_t *)&ttss) + 3) = pkt[18];
+		*(((uint8_t *)&ttss) + 2) = pkt[19];
+		*(((uint8_t *)&ttss) + 1) = pkt[24];
+		*(((uint8_t *)&ttss) + 0) = pkt[25];
+		sprintf(dev_data, "T/%s/L/%d/iT/%d/TS/%lu", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]), ttss);
+
 	}
 	return dev_data;
 }
