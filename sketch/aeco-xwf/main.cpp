@@ -335,9 +335,11 @@ void rtc_irq_handler()
 	//i2c_delay(I2C_1MS);
 	pcf8563_reset_timer();
 
+	#ifdef DEBUG
 	INFO("ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
 	INFOLN("");
+	#endif
 
 	if (cnt_rtc_min % (TX_PERIOD/RTC_PERIOD) == 0) {
 		/* 10 min */
