@@ -264,28 +264,6 @@ float get_temp()
 	return cal_temp(rt);
 }
 
-#ifdef MONITOR_CURRENT
-float fetch_current()
-{
-	adc.reference(adcRef1V25);
-
-	int ad = 0;
-
-	for (int i = 0; i < 5; i++) {
-		ad += adc.read(A6, A7);
-	}
-
-	cur_curr = 1250.0*ad/2.0/2048.0/0.7 / 5;
-
-	INFO("ADC differential ch6 ch7 read:");
-	INFOLN(ad);
-
-	INFO("The consumption current (mA): ");
-
-	return cur_curr;
-}
-#endif
-
 void key_irq_handler()
 {
 	need_push = 0x5a;
@@ -409,7 +387,7 @@ void setup()
 	pinMode(RTC_INT_PIN, INPUT_PULLUP);
 	attachInterrupt(RTC_INT_PIN, rtc_irq_handler, FALLING);
 
-	if (cur_ts < INIT_TS || g_cfg.tx_ts < INIT_TS) {
+	if (g_cfg.init_flag != 0x55aa || g_cfg.tx_ts < INIT_TS) {
 		/*
 		 * First bootup
 		 * TODO: make the tx_ts % 600 == 0
@@ -521,20 +499,7 @@ void push_data()
 	pkt[0] = 0x47; pkt[1] = 0x4F;
 
 	////////////////////////////////
-#ifdef MONITOR_CURRENT
-	cur_curr = fetch_current();
-
-	noInterrupts();
-
-	if (KEY_TX == tx_cause && cur_curr > 1.9)
-		pkt[15] = EL_TX;
-	else
-		pkt[15] = tx_cause;
-
-	interrupts();
-#else
 	pkt[15] = tx_cause;
-#endif
 	////////////////////////////////
 
 	cur_vbat = fetch_vbat();
@@ -577,21 +542,18 @@ void push_data()
 	pkt[21] = (int8_t)roundf(chip_temp);
 
 	// Internal humidity to detect water leak of the shell
-	pkt[22] = cur_water;
+	//pkt[22] = cur_water;
 
 	// Internal current consumption
-#ifdef MONITOR_CURRENT
-	pkt[23] = (int8_t)roundf(cur_curr);
-#else
-	pkt[23] = cur_water;
-#endif
+	//pkt[23] = cur_water;
 
 	// pkt[27] = 0b100, set bit 2, HTimer rpt pkt
 	pkt[PAYLOAD_LEN-3] = 0x4;
 
+	cur_ts = pcf8563_now();
+
 	if (tx_cause == RESET_TX) {
 
-		cur_ts = pcf8563_now();
 		p = (uint8_t *) &(cur_ts);
 
 	} else {
@@ -607,6 +569,11 @@ void push_data()
 	pkt[19] = p[2];
 	pkt[24] = p[1];
 	pkt[25] = p[0];
+
+	cur_ts -= g_cfg.tx_ts;
+	p = (uint8_t *) &cur_ts;
+	pkt[22] = p[1];
+	pkt[23] = p[0];
 
 	p = (uint8_t *) &(g_cfg.tx_cnt);
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
