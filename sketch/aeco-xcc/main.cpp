@@ -233,7 +233,7 @@ bool is_my_pkt(uint8_t *p, int len)
 
 	uint32_t dtype = get_dev_type(p);
 
-	if (20 == dtype || 21 == dtype) {
+	if (dtype <= 28) {
 		return false;
 	}
 
