@@ -718,6 +718,9 @@ void rx_worker()
 					g_cfg.init_flag = 0x55aa;
 					g_cfg.paired_did = get_devid(pbuf);
 				//}
+
+				/* paired, reduce the pair win */
+				start_ts += pair_win - 3;
 			}
 
 			/* do not accept the key rpt or reset rpt */
