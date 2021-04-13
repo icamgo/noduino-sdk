@@ -270,6 +270,8 @@ void sync_rtc()
 
 	pcf8563_clear_timer();
 	pcf8563_set_timer_s(rtc_period);
+
+	need_paired = false;
 }
 
 uint8_t pbuf[48];
@@ -296,7 +298,6 @@ void rx_irq_handler()
 		sync_rtc();
 
 		// paired ok
-		need_paired = false;
 		g_cfg.paired_did = get_devid(pbuf);
 		g_cfg.paired_rx_ts = pcf8563_now();
 
@@ -456,8 +457,8 @@ void setup()
 	attachInterrupt(KEY_PIN, key_irq_handler, FALLING);
 
 	// RF Interrupt pin
-	pinMode(RF_INT_PIN, INPUT);
-	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
+//	pinMode(RF_INT_PIN, INPUT);
+//	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
 
 	pcf8563_init(SCL_PIN, SDA_PIN);
 	i2c_delay_ms(1000);
@@ -606,17 +607,35 @@ void rx_worker()
 
 	if (len > PKT_LEN || len < 0) return;
 
-	if (is_my_pkt(pbuf, len) && need_work && pbuf[15] == TIMER_TX) {
-		// if the devid is the white id
-		// reset the timer
-		sync_rtc();
+	if (is_my_pkt(pbuf, len) && need_work) {
 
-		// paired ok
-		need_paired = false;
-		g_cfg.paired_did = get_devid(pbuf);
-		g_cfg.paired_rx_ts = pcf8563_now();
+		if (need_paired && pbuf[15] == KEY_TX) {
+			/* TODO */
+			return;
+		}
 
-		push_pkt(&g_cbuf, pbuf, rssi, len);
+		if (pbuf[15] == TIMER_TX) {
+			/*
+			 * only accept the rpt by timer
+			 * It's the valid paired pkt
+			 * need_paired or normal mode
+			*/
+			if (need_paired || g_cfg.paired_did == get_devid(pbuf)) {
+
+				/* devid is the white id, reset the timer */
+				sync_rtc();
+				g_cfg.paired_rx_ts = pcf8563_now();
+
+				push_pkt(&g_cbuf, pbuf, rssi, len);
+
+				//if (need_paired) {
+					g_cfg.init_flag = 0x55aa;
+					g_cfg.paired_did = get_devid(pbuf);
+				//}
+			}
+
+			/* do not accept the key rpt or reset rpt */
+		}
 	}
 }
 
