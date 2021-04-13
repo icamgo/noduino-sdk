@@ -678,15 +678,21 @@ void rx_worker()
 
 		if (need_paired && pbuf[15] == KEY_TX) {
 			/* TODO */
-			ptx_ts = pbuf[18] << 24 | pbuf[19] << 16 |
-					 pbuf[24] << 8 | pbuf[25];
+			//ptx_ts = pbuf[18] << 24 | pbuf[19] << 16 |
+			//		 pbuf[24] << 8 | pbuf[25];
+			//rtc_period = ptx_ts + SRC_TX_PERIOD - pcf8563_now();
 
-			rtc_period = ptx_ts + SRC_TX_PERIOD - pcf8563_now();
+			ptx_ts = (uint32_t)(pbuf[22] << 8 | pbuf[23]);
+			if (ptx_ts < SRC_TX_PERIOD) {
+				rtc_period = SRC_TX_PERIOD - ptx_ts;
+			} else {
+				/* invalid delta time */
+			}
 
 			if (rtc_period > 0 && rtc_period <= 255) {
 
-				pcf8563_set_timer_s(rtc_period - 10);		/* max: 0xff, 255s */
-			} else {
+				pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
+			} else if (rtc_period > 255) {
 				/* rtc_period: (255, 600) */
 				pcf8563_set_timer(rtc_period/60);			/* max: 0xff, 255min */
 			}
