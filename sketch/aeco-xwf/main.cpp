@@ -49,7 +49,7 @@ SX126x sx126x(2,					// Pin: SPI CS,PIN06-PB08-D2
 #include "crypto.h"
 #endif
 
-#define FW_VER					"Ver 1.2"
+#define FW_VER					"Ver 1.3"
 
 static float cur_curr = 0.0;
 
@@ -401,7 +401,8 @@ void setup()
 	INFO("RTC timer: ");
 	INFOHEX(pcf8563_get_timer());
 	INFOLN("");
-	power_off_dev();
+
+	pcf8563_clear_timer();
 
 	pinMode(RTC_INT_PIN, INPUT_PULLUP);
 	attachInterrupt(RTC_INT_PIN, rtc_irq_handler, FALLING);
@@ -467,6 +468,8 @@ void setup()
 			flash_update();
 		}
 	}
+
+	power_off_dev();
 
 	/* bootup tx */
 	tx_cause = RESET_TX;
@@ -580,11 +583,20 @@ void push_data()
 	// pkt[27] = 0b100, set bit 2, HTimer rpt pkt
 	pkt[PAYLOAD_LEN-3] = 0x4;
 
-	if (g_cfg.tx_ts < INIT_TS) {
-		g_cfg.tx_ts = 0;
+	if (tx_cause == RESET_TX) {
+
+		cur_ts = pcf8563_now();
+		p = (uint8_t *) &(cur_ts);
+
+	} else {
+
+		if (g_cfg.tx_ts < INIT_TS) {
+			g_cfg.tx_ts = 0;
+		}
+
+		p = (uint8_t *) &(g_cfg.tx_ts);
 	}
 
-	p = (uint8_t *) &(g_cfg.tx_ts);
 	pkt[18] = p[3];
 	pkt[19] = p[2];
 	pkt[24] = p[1];
@@ -672,6 +684,12 @@ void loop()
 		g_cfg.init_flag = 0x55aa;
 
 		flash_update();
+	}
+
+	if (rtc_period > 60) {
+		WDOG_Enable(0);
+	} else {
+		WDOG_Enable(1);
 	}
 
 #if defined(CONFIG_V0)
