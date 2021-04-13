@@ -85,6 +85,7 @@ struct circ_buf g_cbuf __attribute__((aligned(4)));
 bool need_work __attribute__((aligned(4))) = true;
 bool vbat_low __attribute__((aligned(4))) = false;
 bool need_paired __attribute__((aligned(4))) = false;
+bool rx_sync __attribute__((aligned(4))) = false;
 bool tx_rpt __attribute__((aligned(4))) = false;
 bool need_rpt __attribute__((aligned(4))) = false;
 
@@ -278,6 +279,7 @@ void sync_rtc()
 	pcf8563_set_timer_s(rtc_period);
 
 	need_paired = false;
+	rx_sync = true;
 }
 
 uint8_t pbuf[48];
@@ -366,6 +368,7 @@ void key_irq_handler()
 	/* open the rx window */
 	need_work = true;
 	need_paired = true;
+	rx_sync = false;
 	start_ts = seconds();
 
 	INFOLN("key");
@@ -385,9 +388,44 @@ void rtc_irq_handler()
 
 	cnt_rtc_min++;
 
-	if (need_work) {
-		// only work a rtc period
-		need_work = false;
+	if (false == rx_sync) {
+		/*
+		 * rtc_period is: [0, 255], (255, 600)
+		 *
+		 * and rtc_period % 60 == 0 or != 0
+		 *
+		*/
+		uint32_t pps = rtc_period % 60;
+
+		if (rtc_period <= 255 || pps == 0) {
+
+			/* reset to normal rtc_period */
+			rtc_period = RTC_PERIOD;
+
+			/* open the rx window */
+			need_work = true;
+			need_paired = true;
+			start_ts = seconds();
+
+			pcf8563_clear_timer();
+
+		} else if (pps != 0) {
+
+			/* pps: (0, 59] */
+			rtc_period = pps;
+
+			/* waiting for first tx */
+			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
+		}
+
+		return;
+
+	} else {
+
+		if (need_work) {
+			// only work a rtc period
+			need_work = false;
+		}
 	}
 
 	if (cnt_rtc_min % (SRC_TX_PERIOD/RTC_PERIOD) == (SRC_TX_PERIOD/RTC_PERIOD)-1) {
@@ -631,6 +669,7 @@ void rx_worker()
 {
 	int len = lora.rx(pbuf, 48);
 	int rssi = lora.get_pkt_rssi();
+	uint32_t ptx_ts = 0;
 
 	if (len > PKT_LEN || len < 0) return;
 
@@ -638,6 +677,19 @@ void rx_worker()
 
 		if (need_paired && pbuf[15] == KEY_TX) {
 			/* TODO */
+			ptx_ts = pbuf[18] << 24 | pbuf[19] << 16 |
+					 pbuf[24] << 8 | pbuf[25];
+
+			rtc_period = ptx_ts + SRC_TX_PERIOD - pcf8563_now();
+
+			if (rtc_period > 0 && rtc_period <= 255) {
+
+				pcf8563_set_timer_s(rtc_period - 10);		/* max: 0xff, 255s */
+			} else {
+				/* rtc_period: (255, 600) */
+				pcf8563_set_timer(rtc_period/60);			/* max: 0xff, 255min */
+			}
+			INFOLN(ptx_ts);
 			return;
 		}
 
