@@ -41,7 +41,7 @@
 #define RPT_TX_PERIOD	600
 #define RTC_PERIOD		30
 
-#define TX_PWR			17			// dBm tx output power
+#define TX_PWR			22			// dBm tx output power
 
 uint32_t work_win __attribute__((aligned(4))) = 6;
 uint32_t pair_win __attribute__((aligned(4))) = 30;
@@ -248,13 +248,13 @@ bool is_my_pkt(uint8_t *p, int len)
 
 		return false;
 	}
+#endif
 
 	#ifdef ENABLE_CRYPTO
 	if (check_pkt_mic(p, len) == 0) {
 		return false;		
 	}
 	#endif
-#endif
 
 	return true;
 }
@@ -404,6 +404,11 @@ void rtc_irq_handler()
 			/* open or close the every 30s rx win */
 			pcf8563_clear_timer();
 
+			/* re-open the rx window */
+			need_work = true;
+			need_paired = true;
+			start_ts = seconds();
+
 		} else if ((rtc_period > 255) && (pps > 0)) {
 
 			/* pps: (0, 59] */
@@ -412,11 +417,6 @@ void rtc_irq_handler()
 			/* waiting for first tx */
 			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
 		}
-
-		/* re-open the rx window */
-		need_work = true;
-		need_paired = true;
-		start_ts = seconds();
 
 		goto rtc_irq_out;
 
@@ -506,6 +506,7 @@ void setup()
 #endif
 
 	pinMode(PWR_CTRL_PIN, OUTPUT);
+	power_on_dev();
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
@@ -518,15 +519,19 @@ void setup()
 	pcf8563_init(SCL_PIN, SDA_PIN);
 	i2c_delay_ms(1000);
 
+#if 0
 	int ctrl = pcf8563_get_ctrl2();
 	INFO("ctrl2: ");
 	INFOHEX(ctrl);
 	INFOLN("");
+#endif
 
+#if 0
 	if (ctrl == 0xFF) {
 		/* Incorrect state of pcf8563 */
 		NVIC_SystemReset();
 	}
+#endif
 
 	if (g_cfg.init_flag != 0x55aa) {
 		/* first bootup */
@@ -536,15 +541,19 @@ void setup()
 	/* stop the rtc timer */
 	pcf8563_clear_timer();
 
+#if 0
 	INFO("ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
 	INFOLN("");
-	INFOLN(pcf8563_now());
+#endif
+
+	uint32_t cur_ts = pcf8563_now();
+
+	INFOLN(cur_ts);
 
 	pinMode(RTC_INT_PIN, INPUT);
 	attachInterrupt(RTC_INT_PIN, rtc_irq_handler, FALLING);
 
-	power_on_dev();
 	radio_setup();
 
 	if (g_cfg.paired_did <= 99999999999ULL && g_cfg.paired_did > 0ULL) {
@@ -555,12 +564,10 @@ void setup()
 		need_work = false;
 		need_paired = false;
 
-		uint32_t delta = SRC_TX_PERIOD - (pcf8563_now() - g_cfg.paired_rx_ts) % SRC_TX_PERIOD - 5;
+		uint32_t delta = SRC_TX_PERIOD - (cur_ts - g_cfg.paired_rx_ts) % SRC_TX_PERIOD - 6;
 		pcf8563_set_timer_s(delta);
 
-		INFO("RTC timer: ");
-		INFOHEX(pcf8563_get_timer());
-		INFOLN("");
+		INFOLN("paired");
 	} else {
 		// pair is not ok, need to start pair
 
@@ -685,7 +692,7 @@ void rx_worker()
 
 			ptx_ts = (uint32_t)(pbuf[22] << 8 | pbuf[23]);
 			if (ptx_ts < SRC_TX_PERIOD) {
-				rtc_period = SRC_TX_PERIOD - ptx_ts - 5;
+				rtc_period = SRC_TX_PERIOD - ptx_ts - 15;
 			} else {
 				/* invalid delta time */
 				return;
