@@ -27,7 +27,7 @@
 
 #include "flash.h"
 
-//#define	DEBUG					1
+#define	DEBUG					1
 
 #ifdef CONFIG_V0
 #include "softspi.h"
@@ -288,7 +288,7 @@ void rtc_irq_handler()
 		*/
 		uint32_t pps = rtc_period % 60;
 
-		if (rtc_period <= 255 || pps == 0) {
+		if (rtc_period <= 255 || (rtc_period > 255 && pps == 0)) {
 
 			/* reset to normal rtc_period */
 			rtc_period = RTC_PERIOD;
@@ -297,15 +297,20 @@ void rtc_irq_handler()
 			rtc_ok = true;
 			cnt_rtc_min = 0;
 
-		} else if (pps != 0) {
+		} else {
 
-			/* pps: (0, 59] */
-			rtc_period = pps;
+			if (pps != 0) {
 
-			/* waiting for first tx */
-			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
+				/* pps: (0, 59] */
+				rtc_period = pps;
 
-			return;
+				/* waiting for first tx */
+				pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
+				INFO("pps: ");
+				INFOLN(pps);
+
+				return;
+			}
 		}
 	}
 
@@ -342,7 +347,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_64k;	/* 32k 1kHz periods should give 4 seconds */
+	wInit.perSel = wdogPeriod_128k;	/* 32k 1kHz periods should give 4 seconds */
 
 	/* Start watchdog */
 	WDOG_Init(&wInit);
@@ -387,6 +392,8 @@ void setup()
 	pinMode(RTC_INT_PIN, INPUT_PULLUP);
 	attachInterrupt(RTC_INT_PIN, rtc_irq_handler, FALLING);
 
+	cur_ts = pcf8563_now();
+
 	if (g_cfg.init_flag != 0x55aa || g_cfg.tx_ts < INIT_TS) {
 		/*
 		 * First bootup
@@ -405,10 +412,14 @@ void setup()
 		if (rtc_period > 0 && rtc_period <= 255) {
 
 			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
+			INFO("s: ");
+			INFOLN(rtc_period);
 
 		} else {
 			/* rtc_period: (255, 600) */
 			pcf8563_set_timer(rtc_period/60);			/* max: 0xff, 255min */
+			INFO("m: ");
+			INFOLN(rtc_period);
 		}
 
 	} else {
@@ -659,7 +670,7 @@ void loop()
 		flash_update();
 	}
 
-	if (rtc_period > 60) {
+	if (rtc_period > 100) {
 		WDOG_Enable(0);
 	} else {
 		WDOG_Enable(1);
