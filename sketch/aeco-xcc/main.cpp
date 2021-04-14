@@ -397,7 +397,7 @@ void rtc_irq_handler()
 		*/
 		uint32_t pps = rtc_period % 60;
 
-		if (rtc_period <= 255 || pps == 0) {
+		if (rtc_period <= 255 || (rtc_period > 255 && (pps == 0))) {
 
 			/* reset to normal rtc_period */
 			rtc_period = RTC_PERIOD;
@@ -405,7 +405,7 @@ void rtc_irq_handler()
 			/* open or close the every 30s rx win */
 			pcf8563_clear_timer();
 
-		} else if (pps != 0) {
+		} else if ((rtc_period > 255) && (pps > 0)) {
 
 			/* pps: (0, 59] */
 			rtc_period = pps;
