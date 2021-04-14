@@ -301,8 +301,6 @@ void pcf8563_reset_timer()
 
 void pcf8563_set_timer(uint8_t m)
 {
-	pcf8563_reset_timer();
-
     wire_beginTransmission(PCF8563_ADDR);
     wire_write(PCF8563_TIMER_CTRL);
     wire_write(0x83);			/* 1/60 Hz = 1 interrupt/min, enable timer */
@@ -310,6 +308,8 @@ void pcf8563_set_timer(uint8_t m)
     wire_endTransmission();
 
 	i2c_delay(I2C_1MS);
+
+	pcf8563_reset_timer();
 }
 
 void pcf8563_set_timer_s(uint8_t s)
