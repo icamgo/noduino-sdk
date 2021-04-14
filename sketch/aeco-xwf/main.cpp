@@ -288,7 +288,7 @@ void rtc_irq_handler()
 		*/
 		uint32_t pps = rtc_period % 60;
 
-		if (rtc_period <= 255 || (rtc_period > 255 && pps == 0)) {
+		if (rtc_period <= 255 || (rtc_period > 255 && (pps == 0))) {
 
 			/* reset to normal rtc_period */
 			rtc_period = RTC_PERIOD;
@@ -297,20 +297,15 @@ void rtc_irq_handler()
 			rtc_ok = true;
 			cnt_rtc_min = 0;
 
-		} else {
+		} else if ((rtc_period > 255) && (pps > 0)) {
 
-			if (pps != 0) {
+			/* pps: (0, 59] */
+			rtc_period = pps;
 
-				/* pps: (0, 59] */
-				rtc_period = pps;
+			/* waiting for first tx */
+			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
 
-				/* waiting for first tx */
-				pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
-				INFO("pps: ");
-				INFOLN(pps);
-
-				return;
-			}
+			return;
 		}
 	}
 
