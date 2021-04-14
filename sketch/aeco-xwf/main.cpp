@@ -27,7 +27,7 @@
 
 #include "flash.h"
 
-//#define	DEBUG					1
+#define	DEBUG					1
 
 #ifdef CONFIG_V0
 #include "softspi.h"
@@ -266,8 +266,16 @@ float get_temp()
 
 void key_irq_handler()
 {
+	NVIC_DisableIRQ(GPIO_ODD_IRQn);
+	NVIC_DisableIRQ(GPIO_EVEN_IRQn);
+
 	need_push = 0x5a;
 	tx_cause = KEY_TX;
+
+	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
+	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
+	NVIC_EnableIRQ(GPIO_ODD_IRQn);
+	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
 }
 
 void rtc_irq_handler()
@@ -297,6 +305,8 @@ void rtc_irq_handler()
 			rtc_ok = true;
 			cnt_rtc_min = 0;
 
+			INFOLN(rtc_period);
+
 		} else if ((rtc_period > 255) && (pps > 0)) {
 
 			/* pps: (0, 59] */
@@ -305,7 +315,9 @@ void rtc_irq_handler()
 			/* waiting for first tx */
 			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
 
-			return;
+			INFOLN(pps);
+
+			goto out;
 		}
 	}
 
@@ -327,6 +339,7 @@ void rtc_irq_handler()
 		g_cfg.tx_ts = pcf8563_now();
 	}
 
+out:
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
 	NVIC_EnableIRQ(GPIO_ODD_IRQn);
@@ -404,7 +417,7 @@ void setup()
 
 		rtc_period = TX_PERIOD - cur_ts % TX_PERIOD;
 
-		if (rtc_period > 0 && rtc_period <= 255) {
+		if (rtc_period > 0 && rtc_period < 255) {
 
 			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
 			INFO("s: ");
@@ -412,9 +425,10 @@ void setup()
 
 		} else {
 			/* rtc_period: (255, 600) */
-			pcf8563_set_timer(rtc_period/60);			/* max: 0xff, 255min */
+			int m = rtc_period / 60;
+			pcf8563_set_timer(m);			/* max: 0xff, 255min */
 			INFO("m: ");
-			INFOLN(rtc_period);
+			INFOLN(m);
 		}
 
 	} else {
@@ -426,7 +440,7 @@ void setup()
 
 		int delta = (cur_ts - g_cfg.tx_ts);
 
-		if (delta >= 0) {
+		if (delta > 0) {
 
 			int dd = delta % TX_PERIOD;
 
