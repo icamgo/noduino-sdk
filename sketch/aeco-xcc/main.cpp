@@ -298,7 +298,7 @@ void rx_irq_handler()
 	len = lora.get_rx_pkt(pbuf, 48);
 	rssi = lora.get_pkt_rssi();
 
-	if (len > PKT_LEN || len < 0) goto irq_out;
+	if (len > PKT_LEN || len < 0) goto rx_irq_out;
 
 	if (is_my_pkt(pbuf, len) && need_work && pbuf[15] == TIMER_TX) {
 		// if the devid is the white id
@@ -312,8 +312,7 @@ void rx_irq_handler()
 		push_pkt(&g_cbuf, pbuf, rssi, len);
 	}
 
-irq_out:
-
+rx_irq_out:
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
 	NVIC_EnableIRQ(GPIO_ODD_IRQn);
@@ -419,7 +418,7 @@ void rtc_irq_handler()
 		need_paired = true;
 		start_ts = seconds();
 
-		return;
+		goto rtc_irq_out;
 
 	} else {
 
@@ -468,6 +467,8 @@ void rtc_irq_handler()
 		start_ts = seconds();
 	}
 
+
+rtc_irq_out:
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
 	NVIC_EnableIRQ(GPIO_ODD_IRQn);
