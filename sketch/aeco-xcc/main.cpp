@@ -409,6 +409,8 @@ void rtc_irq_handler()
 			need_paired = true;
 			start_ts = seconds();
 
+			goto rx_out;
+
 		} else if ((rtc_period > 255) && (pps > 0)) {
 
 			/* pps: (0, 59] */
@@ -416,9 +418,9 @@ void rtc_irq_handler()
 
 			/* waiting for first tx */
 			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
-		}
 
-		goto rtc_irq_out;
+			goto rtc_irq_out;
+		}
 
 	} else {
 
@@ -448,6 +450,8 @@ void rtc_irq_handler()
 	pcf8563_set_timer_s(rtc_period);
 
 	INFOLN(cnt_rtc_min);
+
+rx_out:
 
 	if (need_work == false) {
 		power_off_dev();
@@ -507,7 +511,7 @@ void setup()
 //	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
 
 	pcf8563_init(SCL_PIN, SDA_PIN);
-	i2c_delay_ms(1000);
+	delay(1000);
 
 #if 0
 	int ctrl = pcf8563_get_ctrl2();
@@ -525,7 +529,7 @@ void setup()
 
 	if (g_cfg.init_flag != 0x55aa) {
 		/* first bootup */
-		pcf8563_set_from_seconds(6 + get_prog_ts());
+		pcf8563_set_from_seconds(4 + get_prog_ts());
 	}
 
 	/* stop the rtc timer */
