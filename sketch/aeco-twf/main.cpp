@@ -29,7 +29,7 @@ extern "C"{
 
 #include "circ_buf.h"
 
-#define	DEBUG					1
+//#define	DEBUG					1
 
 #define	FW_VER						"V1.3"
 
@@ -51,10 +51,8 @@ static uint32_t sample_period = 60;
 
 static uint32_t sample_count = 0;
 
-static float old_temp = 0.0;
 static float cur_temp = 0.0;
-
-//#define	TX_TESTING				1
+static int cur_water = 0.0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define MODEM_ON_PIN			2		/* PIN6_PB8_D2 */
@@ -66,7 +64,12 @@ static uint8_t need_push = 0;
 
 uint16_t tx_count = 0;
 
-#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d}"
+#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"L\":%d}"
+
+#define LEVEL_UNKNOWN				-2
+#define LEVEL_LOW					-1
+#define LEVEL_MEDIAN				0
+#define LEVEL_HIGH					1
 
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
@@ -220,6 +223,86 @@ void reset_modem()
 	delay(200);
 }
 
+int get_water()
+{
+	int ret = 0;
+	uint32_t rt = 0;
+
+	pt1000_init();
+	rt = pt1000_get_rt();
+
+	/* 1 - LOW, 2 - Median, 0 - High */
+	ret = rt / 10000;
+
+	switch (ret) {
+		case 1:
+			ret = LEVEL_LOW;
+			break;
+		case 2:
+			ret = LEVEL_MEDIAN;
+			break;
+		case 0:
+			ret = LEVEL_HIGH;
+			break;
+		default:
+			ret = LEVEL_UNKNOWN;
+	}
+
+	/* 2/3 x pt1000, (6693, 9234], (10039.5, 13851] */
+	if (ret == LEVEL_HIGH && (rt > 9234 || rt <= 6693)) {
+
+		ret = LEVEL_UNKNOWN;
+	}
+
+	/* 2 x pt1000, (20078, 27702], (10039, 13851] */
+	if (ret == LEVEL_MEDIAN && (rt > 27702 || rt <= 20078)) {
+
+		ret = LEVEL_UNKNOWN;
+	}
+
+	/* 1 x pt1000, (10039, 13851] */
+	if (ret == LEVEL_LOW && (rt > 13851 || rt <= 10039)) {
+
+		ret = LEVEL_UNKNOWN;
+	}
+
+	return ret;
+}
+
+float get_temp()
+{
+	int n = 0;
+	uint32_t rt = 0;
+
+	pt1000_init();
+	rt = pt1000_get_rt();
+
+	n = rt / 10000;
+
+	if (2 == n) {
+
+		rt /= 2.0;
+
+	} else if (0 == n) {
+
+		rt *= 1.5;
+
+	} // n >= 3, rt = rt
+
+	// n == 1, rt = rt
+
+	if (n != 3 && (rt > 13851 || rt <= 10039)) {
+
+		// n = 0, 1, 2, 4...
+
+		return -2.0;
+	}
+
+	// n = 3 is the 300'C, no sensor connected
+
+	return cal_temp(rt);
+}
+
 void check_sensor(RTCDRV_TimerID_t id, void *user)
 {
 	int ret = 0;
@@ -234,16 +317,15 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	sample_count++;
 
-#if 1
 	if (sample_count % sample_period == 0) {
 
 		/* every 4x3 = 12min, sample a point */
 		power_on_dev();
-		pt1000_init();
-		cur_temp = pt1000_get_temp();
+		cur_temp = get_temp();
+		cur_water = get_water();
 		power_off_dev();
 
-		ret = push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
+		ret = push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
 
 		if (ret == 0) {
 			/*
@@ -268,27 +350,6 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		tx_cause = TIMER_TX;
 		sample_count = 0;
 	}
-#else
-	power_on_dev();		// turn on device power
-
-	pt1000_init();	// initialization of the sensor
-
-	cur_temp = pt1000_get_temp();
-
-	//power_off_dev();
-
-#ifdef TX_TESTING
-	tx_cause = TIMER_TX;
-	need_push = 0x5a;
-#else
-	if (fabsf(cur_temp - old_temp) > 1.0) {
-
-		tx_cause = DELTA_TX;
-		need_push = 0x5a;
-	}
-#endif
-
-#endif
 }
 
 void trig_check_sensor()
@@ -501,12 +562,12 @@ void setup()
 	INFO("epoch = ");
 	INFOLN(seconds());
 
-	power_on_dev();	// turn on device power
-	pt1000_init();	// initialization of the sensor
-	cur_temp = pt1000_get_temp();
+	power_on_dev();
+	cur_temp = get_temp();
+	cur_water = get_water();
 	power_off_dev();
 
-	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
+	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
 }
 
 void push_data()
@@ -564,12 +625,12 @@ void push_data()
 						decode_vbat(vbat),
 						decode_sensor_data(d.data / 10.0),
 						d.iT,
-						tx_cause
+						tx_cause,
+						d.wl
 				);
 
 				if (modem.mqtt_pub("dev/gw", modem_said)) {
 
-					//old_temp = cur_temp;
 					INFOLN("Pub OK, pop point");
 					noInterrupts();
 					pop_point(&g_cbuf, &d);
@@ -585,33 +646,12 @@ void push_data()
 
 		WDOG_Feed();
 		modem.mqtt_end();
-#if 1
 	}
 
 	WDOG_Feed();
 
 	power_off_modem();
 	power_off_dev();
-#else
-	} else if (ret == 2) {
-		// modem serial is hung
-
-		WDOG_Feed();
-		power_off_modem();
-		power_off_dev();
-
-		return;
-
-	} else if (ret == 0) {
-
-		WDOG_Feed();
-
-		modem.enter_deepsleep();
-
-		power_off_modem();
-		power_off_dev();
-	}
-#endif
 }
 
 void loop()

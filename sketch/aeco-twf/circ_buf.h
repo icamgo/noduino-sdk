@@ -46,7 +46,7 @@ struct point {
 	uint32_t ts;
 	int16_t data;
 	int8_t iT;
-	int8_t pad;
+	int8_t wl;
 };
 
 struct circ_buf {
@@ -55,13 +55,14 @@ struct circ_buf {
 	int tail;
 };
 
-int push_point(struct circ_buf *cbuf, uint32_t ts, int16_t dd, int8_t itt)
+int push_point(struct circ_buf *cbuf, uint32_t ts, int16_t dd, int8_t itt, int8_t wl)
 {
 	if (cbuf != NULL && CIRC_SPACE(cbuf->head, cbuf->tail, CIRC_BUF_SIZE) >= 1) {
 
 		cbuf->point[cbuf->head].ts = ts;
 		cbuf->point[cbuf->head].data = dd;
 		cbuf->point[cbuf->head].iT = itt;
+		cbuf->point[cbuf->head].wl = wl;
 
 		cbuf->head += 1;
 
@@ -94,6 +95,7 @@ int pop_point(struct circ_buf *cbuf, struct point *odata)
 		odata->ts = cbuf->point[cbuf->tail].ts;
 		odata->data = cbuf->point[cbuf->tail].data;
 		odata->iT = cbuf->point[cbuf->tail].iT;
+		odata->wl = cbuf->point[cbuf->tail].wl;
 
 		cbuf->tail += 1;
 		cbuf->tail %= CIRC_BUF_SIZE;
@@ -113,6 +115,7 @@ int get_1st_point(struct circ_buf *cbuf, struct point *odata)
 		odata->ts = cbuf->point[cbuf->tail].ts;
 		odata->data = cbuf->point[cbuf->tail].data;
 		odata->iT = cbuf->point[cbuf->tail].iT;
+		odata->wl = cbuf->point[cbuf->tail].wl;
 
 		return 0;
 
