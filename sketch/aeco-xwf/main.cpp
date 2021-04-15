@@ -95,7 +95,7 @@ uint8_t tx_cause = RESET_TX;
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 
-//uint32_t tx_count __attribute__((aligned(4))) = 0;
+bool need_flash __attribute__((aligned(4))) = false;
 //uint32_t tx_ts __attribute__((aligned(4))) = 0;
 
 
@@ -271,6 +271,10 @@ void key_irq_handler()
 
 	need_push = 0x5a;
 	tx_cause = KEY_TX;
+
+	if (g_cfg.tx_ts > INIT_TS && (g_cfg.tx_cnt % 5 == 0)) {
+		need_flash = true;
+	}
 
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
@@ -677,11 +681,12 @@ void loop()
 		need_push = 0;
 	}
 
-	if (g_cfg.tx_cnt % 100 == 0) {
+	if (g_cfg.tx_cnt % 100 == 0 || need_flash) {
 		/* tx_cnt = 100x, about 1000min */
 		g_cfg.init_flag = 0x55aa;
-
 		flash_update();
+
+		need_flash = false;
 	}
 
 	if (rtc_period > 100) {
