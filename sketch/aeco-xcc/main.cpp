@@ -443,20 +443,11 @@ void rtc_irq_handler()
 		rtc_period = RTC_PERIOD;
 	}
 
-	//pcf8563_init(SCL_PIN, SDA_PIN);
-	//i2c_delay(5*I2C_1MS);
-
+	pcf8563_init(SCL_PIN, SDA_PIN);
 	pcf8563_clear_timer();
 	pcf8563_set_timer_s(rtc_period);
 
-	INFO("rtc, ");
 	INFOLN(cnt_rtc_min);
-
-	//INFOHEX(pcf8563_get_ctrl2());
-	//INFOLN("");
-
-	INFOHEX(pcf8563_get_timer());
-	INFOLN("");
 
 	if (need_work == false) {
 		power_off_dev();
@@ -466,7 +457,6 @@ void rtc_irq_handler()
 		lora.enter_rx();
 		start_ts = seconds();
 	}
-
 
 rtc_irq_out:
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
