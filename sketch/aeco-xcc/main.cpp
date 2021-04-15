@@ -753,6 +753,17 @@ void cc_worker()
 	}
 }
 
+uint8_t get_myid_low2()
+{
+	uint64_t devid = read_devid();
+
+	uint64_t tt = (uint64_t)(devid / 100) * 100;
+
+	uint8_t ret = (uint8_t)(devid - tt);
+
+	return ret;
+}
+
 int tx_pkt(uint8_t *p, int len)
 {
 	if (p[27] != 0) {
@@ -761,7 +772,13 @@ int tx_pkt(uint8_t *p, int len)
 		 * Need to process it
 		*/
 		p[27] |= 0x10;		// mark as cc-relayed
-		p[17] = 1;			// increment the cc-relayed-cnt
+		p[17] = 0;			// don't increment the cc-relayed-cnt
+
+		p[18] = get_myid_low2();
+		p[19] = 0;
+		p[24] = 0;
+		p[25] = 0;
+		p[26] = 0;
 
 		uint16_t ui16 = get_crc(p, len-6);
 		uint8_t *pcrc = (uint8_t *) &ui16;
