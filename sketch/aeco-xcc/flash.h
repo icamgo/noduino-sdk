@@ -17,6 +17,7 @@ typedef struct cfg_data {
 	uint32_t tx_cnt;
 	uint64_t paired_did;
 	uint32_t paired_rx_ts;
+	uint32_t rx_cnt;
 } cfg_data_t;
 
 cfg_data_t g_cfg __attribute__((aligned(4)));

@@ -286,7 +286,7 @@ ifndef id
 id = $$(($(id_base)+$(rand)%10000))
 endif
 
-id_ok = $$(cat .idused | grep $(id))
+#id_ok = $$(cat .idused | grep $(id))
 
 hex_id = $$(printf "%016X" $(id) | fold -w2 | tac | tr -d "\n")
 
