@@ -715,8 +715,6 @@ void rx_worker()
 				sync_rtc();
 				g_cfg.paired_rx_ts = pcf8563_now();
 
-				push_pkt(&g_cbuf, pbuf, rssi, len);
-
 				//if (need_paired) {
 					g_cfg.init_flag = 0x55aa;
 					g_cfg.paired_did = get_devid(pbuf);
@@ -724,8 +722,9 @@ void rx_worker()
 
 				/* paired, reduce the pair win */
 				start_ts += pair_win - 3;
-			}
 
+				push_pkt(&g_cbuf, pbuf, rssi, len);
+			}
 			/* do not accept the key rpt or reset rpt */
 		}
 	}
