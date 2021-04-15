@@ -278,7 +278,6 @@ void sync_rtc()
 	pcf8563_clear_timer();
 	pcf8563_set_timer_s(rtc_period);
 
-	need_paired = false;
 	rx_sync = true;
 }
 
@@ -304,6 +303,7 @@ void rx_irq_handler()
 		// if the devid is the white id
 		// reset the timer
 		sync_rtc();
+		need_paired = false;
 
 		// paired ok
 		g_cfg.paired_did = get_devid(pbuf);
@@ -416,11 +416,11 @@ void rtc_irq_handler()
 			/* pps: (0, 59] */
 			rtc_period = pps;
 
-			/* waiting for first tx */
+			/* waiting for next rtc irq */
 			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
-
-			goto rtc_irq_out;
 		}
+
+		goto rtc_irq_out;
 
 	} else {
 
@@ -699,6 +699,13 @@ void rx_worker()
 				/* rtc_period: (255, 600) */
 				pcf8563_set_timer(rtc_period/60);			/* max: 0xff, 255min */
 			}
+
+			/*
+			 * close the pair win
+			 * waitting for next rtc irq
+			*/
+			start_ts = seconds() - pair_win;
+
 			INFOLN(ptx_ts);
 			return;
 		}
@@ -711,17 +718,24 @@ void rx_worker()
 			*/
 			if (need_paired || g_cfg.paired_did == get_devid(pbuf)) {
 
-				/* devid is the white id, reset the timer */
 				sync_rtc();
-				g_cfg.paired_rx_ts = pcf8563_now();
 
-				//if (need_paired) {
+				/* devid is the white id, reset the timer */
+				g_cfg.paired_rx_ts = pcf8563_now();
+				g_cfg.rx_cnt++;
+
+				if (need_paired) {
 					g_cfg.init_flag = 0x55aa;
 					g_cfg.paired_did = get_devid(pbuf);
-				//}
 
-				/* paired, reduce the pair win */
-				start_ts += pair_win - 3;
+					//flash_update();
+
+					/*
+					 * paired, close the pair win
+					 * need 2s to re-tx the pkt
+					*/
+					start_ts = seconds() - pair_win + 2;
+				}
 
 				push_pkt(&g_cbuf, pbuf, rssi, len);
 			}
