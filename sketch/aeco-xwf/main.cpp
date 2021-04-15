@@ -27,7 +27,7 @@
 
 #include "flash.h"
 
-#define	DEBUG					1
+//#define	DEBUG					1
 
 #ifdef CONFIG_V0
 #include "softspi.h"
@@ -381,12 +381,15 @@ void setup()
 	//power_on_dev();		/* To consume the current ? */
 	pcf8563_init(SCL_PIN, SDA_PIN);
 
-	i2c_delay_ms(1000);
+	//i2c_delay_ms(1000);
+	delay(1000);
 
+#ifdef DEBUG
 	int ctrl = pcf8563_get_ctrl2();
 	INFO("RTC ctrl2: ");
 	INFOHEX(ctrl);
 	INFOLN("");
+#endif
 
 #if 0
 	if (ctrl == 0xFF) {
@@ -410,7 +413,7 @@ void setup()
 		*/
 		cur_ts = get_prog_ts();
 
-		pcf8563_set_from_seconds(cur_ts + 5);
+		pcf8563_set_from_seconds(cur_ts + 4);
 
 		cur_ts = pcf8563_now();
 		INFOLN(cur_ts);
@@ -495,6 +498,7 @@ void qsetup()
 #endif
 }
 
+#if 0
 uint16_t get_crc(uint8_t *pp, int len)
 {
 	int i;
@@ -505,6 +509,7 @@ uint16_t get_crc(uint8_t *pp, int len)
 	}
 	return hh;
 }
+#endif
 
 void push_data()
 {
