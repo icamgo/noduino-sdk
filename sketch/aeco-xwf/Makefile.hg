@@ -18,16 +18,14 @@ TARGET		= main.cpp
 
 SDK_BASE	?= ../..
 ARDUINO_CORES	:= $(SDK_BASE)/arch/efm32/cores
-ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32zg110
+ARDUINO_BOARD	:= $(SDK_BASE)/arch/efm32/variants/efm32hg110
 LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 
 #DEFS := -DUSE_SX126X -DUART_NO_RX_INT -DDEBUG_SX126X
 DEFS := -DUSE_SX126X -DUART_NO_RX_INT
-#DEFS := -DCONFIG_V0 -DUSE_SOFTSPI
-#DEFS = -DUSE_SOFTSPI
 
 MCU = cortex-m0plus
-F_CPU = 1000000
+F_CPU = 7000000
 
 VERSION=187
 
@@ -69,7 +67,7 @@ OPENOCD_DUMP_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; in
 OPENOCD_GET_DID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image .did.bin 0x0FE00008 0x8; reset; shutdown"
 OPENOCD_GET_UUID = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; dump_image .uuid.bin 0x0FE081F0 0x8; reset; shutdown"
 
-OPENOCD_GO = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
+OPENOCD_GO = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
 
 OPENOCD_RESET = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset; shutdown"
 
@@ -105,6 +103,8 @@ $(LIB_DIR)/dmadrv/dmactrl.c								\
 $(LIB_DIR)/spidrv/spidrv.c								\
 $(LIB_DIR)/rtcdrv/rtcdriver.c
 
+#$(ARDUINO_CORES)/efm32/efm32dac.c						\
+
 CXX_MODULES = 										\
 $(ARDUINO_CORES)/abi.cpp 								\
 $(ARDUINO_CORES)/new.cpp 								\
@@ -117,24 +117,21 @@ $(ARDUINO_CORES)/efm32/HardwareSerial.cpp				\
 $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
-$(LIB_DIR)/softi2c/softi2c.cpp							\
-$(LIB_DIR)/softspi/softspi.cpp							\
 $(LIB_DIR)/pt1000/pt1000.cpp							\
+$(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/pcf8563/pcf8563.cpp							\
 $(LIB_DIR)/sx126x/sx126x.cpp							\
-$(LIB_DIR)/sx127x/sx1272.cpp
-
 
 CXX_APP = main.cpp
 MODULES = $(C_MODULES) $(CXX_MODULES)
 SRC = $(C_MODULES)
 CXXSRC = $(CXX_MODULES) $(CXX_APP)
 
-CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
+CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32HG/Include -I$(ARDUINO_CORES)/../variants/efm32hg110 
 
-CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
+CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32HG/Include -I$(ARDUINO_CORES)/../variants/efm32hg110 
 
-CINCS		+= -I  $(LIB_DIR)/softspi/				\
+CINCS		+= 										\
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/pcf8563/					\
 			-I $(LIB_DIR)/pt1000/					\
@@ -142,17 +139,16 @@ CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/dmadrv					\
 			-I $(LIB_DIR)/spidrv					\
 			-I $(LIB_DIR)/sx126x/					\
-			-I $(LIB_DIR)/sx127x					\
 			-I .
-CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
+
+CXXINCS		+= 							  			\
 			-I $(LIB_DIR)/softi2c/					\
-			-I $(LIB_DIR)/pcf8563/					\
 			-I $(LIB_DIR)/pt1000/					\
+			-I $(LIB_DIR)/pcf8563/					\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I $(LIB_DIR)/dmadrv					\
 			-I $(LIB_DIR)/spidrv					\
 			-I $(LIB_DIR)/sx126x/					\
-			-I $(LIB_DIR)/sx127x					\
 			-I .
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
@@ -160,7 +156,7 @@ CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\
 
 CFLAGS += -mcpu=$(MCU) -mfloat-abi=soft -mfp16-format=ieee -mthumb -MMD
 
-DEFS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
+DEFS += -DARDUINO_efm32hg110f64 -DEFM32HG -DEFM32HG110F64 			\
 	-DARM_MATH_CM0PLUS 													\
 	-DF_CPU=$(F_CPU)													\
 	-DUSE_HFRCO															\
@@ -168,7 +164,7 @@ DEFS += -DARDUINO_efm32zg110f32 -DEFM32ZG -DEFM32ZG110F32 			\
 	-DUSE_LFBLFRCO=1													\
 	-DMENU_SERIAL=SerialLEUART0 										\
 	-DEMDRV_RTCDRV_USE_LFRCO											\
-	-DRAM_LENGTH=4096 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 			\
+	-DRAM_LENGTH=8192 -DFLASH_LENGTH=32768 -DEFM32GENERIC	 			\
 	-DARDUINO_ARCH_EFM32 -DARDUINO=$(VERSION)
 
 CXXFLAGS := -g -Os -w -fno-exceptions -std=gnu++14 -fpermissive			\
@@ -184,7 +180,7 @@ LDFLAGS := -mcpu=$(MCU) -mthumb -Os -Wl,--cref					\
 	-u _sbrk -u link -u _close -u _fstat -u _isatty -u _lseek -u _read	\
 	-u _write -u _exit -u kill -u _getpid
 
-LDFLAGS += "-T$(ARDUINO_BOARD)/ld/efm32zg110f32.ld"
+LDFLAGS += "-T$(ARDUINO_BOARD)/ld/efm32hg110f64.ld"
 
 
 OBJ = $(SRC:.c=.o) $(CXXSRC:.cpp=.o) $(ASRC:.S=.o)
@@ -292,9 +288,10 @@ endif
 
 ifndef id
 id = $$(($(id_base)+$(rand)%10000))
+
+id_ok = $$(cat .idused | grep $(id))
 endif
 
-#id_ok = $$(cat .idused | grep $(id))
 hex_id = $$(printf "%016X" $(id) | fold -w2 | tac | tr -d "\n")
 
 DID=$$(xxd -g8 -p .did.bin | fold -w2 | tac | tr -d "\n")
@@ -313,9 +310,9 @@ HEX_TS = $$(printf "%08X" $(TS) | fold -w2 | tac | tr -d "\n")
 produce: $(fw)
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_FW)
 	-$(Q) echo "Generating the random DevID: $(id)"
-	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused;				\
-		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;			\
-		echo $(TS) | xxd -r -s 4 -p - .u.bin; 												\
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;										\
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
@@ -324,15 +321,20 @@ produce: $(fw)
 # same as produce
 # make go (write firmware main.bin into main flash, set a random devid and log it)
 # make go fw=xxx.bin (write firmware xxx.bin into main flash, set a random devid and log it)
-
-go: $(fw) .u.bin
+go: $(fw)
+	-$(Q) echo "Generating the random DevID: $(id)"
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;										\
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
-	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GO) && rm -f .u.bin
+	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_GO)
+	@rm -f .u.bin
 
 .u.bin:
 	-$(Q) echo $(id)
-	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused;			\
-		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;		\
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
 		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;										\
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 
@@ -391,21 +393,23 @@ getuuid:
 # make setid id=xxx (set id=xxx, do not log it)
 setid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
-	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;	\
-		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;								\
-		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;										\
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
-	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
+	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER) && echo $(id) >> .idused;
 	@rm -f .u.bin
 
 # same as setid
 setdid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
-	@echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;	\
-		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;								\
-		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
+	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; \
+		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;										\
+		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
-	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
+	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER) && echo $(id) >> .idused;
 	@rm -f .u.bin
 
 reset:
