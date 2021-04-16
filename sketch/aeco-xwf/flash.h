@@ -15,6 +15,7 @@ typedef struct cfg_data {
 	uint32_t init_flag;
 	uint32_t tx_cnt;
 	uint32_t tx_ts;
+	uint32_t epoch;
 } cfg_data_t;
 
 cfg_data_t g_cfg __attribute__((aligned(4)));

@@ -684,6 +684,7 @@ void loop()
 	if (g_cfg.tx_cnt % 100 == 0 || need_flash) {
 		/* tx_cnt = 100x, about 1000min */
 		g_cfg.init_flag = 0x55aa;
+		g_cfg.epoch = pcf8563_now();
 		flash_update();
 
 		need_flash = false;
