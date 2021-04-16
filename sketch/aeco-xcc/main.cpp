@@ -357,7 +357,11 @@ void key_irq_handler()
 	 * 2. waiting 30s? for the new white list id
 	*/
 
-	/* disable the rtc timer */
+	/*
+	 * disable the rtc timer
+	 * if paired fail in the pair_win, waitting the wdog reset,
+	 * and reload the paired_did from flash
+	*/
 	pcf8563_clear_timer();
 
 	/* need to report the paired id */
@@ -368,6 +372,7 @@ void key_irq_handler()
 	need_work = true;
 	need_paired = true;
 	rx_sync = false;
+
 	start_ts = seconds();
 
 	INFOLN("key");
@@ -489,7 +494,7 @@ void setup()
 	/* Watchdog setup - Use defaults, excepts for these : */
 	wInit.em2Run = true;
 	wInit.em3Run = true;
-	wInit.perSel = wdogPeriod_256k;	/* 256k 1kHz periods should give 256 seconds */
+	wInit.perSel = wdogPeriod_64k;	/* 64k 1kHz periods should give 64 seconds */
 
 	/* Start watchdog */
 	WDOG_Init(&wInit);
@@ -557,6 +562,7 @@ void setup()
 		*/
 		need_work = false;
 		need_paired = false;
+		rx_sync = true;
 
 		uint32_t delta = SRC_TX_PERIOD - (cur_ts - g_cfg.paired_rx_ts) % SRC_TX_PERIOD - 6;
 		pcf8563_set_timer_s(delta);
@@ -876,8 +882,13 @@ void set_cc_rpt()
 	pkt[15] = tx_cause;
 
 	uint8_t *ep;
-	if (g_cfg.paired_did <= 99999999999ULL && g_cfg.paired_did > 12026109999ULL) {
+	if (g_cfg.paired_did <= 99999999999ULL && g_cfg.paired_did > 12126109999ULL) {
 		devid = g_cfg.paired_did;
+
+		if (tx_cause == KEY_TX) {
+			/* paired request, clear the saved id */
+			g_cfg.paired_did = 0ULL;
+		}
 	} else {
 		devid = 0;
 	}
