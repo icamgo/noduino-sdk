@@ -25,7 +25,7 @@ LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 DEFS := -DUSE_SX126X -DUART_NO_RX_INT
 
 MCU = cortex-m0plus
-F_CPU = 7000000
+F_CPU = 1000000
 
 VERSION=187
 

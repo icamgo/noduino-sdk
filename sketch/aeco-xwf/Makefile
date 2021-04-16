@@ -118,11 +118,9 @@ $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
-$(LIB_DIR)/softspi/softspi.cpp							\
 $(LIB_DIR)/pt1000/pt1000.cpp							\
 $(LIB_DIR)/pcf8563/pcf8563.cpp							\
 $(LIB_DIR)/sx126x/sx126x.cpp							\
-$(LIB_DIR)/sx127x/sx1272.cpp
 
 
 CXX_APP = main.cpp
@@ -134,7 +132,7 @@ CINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I
 
 CXXINCS = -I$(ARDUINO_CORES) -I$(ARDUINO_CORES)/efm32 -I$(ARDUINO_CORES)/../sys -I$(ARDUINO_CORES)/../sys/CMSIS/inc -I$(ARDUINO_CORES)/../sys/emlib/inc -I$(ARDUINO_CORES)/../sys/SiliconLabs/EFM32ZG/Include -I$(ARDUINO_CORES)/../variants/efm32zg110 
 
-CINCS		+= -I  $(LIB_DIR)/softspi/				\
+CINCS		+= \
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/pcf8563/					\
 			-I $(LIB_DIR)/pt1000/					\
@@ -142,9 +140,8 @@ CINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/dmadrv					\
 			-I $(LIB_DIR)/spidrv					\
 			-I $(LIB_DIR)/sx126x/					\
-			-I $(LIB_DIR)/sx127x					\
 			-I .
-CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
+CXXINCS		+= \
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/pcf8563/					\
 			-I $(LIB_DIR)/pt1000/					\
@@ -152,7 +149,6 @@ CXXINCS		+= -I  $(LIB_DIR)/softspi/				\
 			-I $(LIB_DIR)/dmadrv					\
 			-I $(LIB_DIR)/spidrv					\
 			-I $(LIB_DIR)/sx126x/					\
-			-I $(LIB_DIR)/sx127x					\
 			-I .
 
 CFLAGS := -g -Os -w -fno-exceptions -std=gnu11 -ffunction-sections 		\

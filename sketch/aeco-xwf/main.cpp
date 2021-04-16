@@ -49,7 +49,7 @@ SX126x sx126x(2,					// Pin: SPI CS,PIN06-PB08-D2
 #include "crypto.h"
 #endif
 
-#define FW_VER					"Ver 1.3"
+#define FW_VER					"Ver 1.4"
 
 static float cur_curr = 0.0;
 
@@ -272,7 +272,7 @@ void key_irq_handler()
 	need_push = 0x5a;
 	tx_cause = KEY_TX;
 
-	if (g_cfg.tx_ts > INIT_TS && (g_cfg.tx_cnt % 5 == 0)) {
+	if (g_cfg.tx_ts > INIT_TS && (g_cfg.tx_cnt % 3 == 0)) {
 		need_flash = true;
 	}
 
