@@ -447,7 +447,7 @@ void setup()
 
 		int delta = (cur_ts - g_cfg.tx_ts);
 
-		if (delta > 0) {
+		if (delta > 0 && delta < 1800) {
 
 			int dd = delta % TX_PERIOD;
 
@@ -471,12 +471,18 @@ void setup()
 
 		} else {
 			/*
-			 * Exception
+			 * Exception: rtc or tx_ts
 			 * reset the tx_ts
 			*/
+			cur_ts = get_prog_ts();
+			pcf8563_set_from_seconds(cur_ts + 4);
+
 			g_cfg.tx_ts = 0;
 			g_cfg.init_flag = 0x55aa;
+
 			flash_update();
+
+			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
 		}
 	}
 
@@ -600,6 +606,9 @@ void push_data()
 	pkt[25] = p[0];
 
 	cur_ts -= g_cfg.tx_ts;
+	if (cur_ts > 600) {
+		cur_ts = 600;
+	}
 	p = (uint8_t *) &cur_ts;
 	pkt[22] = p[1];
 	pkt[23] = p[0];
