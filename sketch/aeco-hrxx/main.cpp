@@ -455,7 +455,8 @@ char *decode_sensor_data(uint8_t *pkt, uint32_t dvt)
 			//*(((uint8_t *)&dat) + 2) = pkt[19];
 			//*(((uint8_t *)&dat) + 1) = pkt[24];
 			//*(((uint8_t *)&dat) + 0) = pkt[25];
-			sprintf(dev_data, "%u", dat);
+			uint16_t next_ts = pkt[22] << 8 | pkt[23];
+			sprintf(dev_data, "%u/%u", dat, 600-next_ts);
 
 			//sprintf(dev_data, "%02X%02X%02X%02X", pkt[18], pkt[19], pkt[24], pkt[25]);
 			//sprintf(dev_data, "%d", pkt[18]);
