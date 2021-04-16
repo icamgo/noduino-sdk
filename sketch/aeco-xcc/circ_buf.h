@@ -12,7 +12,7 @@
 #elif EFM32GG230F512
 #define	CIRC_BUF_SIZE		1024
 #else
-#define	CIRC_BUF_SIZE		2
+#define	CIRC_BUF_SIZE		4
 #endif
 
 #define	PKT_LEN				48
