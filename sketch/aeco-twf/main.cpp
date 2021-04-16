@@ -29,9 +29,15 @@ extern "C"{
 
 #include "circ_buf.h"
 
-//#define	DEBUG					1
+//#define DEBUG							1
+//#define ENABLE_RTC					1
 
-#define	FW_VER						"V1.3"
+#define	FW_VER						"V1.4"
+
+#ifdef ENABLE_RTC
+#include "softi2c.h"
+#include "pcf8563.h"
+#endif
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
@@ -59,6 +65,11 @@ static int cur_water = 0.0;
 #define MODEM_RESET_PIN			1		/* PIN5_PB7_D1 */
 
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
+
+#define	RTC_INT_PIN				16		/* PIN21_PF02_D16 */
+
+#define SDA_PIN					12		/* PIN23_PE12 */
+#define SCL_PIN					13		/* PIN24_PE13 */
 
 static uint8_t need_push = 0;
 
@@ -325,7 +336,11 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		cur_water = get_water();
 		power_off_dev();
 
+		#ifdef ENABLE_RTC
+		ret = push_point(&g_cbuf, pcf8563_now(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+		#else
 		ret = push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+		#endif
 
 		if (ret == 0) {
 			/*
@@ -487,6 +502,11 @@ qsetup_start:
 
 		if (sec > 1614665568) {
 			update_seconds(sec);
+
+		#ifdef ENABLE_RTC
+			pcf8563_init(SCL_PIN, SDA_PIN);
+			pcf8563_set_from_seconds(sec);
+		#endif
 		}
 
 		INFO("epoch = ");
@@ -562,12 +582,22 @@ void setup()
 	INFO("epoch = ");
 	INFOLN(seconds());
 
+#ifdef ENABLE_RTC
+	delay(1000);
+	pcf8563_init(SCL_PIN, SDA_PIN);
+	pcf8563_clear_timer();
+#endif
+
 	power_on_dev();
 	cur_temp = get_temp();
 	cur_water = get_water();
 	power_off_dev();
 
+#ifdef ENABLE_RTC
+	push_point(&g_cbuf, pcf8563_now(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+#else
 	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+#endif
 }
 
 void push_data()
@@ -665,6 +695,10 @@ void loop()
 
 		WDOG_Feed();
 	}
+
+	//wire_end();
+	//digitalWrite(SCL_PIN, HIGH);
+	//digitalWrite(SDA_PIN, HIGH);
 
 	power_off_dev();
 	/*
