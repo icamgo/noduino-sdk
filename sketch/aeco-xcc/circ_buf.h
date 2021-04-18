@@ -2,13 +2,7 @@
 #define __CIRC_BUF_H__
 
 #ifdef EFM32HG110F64
-
-#ifdef USE_SOFTSPI
-#define	CIRC_BUF_SIZE		48
-#else
-#define	CIRC_BUF_SIZE		32
-#endif
-
+#define	CIRC_BUF_SIZE		8
 #elif EFM32GG230F512
 #define	CIRC_BUF_SIZE		1024
 #else

@@ -28,12 +28,13 @@
 #include "flash.h"
 
 #define DEBUG					1
-//#define ENABLE_CRYPTO			1
 
+//#define ENABLE_CRYPTO			1
 
 #ifdef ENABLE_CRYPTO
 #include "crypto.h"
 #endif
+
 /*
  *
 */
@@ -283,6 +284,7 @@ void sync_rtc()
 
 uint8_t pbuf[48];
 
+#ifdef ENABLE_RX_IRQ
 void rx_irq_handler()
 {
 	NVIC_DisableIRQ(GPIO_ODD_IRQn);
@@ -318,6 +320,7 @@ rx_irq_out:
 	NVIC_EnableIRQ(GPIO_ODD_IRQn);
 	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
 }
+#endif
 
 #ifdef DEBUG
 void hex_pkt(uint8_t *p, int rssi, int plen)
@@ -511,9 +514,11 @@ void setup()
 	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, key_irq_handler, FALLING);
 
+#ifdef ENABLE_RX_IRQ
 	// RF Interrupt pin
-//	pinMode(RF_INT_PIN, INPUT);
-//	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
+	pinMode(RF_INT_PIN, INPUT);
+	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
+#endif
 
 	pcf8563_init(SCL_PIN, SDA_PIN);
 	delay(1000);
@@ -734,7 +739,9 @@ void rx_worker()
 					g_cfg.init_flag = 0x55aa;
 					g_cfg.paired_did = get_devid(pbuf);
 
-					//flash_update();
+					#ifdef EFM32HG110F64
+					flash_update();
+					#endif
 
 					/*
 					 * paired, close the pair win
