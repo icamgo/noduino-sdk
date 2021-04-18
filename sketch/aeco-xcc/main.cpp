@@ -565,7 +565,7 @@ void setup()
 		 * paired is ok
 		 * wdt reset, need to restore the timer
 		*/
-		need_work = false;
+		need_work = true;		/* need to send the bootup rpt */
 		need_paired = false;
 		rx_sync = true;
 
