@@ -523,14 +523,14 @@ void setup()
 	pcf8563_init(SCL_PIN, SDA_PIN);
 	delay(1000);
 
-#if 0
+#if 1
 	int ctrl = pcf8563_get_ctrl2();
 	INFO("ctrl2: ");
 	INFOHEX(ctrl);
 	INFOLN("");
 #endif
 
-#if 0
+#if 1
 	if (ctrl == 0xFF) {
 		/* Incorrect state of pcf8563 */
 		NVIC_SystemReset();
@@ -540,12 +540,14 @@ void setup()
 	if (g_cfg.init_flag != 0x55aa) {
 		/* first bootup */
 		pcf8563_set_from_seconds(4 + get_prog_ts());
+		INFO("flash_ts: ");
+		INFOLN(get_prog_ts());
 	}
 
 	/* stop the rtc timer */
 	pcf8563_clear_timer();
 
-#if 0
+#if 1
 	INFO("ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
 	INFOLN("");
@@ -569,9 +571,21 @@ void setup()
 		need_paired = false;
 		rx_sync = true;
 
-		uint32_t delta = SRC_TX_PERIOD - (cur_ts - g_cfg.paired_rx_ts) % SRC_TX_PERIOD - 6;
-		pcf8563_set_timer_s(delta);
+		rtc_period = SRC_TX_PERIOD - (cur_ts - g_cfg.paired_rx_ts) % SRC_TX_PERIOD - 6;
 
+		if (rtc_period > 0 && rtc_period <= 255) {
+
+			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
+		} else if (rtc_period > 255 && rtc_period <= 600) {
+			/* rtc_period: (255, 600) */
+			pcf8563_set_timer(rtc_period/60);			/* max: 0xff, 255min */
+		} else {
+			/* invalid cur_ts or rx_Ts */
+
+			// TODO
+		}
+
+		INFO(rtc_period);
 		INFOLN("paired");
 	} else {
 		// pair is not ok, need to start pair
