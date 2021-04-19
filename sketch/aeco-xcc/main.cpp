@@ -670,7 +670,9 @@ void loop()
 		/* tx_cnt = 100x, about 1000min */
 		g_cfg.init_flag = 0x55aa;
 
+		#ifndef EFM32ZG110F32
 		flash_update();
+		#endif
 	}
 
 	if (rtc_period > 240) {
@@ -753,7 +755,7 @@ void rx_worker()
 					g_cfg.init_flag = 0x55aa;
 					g_cfg.paired_did = get_devid(pbuf);
 
-					#ifdef EFM32HG110F64
+					#ifndef EFM32ZG110F32
 					flash_update();
 					#endif
 
