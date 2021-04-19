@@ -308,7 +308,7 @@ produce: $(fw)
 	-$(Q) echo "Generating the random DevID: $(id)"
 	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused;				\
 		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;			\
-		echo $(TS) | xxd -r -s 4 -p - .u.bin; 												\
+		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin; 												\
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
@@ -399,7 +399,7 @@ setdid:
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin;
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER)
-	@rm -f .u.bin
+	#@rm -f .u.bin
 
 reset:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_RESET)

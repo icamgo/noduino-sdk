@@ -58,7 +58,7 @@ OPENOCD_FW = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; tar
 OPENOCD_FLASH = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; program $(fw) verify reset; shutdown"
 OPENOCD_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; flash write_bank 1 .u.bin; flash verify_bank 1 .u.bin; reset run; shutdown"
 
-OPENOCD_ERASE_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; flash banks; reset init; reset halt; wait_halt; flash erase_sector 0 0 31; reset run; shutdown"
+OPENOCD_ERASE_MAIN = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; flash banks; reset init; reset halt; wait_halt; flash erase_sector 0 0 63; reset run; shutdown"
 #OPENOCD_ERASE_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; flash banks; reset init; reset halt; wait_halt; flash erase_sector 1 0 0; reset run; shutdown"
 OPENOCD_ERASE_USER = "set CPUTAPID 0x0bc11477; source [find target/efm32.cfg]; init; targets; reset halt; wait_halt; flash erase_sector 1 0 0; reset run; shutdown"
 
@@ -300,6 +300,9 @@ ifndef fw
 fw := build/main.bin
 endif
 
+TS=$$(date +%s)
+HEX_TS = $$(printf "%08X" $(TS) | fold -w2 | tac | tr -d "\n")
+
 # make produce (write firmware main.bin into main flash, set a random devid and log it)
 # make produce fw=xxx.bin (write firmware xxx.bin into main flash, set a random devid and log it)
 produce: $(fw)
@@ -328,6 +331,7 @@ go: $(fw)
 	-$(Q) echo $(id)
 	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; echo $(id) >> .idused; \
 		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;										\
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 
 upload: build/main.bin
@@ -351,11 +355,11 @@ dumpuser:
 
 erase:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_ERASE_MAIN)
-	-$(Q) echo "Erase the 32KB main data"
+	-$(Q) echo "Erase the 64KB main data"
 
 eraseflash:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_ERASE_MAIN)
-	-$(Q) echo "Erase the 32KB main data"
+	-$(Q) echo "Erase the 64KB main data"
 
 eraseuser:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_ERASE_USER)
@@ -387,6 +391,7 @@ setid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
 	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; \
 		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;								\
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER) && echo $(id) >> .idused;
@@ -397,10 +402,11 @@ setdid:
 	@printf "Current used DevID is: %d (0x%016X)\r\n" $(id) $(id);
 	@if [ -z $(id_ok) ]; then echo DevID $(id) is OK; \
 		echo "Generating the u.bin ..."; cp -f $(ARDUINO_BOARD)/user.bin .u.bin;				  \
+		echo $(HEX_TS) | xxd -r -s 4 -p - .u.bin;								\
 		echo $(hex_id) | xxd -r -s 8 -p - .u.bin; else echo $(id) is used, please re-make; exit -1; fi
 	@printf "Current DevID in u.bin is: %d\r\n" 0x$(UBINID);
 	@$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_USER) && echo $(id) >> .idused;
-	@rm -f .u.bin
+	#@rm -f .u.bin
 
 reset:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_RESET)
