@@ -314,11 +314,13 @@ void rtc_irq_handler()
 		} else if ((rtc_period > 255) && (pps > 0)) {
 
 			/* pps: (0, 59] */
-			rtc_period = pps;
+			pps = rtc_period / 60;
+			rtc_period = 60 * pps;
 
 			/* waiting for first tx */
-			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
+			pcf8563_set_timer(pps);		/* max: 0xff, 255s */
 
+			INFO("m: ");
 			INFOLN(pps);
 
 			goto out;
@@ -329,11 +331,14 @@ void rtc_irq_handler()
 	//i2c_delay(I2C_1MS);
 	pcf8563_reset_timer();
 
-	#ifdef DEBUG
+	#if 0
 	INFO("ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
 	INFOLN("");
 	#endif
+
+	INFO("irq_ts: ");
+	INFOLN(pcf8563_now());
 
 	if (cnt_rtc_min % (TX_PERIOD/RTC_PERIOD) == 0) {
 		/* 10 min */
@@ -344,11 +349,20 @@ void rtc_irq_handler()
 	}
 
 out:
+
+	if (rtc_period > 100) {
+		WDOG_Enable(0);
+	} else {
+		WDOG_Enable(1);
+	}
+
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
 	NVIC_EnableIRQ(GPIO_ODD_IRQn);
 	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
 }
+
+void sync_tx_ts();
 
 void setup()
 {
@@ -424,19 +438,8 @@ void setup()
 
 		rtc_period = TX_PERIOD - cur_ts % TX_PERIOD;
 
-		if (rtc_period > 0 && rtc_period < 255) {
-
-			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
-			INFO("s: ");
-			INFOLN(rtc_period);
-
-		} else {
-			/* rtc_period: (255, 600) */
-			int m = rtc_period / 60;
-			pcf8563_set_timer(m);			/* max: 0xff, 255min */
-			INFO("m: ");
-			INFOLN(m);
-		}
+		INFOLN("init tx_ts");
+		sync_tx_ts();
 
 	} else {
 		/*
@@ -458,36 +461,35 @@ void setup()
 			} else {
 				rtc_period = RTC_PERIOD;
 				rtc_ok = true;
+				goto setup_out;
 			}
 
-			if (rtc_period > 0 && rtc_period <= 255) {
-
-				pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
-
-			} else {
-				/* rtc_period: (255, 600) */
-				pcf8563_set_timer(rtc_period/60);			/* max: 0xff, 255min */
-			}
+			INFOLN("load tx_ts");
 
 		} else {
 			/*
 			 * Exception: rtc or tx_ts
 			 * reset the tx_ts
 			*/
-			cur_ts = get_prog_ts();
-			pcf8563_set_from_seconds(cur_ts + 4);
+			cur_ts = get_prog_ts() + 4;
+			pcf8563_set_from_seconds(cur_ts);
 
 			g_cfg.tx_ts = 0;
 			g_cfg.init_flag = 0x55aa;
 
 			flash_update();
 
-			pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
+			rtc_period = TX_PERIOD - cur_ts % TX_PERIOD;
+
+			INFOLN("rtc or tx_ts error");
 		}
+
+		sync_tx_ts();
 	}
 
 	//power_off_dev();
 
+setup_out:
 	/* bootup tx */
 	tx_cause = RESET_TX;
 	need_push = 0x5a;
@@ -542,9 +544,6 @@ void push_data()
 	power_on_dev();
 	cur_temp = get_temp() + T_FIX;
 	cur_water = get_water();
-
-	INFO("T = ");
-	INFOLN((int)(cur_temp));
 
 	uint64_t devid = get_devid();
 
@@ -699,12 +698,6 @@ void loop()
 		need_flash = false;
 	}
 
-	if (rtc_period > 100) {
-		WDOG_Enable(0);
-	} else {
-		WDOG_Enable(1);
-	}
-
 #if defined(CONFIG_V0)
 	digitalWrite(SX1272_RST, LOW);
 	spi_end();
@@ -717,4 +710,29 @@ void loop()
 	power_off_dev();
 
 	EMU_EnterEM2(true);
+}
+
+void sync_tx_ts()
+{
+	int s = 0;
+	if (rtc_period > 0 && rtc_period < 255) {
+
+		pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
+		INFO("s: ");
+		INFOLN(rtc_period);
+
+	} else {
+		/* rtc_period: (255, 600) */
+		s = rtc_period % 60;
+		pcf8563_set_timer_s(s);			/* max: 0xff, 255min */
+		INFO("-m: ");
+		INFOLN(s);
+		INFOLN(rtc_period);
+	}
+
+	if (rtc_period > 100) {
+		WDOG_Enable(0);
+	} else {
+		WDOG_Enable(1);
+	}
 }
