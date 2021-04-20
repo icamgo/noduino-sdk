@@ -27,7 +27,7 @@
 
 #include "flash.h"
 
-//#define	DEBUG					1
+#define	DEBUG					1
 
 #ifdef CONFIG_V0
 #include "softspi.h"
@@ -271,6 +271,7 @@ void key_irq_handler()
 
 	need_push = 0x5a;
 	tx_cause = KEY_TX;
+	g_cfg.tx_cnt++;
 
 	if (g_cfg.tx_ts > INIT_TS && (g_cfg.tx_cnt % 3 == 0)) {
 		need_flash = true;
@@ -328,10 +329,9 @@ void rtc_irq_handler()
 	}
 
 	pcf8563_init(SCL_PIN, SDA_PIN);
-	//i2c_delay(I2C_1MS);
 	pcf8563_reset_timer();
 
-	#if 0
+	#ifdef DEBUG_RTC
 	INFO("ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
 	INFOLN("");
@@ -345,7 +345,13 @@ void rtc_irq_handler()
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 
+		g_cfg.tx_cnt++;
 		g_cfg.tx_ts = pcf8563_now();
+
+		if (0x55aa != g_cfg.init_flag) {
+			/* first tx */
+			need_flash =true;
+		}
 	}
 
 out:
@@ -402,14 +408,12 @@ void setup()
 	//i2c_delay_ms(1000);
 	delay(1000);
 
-#ifdef DEBUG
+#ifdef DEBUG_RTC
 	int ctrl = pcf8563_get_ctrl2();
 	INFO("RTC ctrl2: ");
 	INFOHEX(ctrl);
 	INFOLN("");
-#endif
 
-#if 0
 	if (ctrl == 0xFF) {
 		/* Incorrect state of pcf8563 */
 		NVIC_SystemReset();
@@ -459,8 +463,10 @@ void setup()
 				rtc_period = TX_PERIOD - dd;
 
 			} else {
+				/* dd == 0 */
 				rtc_period = RTC_PERIOD;
 				rtc_ok = true;
+				pcf8563_set_timer_s(rtc_period);
 				goto setup_out;
 			}
 
@@ -493,6 +499,7 @@ setup_out:
 	/* bootup tx */
 	tx_cause = RESET_TX;
 	need_push = 0x5a;
+	g_cfg.tx_cnt++;
 }
 
 void qsetup()
@@ -614,7 +621,6 @@ void push_data()
 
 	p = (uint8_t *) &(g_cfg.tx_cnt);
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
-	g_cfg.tx_cnt++;
 
 	/////////////////////////////////////////////////////////
 	/*
@@ -715,11 +721,17 @@ void loop()
 void sync_tx_ts()
 {
 	int s = 0;
+
 	if (rtc_period > 0 && rtc_period < 255) {
 
 		pcf8563_set_timer_s(rtc_period);		/* max: 0xff, 255s */
 		INFO("s: ");
 		INFOLN(rtc_period);
+
+	} else if (rtc_period == TX_PERIOD) {
+		rtc_ok = true;
+		rtc_period = RTC_PERIOD;
+		pcf8563_set_timer_s(rtc_period);
 
 	} else {
 		/* rtc_period: (255, 600) */
