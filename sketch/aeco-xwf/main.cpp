@@ -27,7 +27,7 @@
 
 #include "flash.h"
 
-#define	DEBUG					1
+//#define	DEBUG					1
 
 #ifdef CONFIG_V0
 #include "softspi.h"
@@ -49,9 +49,12 @@ SX126x sx126x(2,					// Pin: SPI CS,PIN06-PB08-D2
 #include "crypto.h"
 #endif
 
-#define FW_VER					"Ver 1.4"
+#define FW_VER					"Ver 1.5"
 
-static float cur_curr = 0.0;
+#ifdef USE_INTERNAL_RTC
+/* Timer used for bringing the system back to EM0. */
+RTCDRV_TimerID_t xTimerForWakeUp;
+#endif
 
 #define LEVEL_UNKNOWN				-2
 #define LEVEL_LOW					-1
@@ -121,6 +124,7 @@ bool need_flash __attribute__((aligned(4))) = false;
 #define RTC_PERIOD					30
 #define TX_PERIOD					600
 #define INIT_TS						1614665566UL
+#define MAX_TS						2000000000UL
 uint32_t cnt_rtc_min __attribute__((aligned(4))) = 0;
 uint32_t rtc_period __attribute__((aligned(4))) = RTC_PERIOD;
 uint32_t rtc_ok __attribute__((aligned(4))) = false;
@@ -329,16 +333,17 @@ void rtc_irq_handler()
 	}
 
 	pcf8563_init(SCL_PIN, SDA_PIN);
-	pcf8563_reset_timer();
 
 	#ifdef DEBUG_RTC
 	INFO("ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
 	INFOLN("");
-	#endif
 
 	INFO("irq_ts: ");
 	INFOLN(pcf8563_now());
+	#endif
+
+	pcf8563_reset_timer();
 
 	if (cnt_rtc_min % (TX_PERIOD/RTC_PERIOD) == 0) {
 		/* 10 min */
@@ -355,18 +360,27 @@ void rtc_irq_handler()
 	}
 
 out:
-
+	#ifndef USE_INTERNAL_RTC
 	if (rtc_period > 100) {
 		WDOG_Enable(0);
 	} else {
 		WDOG_Enable(1);
 	}
+	#endif
 
 	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
 	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
 	NVIC_EnableIRQ(GPIO_ODD_IRQn);
 	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
 }
+
+#ifdef USE_INTERNAL_RTC
+void period_check(RTCDRV_TimerID_t id, void *user)
+{
+	/* reset the watchdog */
+	WDOG_Feed();
+}
+#endif
 
 void sync_tx_ts();
 
@@ -425,21 +439,23 @@ void setup()
 	pinMode(RTC_INT_PIN, INPUT_PULLUP);
 	attachInterrupt(RTC_INT_PIN, rtc_irq_handler, FALLING);
 
-	cur_ts = pcf8563_now();
-
-	if (g_cfg.init_flag != 0x55aa || g_cfg.tx_ts < INIT_TS) {
+	if (g_cfg.init_flag != 0x55aa) {
 		/*
 		 * First bootup
-		 * TODO: make the tx_ts % 600 == 0
-		 *
 		*/
-		cur_ts = get_prog_ts();
+		cur_ts = get_prog_ts() + 4;
+		pcf8563_set_from_seconds(cur_ts);
 
-		pcf8563_set_from_seconds(cur_ts + 4);
-
+	} else {
 		cur_ts = pcf8563_now();
-		INFOLN(cur_ts);
+	}
 
+	INFOLN(cur_ts);
+
+	if (cur_ts > INIT_TS && cur_ts < MAX_TS) {
+		/*
+		 * cur_ts is valide, align the tx_ts to TX_PERIOD
+		*/
 		rtc_period = TX_PERIOD - cur_ts % TX_PERIOD;
 
 		INFOLN("init tx_ts");
@@ -447,11 +463,10 @@ void setup()
 
 	} else {
 		/*
-		 * wdog reset bootup
-		 * TODO: need to restore the tx period
+		 * cur_ts is invalide
+		 * try to restore from flash
 		*/
-		rtc_ok = false;
-
+		#if 0
 		int delta = (cur_ts - g_cfg.tx_ts);
 
 		if (delta > 0 && delta < 1800) {
@@ -473,11 +488,13 @@ void setup()
 			INFOLN("load tx_ts");
 
 		} else {
+		#endif
 			/*
 			 * Exception: rtc or tx_ts
 			 * reset the tx_ts
 			*/
 			cur_ts = get_prog_ts() + 4;
+
 			pcf8563_set_from_seconds(cur_ts);
 
 			g_cfg.tx_ts = 0;
@@ -487,8 +504,8 @@ void setup()
 
 			rtc_period = TX_PERIOD - cur_ts % TX_PERIOD;
 
-			INFOLN("rtc or tx_ts error");
-		}
+			INFOLN("cur_ts is invalide");
+		//}
 
 		sync_tx_ts();
 	}
@@ -500,6 +517,13 @@ setup_out:
 	tx_cause = RESET_TX;
 	need_push = 0x5a;
 	g_cfg.tx_cnt++;
+
+	#ifdef USE_INTERNAL_RTC
+	/* Initialize RTC timer. */
+	RTCDRV_Init();
+	RTCDRV_AllocateTimer(&xTimerForWakeUp);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, 100 * 1000, period_check, NULL);
+	#endif
 }
 
 void qsetup()
@@ -742,9 +766,11 @@ void sync_tx_ts()
 		INFOLN(rtc_period);
 	}
 
+#ifndef USE_INTERNAL_RTC
 	if (rtc_period > 100) {
 		WDOG_Enable(0);
 	} else {
 		WDOG_Enable(1);
 	}
+#endif
 }
