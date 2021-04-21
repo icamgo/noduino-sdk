@@ -42,6 +42,7 @@ SX126x sx126x(2,					// Pin: SPI CS,PIN06-PB08-D2
 );
 #endif
 
+#define USE_INTERNAL_RTC			1
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
 
@@ -129,6 +130,8 @@ uint32_t cnt_rtc_min __attribute__((aligned(4))) = 0;
 uint32_t rtc_period __attribute__((aligned(4))) = RTC_PERIOD;
 uint32_t rtc_ok __attribute__((aligned(4))) = false;
 uint32_t cur_ts __attribute__((aligned(4))) = 0;
+uint32_t cnt_min __attribute__((aligned(4))) = 0;
+uint32_t old_tx_cnt __attribute__((aligned(4))) = 0;
 
 #define LOW_BAT_THRESHOLD			3.4
 static float cur_vbat = 0.0;
@@ -137,6 +140,7 @@ int cnt_vbat_low __attribute__((aligned(4))) = 0;
 int cnt_vbat_ok __attribute__((aligned(4))) = 0;
 
 void push_data();
+void sync_tx_ts();
 
 inline uint64_t get_devid()
 {
@@ -379,10 +383,29 @@ void period_check(RTCDRV_TimerID_t id, void *user)
 {
 	/* reset the watchdog */
 	WDOG_Feed();
+
+	cnt_min++;
+
+	if (cnt_min % 60 == 0) {
+		/* check the tx_cnt */
+
+		if (g_cfg.tx_cnt - old_tx_cnt <= 1) {
+			/*
+			 * seems like it's not ok
+			 * need to re-sync the rtc
+			*/
+			rtc_ok = false;
+
+			cur_ts = pcf8563_now();
+			rtc_period = TX_PERIOD - cur_ts % TX_PERIOD;
+			INFOLN("re-sync rtc");
+			sync_tx_ts();
+		}
+
+		old_tx_cnt = g_cfg.tx_cnt;
+	}
 }
 #endif
-
-void sync_tx_ts();
 
 void setup()
 {
@@ -522,7 +545,7 @@ setup_out:
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, 100 * 1000, period_check, NULL);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, 60 * 1000, period_check, NULL);
 	#endif
 }
 
