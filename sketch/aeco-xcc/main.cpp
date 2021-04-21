@@ -29,6 +29,7 @@
 
 #define DEBUG					1
 
+//#define ENABLE_FLASH			1
 //#define ENABLE_CRYPTO			1
 
 #ifdef ENABLE_CRYPTO
@@ -490,7 +491,9 @@ void setup()
 	crypto_init();
 #endif
 
+	#ifdef ENABLE_FLASH
 	flash_init();
+	#endif
 
 	WDOG_Init_TypeDef wInit = WDOG_INIT_DEFAULT;
 
@@ -666,14 +669,13 @@ void loop()
 		}
 	}
 
+	#ifdef ENABLE_FLASH
 	if (g_cfg.tx_cnt % 100 == 0) {
 		/* tx_cnt = 100x, about 1000min */
 		g_cfg.init_flag = 0x55aa;
-
-		#ifndef EFM32ZG110F32
 		flash_update();
-		#endif
 	}
+	#endif
 
 	if (rtc_period > 240) {
 		WDOG_Enable(0);
@@ -755,7 +757,7 @@ void rx_worker()
 					g_cfg.init_flag = 0x55aa;
 					g_cfg.paired_did = get_devid(pbuf);
 
-					#ifndef EFM32ZG110F32
+					#ifdef ENABLE_FLASH
 					flash_update();
 					#endif
 
