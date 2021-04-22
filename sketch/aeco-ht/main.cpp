@@ -109,8 +109,8 @@ uint8_t tx_cause = RESET_TX;
 uint8_t message[PAYLOAD_LEN+6] __attribute__((aligned(4)));
 
 #elif CONFIG_PROTO_V34
-#define PAYLOAD_LEN					36		/* 36 + 6 = 42 */
-uint8_t message[PAYLOAD_LEN] = { 0x47, 0x4F, 0x34 };
+#define PAYLOAD_LEN					44		/* 44 + 6 = 50B */
+uint8_t message[PAYLOAD_LEN+6] = { 0x47, 0x4F, 0x34 };
 #endif
 
 uint16_t tx_count = 0;
@@ -483,19 +483,31 @@ void push_data()
 	p = (uint8_t *) &ui16;
 
 	pkt[32] = p[1]; pkt[33] = p[0];
+	/*
+	 * PAYLOAD_LEN = 44
+	 * PKT[PAYLOAD_LEN-10:PAYLOAD_LEN-6]: Fopts
+	 * pkt[PAYLOAD_LEN-5]: CC Relayed Counter
+	 * pkt[PAYLOAD_LEN-4]: FCtrl
+	 * pkt[PAYLOAD_LEN-3]: MAC Type
+	 * PKT[PAYLOAD_LEN-2:PAYLOAD_LEN-1]: frame number
+	 *
+	*/
 
 	/* frame number */
-	//pkt[34] = p[1]; pkt[35] = p[0];
+	//pkt[42] = p[1]; pkt[43] = p[0];
 	p = (uint8_t *) &tx_count;
 	pkt[PAYLOAD_LEN-2] = p[1]; pkt[PAYLOAD_LEN-1] = p[0];
 	tx_count++;
 
-	//pkt[36] = p[1]; pkt[37] = p[0];
+	//pkt[44] = p[1]; pkt[45] = p[0];
 	ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
 
-	//pkt[38] = 0; pkt[39] = 0; pkt[40] = 0; pkt[41] = 0;
+	//pkt[46] = 0; pkt[47] = 0; pkt[48] = 0; pkt[49] = 0;
+	#ifdef ENABLE_CRYPTO
+	set_pkt_mic(pkt, PAYLOAD_LEN+6);
+	#endif
 	#endif
 #else
 	uint8_t r_size;
@@ -595,7 +607,6 @@ void push_data()
 
 void loop()
 {
-
 	if (0x5a == need_push) {
 		push_data();
 

@@ -1059,7 +1059,7 @@ void push_data(bool cad_on)
 	set_pkt_mic(pkt, PAYLOAD_LEN+6);
 	#endif
 
-	//pkt[37] = 0; pkt[38] = 0; pkt[39] = 0; pkt[40] = 0;
+	//pkt[33] = 0; pkt[34] = 0; pkt[35] = 0; pkt[36] = 0;
 #endif
 
 	qsetup();
