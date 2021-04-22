@@ -45,7 +45,7 @@
 
 #define ENABLE_ENG_MODE				1
 
-#define	FW_VER						"V3.9"
+#define	FW_VER						"V4.0"
 
 #define LOW_BAT_THRESHOLD			3.1
 #define RX_ERR_THRESHOLD			15
@@ -1182,7 +1182,15 @@ bool process_pkt(uint8_t *p, int *len, int rssi)
 		 * 4. encode the did and rssi of the d
 		*/
 
-		/* PAYLOAD_LEN = (*len-6) */
+		/*
+		 * PAYLOAD_LEN = (*len-6)
+		 * PKT[PAYLOAD_LEN-10:PAYLOAD_LEN-6]: Fopts
+		 * pkt[PAYLOAD_LEN-5]: CC Relayed Counter
+		 * pkt[PAYLOAD_LEN-4]: FCtrl
+		 * pkt[PAYLOAD_LEN-3]: MAC Type
+		 * PKT[PAYLOAD_LEN-2:PAYLOAD_LEN-1]: frame number
+		*/
+
 		if (p[*len-6-3] & 0x10) {
 			// new cc relayed pkt
 
@@ -1329,14 +1337,14 @@ inline void set_mac_cmd(uint8_t cmd)
 
 inline void set_the_epoch(uint8_t *ep)
 {
-	extern uint32_t secTicks;
-	uint8_t *st_p = (uint8_t *)&secTicks;
+	uint32_t sec = seconds();
+	uint8_t *st_p = (uint8_t *)&sec;
 	st_p[0] = ep[3];
 	st_p[1] = ep[2];
 	st_p[2] = ep[1];
 	st_p[3] = ep[0];
 
-	reset_ctrl_ts(&g_cfifo, secTicks);
+	reset_ctrl_ts(&g_cfifo, sec);
 }
 
 void process_mac_cmds(uint8_t *p, int len)
@@ -1685,8 +1693,8 @@ void set_mac_status_pkt()
 
 	pkt[15] = tx_cause;
 
-	extern uint32_t secTicks;
-	uint8_t *ep = (uint8_t *)&secTicks;
+	uint32_t sec = seconds();
+	uint8_t *ep = (uint8_t *)&sec;
 	pkt[20] = ep[3];
 	pkt[21] = ep[2];
 	pkt[22] = ep[1];
@@ -1736,8 +1744,8 @@ void set_temp_pkt()
 	// tx_cause = TIMER_TX
 	pkt[15] = tx_cause;
 
-	extern uint32_t secTicks;
-	uint8_t *ep = (uint8_t *)&secTicks;
+	uint32_t sec = seconds();
+	uint8_t *ep = (uint8_t *)&sec;
 	pkt[20] = ep[3];
 	pkt[21] = ep[2];
 	pkt[22] = ep[1];
@@ -1996,9 +2004,8 @@ void setup()
 	WDOG_Init(&wInit);
 
 	/* reset epoch */
-	extern uint32_t secTicks;
-	secTicks = 1600155579;
-	reset_ctrl_ts(&g_cfifo, secTicks);
+	update_seconds(160015579);
+	reset_ctrl_ts(&g_cfifo, seconds());
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
