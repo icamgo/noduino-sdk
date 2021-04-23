@@ -27,14 +27,16 @@
 #include "circ_buf.h"
 #include "flash.h"
 
-#define DEBUG					1
+//#define DEBUG					1
 
-//#define ENABLE_FLASH			1
-//#define ENABLE_CRYPTO			1
+#define ENABLE_FLASH			1
+#define ENABLE_CRYPTO			1
 
 #ifdef ENABLE_CRYPTO
 #include "crypto.h"
 #endif
+
+#define	FW_VER						"V1.5"
 
 /*
  *
