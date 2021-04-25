@@ -28,7 +28,7 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-#define ENABLE_TX5					1
+//#define ENABLE_TX5					1
 
 #if 0
 #define	DEBUG						1
@@ -37,6 +37,9 @@
 //#define DEBUG_DEVID					1
 #define DEBUG_HEX_PKT				1
 #endif
+
+//#define ENABLE_OLED					1
+//#define ENABLE_SH1106				1
 
 #define ENABLE_FLASH				1
 #define ENABLE_CRYPTO				1
@@ -109,12 +112,6 @@ struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
 
 #ifdef ENABLE_CRYPTO
 #include "crypto.h"
-#endif
-
-#ifdef EFM32HG110F64
-#define ENABLE_OLED					1
-#define ENABLE_SH1106				1
-//#define ENABLE_SSD1306			1
 #endif
 
 ////////////////////////////////////////////////////////////
@@ -258,10 +255,6 @@ void flash_update()
 #define MODE_STATIS		2
 #define MODE_VER		3
 
-int omode = MODE_STATIS;
-
-bool oled_on __attribute__((aligned(4))) = true;
-
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
 #define INFO_HEX(param)			Serial.print(param,HEX)
@@ -278,6 +271,9 @@ bool oled_on __attribute__((aligned(4))) = true;
 #ifdef ENABLE_OLED
 #include "U8g2lib.h"
 #include "logo.h"
+
+int omode = MODE_STATIS;
+bool oled_on __attribute__((aligned(4))) = true;
 
 char frame_buf[2][24] __attribute__((aligned(4)));
 
@@ -316,7 +312,6 @@ U8G2_SH1106_128X32_NONAME_1_HW_I2C u8g2(U8G2_R2, SH1106_RESET);
 
 #endif
 #endif // ENABLE_SH1106
-
 #endif // ENABLE_OLED
 
 float cur_vbat __attribute__((aligned(4))) = 0.0;
@@ -690,18 +685,14 @@ void show_low_bat()
 		u8g2.print(" LOW BATTERY ");
 	} while (u8g2.nextPage());
 }
-#endif
 
-#ifdef EFM32HG110F64
 void change_omode()
 {
 	omode++;
 	omode %= MODE_NUM;
 
-#ifdef ENABLE_OLED
 	oled_on = true;
 	oled_on_time = seconds() + OLED_DELAY_TIME;
-#endif
 
 	INFO("omode: ");
 	INFOLN(omode);
@@ -1948,10 +1939,10 @@ void setup()
 
 	// Key connected to D0
 	pinMode(KEY_PIN, INPUT);
-#ifdef EFM32HG110F64
+#ifdef ENABLE_OLED
 	attachInterrupt(KEY_PIN, change_omode, FALLING);
 #else
-	// EFM32ZG110F32 or EFM32GG230F512
+	// EFM32HG110F64, 4EFM32ZG110F32 or EFM32GG230F512
 	attachInterrupt(KEY_PIN, key_report_status, FALLING);
 #endif
 
@@ -2032,6 +2023,9 @@ void deep_sleep()
 
 #ifdef ENABLE_OLED
 	u8g2.setPowerSave(1);
+
+	// reset the mode
+	omode = MODE_DECODE;
 #endif
 	sx1272.setSleepMode();
 	digitalWrite(SX1272_RST, LOW);
@@ -2046,9 +2040,6 @@ void deep_sleep()
 
 	// dev power off
 	power_off_dev();
-
-	// reset the mode
-	omode = MODE_DECODE;
 
 	EMU_EnterEM2(true);
 }
@@ -2066,13 +2057,13 @@ void loop(void)
 
 		INFOLN("Enter into the deep sleep....");
 
+		#ifdef ENABLE_OLED
 		if (oled_on) {
 
-		#ifdef ENABLE_OLED
 			show_low_bat();
-		#endif
 			delay(2000);
 		}
+		#endif
 
 		deep_sleep();
 
