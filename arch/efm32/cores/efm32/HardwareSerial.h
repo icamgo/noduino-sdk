@@ -23,8 +23,13 @@
 #include "Print.h"
 
 #if !(defined(SERIAL_TX_BUFFER_SIZE) && defined(SERIAL_RX_BUFFER_SIZE))
+#ifdef EFM32HG110F64
+ #define SERIAL_TX_BUFFER_SIZE 32
+ #define SERIAL_RX_BUFFER_SIZE 180
+#else
  #define SERIAL_TX_BUFFER_SIZE 32
  #define SERIAL_RX_BUFFER_SIZE 160
+#endif
 #endif
  
 #define SERIAL_8N1 0x06
