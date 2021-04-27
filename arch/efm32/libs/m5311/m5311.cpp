@@ -1,7 +1,7 @@
 #include "m5311.h"
 
-char str[BUF_LEN];
-char modem_said[MODEM_LEN];
+char str[BUF_LEN] __attribute__((aligned(4)));
+char modem_said[MODEM_LEN] __attribute__((aligned(4)));
 
 void M5311::init(HardwareSerial *serial)
 {
@@ -143,6 +143,22 @@ String M5311::get_imsi()
 	String re_str;
 
 	re_str = expect_rx_str(1000, wait_str, 2);
+
+	if (re_str != "") {
+		return re_str;
+	}
+	return "";
+}
+
+String M5311::get_iccid()
+{
+	MODEM_SERIAL->println(F("AT+ICCID"));
+	MODEM_SERIAL->flush();
+
+	char wait_str[] = "+ICCID: ";
+	String re_str;
+
+	re_str = expect_rx_str(1000, wait_str, 8);
 
 	if (re_str != "") {
 		return re_str;

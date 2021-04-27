@@ -19,8 +19,13 @@
 #define FLUSHOUTPUT
 #endif
 
+#ifdef EFM32HG110F64
+#define BUF_LEN					64
+#define MODEM_LEN				168
+#elif EFM32ZG110F32
 #define BUF_LEN					64
 #define MODEM_LEN				160
+#endif
 
 class M5311 {
 
@@ -33,6 +38,7 @@ public:
 
 	String get_imsi();
 	String get_imei();
+	String get_iccid();
 
 	bool closeUDPSocket();
 	bool check_match(char target[], char pattern[], int len_check);
