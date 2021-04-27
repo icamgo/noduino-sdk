@@ -93,7 +93,7 @@ bool rx_sync __attribute__((aligned(4))) = false;
 bool tx_rpt __attribute__((aligned(4))) = false;
 bool need_rpt __attribute__((aligned(4))) = false;
 
-int32_t cnt_rtc_min __attribute__((aligned(4))) = 0;
+int32_t cnt_rtc_irq __attribute__((aligned(4))) = 0;
 uint32_t rtc_period __attribute__((aligned(4))) = RTC_PERIOD;
 
 uint32_t start_ts __attribute__((aligned(4))) = 0;
@@ -277,7 +277,7 @@ uint16_t get_crc(uint8_t *pp, int len)
 void sync_rtc()
 {
 	rtc_period = RTC_PERIOD;
-	cnt_rtc_min = 0;
+	cnt_rtc_irq = 0;
 
 	pcf8563_clear_timer();
 	pcf8563_set_timer_s(rtc_period);
@@ -396,7 +396,7 @@ void rtc_irq_handler()
 
 	WDOG_Feed();
 
-	cnt_rtc_min++;
+	cnt_rtc_irq++;
 
 	if (false == rx_sync) {
 		/*
@@ -441,11 +441,11 @@ void rtc_irq_handler()
 		}
 	}
 
-	if (cnt_rtc_min % (SRC_TX_PERIOD/RTC_PERIOD) == (SRC_TX_PERIOD/RTC_PERIOD)-1) {
+	if (cnt_rtc_irq % (SRC_TX_PERIOD/RTC_PERIOD) == (SRC_TX_PERIOD/RTC_PERIOD)-1) {
 
 		rtc_period = RTC_PERIOD - 3;
 
-	} else if (cnt_rtc_min % (SRC_TX_PERIOD/RTC_PERIOD) == 0) {
+	} else if (cnt_rtc_irq % (SRC_TX_PERIOD/RTC_PERIOD) == 0) {
 
 		need_work = true;
 
@@ -460,7 +460,7 @@ void rtc_irq_handler()
 	pcf8563_clear_timer();
 	pcf8563_set_timer_s(rtc_period);
 
-	INFOLN(cnt_rtc_min);
+	INFOLN(cnt_rtc_irq);
 
 rx_out:
 
