@@ -29,10 +29,10 @@ extern "C"{
 
 #include "circ_buf.h"
 
-//#define DEBUG							1
+#define DEBUG							1
 //#define ENABLE_RTC					1
 
-#define	FW_VER						"V1.4"
+#define	FW_VER						"V1.5"
 
 #ifdef ENABLE_RTC
 #include "softi2c.h"
@@ -51,8 +51,9 @@ static uint32_t sample_period = 60;
 #define SAMPLE_PERIOD			60		/* check_period x SAMPLE_PERIOD = 1200s (20min) */
 #define PUSH_PERIOD				360		/* check_period x PUSH_PERIOD = 7200s */
 #elif EFM32HG110F64
-#define SAMPLE_PERIOD			36		/* check_period x SAMPLE_PERIOD = 720s (12min) */
+#define SAMPLE_PERIOD			60		/* check_period x SAMPLE_PERIOD = 1200s (20min) */
 #define PUSH_PERIOD				360		/* check_period x PUSH_PERIOD = 120min */
+#define	MQTT_INIT_MSG			"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"L\":%d`\"sid\":\"%s\"}"
 #endif
 
 static uint32_t sample_count = 0;
@@ -112,7 +113,9 @@ char dev_id[24];
 char dev_vbat[6];
 char dev_data[8];
 
-//__attribute__((aligned(4)));
+#ifdef EFM32HG110F64
+char iccid[24] __attribute__((aligned(4)));
+#endif
 
 void push_data();
 int8_t fetch_mcu_temp();
@@ -426,8 +429,12 @@ qsetup_start:
 	modem.init_modem();
 #endif
 
-	int ret = 0;
+	#ifdef EFM32HG110F64
+	memset(iccid, 0, 24);
+	modem.get_iccid().toCharArray(iccid, 24);
+	#endif
 
+	int ret = 0;
 	ret = modem.check_boot();
 	start_cnt++;
 
@@ -485,7 +492,6 @@ qsetup_start:
 
 		//INFOLN("IMEI = " + modem.get_imei());
 		//INFOLN("IMSI = " + modem.get_imsi());
-
 		//INFOLN(modem.check_ipaddr());
 
 		extern char str[BUF_LEN];
@@ -495,7 +501,6 @@ qsetup_start:
 
 		//char strtest[] = "21/02/26,06:22:38+32";
 		modem.get_net_time().toCharArray(str, BUF_LEN);
-
 		INFOLN(str);
 
 		uint32_t sec = str2seconds(str);
@@ -649,6 +654,22 @@ void push_data()
 
 				extern char modem_said[MODEM_LEN];
 				memset(modem_said, 0, MODEM_LEN);
+
+				#ifdef EFM32HG110F64
+				if (tx_cause == 0 || gmtime(&(d.ts))->tm_hour == 12) {
+
+					sprintf(modem_said, MQTT_INIT_MSG,
+							d.ts,
+							devid,
+							decode_vbat(vbat),
+							decode_sensor_data(d.data / 10.0),
+							d.iT,
+							tx_cause,
+							d.wl,
+							iccid
+					);
+				} else {
+				#endif
 				sprintf(modem_said, MQTT_MSG,
 						d.ts,
 						devid,
@@ -658,6 +679,9 @@ void push_data()
 						tx_cause,
 						d.wl
 				);
+				#ifdef EFM32HG110F64
+				}
+				#endif
 
 				if (modem.mqtt_pub("dev/gw", modem_said)) {
 
@@ -672,6 +696,7 @@ void push_data()
 					INFOLN("Pub failed");
 				}
 			}
+			INFOLN("no point");
 		}
 
 		WDOG_Feed();
