@@ -45,20 +45,6 @@ struct timespec {
 typedef struct timeval tv_t;
 typedef struct timespec ts_t;
 
-struct tm {
-	int tm_sec;		/*<  Seconds.     [0-60] (1 leap second) */
-	int tm_min;		/*<  Minutes.     [0-59] */
-	int tm_hour;		/*<  Hours.       [0-23] */
-	int tm_mday;		/*<  Day.         [1-31] */
-	int tm_mon;		/*<  Month.       [0-11] */
-	int tm_year;		/*<  Year - 1900. */
-	int tm_wday;		/*<  Day of week. [0-6] */
-	int tm_yday;		/*<  Days in year.[0-365] */
-	int tm_isdst;		/*<  DST.         [-1/0/1] */
-	int32_t tm_gmtoff;	/*<  GMT offset in seconds [+/- 86400] */
-};
-typedef struct tm tm_t;
-
 extern tz_t __tzone;
 
 #define EPOCH_YEAR       1970	/*< Thursday Jan 1 1970 */
@@ -396,6 +382,32 @@ uint32_t timegm(tm_t * t)
 	return (seconds);
 }
 
+/// @brief Convert epoch GMT uint32_t *tp into POSIX tm_t *result.
+///
+/// @param[in] tp: uint32_t * time input.
+/// @param[out] result: tm_t *result.
+///
+/// @return tm_t *result.
+tm_t *gmtime_r(uint32_t * tp, tm_t * result)
+{
+	uint32_t epoch = *tp;
+	uint32_to_tm(epoch, 0L, result);
+	return (result);
+}
+
+/// @brief Convert epoch GMT uint32_t *tp into POSIX static tm_t *t.
+///
+/// @param[in] tp: uint32_t * time input.
+///
+/// @return tm_t t.
+/// @warning result is overwritten on each call.
+tm_t *gmtime(uint32_t * tp)
+{
+	static tm_t t;
+	gmtime_r(tp, &t);
+	return (&t);
+}
+
 #if 0
 
 /// @todo  implement strftime() and strptime()
@@ -469,32 +481,6 @@ char *ctime_gm(uint32_t * tp)
 	tm_t tm;
 	uint32_to_tm(epoch, 0L, &tm);
 	return (asctime_r(&tm, __ctime_buf));
-}
-
-/// @brief Convert epoch GMT uint32_t *tp into POSIX tm_t *result.
-///
-/// @param[in] tp: uint32_t * time input.
-/// @param[out] result: tm_t *result.
-///
-/// @return tm_t *result.
-tm_t *gmtime_r(uint32_t * tp, tm_t * result)
-{
-	uint32_t epoch = *tp;
-	uint32_to_tm(epoch, 0L, result);
-	return (result);
-}
-
-/// @brief Convert epoch GMT uint32_t *tp into POSIX static tm_t *t.
-///
-/// @param[in] tp: uint32_t * time input.
-///
-/// @return tm_t t.
-/// @warning result is overwritten on each call.
-tm_t *gmtime(uint32_t * tp)
-{
-	static tm_t t;
-	gmtime_r(tp, &t);
-	return (&t);
 }
 
 /// @brief Convert POSIX tm_t *t struct into POSIX epoch time in seconds with UTC offset adjustment.

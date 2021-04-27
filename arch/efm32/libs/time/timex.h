@@ -28,8 +28,25 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include "string.h"
 #include "stdint.h"
 
+struct tm {
+	int tm_sec;		/*<  Seconds.     [0-60] (1 leap second) */
+	int tm_min;		/*<  Minutes.     [0-59] */
+	int tm_hour;		/*<  Hours.       [0-23] */
+	int tm_mday;		/*<  Day.         [1-31] */
+	int tm_mon;		/*<  Month.       [0-11] */
+	int tm_year;		/*<  Year - 1900. */
+	int tm_wday;		/*<  Day of week. [0-6] */
+	int tm_yday;		/*<  Days in year.[0-365] */
+	int tm_isdst;		/*<  DST.         [-1/0/1] */
+	int32_t tm_gmtoff;	/*<  GMT offset in seconds [+/- 86400] */
+};
+typedef struct tm tm_t;
+
 char *tm_wday_to_ascii(int i);
 char *tm_mon_to_ascii(int i);
+
+tm_t *localtime(uint32_t * tp);
+tm_t *gmtime(uint32_t * tp);
 
 char *ctime_r(uint32_t * t, char *buf);
 char *ctime(uint32_t * tp);
