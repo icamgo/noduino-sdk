@@ -56,6 +56,9 @@ static uint32_t sample_period = 60;
 #define	MQTT_INIT_MSG			"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"L\":%d`\"sid\":\"%s\"}"
 #endif
 
+#define INIT_TS						1614665566UL
+#define MAX_TS						2000000000UL
+
 static uint32_t sample_count = 0;
 
 static float cur_temp = 0.0;
@@ -332,8 +335,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	sample_count++;
 
 	if (sample_count % sample_period == 0) {
-
-		/* every 4x3 = 12min, sample a point */
+		/* 20s x 60 = 1200s, 20min, sample a point */
 		power_on_dev();
 		cur_temp = get_temp();
 		cur_water = get_water();
@@ -505,7 +507,7 @@ qsetup_start:
 
 		uint32_t sec = str2seconds(str);
 
-		if (sec > 1614665568) {
+		if (sec > INIT_TS && sec < MAX_TS) {
 			update_seconds(sec);
 
 		#ifdef ENABLE_RTC
