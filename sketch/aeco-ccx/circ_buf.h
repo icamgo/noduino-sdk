@@ -3,11 +3,7 @@
 
 #ifdef EFM32HG110F64
 
-#ifdef USE_SOFTSPI
-#define	CIRC_BUF_SIZE		44
-#else
 #define	CIRC_BUF_SIZE		32
-#endif
 #define	PKT_LEN				52
 
 #elif EFM32GG230F512

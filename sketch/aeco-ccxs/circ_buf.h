@@ -2,20 +2,15 @@
 #define __CIRC_BUF_H__
 
 #ifdef EFM32HG110F64
-
-#ifdef USE_SOFTSPI
-#define	CIRC_BUF_SIZE		48
-#else
 #define	CIRC_BUF_SIZE		32
-#endif
 
 #elif EFM32GG230F512
 #define	CIRC_BUF_SIZE		1024
 #else
-#define	CIRC_BUF_SIZE		6
+#define	CIRC_BUF_SIZE		4
 #endif
 
-#define	PKT_LEN				48
+#define	PKT_LEN				52
 
 /* Return count in buffer.  */
 #define CIRC_CNT(head,tail,size) (((head) - (tail)) & ((size)-1))

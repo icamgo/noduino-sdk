@@ -1,7 +1,7 @@
 #ifndef __CIRC_BUF_H__
 #define __CIRC_BUF_H__
 
-#define	CIRC_BUF_SIZE		12
+#define	CIRC_BUF_SIZE		8
 
 #define	PKT_LEN				44
 
