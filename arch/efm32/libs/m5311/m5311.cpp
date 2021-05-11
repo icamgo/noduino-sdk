@@ -474,22 +474,20 @@ bool M5311::check_incoming_msg()
 
 int M5311::check_modem_signal()
 {
-	char resp_result[BUF_LEN];
-	int index = 0;
 	int ssi;
 	char ssi_str[3];
 
 	MODEM_SERIAL->println("AT+CSQ");
 
-	char wait_str[] = "+CSQ:";
+	char wait_str[] = "+CSQ: ";
 	String re_str;
-	re_str = expect_rx_str(1000, wait_str, 5);
+	re_str = expect_rx_str(1000, wait_str, 6);
 
 	if (re_str != "") {
 		ssi_str[0] = re_str[0];
-		// check the next char is not "," It is not single digit
+
 		if (re_str[1] != 0x2c) {
-			//INFOLN( resp_result[index+2]);
+			// It's not the "," 
 			ssi_str[1] = re_str[1];
 			ssi_str[2] = '\0';
 			ssi = atoi(ssi_str);
@@ -503,6 +501,31 @@ int M5311::check_modem_signal()
 		return ssi;
 	} else {
 		return -200;
+	}
+}
+
+int M5311::get_csq()
+{
+	int ssi;
+
+	MODEM_SERIAL->println(F("AT+CSQ"));
+	MODEM_SERIAL->flush();
+
+	char wait_str[] = "+CSQ:";
+	String re_str;
+
+	re_str = expect_rx_str(1000, wait_str, 5);
+
+	memset(str, 0, BUF_LEN);
+	re_str.toCharArray(str, BUF_LEN);
+
+	if (re_str != "") {
+
+		sscanf(str, "%d,", &ssi);
+		return ssi;
+
+	} else {
+		return 99;
 	}
 }
 

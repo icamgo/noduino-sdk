@@ -39,6 +39,7 @@ public:
 	String get_imsi();
 	String get_imei();
 	String get_iccid();
+	int get_csq();
 
 	bool closeUDPSocket();
 	bool check_match(char target[], char pattern[], int len_check);
