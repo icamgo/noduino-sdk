@@ -30,9 +30,10 @@ extern "C"{
 #include "circ_buf.h"
 
 #define DEBUG							1
-//#define ENABLE_RTC					1
+//#define ENABLE_RTC						1
+//#define DEBUG_RTC						1
 
-#define	FW_VER						"V1.5"
+#define	FW_VER						"V1.6"
 
 #ifdef ENABLE_RTC
 #include "softi2c.h"
@@ -79,7 +80,7 @@ static uint8_t need_push = 0;
 
 uint16_t tx_count = 0;
 
-#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"L\":%d}"
+#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"L\":%d`\"sgi\":%d}"
 
 #define LEVEL_UNKNOWN				-2
 #define LEVEL_LOW					-1
@@ -118,6 +119,7 @@ char dev_data[8];
 
 #ifdef EFM32HG110F64
 char iccid[24] __attribute__((aligned(4)));
+int g_rssi = 0;
 #endif
 
 void push_data();
@@ -342,6 +344,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		power_off_dev();
 
 		#ifdef ENABLE_RTC
+		pcf8563_init(SCL_PIN, SDA_PIN);
 		ret = push_point(&g_cbuf, pcf8563_now(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
 		#else
 		ret = push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
@@ -501,6 +504,9 @@ qsetup_start:
 
 		WDOG_Feed();
 
+		g_rssi = modem.get_csq();
+		INFOLN(g_rssi);
+
 		//char strtest[] = "21/02/26,06:22:38+32";
 		modem.get_net_time().toCharArray(str, BUF_LEN);
 		INFOLN(str);
@@ -518,7 +524,9 @@ qsetup_start:
 
 		INFO("epoch = ");
 		INFOLN(seconds());
-
+		#ifdef ENABLE_RTC
+		INFOLN(pcf8563_now());
+		#endif
 	} else {
 		/* attach network timeout */
 		power_on_modem();
@@ -590,8 +598,22 @@ void setup()
 	INFOLN(seconds());
 
 #ifdef ENABLE_RTC
-	delay(1000);
 	pcf8563_init(SCL_PIN, SDA_PIN);
+
+	delay(1000);
+
+	#ifdef DEBUG_RTC
+	int ctrl = pcf8563_get_ctrl2();
+	INFO("RTC ctrl2: ");
+	INFO_HEX(ctrl);
+	INFOLN("");
+
+	if (ctrl == 0xFF) {
+		/* Incorrect state of pcf8563 */
+		NVIC_SystemReset();
+	}
+	#endif
+
 	pcf8563_clear_timer();
 #endif
 
@@ -600,7 +622,7 @@ void setup()
 	cur_water = get_water();
 	power_off_dev();
 
-#ifdef ENABLE_RTC
+#ifdef ENABLE_RTCx
 	push_point(&g_cbuf, pcf8563_now(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
 #else
 	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
@@ -648,8 +670,8 @@ void push_data()
 				WDOG_Feed();
 				wakeup_modem();
 
-				if (d.ts == 0) {
-					INFOLN("Do not use ts0, update ts");
+				if (d.ts < INIT_TS || d.ts > MAX_TS) {
+					INFOLN("Invalid ts, use current ts");
 					d.ts = seconds();
 					INFOLN(seconds());
 				}
@@ -679,7 +701,8 @@ void push_data()
 						decode_sensor_data(d.data / 10.0),
 						d.iT,
 						tx_cause,
-						d.wl
+						d.wl,
+						g_rssi
 				);
 				#ifdef EFM32HG110F64
 				}
