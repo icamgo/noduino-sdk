@@ -28,6 +28,7 @@
 #include "flash.h"
 
 //#define	DEBUG					1
+//#define ENABLE_CRC					1
 
 #ifdef CONFIG_V0
 #include "softspi.h"
@@ -564,7 +565,7 @@ void qsetup()
 #endif
 }
 
-#if 0
+#ifdef ENABLE_CRC
 uint16_t get_crc(uint8_t *pp, int len)
 {
 	int i;
@@ -674,7 +675,7 @@ void push_data()
 	 * 2. crc
 	 * 3. set mic
 	*/
-	#if 0
+	#ifdef ENABLE_CRC
 	uint16_t ui16 = get_crc(pkt, PAYLOAD_LEN);
 	p = (uint8_t *) &ui16;
 	pkt[PAYLOAD_LEN] = p[1]; pkt[PAYLOAD_LEN+1] = p[0];
