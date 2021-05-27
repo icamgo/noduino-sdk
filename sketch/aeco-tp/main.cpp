@@ -54,7 +54,7 @@ static uint32_t sample_period = 60;
 #elif EFM32HG110F64
 #define SAMPLE_PERIOD			60		/* check_period x SAMPLE_PERIOD = 1200s (20min) */
 #define PUSH_PERIOD				360		/* check_period x PUSH_PERIOD = 120min */
-#define	MQTT_INIT_MSG			"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"sid\":\"%s\"}"
+#define	MQTT_INIT_MSG			"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"P\":%s`\"iT\":%d`\"tp\":%d`\"sid\":\"%s\"}"
 #endif
 
 #define INIT_TS						1614665566UL
@@ -82,12 +82,7 @@ static uint8_t need_push = 0;
 
 uint16_t tx_count = 0;
 
-#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"sgi\":%d}"
-
-#define LEVEL_UNKNOWN				-2
-#define LEVEL_LOW					-1
-#define LEVEL_MEDIAN				0
-#define LEVEL_HIGH					1
+#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"P\":%s`\"iT\":%d`\"tp\":%d`\"sgi\":%d}"
 
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
@@ -261,6 +256,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	if (sample_count % sample_period == 0) {
 		/* 20s x 60 = 1200s, 20min, sample a point */
 		power_on_dev();
+		delay(5);
 		pressure_init(SFT_SCL_PIN, SFT_SDA_PIN);
 		cur_pres = get_pressure();
 		power_off_dev();
@@ -540,6 +536,7 @@ void setup()
 #endif
 
 	power_on_dev();
+	delay(5);
 	pressure_init(SFT_SCL_PIN, SFT_SDA_PIN);
 	cur_pres = get_pressure();
 	power_off_dev();
