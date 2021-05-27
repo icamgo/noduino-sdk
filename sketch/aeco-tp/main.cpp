@@ -30,7 +30,7 @@ extern "C"{
 #include "circ_buf.h"
 
 #define DEBUG							1
-//#define ENABLE_RTC						1
+#define ENABLE_RTC						1
 //#define DEBUG_RTC						1
 
 #define	FW_VER						"V1.0"
@@ -256,7 +256,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	if (sample_count % sample_period == 0) {
 		/* 20s x 60 = 1200s, 20min, sample a point */
 		power_on_dev();
-		delay(5);
+		i2c_delay_ms(5);
 		pressure_init(SFT_SCL_PIN, SFT_SDA_PIN);
 		cur_pres = get_pressure();
 		power_off_dev();
