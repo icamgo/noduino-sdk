@@ -33,7 +33,7 @@ extern "C"{
 #define ENABLE_RTC						1
 //#define DEBUG_RTC						1
 
-#define	FW_VER						"V1.0"
+#define	FW_VER						"V1.1"
 
 #ifdef ENABLE_RTC
 #include "softi2c.h"
@@ -190,7 +190,7 @@ char *decode_vbat(float vb)
 
 char *decode_sensor_data(float dd)
 {
-	ftoa(dev_data, dd, 1);
+	ftoa(dev_data, dd, 2);
 	return dev_data;
 }
 
