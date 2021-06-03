@@ -22,7 +22,7 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.0"
+#define FW_VER						"Ver 1.1"
 
 /* 1 hour - 1 point */
 #define CONFIG_2MIN					1
@@ -151,7 +151,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	cnt_20s++;
 
 	if (cnt_20s >= sample_period) {
-		/* Timer 1, Two hours */
+		/* Timer 1, 1 hours */
 		need_push = 0x5a;
 		tx_cause = TIMER_TX;
 		cnt_20s = 0;
@@ -189,7 +189,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	cur_smk = get_smk();
 
-	if (cur_smk == 0) {
+	if (cur_smk == 1) {
 		need_push = 0x5C;
 		tx_cause = DELTA_TX;
 	}
@@ -241,11 +241,11 @@ void setup()
 
 	power_off_dev();
 
-	pinMode(KEY_PIN, INPUT);
-	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
+	//pinMode(KEY_PIN, INPUT);
+	//attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
 	pinMode(SMK_PIN, INPUT);
-	attachInterrupt(SMK_PIN, smoke_alarm, FALLING);
+	attachInterrupt(SMK_PIN, smoke_alarm, RISING);
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
@@ -299,6 +299,8 @@ void push_data(bool cad_on)
 
 	uint8_t *pkt = message;
 
+	WDOG_Feed();
+
 	memset(pkt, 0, PAYLOAD_LEN+6);
 	pkt[0] = 0x47; pkt[1] = 0x4F; pkt[2] = 0x33;
 
@@ -326,7 +328,7 @@ void push_data(bool cad_on)
 		pkt[3+i] = p[7-i];
 	}
 
-	int16_t ui16 = (int16_t)(cur_smk);
+	int16_t ui16 = (int16_t)(cur_smk) * 10;
 	p = (uint8_t *) &ui16;
 
 	pkt[11] = p[1]; pkt[12] = p[0];
@@ -406,6 +408,7 @@ void loop()
 	if (0x5a <= need_push && vbat_low == false) {
 		push_data(true);
 		need_push -= 1;
+		delay(2000);
 	}
 
 	power_off_dev();
