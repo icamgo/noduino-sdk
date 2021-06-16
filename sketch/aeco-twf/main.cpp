@@ -605,7 +605,12 @@ void setup()
 		need_push = 0x5a;
 	//}
 
-	INFOLN("\r\n\r\nAECO-TT setup OK");
+	INFOLN("\r\n\r\nWelcom to AE-TWF!");
+	INFO("Firmware: ");
+	INFOLN(FW_VER);
+	INFO("DevID: ");
+	INFOLN(decode_devid(get_devid()));
+
 	INFO("epoch = ");
 	INFOLN(seconds());
 
