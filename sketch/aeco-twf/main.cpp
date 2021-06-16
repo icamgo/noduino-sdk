@@ -30,10 +30,10 @@ extern "C"{
 #include "circ_buf.h"
 
 #define DEBUG							1
-//#define ENABLE_RTC						1
+#define ENABLE_RTC						1
 //#define DEBUG_RTC						1
 
-#define	FW_VER						"V1.6"
+#define	FW_VER						"V1.7"
 
 #ifdef ENABLE_RTC
 #include "softi2c.h"
@@ -44,16 +44,16 @@ extern "C"{
 RTCDRV_TimerID_t xTimerForWakeUp;
 
 static uint32_t check_period = 18;		/* 20s = 0.33min */
-static uint32_t sample_period = 60;
+static uint32_t sample_period = 90;		/* 20s * 90 = 1800s, 30min */
 
 #define WDOG_PERIOD				wdogPeriod_32k			/* 32k 1kHz periods should give 32 seconds */
 
 #ifdef EFM32ZG110F32
-#define SAMPLE_PERIOD			60		/* check_period x SAMPLE_PERIOD = 1200s (20min) */
-#define PUSH_PERIOD				360		/* check_period x PUSH_PERIOD = 7200s */
+#define SAMPLE_PERIOD			90		/* check_period x SAMPLE_PERIOD = 1800s (30min) */
+#define PUSH_PERIOD				720		/* check_period x PUSH_PERIOD = 240min, 4h */
 #elif EFM32HG110F64
-#define SAMPLE_PERIOD			60		/* check_period x SAMPLE_PERIOD = 1200s (20min) */
-#define PUSH_PERIOD				360		/* check_period x PUSH_PERIOD = 120min */
+#define SAMPLE_PERIOD			90		/* check_period x SAMPLE_PERIOD = 1800s (30min) */
+#define PUSH_PERIOD				1080	/* check_period x PUSH_PERIOD = 360min, 6h */
 #define	MQTT_INIT_MSG			"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"L\":%d`\"sid\":\"%s\"}"
 #endif
 
@@ -64,6 +64,9 @@ static uint32_t sample_count = 0;
 
 static float cur_temp = 0.0;
 static int cur_water = 0.0;
+
+static float old_temp = 0.0;
+static int old_water = 0.0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define MODEM_ON_PIN			2		/* PIN6_PB8_D2 */
@@ -355,7 +358,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			 * point is saved ok
 			 * reset sample period to 20min
 			*/
-			sample_period = 60;
+			sample_period = 90;
 
 		} else if (ret == 1) {
 			/*
@@ -364,6 +367,15 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			*/
 			sample_period = 180;
 		}
+
+		if ((cur_water != old_water) || fabsf(cur_temp - old_temp) > 5.0) {
+			/* Level is changed, need to push */
+			need_push = 0x5a;
+			tx_cause = DELTA_TX;
+		}
+
+		old_temp = cur_temp;
+		old_water = cur_water;
 	}
 
 	if (sample_count >= PUSH_PERIOD) {
