@@ -403,12 +403,31 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 void trig_check_sensor()
 {
-	noInterrupts();
+	power_on_dev();
+	cur_temp = get_temp();
+	cur_water = get_water();
+	power_off_dev();
+
+	#ifdef ENABLE_RTC
+	pcf8563_init(SCL_PIN, SDA_PIN);
+
+	uint32_t cur_ts = pcf8563_now();
+
+	if (1923494289 == cur_ts) {
+		rtc_ok = false;
+	}
+
+	if (rtc_ok && fabs(cur_ts - seconds()) < 3600) {
+		push_point(&g_cbuf, cur_ts, (cur_temp * 10), fetch_mcu_temp(), cur_water);
+	} else {
+		push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+	}
+	#else
+	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+	#endif
 
 	need_push = 0x5a;
 	tx_cause = KEY_TX;
-
-	interrupts();
 }
 
 int qsetup()
