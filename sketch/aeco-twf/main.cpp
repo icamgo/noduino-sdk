@@ -31,9 +31,8 @@ extern "C"{
 
 #define DEBUG							1
 #define ENABLE_RTC						1
-//#define DEBUG_RTC						1
 
-#define	FW_VER						"V1.7"
+#define	FW_VER						"V1.8"
 
 #ifdef ENABLE_RTC
 #include "softi2c.h"
@@ -63,10 +62,10 @@ static uint32_t sample_period = 90;		/* 20s * 90 = 1800s, 30min */
 static uint32_t sample_count = 0;
 
 static float cur_temp = 0.0;
-static int cur_water = 0.0;
+static int cur_water = 0;
 
 static float old_temp = 0.0;
-static int old_water = 0.0;
+static int old_water = 0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define MODEM_ON_PIN			2		/* PIN6_PB8_D2 */
@@ -123,6 +122,10 @@ char dev_data[8];
 #ifdef EFM32HG110F64
 char iccid[24] __attribute__((aligned(4)));
 int g_rssi = 0;
+#endif
+
+#ifdef ENABLE_RTC
+bool rtc_ok = true;
 #endif
 
 void push_data();
@@ -340,7 +343,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	sample_count++;
 
 	if (sample_count % sample_period == 0) {
-		/* 20s x 60 = 1200s, 20min, sample a point */
+		/* 20s x 90 = 1200s, 30min, sample a point */
 		power_on_dev();
 		cur_temp = get_temp();
 		cur_water = get_water();
@@ -348,7 +351,18 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 		#ifdef ENABLE_RTC
 		pcf8563_init(SCL_PIN, SDA_PIN);
-		ret = push_point(&g_cbuf, pcf8563_now(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+
+		uint32_t cur_ts = pcf8563_now();
+
+		if (1923494289 == cur_ts) {
+			rtc_ok = false;
+		}
+
+		if (rtc_ok && fabs(cur_ts - seconds()) < 3600) {
+			ret = push_point(&g_cbuf, cur_ts, (cur_temp * 10), fetch_mcu_temp(), cur_water);
+		} else {
+			ret = push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+		}
 		#else
 		ret = push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
 		#endif
@@ -356,7 +370,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		if (ret == 0) {
 			/*
 			 * point is saved ok
-			 * reset sample period to 20min
+			 * reset sample period to 30min
 			*/
 			sample_period = 90;
 
@@ -537,7 +551,14 @@ qsetup_start:
 		INFO("epoch = ");
 		INFOLN(seconds());
 		#ifdef ENABLE_RTC
-		INFOLN(pcf8563_now());
+		uint32_t cur_ts = pcf8563_now();
+
+		if (1923494289 == cur_ts) {
+			rtc_ok = false;
+		}
+
+		INFO("RTC = ");
+		INFOLN(cur_ts);
 		#endif
 	} else {
 		/* attach network timeout */
@@ -619,7 +640,6 @@ void setup()
 
 	delay(1000);
 
-	#ifdef DEBUG_RTC
 	int ctrl = pcf8563_get_ctrl2();
 	INFO("RTC ctrl2: ");
 	INFO_HEX(ctrl);
@@ -627,9 +647,9 @@ void setup()
 
 	if (ctrl == 0xFF) {
 		/* Incorrect state of pcf8563 */
-		NVIC_SystemReset();
+		//NVIC_SystemReset();
+		rtc_ok = false;
 	}
-	#endif
 
 	pcf8563_clear_timer();
 #endif
@@ -639,8 +659,18 @@ void setup()
 	cur_water = get_water();
 	power_off_dev();
 
-#ifdef ENABLE_RTCx
-	push_point(&g_cbuf, pcf8563_now(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+#ifdef ENABLE_RTC
+	uint32_t cur_ts = pcf8563_now();
+
+	if (1923494289 == cur_ts) {
+		rtc_ok = false;
+	}
+
+	if (rtc_ok && fabs(cur_ts - seconds()) < 3600) {
+		push_point(&g_cbuf, cur_ts, (cur_temp * 10), fetch_mcu_temp(), cur_water);
+	} else {
+		push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+	}
 #else
 	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
 #endif
