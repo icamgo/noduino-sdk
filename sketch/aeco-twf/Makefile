@@ -408,6 +408,9 @@ reset:
 unlock:
 	$(OPENOCD) -f interface/stlink.cfg -c $(OPENOCD_UNLOCK)
 
+cmdflash:
+	$(SDK_BASE)/toolchain/Commander/t2hg-flash.bat build/main.bin
+
 clean:
 	$(RM) build/main.hex build/main.eep build/main.cof build/main.elf \
 	build/main.map build/main.sym build/main.o build/main.lss build/core.a \
