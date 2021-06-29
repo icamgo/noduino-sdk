@@ -68,11 +68,12 @@ static float old_temp = 0.0;
 static int old_water = 0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
-#define MODEM_ON_PIN			15		/* PIN20_PF01_D15 */
 //#define MODEM_ON_PIN			2		/* PIN6_PB8_D2 */
 //#define MODEM_ON_PIN			14		/* PIN19_PF00_D14 */
+//#define MODEM_ON_PIN			9		/* PIN18_PC15_D9 */
+#define MODEM_ON_PIN			0		/* PIN01_PA00_D0 */
 
-#define	KEY_PIN					0		/* PIN01_PA00_D0 */
+#define	KEY_PIN					15		/* PIN20_PF01_D15 */
 
 #define	RTC_INT_PIN				16		/* PIN21_PF02_D16 */
 static uint8_t need_push = 0;
@@ -294,6 +295,7 @@ void trig_check_sensor()
 
 	need_push = 0x5a;
 	tx_cause = KEY_TX;
+	INFOLN("key");
 
 	interrupts();
 }
@@ -453,14 +455,14 @@ void setup()
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 	power_off_dev();
 
-	#if 0
+	#if 1
 	pinMode(MODEM_ON_PIN, OUTPUT);
 	#else
 	GPIO_PinModeSet(g_Pin2PortMapArray[MODEM_ON_PIN].GPIOx_Port,
 					g_Pin2PortMapArray[MODEM_ON_PIN].Pin_abstraction,
 					gpioModePushPullDrive, 0);
-	//GPIO_DriveModeSet(g_Pin2PortMapArray[MODEM_ON_PIN].GPIOx_Port,
-	//				gpioDriveModeHigh);
+	GPIO_DriveModeSet(g_Pin2PortMapArray[MODEM_ON_PIN].GPIOx_Port,
+					gpioDriveModeHigh);
 	#endif
 	digitalWrite(MODEM_ON_PIN, LOW);
 
