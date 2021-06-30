@@ -245,7 +245,7 @@ void setup()
 	//attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
 	pinMode(SMK_PIN, INPUT);
-	attachInterrupt(SMK_PIN, smoke_alarm, RISING);
+	attachInterrupt(SMK_PIN, smoke_alarm, CHANGE);
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
