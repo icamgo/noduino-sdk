@@ -30,9 +30,9 @@ extern "C"{
 #include "circ_buf.h"
 
 #define DEBUG							1
-#define ENABLE_RTC						1
+//#define ENABLE_RTC						1
 
-#define	FW_VER						"V1.8"
+#define	FW_VER						"V1.9"
 
 #ifdef ENABLE_RTC
 #include "softi2c.h"
@@ -337,8 +337,12 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
 	fix_seconds(check_period + check_period/9);
-
 	//INFOLN(seconds());
+
+	if (0 == digitalRead(KEY_PIN)) {
+		/* storage mode */
+		return;
+	}
 
 	sample_count++;
 
@@ -638,12 +642,8 @@ void setup()
 	/* Start watchdog */
 	WDOG_Init(&wInit);
 
-	/* bootup tx */
-	//if (0 == digitalRead(KEY_PIN)) {
-		/* storage mode */
-		tx_cause = RESET_TX;
-		need_push = 0x5a;
-	//}
+	tx_cause = RESET_TX;
+	need_push = 0x5a;
 
 	INFOLN("\r\n\r\nWelcom to AE-TWF!");
 	INFO("Firmware: ");
@@ -672,6 +672,12 @@ void setup()
 
 	pcf8563_clear_timer();
 #endif
+
+	/* bootup tx */
+	if (0 == digitalRead(KEY_PIN)) {
+		/* storage mode */
+		INFOLN("Storage Mode");
+	}
 
 	power_on_dev();
 	cur_temp = get_temp();
@@ -802,7 +808,7 @@ void push_data()
 
 void loop()
 {
-	if (0x5a == need_push) {
+	if (0x5a == need_push && 1 == digitalRead(KEY_PIN)) {
 		INFO("Seconds: ");
 		INFOLN(seconds());
 
