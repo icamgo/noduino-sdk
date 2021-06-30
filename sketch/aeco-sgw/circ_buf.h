@@ -9,15 +9,14 @@
 */
 
 #ifdef EFM32HG110F64
-#define	CIRC_BUF_SIZE		256
+//#define	CIRC_BUF_SIZE		36
+#define	CIRC_BUF_SIZE		16
 
 #elif EFM32GG230F512
 #define	CIRC_BUF_SIZE		1024
-
-#elif EFM32ZG110F32
-#define	CIRC_BUF_SIZE		64
 #endif
 
+#define	PKT_LEN				48
 
 /* Return count in buffer.  */
 #define CIRC_CNT(head,tail,size) (((head) - (tail)) & ((size)-1))
@@ -41,27 +40,28 @@
 	  int n = (end + (tail)) & ((size)-1); \
 	  n <= end ? n : end+1;})
 
-struct point {
+struct pkt {
+	uint8_t data[PKT_LEN];
+	int16_t rssi;
+	int16_t plen;
 	uint32_t ts;
-	int16_t data;
-	int8_t iT;
-	int8_t wl;
 };
 
 struct circ_buf {
-	struct point point[CIRC_BUF_SIZE];
+	struct pkt pkt[CIRC_BUF_SIZE];
 	int head;
 	int tail;
 };
 
-int push_point(struct circ_buf *cbuf, uint32_t ts, int16_t dd, int8_t itt, int8_t wl)
+int push_point(struct circ_buf *cbuf, uint8_t *idata, int16_t rssi, int len, uint32_t ts)
 {
-	if (cbuf != NULL && CIRC_SPACE(cbuf->head, cbuf->tail, CIRC_BUF_SIZE) >= 1) {
+	if (idata != NULL && cbuf != NULL && CIRC_SPACE(cbuf->head, cbuf->tail, CIRC_BUF_SIZE) >= 1) {
 
-		cbuf->point[cbuf->head].ts = ts;
-		cbuf->point[cbuf->head].data = dd;
-		cbuf->point[cbuf->head].iT = itt;
-		cbuf->point[cbuf->head].wl = wl;
+		memcpy(cbuf->pkt[cbuf->head].data, idata, len);
+
+		cbuf->pkt[cbuf->head].rssi = rssi;
+		cbuf->pkt[cbuf->head].plen = len;
+		cbuf->pkt[cbuf->head].ts = ts;
 
 		cbuf->head += 1;
 
@@ -77,24 +77,24 @@ int push_point(struct circ_buf *cbuf, uint32_t ts, int16_t dd, int8_t itt, int8_
 		randomSeed(millis());
 		uint32_t pos = random() % CIRC_BUF_SIZE;
 
-		cbuf->point[pos].ts = ts;
-		cbuf->point[pos].data = dd;
-		cbuf->point[pos].iT = itt;
+		memcpy(cbuf->pkt[cbuf->head].data, idata, len);
+		cbuf->pkt[cbuf->head].rssi = rssi;
+		cbuf->pkt[cbuf->head].plen = len;
+		cbuf->pkt[pos].ts = ts;
 
 		return 1;
 	}
 }
 
-
-int pop_point(struct circ_buf *cbuf, struct point *odata)
+int pop_point(struct circ_buf *cbuf, struct pkt *odata)
 {
 	if (odata != NULL && cbuf != NULL &&
 		CIRC_CNT(cbuf->head, cbuf->tail, CIRC_BUF_SIZE) > 0) {
 	
-		odata->ts = cbuf->point[cbuf->tail].ts;
-		odata->data = cbuf->point[cbuf->tail].data;
-		odata->iT = cbuf->point[cbuf->tail].iT;
-		odata->wl = cbuf->point[cbuf->tail].wl;
+		odata->ts = cbuf->pkt[cbuf->tail].ts;
+		odata->rssi = cbuf->pkt[cbuf->tail].rssi;
+
+		memcpy(odata->data, cbuf->pkt[cbuf->tail].data, cbuf->pkt[cbuf->tail].plen);
 
 		cbuf->tail += 1;
 		cbuf->tail %= CIRC_BUF_SIZE;
@@ -102,19 +102,21 @@ int pop_point(struct circ_buf *cbuf, struct point *odata)
 		return 0;
 
 	} else {
+
 		return 1;
 	}
 }
 
-int get_1st_point(struct circ_buf *cbuf, struct point *odata)
+int get_1st_point(struct circ_buf *cbuf, struct pkt *odata)
 {
 	if (odata != NULL && cbuf != NULL &&
 		CIRC_CNT(cbuf->head, cbuf->tail, CIRC_BUF_SIZE) > 0) {
-	
-		odata->ts = cbuf->point[cbuf->tail].ts;
-		odata->data = cbuf->point[cbuf->tail].data;
-		odata->iT = cbuf->point[cbuf->tail].iT;
-		odata->wl = cbuf->point[cbuf->tail].wl;
+
+		odata->ts = cbuf->pkt[cbuf->tail].ts;
+		odata->rssi = cbuf->pkt[cbuf->tail].rssi;
+		odata->plen = cbuf->pkt[cbuf->head].plen;
+
+		memcpy(odata->data, cbuf->pkt[cbuf->tail].data, cbuf->pkt[cbuf->tail].plen);
 
 		return 0;
 

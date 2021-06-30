@@ -26,13 +26,18 @@ extern "C"{
 #include "math.h"
 #include "em_wdog.h"
 
+#include "sx126x.h"
+
 #include "circ_buf.h"
 
 #define DEBUG							1
 //#define ENABLE_RTC						1
 //#define DEBUG_RTC						1
 
-#define	FW_VER						"V1.0"
+#define ENABLE_LORA						1
+#define ENABLE_RX_IRQ					1
+
+#define	FW_VER						"V1.1"
 
 #ifdef ENABLE_RTC
 #include "softi2c.h"
@@ -47,14 +52,9 @@ static uint32_t sample_period = 90;		/* 20s * 90 = 1800s, 30min */
 
 #define WDOG_PERIOD				wdogPeriod_32k			/* 32k 1kHz periods should give 32 seconds */
 
-#ifdef EFM32ZG110F32
-#define SAMPLE_PERIOD			90		/* check_period x SAMPLE_PERIOD = 1800s (30min) */
-#define PUSH_PERIOD				720		/* check_period x PUSH_PERIOD = 240min, 4h */
-#elif EFM32HG110F64
 #define SAMPLE_PERIOD			90		/* check_period x SAMPLE_PERIOD = 1800s (30min) */
 #define PUSH_PERIOD				1080	/* check_period x PUSH_PERIOD = 360min, 6h */
-#define	MQTT_INIT_MSG			"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"L\":%d`\"sid\":\"%s\"}"
-#endif
+#define	MY_RPT_MSG			"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"L\":%d`\"sid\":\"%s\"}"
 
 #define INIT_TS						1614665566UL
 #define MAX_TS						2000000000UL
@@ -62,10 +62,7 @@ static uint32_t sample_period = 90;		/* 20s * 90 = 1800s, 30min */
 static uint32_t sample_count = 0;
 
 static float cur_temp = 0.0;
-static int cur_water = 0;
-
 static float old_temp = 0.0;
-static int old_water = 0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 //#define MODEM_ON_PIN			2		/* PIN6_PB8_D2 */
@@ -75,12 +72,14 @@ static int old_water = 0;
 
 #define	KEY_PIN					15		/* PIN20_PF01_D15 */
 
+#define	RF_INT_PIN				3		/* PIN8_PB11_D3 */
 #define	RTC_INT_PIN				16		/* PIN21_PF02_D16 */
+
 static uint8_t need_push = 0;
 
 uint16_t tx_count = 0;
 
-#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"L\":%d`\"sgi\":%d}"
+#define	MQTT_MSG		"{\"ts\":%d`\"gwid\":\"%s\"`\"gid\":\"%s\"`\"B\":%s`\"tp\":%d`\"sgi\":%d`\"%s}"
 
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
@@ -102,20 +101,70 @@ uint16_t tx_count = 0;
 #define	EL_TX				4
 #define	WL_TX				5
 
-struct circ_buf g_cbuf;
+struct circ_buf g_cbuf __attribute__((aligned(4)));
 
 int tx_cause = RESET_TX;
 
 M5311 modem;
 
-char dev_id[24];
-char dev_vbat[6];
-char dev_data[8];
-
-#ifdef EFM32HG110F64
 char iccid[24] __attribute__((aligned(4)));
 int g_rssi = 0;
+
+///////////////////////////////////////////////////////////////
+#include "ccx.h"
+#include "crypto.h"
+#include "tx_ctrl.h"
+
+#define TXRX_CH					472500000
+#define TX_PWR					22
+
+uint8_t pbuf[48] __attribute__((aligned(4)));;
+struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
+
+SX126x lora(2,		// Pin: SPI CS,PIN06-PB08-D2
+	    9,				// Pin: RESET, PIN18-PC15-D9
+	    5,				// PIN: Busy,  PIN11-PB14-D5, The RX pin
+	    3				// Pin: DIO1,  PIN08-PB11-D3
+    );
+
+inline void lora_setup()
+{
+	lora.reset();
+	lora.init();
+	lora.setup_v0(TXRX_CH, TX_PWR);
+}
+
+#ifdef ENABLE_RX_IRQ
+void rx_irq_handler()
+{
+	NVIC_DisableIRQ(GPIO_ODD_IRQn);
+	NVIC_DisableIRQ(GPIO_EVEN_IRQn);
+
+	int plen = 0, rssi = 0;
+
+	WDOG_Feed();
+
+	INFOLN("rx");
+
+	plen = lora.get_rx_pkt(pbuf, 48);
+	rssi = lora.get_pkt_rssi();
+
+	if (plen > PKT_LEN || plen < 0) goto rx_irq_out;
+
+	if ((true == is_our_pkt(pbuf, plen))
+		&& (false == is_pkt_in_ctrl(&g_cfifo, pbuf, plen, seconds()))) {
+
+		push_point(&g_cbuf, pbuf, rssi, plen, seconds());
+	}
+
+rx_irq_out:
+	NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
+	NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
+	NVIC_EnableIRQ(GPIO_ODD_IRQn);
+	NVIC_EnableIRQ(GPIO_EVEN_IRQn);
+}
 #endif
+///////////////////////////////////////////////////////////////
 
 void push_data();
 int8_t fetch_mcu_temp();
@@ -127,69 +176,6 @@ uint64_t get_devid()
 	p = (uint64_t *)0x0FE00008;
 
 	return *p;
-}
-
-char *decode_devid(uint64_t n)
-{
-	char *dest = dev_id;
-
-	dest += 20;
-	*dest-- = 0;
-	while (n) {
-		*dest-- = (n % 10) + '0';
-		n /= 10;
-	}
-
-	strcpy(dev_id, dest+1);
-
-	return dev_id;
-}
-
-/* only support .0001 */
-char *ftoa(char *a, float f, int preci)
-{
-	long p[] =
-	    {0, 10, 100, 1000, 10000};
-
-	char *ret = a;
-
-	long ipart = (long)f;
-
-	itoa(ipart, a, 10);		//int16, -32,768 ~ 32,767
-
-	while (*a != '\0')
-		a++;
-
-	*a++ = '.';
-
-	long fpart = abs(f * p[preci] - ipart * p[preci]);
-
-	if (fpart > 0) {
-		if (fpart < p[preci]/10) {
-			*a++ = '0';
-		}
-		if (fpart < p[preci]/100) {
-			*a++ = '0';
-		}
-		if (fpart < p[preci]/1000) {
-			*a++ = '0';
-		}
-	}
-
-	itoa(fpart, a, 10);
-	return ret;
-}
-
-char *decode_vbat(float vb)
-{
-	ftoa(dev_vbat, vb, 3);
-	return dev_vbat;
-}
-
-char *decode_sensor_data(float dd)
-{
-	ftoa(dev_data, dd, 1);
-	return dev_data;
 }
 
 void power_on_dev()
@@ -248,10 +234,9 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	if (sample_count % sample_period == 0) {
 		/* 20s x 90 = 1200s, 30min, sample a point */
 
-		#ifdef ENABLE_RTC
+		#if 0
 		pcf8563_init(SCL_PIN, SDA_PIN);
 		ret = push_point(&g_cbuf, pcf8563_now(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
-		#else
 		ret = push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
 		#endif
 
@@ -270,14 +255,13 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			sample_period = 180;
 		}
 
-		if ((cur_water != old_water) || fabsf(cur_temp - old_temp) > 5.0) {
+		if (fabsf(cur_temp - old_temp) > 5.0) {
 			/* Level is changed, need to push */
 			need_push = 0x5a;
 			tx_cause = DELTA_TX;
 		}
 
 		old_temp = cur_temp;
-		old_water = cur_water;
 	}
 
 	if (sample_count >= PUSH_PERIOD) {
@@ -469,6 +453,14 @@ void setup()
 	pinMode(KEY_PIN, INPUT);
 	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
+#ifdef ENABLE_LORA
+#ifdef ENABLE_RX_IRQ
+	// RF Interrupt pin
+	pinMode(RF_INT_PIN, INPUT);
+	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
+#endif
+#endif
+
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
@@ -481,18 +473,15 @@ void setup()
 	/* Start watchdog */
 	WDOG_Init(&wInit);
 
-	/* bootup tx */
-	//if (0 == digitalRead(KEY_PIN)) {
-		/* storage mode */
-		tx_cause = RESET_TX;
-		need_push = 0x5a;
-	//}
+	/* boot tx */
+	tx_cause = RESET_TX;
+	need_push = 0x5a;
 
 	INFOLN("\r\n\r\nWelcom to AE-SGW!");
 	INFO("Firmware: ");
 	INFOLN(FW_VER);
 	INFO("DevID: ");
-	INFOLN(decode_devid(get_devid()));
+	INFOLN(decode_devid(get_devid(), myid_buf));
 
 	INFO("epoch = ");
 	INFOLN(seconds());
@@ -517,10 +506,14 @@ void setup()
 	pcf8563_clear_timer();
 #endif
 
-#ifdef ENABLE_RTCx
-	push_point(&g_cbuf, pcf8563_now(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
-#else
-	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+#if 0
+	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
+#endif
+
+#ifdef ENABLE_LORA
+	power_on_dev();
+	lora_setup();
+	lora.enter_rx();
 #endif
 }
 
@@ -528,7 +521,7 @@ void push_data()
 {
 	long cnt_fail = 0;
 
-	struct point d;
+	struct pkt d;
 
 	WDOG_Feed();
 
@@ -547,11 +540,11 @@ void push_data()
 		modem.mqtt_end();
 		delay(100);
 
-		char *devid = decode_devid(get_devid());
+		char *my_devid = decode_devid(get_devid(), myid_buf);
 
 		WDOG_Feed();
 		wakeup_modem();
-		modem.mqtt_begin("mqtt.autoeco.net", 1883, devid);
+		modem.mqtt_begin("mqtt.autoeco.net", 1883, my_devid);
 
 		WDOG_Feed();
 		wakeup_modem();
@@ -574,34 +567,31 @@ void push_data()
 				extern char modem_said[MODEM_LEN];
 				memset(modem_said, 0, MODEM_LEN);
 
-				#ifdef EFM32HG110F64
+				#if 0
 				if (tx_cause == 0 || gmtime(&(d.ts))->tm_hour == 12) {
 
-					sprintf(modem_said, MQTT_INIT_MSG,
+					sprintf(modem_said, MY_RPT_MSG,
 							d.ts,
-							devid,
+							my_devid,
 							decode_vbat(vbat),
 							decode_sensor_data(d.data / 10.0),
 							d.iT,
 							tx_cause,
-							d.wl,
 							iccid
 					);
 				} else {
-				#endif
-				sprintf(modem_said, MQTT_MSG,
-						d.ts,
-						devid,
-						decode_vbat(vbat),
-						decode_sensor_data(d.data / 10.0),
-						d.iT,
-						tx_cause,
-						d.wl,
-						g_rssi
-				);
-				#ifdef EFM32HG110F64
 				}
 				#endif
+
+				sprintf(modem_said, MQTT_MSG,
+						d.ts,
+						my_devid,
+						decode_devid(d.data, devid_buf),
+						decode_vbat(d.data),
+						decode_cmd(d.data),
+						d.rssi,
+						decode_sensor_data(d.data)
+				);
 
 				if (modem.mqtt_pub("dev/gw", modem_said)) {
 

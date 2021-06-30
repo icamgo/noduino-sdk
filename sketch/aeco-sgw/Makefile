@@ -24,7 +24,7 @@ LIB_DIR		:= $(SDK_BASE)/arch/efm32/libs
 #DEFS := -DUSE_AT -DUART_NO_RX_INT
 #DEFS := -DUSE_AT -DDEBUG_EFM
 #DEFS := -DUSE_AT -DDEBUG_M5311 -DDEBUG_UART
-DEFS := -DUSE_AT -DDEBUG_M5311
+DEFS := -DUSE_AT -DDEBUG_M5311 -DUSE_SX126X -DUART_NO_RX_INT
 #DEFS := -DUSE_AT
 
 MCU = cortex-m0plus
@@ -104,6 +104,9 @@ $(ARDUINO_CORES)/efm32/efm32init.c						\
 $(ARDUINO_CORES)/efm32/efm32gpio.c						\
 $(ARDUINO_CORES)/efm32/core_callback.c					\
 $(ARDUINO_CORES)/avr/dtostrf.c							\
+$(LIB_DIR)/dmadrv/dmadrv.c								\
+$(LIB_DIR)/dmadrv/dmactrl.c								\
+$(LIB_DIR)/spidrv/spidrv.c								\
 $(LIB_DIR)/time/timex.c									\
 $(LIB_DIR)/rtcdrv/rtcdriver.c
 
@@ -124,6 +127,7 @@ $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/m5311/m5311.cpp								\
 $(LIB_DIR)/softi2c/softi2c.cpp							\
 $(LIB_DIR)/pcf8563/pcf8563.cpp							\
+$(LIB_DIR)/sx126x/sx126x.cpp							\
 
 
 CXX_APP = main.cpp
@@ -141,6 +145,9 @@ CINCS		+= 				\
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/pcf8563/					\
 			-I $(LIB_DIR)/rtcdrv					\
+			-I $(LIB_DIR)/dmadrv					\
+			-I $(LIB_DIR)/spidrv					\
+			-I $(LIB_DIR)/sx126x/					\
 			-I .									
 
 CXXINCS		+= 				\
@@ -149,6 +156,9 @@ CXXINCS		+= 				\
 			-I $(LIB_DIR)/softi2c/					\
 			-I $(LIB_DIR)/pcf8563/					\
 			-I $(LIB_DIR)/rtcdrv					\
+			-I $(LIB_DIR)/dmadrv					\
+			-I $(LIB_DIR)/spidrv					\
+			-I $(LIB_DIR)/sx126x/					\
 			-I .
 
 
