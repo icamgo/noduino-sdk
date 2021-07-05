@@ -311,7 +311,7 @@ char *decode_sensor_type(uint32_t dvt)
 			strcpy(dev_type, "T2");
 			break;
 		case 3:
-			strcpy(dev_type, "T2P");
+			strcpy(dev_type, "P");
 			break;
 		#if 0
 		case 4:
@@ -325,13 +325,13 @@ char *decode_sensor_type(uint32_t dvt)
 			strcpy(dev_type, "EV");
 			break;
 		case 7:
-			strcpy(dev_type, "T2WP");
+			strcpy(dev_type, "WP");
 			break;
 		case 8:
 			strcpy(dev_type, "HT");
 			break;
 		case 9:
-			strcpy(dev_type, "T2M");
+			strcpy(dev_type, "M");
 			break;
 		#if 0
 		case 10:
@@ -342,13 +342,13 @@ char *decode_sensor_type(uint32_t dvt)
 			break;
 		#endif
 		case 12:
-			strcpy(dev_type, "T2V");
+			strcpy(dev_type, "V");
 			break;
 		case 13:
-			strcpy(dev_type, "T2WF");
+			strcpy(dev_type, "WF");
 			break;
 		case 14:
-			strcpy(dev_type, "T2W");
+			strcpy(dev_type, "W");
 			break;
 		case 16:
 			strcpy(dev_type, "GOTH");
@@ -362,6 +362,8 @@ char *decode_sensor_type(uint32_t dvt)
 		case 22:
 			strcpy(dev_type, "TCC");
 			break;
+		default:
+			strcpy(dev_type, "X");
 	}
 
 	return dev_type;
@@ -379,17 +381,17 @@ char *decode_sensor_data(uint8_t *pkt, uint32_t dvt)
 		case 0:
 		case 2:
 		case 4:
-			// Temperature
+		case 14:
+		case 20:
 			dd = (float)(data / 10.0);
 			ftoa(dev_data, dd, 1);
-			sprintf(dev_data, "%s", dev_data);
 			break;
 		case 1:
 		case 3:
 			// Pressure
 			dd = (float)(data / 100.0);
 			ftoa(dev_data, dd, 2);
-			sprintf(dev_data, "%s", dev_data);
+			//sprintf(dev_data, "%s", dev_data);
 			break;
 		#if 0
 		case 5:
@@ -420,33 +422,14 @@ char *decode_sensor_data(uint8_t *pkt, uint32_t dvt)
 			sprintf(dev_data, "%d", data);
 			break;
 		case 13:
-			// Float & Temp Sensor
+			// Float & Temp Sensor, Temp & level, iT is p[21]
 			dd = (float)(data / 10.0);
 			ftoa(dev_data, dd, 1);
-			sprintf(dev_data, "%s", dev_data);
-			break;
-		case 14:
-			// Water Leak Sensor
-			dd = (float)(data / 10.0);
-			ftoa(dev_data, dd, 1);
-			sprintf(dev_data, "%s", dev_data);
+			sprintf(dev_data, "%s %d %d", dev_data, (int8_t)pkt[20], (int8_t)pkt[21]);
 			break;
 		case 16:
 			// GOTh with oled
 			sprintf(dev_data, "%d %d", (int)(data/10.0+0.5), (int8_t)(pkt[20]));
-			break;
-		case 20:
-			// Internal Temprature of ECC
-			dd = (float)(data / 10.0);
-			ftoa(dev_data, dd, 1);
-			sprintf(dev_data, "%s", dev_data);
-			break;
-
-		case 21:
-			// Internal Temprature of ABC Sensor
-			dd = (float)(data / 10.0);
-			ftoa(dev_data, dd, 1);
-			sprintf(dev_data, "%s", dev_data);
 			break;
 
 		case 29:
@@ -462,18 +445,26 @@ char *decode_sensor_data(uint8_t *pkt, uint32_t dvt)
 			//sprintf(dev_data, "%d", pkt[18]);
 			//sprintf(dev_data, "%d", dvt);
 			break;
-
-		default:
-			sprintf(dev_data, "0x%04X", data);
-			break;
 	}
 
 	if (dvt == 28) {
+
 		*(((uint8_t *)&ddid) + 4) = 0x2;
 		for (int i = 0; i <= 3; i++) {
 			*(((uint8_t *)&ddid) + 3 - i) = pkt[20+i];
 		}
 		sprintf(dev_data, "%s", uint64_to_str(ddid));
+
+	} else if (dvt == 31) {
+
+		// Smoke or DI sensor
+		dd = (float)(data / 10.0);
+		ftoa(dev_data, dd, 1);
+		sprintf(dev_data, "%s %d", dev_data, (int8_t)pkt[21]);
+
+	} else if (dvt > 31) {
+		dd = (float)(data / 10.0);
+		ftoa(dev_data, dd, 1);
 	}
 
 	return dev_data;
@@ -1080,7 +1071,7 @@ void loop(void)
 						dev_vbat
 						);
 				} else {
-					sprintf(frame_buf[fi+1], " %s %s %s",
+					sprintf(frame_buf[fi+1], "%s %s %s",
 						dev_type,
 						dev_data,
 						dev_vbat
@@ -1240,7 +1231,7 @@ void loop(void)
 						);
 
 				} else {
-					sprintf(frame_buf[fi + 1], " %s %s %s",
+					sprintf(frame_buf[fi + 1], "%s %s %s",
 						decode_sensor_type(dev_t),
 						decode_sensor_data(p, dev_t),
 						decode_vbat(p)
