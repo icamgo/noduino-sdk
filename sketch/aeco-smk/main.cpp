@@ -194,11 +194,11 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	}
 
 #ifdef ENABLE_CHECK_ALARM
-	cur_smk = get_smk();
-
-	if (cur_smk == 1) {
+	if (cur_smk != get_smk()) {
 		need_push = 0x5C;
 		tx_cause = DELTA_TX;
+
+		cur_smk = get_smk();
 	}
 #endif
 }
@@ -252,11 +252,14 @@ void setup()
 	//pinMode(KEY_PIN, INPUT);
 	//attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
-	pinMode(SMK_PIN, INPUT);
 
 #ifdef ENABLE_CHECK_ALARM
+	GPIO_PinModeSet(g_Pin2PortMapArray[SMK_PIN].GPIOx_Port,
+					g_Pin2PortMapArray[SMK_PIN].Pin_abstraction,
+					gpioModeInputPullFilter, 0);
 	attachInterrupt(SMK_PIN, smoke_alarm, RISING);
 #else
+	pinMode(SMK_PIN, INPUT);
 	attachInterrupt(SMK_PIN, smoke_alarm, CHANGE);
 #endif
 
@@ -325,7 +328,15 @@ void push_data(bool cad_on)
 
 	power_on_dev();		// turn on device power
 
+#ifdef ENABLE_CHECK_ALARM
+	if (tx_cause == EL_TX) {
+		cur_smk = 1;
+	} else {
+		cur_smk = get_smk();
+	}
+#else
 	cur_smk = get_smk();
+#endif
 
 	uint64_t devid = get_devid();
 
