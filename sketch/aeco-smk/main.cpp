@@ -67,8 +67,11 @@ static uint32_t need_push = 0;
 #define SDA_PIN					12		/* PIN23_PE12 */
 #define SCL_PIN					13		/* PIN24_PE13 */
 
-//#define	SMK_PIN					SCL_PIN
+#ifdef ENABLE_CHECK_ALARM
+#define	SMK_PIN					SCL_PIN
+#else
 #define	SMK_PIN					KEY_PIN
+#endif
 
 #define TXRX_CH					472500000
 #define MAX_DBM					22
@@ -250,7 +253,12 @@ void setup()
 	//attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
 	pinMode(SMK_PIN, INPUT);
+
+#ifdef ENABLE_CHECK_ALARM
+	attachInterrupt(SMK_PIN, smoke_alarm, RISING);
+#else
 	attachInterrupt(SMK_PIN, smoke_alarm, CHANGE);
+#endif
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
