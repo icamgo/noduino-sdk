@@ -24,7 +24,19 @@
 #include "em_wdog.h"
 
 //#define	DEBUG					1
-#define USE_EXTERNAL_RTC		1
+
+/*
+ * With RTC: 1point / 10min
+ * NO RTC: +-2% / 20s, 2hours
+ *
+*/
+//#define USE_EXTERNAL_RTC		1
+#ifdef USE_EXTERNAL_RTC
+#define RTC_INTERVAL_MIN		10
+#endif
+
+#define ENABLE_SHT3X			1
+//#define ENABLE_SHT2X			1
 
 //#define	TX_TESTING				1
 
@@ -45,7 +57,7 @@ SX126x sx126x(2,					// Pin: SPI CS,PIN06-PB08-D2
 //#define CONFIG_PROTO_V34			1
 
 #ifdef CONFIG_PROTO_V33
-//#define ENABLE_CRYPTO				1
+#define ENABLE_CRYPTO				1
 #endif
 
 #ifdef ENABLE_CRYPTO
@@ -71,9 +83,6 @@ static float cur_temp = 0.0;
 static float cur_humi = 0.0;
 
 static float cur_curr = 0.0;
-
-//#define ENABLE_SHT2X			1
-//#define ENABLE_SHT3X			1
 
 #ifdef ENABLE_SHT2X
 #include "sht2x.h"
@@ -265,6 +274,7 @@ void trig_check_sensor()
 	tx_cause = KEY_TX;
 }
 
+#ifdef USE_EXTERNAL_RTC
 void check_rtc()
 {
 	power_on_dev();
@@ -280,6 +290,7 @@ void check_rtc()
 	need_push = 0x5a;
 	tx_cause = TIMER_TX;
 }
+#endif
 
 void setup()
 {
@@ -333,7 +344,7 @@ void setup()
 
 	pcf8563_set_from_int(2021, 3, 29, 17, 20, 0);
 
-	pcf8563_set_timer(1);
+	pcf8563_set_timer(RTC_INTERVAL_MIN);
 
 	INFO("RTC ctrl2: ");
 	INFOHEX(pcf8563_get_ctrl2());
