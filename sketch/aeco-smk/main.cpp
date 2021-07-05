@@ -22,10 +22,9 @@
 
 //#define	DEBUG					1
 
-#define FW_VER						"Ver 1.1"
+#define FW_VER						"Ver 1.2"
 
-/* 1 hour - 1 point */
-#define CONFIG_2MIN					1
+//#define ENABLE_CHECK_ALARM			1
 
 #define ENABLE_CRYPTO				1
 #define ENABLE_CAD					1
@@ -67,9 +66,9 @@ static uint32_t need_push = 0;
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
 #define SDA_PIN					12		/* PIN23_PE12 */
 #define SCL_PIN					13		/* PIN24_PE13 */
-#define	SMK_PIN					SCL_PIN
 
-#define	TX_TIME					1800		// 1800ms
+//#define	SMK_PIN					SCL_PIN
+#define	SMK_PIN					KEY_PIN
 
 #define TXRX_CH					472500000
 #define MAX_DBM					22
@@ -136,7 +135,11 @@ float fetch_vbat()
 
 uint32_t get_smk()
 {
+#ifdef ENABLE_CHECK_ALARM
 	return digitalRead(SMK_PIN);
+#else
+	return !digitalRead(SMK_PIN);
+#endif
 }
 
 void check_sensor(RTCDRV_TimerID_t id, void *user)
@@ -187,12 +190,14 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		cnt_vbat_low = 0;
 	}
 
+#ifdef ENABLE_CHECK_ALARM
 	cur_smk = get_smk();
 
 	if (cur_smk == 1) {
 		need_push = 0x5C;
 		tx_cause = DELTA_TX;
 	}
+#endif
 }
 
 void trig_check_sensor()
@@ -312,11 +317,7 @@ void push_data(bool cad_on)
 
 	power_on_dev();		// turn on device power
 
-	if (KEY_TX == tx_cause || RESET_TX == tx_cause ||
-		TIMER_TX == tx_cause) {
-
-		cur_smk = get_smk();
-	}
+	cur_smk = get_smk();
 
 	uint64_t devid = get_devid();
 
@@ -405,10 +406,10 @@ void push_data(bool cad_on)
 
 void loop()
 {
-	if (0x5a <= need_push && vbat_low == false) {
+	while (0x5a <= need_push && vbat_low == false) {
 		push_data(true);
 		need_push -= 1;
-		delay(2000);
+		delay(1600);
 	}
 
 	power_off_dev();
