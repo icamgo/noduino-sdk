@@ -28,7 +28,7 @@
 #include "tx_ctrl.h"
 #include "circ_buf.h"
 
-//#define ENABLE_TX5					1
+#define ENABLE_TX5					1
 
 #if 0
 #define	DEBUG						1
@@ -1879,7 +1879,6 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 	}
 }
 
-#if defined(EFM32ZG110F32) || defined(EFM32GG230F512)
 void key_report_status()
 {
 	#if 0
@@ -1917,7 +1916,6 @@ void key_report_status()
 	tx_cause = KEY_TX;
 	need_push = 0x55;
 }
-#endif
 
 void setup()
 {
