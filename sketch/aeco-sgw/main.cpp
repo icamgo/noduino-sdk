@@ -165,7 +165,10 @@ void rx_irq_handler()
 
 		push_point(&g_cbuf, pbuf, rssi, plen, seconds());
 
-		/* push the pkt data into tx_ctrl structure */
+		/*
+		 * push the pkt data into tx_ctrl structure
+		 * TODO: should do it in the pkt process func
+		*/
 		check_ctrl_fno(&g_cfifo, pbuf, plen);
 	}
 
@@ -439,6 +442,8 @@ void setup()
 	wInit.em3Run = true;
 	wInit.perSel = WDOG_PERIOD;
 
+	crypto_init();
+
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
 	power_off_dev();
@@ -647,6 +652,13 @@ void lora_rx_worker()
 
 	uint8_t *p = d.data;
 	int p_len = d.plen;
+
+	#if 1
+	if (false == check_pkt_mic(p, p_len)) {
+		INFOLN("Invalid MIC");
+		return;
+	}
+	#endif
 
 #ifdef DEBUG_HEX_PKT
 	int a = 0, b = 0;
