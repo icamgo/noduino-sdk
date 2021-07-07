@@ -30,9 +30,9 @@ extern "C"{
 #include "circ_buf.h"
 
 #define DEBUG							1
-//#define ENABLE_RTC						1
+#define ENABLE_RTC						1
 
-#define	FW_VER						"V1.9"
+#define	FW_VER						"V2.0"
 
 #ifdef ENABLE_RTC
 #include "softi2c.h"
@@ -127,6 +127,9 @@ int g_rssi = 0;
 #ifdef ENABLE_RTC
 bool rtc_ok = true;
 #endif
+
+static uint32_t trig_ts = 0;
+static uint32_t trig_cnt = 0;
 
 void push_data();
 int8_t fetch_mcu_temp();
@@ -354,19 +357,23 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		power_off_dev();
 
 		#ifdef ENABLE_RTC
-		pcf8563_init(SCL_PIN, SDA_PIN);
+		uint32_t cur_ts = 0;
 
-		uint32_t cur_ts = pcf8563_now();
+		if (rtc_ok) {
 
-		if (1923494289 == cur_ts) {
-			rtc_ok = false;
-		}
+			pcf8563_init(SCL_PIN, SDA_PIN);
+			cur_ts = pcf8563_now();
 
-		if (rtc_ok && fabs(cur_ts - seconds()) < 3600) {
-			ret = push_point(&g_cbuf, cur_ts, (cur_temp * 10), fetch_mcu_temp(), cur_water);
+			if (1923494289 == cur_ts || fabs(cur_ts - seconds()) > 3600) {
+				rtc_ok = false;
+				cur_ts = seconds();
+			}
+
 		} else {
-			ret = push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+			cur_ts = seconds();
 		}
+
+		ret = push_point(&g_cbuf, cur_ts, (cur_temp * 10), fetch_mcu_temp(), cur_water);
 		#else
 		ret = push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
 		#endif
@@ -407,31 +414,46 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 void trig_check_sensor()
 {
-	power_on_dev();
-	cur_temp = get_temp();
-	cur_water = get_water();
-	power_off_dev();
+	uint32_t cur_ts = 0;
+
+	WDOG_Feed();
 
 	#ifdef ENABLE_RTC
-	pcf8563_init(SCL_PIN, SDA_PIN);
+	if (rtc_ok) {
 
-	uint32_t cur_ts = pcf8563_now();
+		pcf8563_init(SCL_PIN, SDA_PIN);
+		cur_ts = pcf8563_now();
 
-	if (1923494289 == cur_ts) {
-		rtc_ok = false;
-	}
+		if (1923494289 == cur_ts || fabs(cur_ts - seconds()) > 3600) {
+			rtc_ok = false;
+			cur_ts = seconds();
+		}
 
-	if (rtc_ok && fabs(cur_ts - seconds()) < 3600) {
-		push_point(&g_cbuf, cur_ts, (cur_temp * 10), fetch_mcu_temp(), cur_water);
 	} else {
-		push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+		cur_ts = seconds();
 	}
 	#else
-	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
+	cur_ts = seconds();
 	#endif
 
-	need_push = 0x5a;
-	tx_cause = KEY_TX;
+	trig_cnt++;
+
+	if (trig_cnt < 5) {
+		need_push = 0x5a;
+		tx_cause = KEY_TX;
+		trig_ts = cur_ts;
+
+		power_on_dev();
+		cur_temp = get_temp();
+		cur_water = get_water();
+		power_off_dev();
+		push_point(&g_cbuf, cur_ts, (cur_temp * 10), fetch_mcu_temp(), cur_water);
+	}
+
+	if ((cur_ts - trig_ts) > 1800) {
+		/* reset the trig_cnt after 30min */
+		trig_cnt = 0;
+	}
 }
 
 int qsetup()
