@@ -29,7 +29,7 @@
 
 //#define USE_PT1K_X1					1
 
-#define FW_VER					"Ver 1.5"
+#define FW_VER					"Ver 1.6"
 
 #define	PAYLOAD_LEN					30		/* 30+2+4 = 36B */
 #define ENABLE_CRYPTO				1
@@ -41,7 +41,7 @@
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t sample_period = 20;		/* 20s */
+static uint32_t sample_period = 18;		/* 20s */
 
 static uint32_t sample_count = 0;
 static uint32_t leak_tx_count = 0;
@@ -129,6 +129,9 @@ static float cur_vbat = 0.0;
 bool vbat_low __attribute__((aligned(4))) = false;
 int cnt_vbat_low __attribute__((aligned(4))) = 0;
 int cnt_vbat_ok __attribute__((aligned(4))) = 0;
+
+uint32_t trig_ts = 0;
+uint32_t trig_cnt = 0;
 
 void push_data(bool al);
 
@@ -346,6 +349,8 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
+	fix_seconds(sample_period + sample_period/9);
+
 	/* storage mode */
 	if (0 == digitalRead(KEY_PIN)) {
 		return ;
@@ -488,9 +493,20 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 void trig_check_sensor()
 {
-	need_push = 0x5a;
+	uint32_t cur_ts = seconds();
 
-	tx_cause = KEY_TX;
+	trig_cnt++;
+
+	if (trig_cnt < 15) {
+		need_push = 0x5a;
+		tx_cause = KEY_TX;
+		trig_ts = cur_ts;
+	}
+
+	if ((cur_ts - trig_ts) > 1800) {
+		/* reset the trig_cnt after 30min */
+		trig_cnt = 0;
+	}
 }
 
 void setup()
