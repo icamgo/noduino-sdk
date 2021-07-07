@@ -9,7 +9,6 @@
 */
 
 #ifdef EFM32HG110F64
-//#define	CIRC_BUF_SIZE		36
 #define	CIRC_BUF_SIZE		16
 
 #elif EFM32GG230F512
@@ -70,6 +69,7 @@ int push_point(struct circ_buf *cbuf, uint8_t *idata, int16_t rssi, int len, uin
 		return 0;
 
 	} else {
+		#if 0
 		/*
 		 * cbuf is full
 		 * replace a random point
@@ -77,10 +77,11 @@ int push_point(struct circ_buf *cbuf, uint8_t *idata, int16_t rssi, int len, uin
 		randomSeed(millis());
 		uint32_t pos = random() % CIRC_BUF_SIZE;
 
-		memcpy(cbuf->pkt[cbuf->head].data, idata, len);
-		cbuf->pkt[cbuf->head].rssi = rssi;
-		cbuf->pkt[cbuf->head].plen = len;
+		memcpy(cbuf->pkt[pos].data, idata, len);
+		cbuf->pkt[pos].rssi = rssi;
+		cbuf->pkt[pos].plen = len;
 		cbuf->pkt[pos].ts = ts;
+		#endif
 
 		return 1;
 	}
@@ -91,8 +92,9 @@ int pop_point(struct circ_buf *cbuf, struct pkt *odata)
 	if (odata != NULL && cbuf != NULL &&
 		CIRC_CNT(cbuf->head, cbuf->tail, CIRC_BUF_SIZE) > 0) {
 	
-		odata->ts = cbuf->pkt[cbuf->tail].ts;
 		odata->rssi = cbuf->pkt[cbuf->tail].rssi;
+		odata->plen = cbuf->pkt[cbuf->tail].plen;
+		odata->ts = cbuf->pkt[cbuf->tail].ts;
 
 		memcpy(odata->data, cbuf->pkt[cbuf->tail].data, cbuf->pkt[cbuf->tail].plen);
 
@@ -114,7 +116,7 @@ int get_1st_point(struct circ_buf *cbuf, struct pkt *odata)
 
 		odata->ts = cbuf->pkt[cbuf->tail].ts;
 		odata->rssi = cbuf->pkt[cbuf->tail].rssi;
-		odata->plen = cbuf->pkt[cbuf->head].plen;
+		odata->plen = cbuf->pkt[cbuf->tail].plen;
 
 		memcpy(odata->data, cbuf->pkt[cbuf->tail].data, cbuf->pkt[cbuf->tail].plen);
 

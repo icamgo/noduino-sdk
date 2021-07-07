@@ -31,6 +31,7 @@ extern "C"{
 #include "circ_buf.h"
 
 #define DEBUG							1
+#define DEBUG_HEX_PKT					1
 //#define ENABLE_RTC						1
 //#define DEBUG_RTC						1
 
@@ -54,7 +55,7 @@ static uint32_t sample_period = 90;		/* 20s * 90 = 1800s, 30min */
 
 #define SAMPLE_PERIOD			90		/* check_period x SAMPLE_PERIOD = 1800s (30min) */
 #define PUSH_PERIOD				1080	/* check_period x PUSH_PERIOD = 360min, 6h */
-#define	MY_RPT_MSG			"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"L\":%d`\"sid\":\"%s\"}"
+//#define	MY_RPT_MSG			"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"L\":%d`\"sid\":\"%s\"}"
 
 #define INIT_TS						1614665566UL
 #define MAX_TS						2000000000UL
@@ -75,7 +76,13 @@ static float old_temp = 0.0;
 #define	RF_INT_PIN				3		/* PIN8_PB11_D3 */
 #define	RTC_INT_PIN				16		/* PIN21_PF02_D16 */
 
-static uint8_t need_push = 0;
+float cur_vbat __attribute__((aligned(4))) = 0.0;
+bool vbat_low __attribute__((aligned(4))) = false;
+int cnt_vbat_low __attribute__((aligned(4))) = 0;
+int cnt_vbat_ok __attribute__((aligned(4))) = 0;
+
+static bool need_sleep __attribute__((aligned(4))) = false;
+uint32_t cnt_sleep __attribute__((aligned(4))) = 0;
 
 uint16_t tx_count = 0;
 
@@ -127,7 +134,7 @@ SX126x lora(2,		// Pin: SPI CS,PIN06-PB08-D2
 	    3				// Pin: DIO1,  PIN08-PB11-D3
     );
 
-inline void lora_setup()
+inline void setup_lora()
 {
 	lora.reset();
 	lora.init();
@@ -144,10 +151,12 @@ void rx_irq_handler()
 
 	WDOG_Feed();
 
-	INFOLN("rx");
+	//INFO("rx: ");
 
 	plen = lora.get_rx_pkt(pbuf, 48);
 	rssi = lora.get_pkt_rssi();
+
+	//INFOLN(plen);
 
 	if (plen > PKT_LEN || plen < 0) goto rx_irq_out;
 
@@ -155,6 +164,9 @@ void rx_irq_handler()
 		&& (false == is_pkt_in_ctrl(&g_cfifo, pbuf, plen, seconds()))) {
 
 		push_point(&g_cbuf, pbuf, rssi, plen, seconds());
+
+		/* push the pkt data into tx_ctrl structure */
+		check_ctrl_fno(&g_cfifo, pbuf, plen);
 	}
 
 rx_irq_out:
@@ -254,20 +266,12 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			*/
 			sample_period = 180;
 		}
-
-		if (fabsf(cur_temp - old_temp) > 5.0) {
-			/* Level is changed, need to push */
-			need_push = 0x5a;
-			tx_cause = DELTA_TX;
-		}
-
-		old_temp = cur_temp;
 	}
 
 	if (sample_count >= PUSH_PERIOD) {
 
 		/* 4min * 15 =  60min */
-		need_push = 0x5a;
+		need_sleep = false;
 		tx_cause = TIMER_TX;
 		sample_count = 0;
 	}
@@ -277,14 +281,14 @@ void trig_check_sensor()
 {
 	noInterrupts();
 
-	need_push = 0x5a;
+	need_sleep = false;
 	tx_cause = KEY_TX;
 	INFOLN("key");
 
 	interrupts();
 }
 
-int qsetup()
+int setup_nb()
 {
 	bool network_ok = false;
 	int start_cnt = 0;
@@ -450,8 +454,8 @@ void setup()
 	#endif
 	digitalWrite(MODEM_ON_PIN, LOW);
 
-	pinMode(KEY_PIN, INPUT);
-	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
+	//pinMode(KEY_PIN, INPUT);
+	//attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
 #ifdef ENABLE_LORA
 #ifdef ENABLE_RX_IRQ
@@ -473,15 +477,18 @@ void setup()
 	/* Start watchdog */
 	WDOG_Init(&wInit);
 
+	/* reset epoch */
+	update_seconds(160015579);
+	reset_ctrl_ts(&g_cfifo, seconds());
+
 	/* boot tx */
 	tx_cause = RESET_TX;
-	need_push = 0x5a;
 
 	INFOLN("\r\n\r\nWelcom to AE-SGW!");
 	INFO("Firmware: ");
 	INFOLN(FW_VER);
 	INFO("DevID: ");
-	INFOLN(decode_devid(get_devid(), myid_buf));
+	INFOLN(uint64_to_str(myid_buf, get_devid()));
 
 	INFO("epoch = ");
 	INFOLN(seconds());
@@ -512,7 +519,7 @@ void setup()
 
 #ifdef ENABLE_LORA
 	power_on_dev();
-	lora_setup();
+	setup_lora();
 	lora.enter_rx();
 #endif
 }
@@ -534,13 +541,14 @@ void push_data()
 		return;
 	}
 
-	ret = qsetup();
+	ret = setup_nb();
+
 	if (ret == 1) {
 
 		modem.mqtt_end();
 		delay(100);
 
-		char *my_devid = decode_devid(get_devid(), myid_buf);
+		char *my_devid = uint64_to_str(myid_buf, get_devid());
 
 		WDOG_Feed();
 		wakeup_modem();
@@ -614,33 +622,76 @@ void push_data()
 	}
 
 	WDOG_Feed();
+}
 
+void deep_sleep()
+{
 	power_off_modem();
+
+	// dev power off
 	power_off_dev();
+}
+
+struct pkt d;
+
+void lora_rx_worker()
+{
+	noInterrupts();
+	int ret = pop_point(&g_cbuf, &d);
+	interrupts();
+
+	if (ret != 0) {
+		// no pkt
+		return;
+	}
+
+	uint8_t *p = d.data;
+	int p_len = d.plen;
+
+#ifdef DEBUG_HEX_PKT
+	int a = 0, b = 0;
+
+	for (; a < p_len; a++, b++) {
+
+		if ((uint8_t) p[a] < 16)
+			INFO_S("0");
+
+		INFO_HEX((uint8_t) p[a]);
+		INFO_S(" ");
+	}
+
+	INFO_S("/");
+	INFO(d.rssi);
+	INFO_S("/");
+	INFOLN(p_len);
+#endif
 }
 
 void loop()
 {
-	if (0x5a == need_push) {
-		INFO("Seconds: ");
-		INFOLN(seconds());
-
-		push_data();
-		need_push = 0;
-
-		WDOG_Feed();
+	if (need_sleep == false && 1 == digitalRead(KEY_PIN) && vbat_low == false) {
+		/* storage mode */
+		lora_rx_worker();
 	}
 
-	//wire_end();
-	//digitalWrite(SCL_PIN, HIGH);
-	//digitalWrite(SDA_PIN, HIGH);
+	#if 0
+	if (need_sleep == true || 0 == digitalRead(KEY_PIN)
+		|| vbat_low == true) {
 
-	power_off_dev();
-	/*
-	 * Enable rtc timer before enter deep sleep
-	 * Stop rtc timer after enter check_sensor_data()
-	 */
-	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, check_period * 1000, check_sensor, NULL);
+		INFOLN("deep sleep..");
 
-	EMU_EnterEM2(true);
+		WDOG_Feed();
+
+		deep_sleep();
+
+		RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, check_period * 1000, check_sensor, NULL);
+
+		EMU_EnterEM2(true);
+
+		if (need_sleep == false && vbat_low == false) {
+			power_on_dev();
+			setup_lora();
+		}
+	}
+	#endif
 }
