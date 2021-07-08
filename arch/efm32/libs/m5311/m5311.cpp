@@ -610,6 +610,21 @@ bool M5311::mqtt_pub(char topic[], char msg[])
 	}
 }
 
+bool M5311::mqtt_pub_noack(char topic[], char msg[])
+{
+	MODEM_SERIAL->print(F("AT+MQTTPUB=\""));
+	MODEM_SERIAL->print(topic);
+	MODEM_SERIAL->print(F("\",1,0,0,0,\""));
+	MODEM_SERIAL->print(msg);
+	MODEM_SERIAL->println(F("\"\r\n"));
+	MODEM_SERIAL->flush();
+	MODEM_SERIAL->clear_rxbuf();
+
+	delay(200);
+
+	return true;
+}
+
 void M5311::mqtt_end()
 {
 	char wait_str[] = "OK";

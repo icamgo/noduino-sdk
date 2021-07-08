@@ -77,6 +77,7 @@ public:
 	bool mqtt_begin(char srv[], int port, char clientid[]);
 	bool mqtt_connect();
 	bool mqtt_pub(char topic[], char msg[]);
+	bool mqtt_pub_noack(char topic[], char msg[]);
 	void mqtt_end();
 
 private:
