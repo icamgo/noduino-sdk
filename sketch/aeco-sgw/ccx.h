@@ -123,7 +123,7 @@ bool is_our_pkt(uint8_t *p, int len)
 
 ////////////////////////////////////////////////////////////////////////////
 char devid_buf[16];
-char myid_buf[16];
+char my_devid[16];
 char dev_vbat[6];
 char dev_data[48];
 
@@ -258,10 +258,11 @@ char *decode_sensor_data(uint8_t *pkt)
 		case 2:
 		case 4:
 		case 20:
+		case 21:
 			// Temperature: 00, 02, 04
 			dd = (float)(data / 10.0);
 			ftoa(data_buf, dd, 1);
-			sprintf(dev_data, "T/%s", data_buf);
+			sprintf(dev_data, "T\":%s", data_buf);
 			break;
 
 		case 1:
@@ -269,7 +270,6 @@ char *decode_sensor_data(uint8_t *pkt)
 			// Pressure sensor: 01, 03
 			dd = (float)(data / 100.0);
 			ftoa(data_buf, dd, 2);
-			//sprintf(dev_data, "P/%s", data_buf);
 			sprintf(dev_data, "P\":%s`\"iT\":%d", data_buf, (int8_t)(pkt[21]));
 			break;
 		case 5:
@@ -285,12 +285,6 @@ char *decode_sensor_data(uint8_t *pkt)
 		case 8:
 			// Humi&Temp Sensor
 			sprintf(dev_data, "H\":%d`\"T\":%d`\"iT\":%d", (int)(data/10.0+0.5), (int8_t)(pkt[20]), (int8_t)(pkt[21]));
-			break;
-		case 16:
-			// Temp&Humi Sensor
-			dd = (float)(data / 10.0);
-			ftoa(data_buf, dd, 1);
-			sprintf(dev_data, "T\":%s`\"H\":%d`\"iT\":%d", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]));
 			break;
 		case 9:
 			// Moving Sensor, unit is 'mm'
@@ -312,14 +306,11 @@ char *decode_sensor_data(uint8_t *pkt)
 			ftoa(data_buf, dd, 1);
 			sprintf(dev_data, "L\":%s", data_buf);
 			break;
-		case 21:
-			// Internal Temprature of ABC Sensor
+		case 16:
+			// GOTh with oled, Temp&Humi
 			dd = (float)(data / 10.0);
 			ftoa(data_buf, dd, 1);
-			sprintf(dev_data, "T\":%s", data_buf);
-			break;
-		default:
-			sprintf(dev_data, "0x%04X", data);
+			sprintf(dev_data, "T\":%s`\"H\":%d`\"iT\":%d", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]));
 			break;
 	}
 
@@ -334,9 +325,8 @@ char *decode_sensor_data(uint8_t *pkt)
 			*(((uint8_t *)&ddid) + 3 - i) = pkt[20+i];
 		}
 		sprintf(dev_data, "T\":%s`\"PID\":%s", data_buf, uint64_to_str(ppid, ddid));
-	}
 
-	if (dev_t == 29) {
+	} else if (dev_t == 29) {
 		// Float & Temp Sensor dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
 		//ttss = (pkt[18] << 24 | pkt[19] << 16 | pkt[24] << 8 | pkt[25]);
@@ -346,6 +336,18 @@ char *decode_sensor_data(uint8_t *pkt)
 		*(((uint8_t *)&ttss) + 0) = pkt[25];
 		sprintf(dev_data, "T\":%s`\"L\":%d`\"iT\":%d`\"TS\":%lu", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]), ttss);
 
+	} else if (dev_t == 31) {
+
+		// Smoke or DI sensor
+		dd = (float)(data / 10.0);
+		ftoa(dev_data, dd, 1);
+		sprintf(dev_data, "L\":%s`\"iT\":%d", dev_data, (int8_t)pkt[21]);
+
+	} else {
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+		sprintf(dev_data, "X\":%s`\"iX\":%d", data_buf, *((uint32_t *)(pkt+20)));
 	}
+
 	return dev_data;
 }

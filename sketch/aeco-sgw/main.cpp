@@ -66,9 +66,6 @@ static float cur_temp = 0.0;
 static float old_temp = 0.0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
-//#define MODEM_ON_PIN			2		/* PIN6_PB8_D2 */
-//#define MODEM_ON_PIN			14		/* PIN19_PF00_D14 */
-//#define MODEM_ON_PIN			9		/* PIN18_PC15_D9 */
 #define MODEM_ON_PIN			0		/* PIN01_PA00_D0 */
 
 #define	KEY_PIN					15		/* PIN20_PF01_D15 */
@@ -86,7 +83,7 @@ uint32_t cnt_sleep __attribute__((aligned(4))) = 0;
 
 uint16_t tx_count = 0;
 
-#define	MQTT_MSG		"{\"ts\":%d`\"gwid\":\"%s\"`\"gid\":\"%s\"`\"B\":%s`\"tp\":%d`\"sgi\":%d`\"%s}"
+#define	MQTT_PUSH_MSG			"{\"ts\":%d`\"gwid\":\"%s\"`\"gid\":\"%s\"`\"B\":%s`\"tp\":%d`\"sgi\":%d`\"%s}"
 
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
@@ -114,6 +111,7 @@ int tx_cause = RESET_TX;
 
 M5311 modem;
 
+bool network_ok __attribute__((aligned(4))) = false;
 char iccid[24] __attribute__((aligned(4)));
 int g_rssi = 0;
 
@@ -293,7 +291,6 @@ void trig_check_sensor()
 
 int setup_nb()
 {
-	bool network_ok = false;
 	int start_cnt = 0;
 
 	power_on_dev();		// turn on device power
@@ -446,29 +443,13 @@ void setup()
 
 	// dev power ctrl
 	pinMode(PWR_CTRL_PIN, OUTPUT);
-	power_off_dev();
-
-	#if 1
 	pinMode(MODEM_ON_PIN, OUTPUT);
-	#else
-	GPIO_PinModeSet(g_Pin2PortMapArray[MODEM_ON_PIN].GPIOx_Port,
-					g_Pin2PortMapArray[MODEM_ON_PIN].Pin_abstraction,
-					gpioModePushPullDrive, 0);
-	GPIO_DriveModeSet(g_Pin2PortMapArray[MODEM_ON_PIN].GPIOx_Port,
-					gpioDriveModeHigh);
-	#endif
+
+	power_on_dev();
 	digitalWrite(MODEM_ON_PIN, LOW);
 
-	//pinMode(KEY_PIN, INPUT);
-	//attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
-
-#ifdef ENABLE_LORA
-#ifdef ENABLE_RX_IRQ
-	// RF Interrupt pin
-	pinMode(RF_INT_PIN, INPUT);
-	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
-#endif
-#endif
+	pinMode(KEY_PIN, INPUT);
+	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
@@ -493,7 +474,7 @@ void setup()
 	INFO("Firmware: ");
 	INFOLN(FW_VER);
 	INFO("DevID: ");
-	INFOLN(uint64_to_str(myid_buf, get_devid()));
+	INFOLN(uint64_to_str(my_devid, get_devid()));
 
 	INFO("epoch = ");
 	INFOLN(seconds());
@@ -522,7 +503,14 @@ void setup()
 	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
 #endif
 
+	setup_nb();
+
 #ifdef ENABLE_LORA
+#ifdef ENABLE_RX_IRQ
+	// RF Interrupt pin
+	pinMode(RF_INT_PIN, INPUT);
+	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
+#endif
 	power_on_dev();
 	setup_lora();
 	lora.enter_rx();
@@ -546,14 +534,12 @@ void push_data()
 		return;
 	}
 
-	ret = setup_nb();
-
-	if (ret == 1) {
+	if (network_ok) {
 
 		modem.mqtt_end();
 		delay(100);
 
-		char *my_devid = uint64_to_str(myid_buf, get_devid());
+		//uint64_to_str(my_devid, get_devid());
 
 		WDOG_Feed();
 		wakeup_modem();
@@ -596,7 +582,7 @@ void push_data()
 				}
 				#endif
 
-				sprintf(modem_said, MQTT_MSG,
+				sprintf(modem_said, MQTT_PUSH_MSG,
 						d.ts,
 						my_devid,
 						decode_devid(d.data, devid_buf),
@@ -606,7 +592,7 @@ void push_data()
 						decode_sensor_data(d.data)
 				);
 
-				if (modem.mqtt_pub("dev/gw", modem_said)) {
+				if (modem.mqtt_pub_noack("dev/gws", modem_said)) {
 
 					INFOLN("Pub OK, pop point");
 					noInterrupts();
@@ -684,6 +670,8 @@ void loop()
 	if (need_sleep == false && 1 == digitalRead(KEY_PIN) && vbat_low == false) {
 		/* storage mode */
 		lora_rx_worker();
+
+		push_data();
 	}
 
 	#if 0
