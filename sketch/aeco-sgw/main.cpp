@@ -27,16 +27,17 @@ extern "C"{
 #include "em_wdog.h"
 
 #include "sx126x.h"
-
 #include "circ_buf.h"
+
+
+#define ENABLE_NB						1
+#define ENABLE_LORA						1
+#define ENABLE_RX_IRQ					1
 
 #define DEBUG							1
 #define DEBUG_HEX_PKT					1
 //#define ENABLE_RTC						1
 //#define DEBUG_RTC						1
-
-#define ENABLE_LORA						1
-#define ENABLE_RX_IRQ					1
 
 #define	FW_VER						"V1.1"
 
@@ -149,12 +150,12 @@ void rx_irq_handler()
 
 	WDOG_Feed();
 
-	//INFO("rx: ");
+	INFO("rx: ");
 
 	plen = lora.get_rx_pkt(pbuf, 48);
 	rssi = lora.get_pkt_rssi();
 
-	//INFOLN(plen);
+	INFOLN(plen);
 
 	if (plen > PKT_LEN || plen < 0) goto rx_irq_out;
 
@@ -203,7 +204,7 @@ void power_off_dev()
 
 void power_on_modem()
 {
-	digitalWrite(PWR_CTRL_PIN, HIGH);
+	//digitalWrite(PWR_CTRL_PIN, HIGH);
 
 #if 1
 	digitalWrite(MODEM_ON_PIN, HIGH);
@@ -218,8 +219,6 @@ void power_off_modem()
 	digitalWrite(MODEM_ON_PIN, HIGH);
 	delay(8300);
 	digitalWrite(MODEM_ON_PIN, LOW);
-
-	digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
 void wakeup_modem()
@@ -280,24 +279,16 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 void trig_check_sensor()
 {
-	noInterrupts();
-
 	need_sleep = false;
 	tx_cause = KEY_TX;
 	INFOLN("key");
-
-	interrupts();
 }
 
 int setup_nb()
 {
 	int start_cnt = 0;
 
-	power_on_dev();		// turn on device power
-
-	INFOLN("....");
 	SerialUSART1.setRouteLoc(3);
-	INFOLN("....");
 	SerialUSART1.begin(115200);
 	INFOLN("xxxx");
 
@@ -327,8 +318,6 @@ qsetup_start:
 
 	} else if ((ret == 2 || ret == 0) && start_cnt < 3) {
 		INFOLN(__LINE__);
-		//power_off_dev();
-		INFOLN(__LINE__);
 		delay(1000);
 		INFOLN(__LINE__);
 		goto qsetup_start;
@@ -353,16 +342,6 @@ qsetup_start:
 			delay(1000);
 
 			INFOLN("network check");
-
-		#if 0
-			power_off_dev();
-			delay(1000);
-			power_on_dev();
-
-			power_on_modem();
-		#else
-			//reset_modem();
-		#endif
 
 			//modem.init_modem();
 		}
@@ -461,10 +440,10 @@ void setup()
 #endif
 
 	/* Start watchdog */
-	WDOG_Init(&wInit);
+	//WDOG_Init(&wInit);
 
 	/* reset epoch */
-	update_seconds(160015579);
+	update_seconds(1625736586);
 	reset_ctrl_ts(&g_cfifo, seconds());
 
 	/* boot tx */
@@ -503,17 +482,28 @@ void setup()
 	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
 #endif
 
-	setup_nb();
-
 #ifdef ENABLE_LORA
 #ifdef ENABLE_RX_IRQ
 	// RF Interrupt pin
+	#if 1
 	pinMode(RF_INT_PIN, INPUT);
+	#else
+	GPIO_PinModeSet(g_Pin2PortMapArray[RF_INT_PIN].GPIOx_Port,
+					g_Pin2PortMapArray[RF_INT_PIN].Pin_abstraction,
+					gpioModeInputPullFilter, 0);
+	#endif
+
 	attachInterrupt(RF_INT_PIN, rx_irq_handler, RISING);
 #endif
-	power_on_dev();
+
 	setup_lora();
 	lora.enter_rx();
+#endif
+
+	delay(10000);
+
+#ifdef ENABLE_NB
+	setup_nb();
 #endif
 }
 
@@ -530,7 +520,7 @@ void push_data()
 	int ret = get_1st_point(&g_cbuf, &d);
 
 	if (ret == 1) {
-		INFOLN("No point in buf");
+		//INFO(".");
 		return;
 	}
 
@@ -627,9 +617,7 @@ struct pkt d;
 
 void lora_rx_worker()
 {
-	noInterrupts();
-	int ret = pop_point(&g_cbuf, &d);
-	interrupts();
+	int ret = get_1st_point(&g_cbuf, &d);
 
 	if (ret != 0) {
 		// no pkt
@@ -667,11 +655,14 @@ void lora_rx_worker()
 
 void loop()
 {
-	if (need_sleep == false && 1 == digitalRead(KEY_PIN) && vbat_low == false) {
-		/* storage mode */
+	//if (need_sleep == false && 1 == digitalRead(KEY_PIN) && vbat_low == false) {
+	if (need_sleep == false) {
+
 		lora_rx_worker();
 
+	#ifdef ENABLE_NB
 		push_data();
+	#endif
 	}
 
 	#if 0
