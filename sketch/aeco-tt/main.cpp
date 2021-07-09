@@ -29,32 +29,41 @@ extern "C"{
 
 #include "circ_buf.h"
 
-#define	DEBUG					1
+#define DEBUG							1
+//#define ENABLE_RTC						1
 
-#define	FW_VER						"V1.3"
+#define	FW_VER						"V1.5"
+
+#ifdef ENABLE_RTC
+#include "softi2c.h"
+#include "pcf8563.h"
+#endif
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
 static uint32_t check_period = 18;		/* 20s = 0.33min */
-static uint32_t sample_period = 60;
+static uint32_t sample_period = 90;		/* 20s * 90 = 1800s, 30min */
 
 #define WDOG_PERIOD				wdogPeriod_32k			/* 32k 1kHz periods should give 32 seconds */
 
 #ifdef EFM32ZG110F32
-#define SAMPLE_PERIOD			60		/* check_period x SAMPLE_PERIOD = 1200s (20min) */
-#define PUSH_PERIOD				360		/* check_period x PUSH_PERIOD = 7200s */
+#define SAMPLE_PERIOD			90		/* check_period x SAMPLE_PERIOD = 1800s (30min) */
+#define PUSH_PERIOD				720		/* check_period x PUSH_PERIOD = 240min, 4h */
 #elif EFM32HG110F64
-#define SAMPLE_PERIOD			36		/* check_period x SAMPLE_PERIOD = 720s (12min) */
-#define PUSH_PERIOD				360		/* check_period x PUSH_PERIOD = 120min */
+#define SAMPLE_PERIOD			90		/* check_period x SAMPLE_PERIOD = 1800s (30min) */
+#define PUSH_PERIOD				1080	/* check_period x PUSH_PERIOD = 360min, 6h */
+#define	MQTT_INIT_MSG			"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"sid\":\"%s\"}"
 #endif
+
+#define INIT_TS						1614665566UL
+#define MAX_TS						2000000000UL
 
 static uint32_t sample_count = 0;
 
-static float old_temp = 0.0;
 static float cur_temp = 0.0;
 
-//#define	TX_TESTING				1
+static float old_temp = 0.0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define MODEM_ON_PIN			2		/* PIN6_PB8_D2 */
@@ -62,11 +71,16 @@ static float cur_temp = 0.0;
 
 #define	KEY_PIN					0		/* PIN01_PA00_D0 */
 
+#define	RTC_INT_PIN				16		/* PIN21_PF02_D16 */
+
+#define SDA_PIN					12		/* PIN23_PE12 */
+#define SCL_PIN					13		/* PIN24_PE13 */
+
 static uint8_t need_push = 0;
 
 uint16_t tx_count = 0;
 
-#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d}"
+#define	MQTT_MSG		"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"sgi\":%d}"
 
 #ifdef DEBUG
 #define INFO_S(param)			Serial.print(F(param))
@@ -98,7 +112,17 @@ char dev_id[24];
 char dev_vbat[6];
 char dev_data[8];
 
-//__attribute__((aligned(4)));
+#ifdef EFM32HG110F64
+char iccid[24] __attribute__((aligned(4)));
+#endif
+int g_rssi = 0;
+
+#ifdef ENABLE_RTC
+bool rtc_ok = true;
+#endif
+
+static uint32_t trig_ts = 0;
+static uint32_t trig_cnt = 0;
 
 void push_data();
 int8_t fetch_mcu_temp();
@@ -229,28 +253,50 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	RTCDRV_StopTimer(xTimerForWakeUp);
 
 	fix_seconds(check_period + check_period/9);
-
 	//INFOLN(seconds());
+
+	if (0 == digitalRead(KEY_PIN)) {
+		/* storage mode */
+		return;
+	}
 
 	sample_count++;
 
-#if 1
 	if (sample_count % sample_period == 0) {
-
-		/* every 4x3 = 12min, sample a point */
+		/* 20s x 90 = 1200s, 30min, sample a point */
 		power_on_dev();
 		pt1000_init();
 		cur_temp = pt1000_get_temp();
 		power_off_dev();
 
+		#ifdef ENABLE_RTC
+		uint32_t cur_ts = 0;
+
+		if (rtc_ok) {
+
+			pcf8563_init(SCL_PIN, SDA_PIN);
+			cur_ts = pcf8563_now();
+
+			if (1923494289 == cur_ts || fabs(cur_ts - seconds()) > 3600) {
+				rtc_ok = false;
+				cur_ts = seconds();
+			}
+
+		} else {
+			cur_ts = seconds();
+		}
+
+		ret = push_point(&g_cbuf, cur_ts, (cur_temp * 10), fetch_mcu_temp());
+		#else
 		ret = push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
+		#endif
 
 		if (ret == 0) {
 			/*
 			 * point is saved ok
-			 * reset sample period to 20min
+			 * reset sample period to 30min
 			*/
-			sample_period = 60;
+			sample_period = 90;
 
 		} else if (ret == 1) {
 			/*
@@ -259,6 +305,14 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 			*/
 			sample_period = 180;
 		}
+
+		if (fabsf(cur_temp - old_temp) > 5.0) {
+			/* Temperature is changed, need to push */
+			need_push = 0x5a;
+			tx_cause = DELTA_TX;
+		}
+
+		old_temp = cur_temp;
 	}
 
 	if (sample_count >= PUSH_PERIOD) {
@@ -268,37 +322,50 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 		tx_cause = TIMER_TX;
 		sample_count = 0;
 	}
-#else
-	power_on_dev();		// turn on device power
-
-	pt1000_init();	// initialization of the sensor
-
-	cur_temp = pt1000_get_temp();
-
-	//power_off_dev();
-
-#ifdef TX_TESTING
-	tx_cause = TIMER_TX;
-	need_push = 0x5a;
-#else
-	if (fabsf(cur_temp - old_temp) > 1.0) {
-
-		tx_cause = DELTA_TX;
-		need_push = 0x5a;
-	}
-#endif
-
-#endif
 }
 
 void trig_check_sensor()
 {
-	noInterrupts();
+	uint32_t cur_ts = 0;
 
-	need_push = 0x5a;
-	tx_cause = KEY_TX;
+	WDOG_Feed();
 
-	interrupts();
+	#ifdef ENABLE_RTC
+	if (rtc_ok) {
+
+		pcf8563_init(SCL_PIN, SDA_PIN);
+		cur_ts = pcf8563_now();
+
+		if (1923494289 == cur_ts || fabs(cur_ts - seconds()) > 3600) {
+			rtc_ok = false;
+			cur_ts = seconds();
+		}
+
+	} else {
+		cur_ts = seconds();
+	}
+	#else
+	cur_ts = seconds();
+	#endif
+
+	trig_cnt++;
+
+	if (trig_cnt < 5) {
+		need_push = 0x5a;
+		tx_cause = KEY_TX;
+		trig_ts = cur_ts;
+
+		power_on_dev();
+		pt1000_init();
+		cur_temp = pt1000_get_temp();
+		power_off_dev();
+		push_point(&g_cbuf, cur_ts, (cur_temp * 10), fetch_mcu_temp());
+	}
+
+	if ((cur_ts - trig_ts) > 1800) {
+		/* reset the trig_cnt after 30min */
+		trig_cnt = 0;
+	}
 }
 
 int qsetup()
@@ -350,8 +417,12 @@ qsetup_start:
 	modem.init_modem();
 #endif
 
-	int ret = 0;
+	#ifdef EFM32HG110F64
+	memset(iccid, 0, 24);
+	modem.get_iccid().toCharArray(iccid, 24);
+	#endif
 
+	int ret = 0;
 	ret = modem.check_boot();
 	start_cnt++;
 
@@ -409,7 +480,6 @@ qsetup_start:
 
 		//INFOLN("IMEI = " + modem.get_imei());
 		//INFOLN("IMSI = " + modem.get_imsi());
-
 		//INFOLN(modem.check_ipaddr());
 
 		extern char str[BUF_LEN];
@@ -417,20 +487,36 @@ qsetup_start:
 
 		WDOG_Feed();
 
+		g_rssi = modem.get_csq();
+		INFOLN(g_rssi);
+
 		//char strtest[] = "21/02/26,06:22:38+32";
 		modem.get_net_time().toCharArray(str, BUF_LEN);
-
 		INFOLN(str);
 
 		uint32_t sec = str2seconds(str);
 
-		if (sec > 1614665568) {
+		if (sec > INIT_TS && sec < MAX_TS) {
 			update_seconds(sec);
+
+		#ifdef ENABLE_RTC
+			pcf8563_init(SCL_PIN, SDA_PIN);
+			pcf8563_set_from_seconds(sec);
+		#endif
 		}
 
 		INFO("epoch = ");
 		INFOLN(seconds());
+		#ifdef ENABLE_RTC
+		uint32_t cur_ts = pcf8563_now();
 
+		if (1923494289 == cur_ts) {
+			rtc_ok = false;
+		}
+
+		INFO("RTC = ");
+		INFOLN(cur_ts);
+		#endif
 	} else {
 		/* attach network timeout */
 		power_on_modem();
@@ -490,23 +576,63 @@ void setup()
 	/* Start watchdog */
 	WDOG_Init(&wInit);
 
-	/* bootup tx */
-	//if (0 == digitalRead(KEY_PIN)) {
-		/* storage mode */
-		tx_cause = RESET_TX;
-		need_push = 0x5a;
-	//}
+	tx_cause = RESET_TX;
+	need_push = 0x5a;
 
-	INFOLN("\r\n\r\nAECO-TT setup OK");
+	INFOLN("\r\n\r\nWelcom to AE-TT!");
+	INFO("Firmware: ");
+	INFOLN(FW_VER);
+	INFO("DevID: ");
+	INFOLN(decode_devid(get_devid()));
+
 	INFO("epoch = ");
 	INFOLN(seconds());
 
-	power_on_dev();	// turn on device power
-	pt1000_init();	// initialization of the sensor
+#ifdef ENABLE_RTC
+	pcf8563_init(SCL_PIN, SDA_PIN);
+
+	delay(1000);
+
+	int ctrl = pcf8563_get_ctrl2();
+	INFO("RTC ctrl2: ");
+	INFO_HEX(ctrl);
+	INFOLN("");
+
+	if (ctrl == 0xFF) {
+		/* Incorrect state of pcf8563 */
+		//NVIC_SystemReset();
+		rtc_ok = false;
+	}
+
+	pcf8563_clear_timer();
+#endif
+
+	/* bootup tx */
+	if (0 == digitalRead(KEY_PIN)) {
+		/* storage mode */
+		INFOLN("Storage Mode");
+	}
+
+	power_on_dev();
+	pt1000_init();
 	cur_temp = pt1000_get_temp();
 	power_off_dev();
 
+#ifdef ENABLE_RTC
+	uint32_t cur_ts = pcf8563_now();
+
+	if (1923494289 == cur_ts) {
+		rtc_ok = false;
+	}
+
+	if (rtc_ok && fabs(cur_ts - seconds()) < 3600) {
+		push_point(&g_cbuf, cur_ts, (cur_temp * 10), fetch_mcu_temp());
+	} else {
+		push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
+	}
+#else
 	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
+#endif
 }
 
 void push_data()
@@ -550,26 +676,44 @@ void push_data()
 				WDOG_Feed();
 				wakeup_modem();
 
-				if (d.ts == 0) {
-					INFOLN("Do not use ts0, update ts");
+				if (d.ts < INIT_TS || d.ts > MAX_TS) {
+					INFOLN("Invalid ts, use current ts");
 					d.ts = seconds();
 					INFOLN(seconds());
 				}
 
 				extern char modem_said[MODEM_LEN];
 				memset(modem_said, 0, MODEM_LEN);
+
+				#ifdef EFM32HG110F64
+				if (tx_cause == 0 || gmtime(&(d.ts))->tm_hour == 12) {
+
+					sprintf(modem_said, MQTT_INIT_MSG,
+							d.ts,
+							devid,
+							decode_vbat(vbat),
+							decode_sensor_data(d.data / 10.0),
+							d.iT,
+							tx_cause,
+							iccid
+					);
+				} else {
+				#endif
 				sprintf(modem_said, MQTT_MSG,
 						d.ts,
 						devid,
 						decode_vbat(vbat),
 						decode_sensor_data(d.data / 10.0),
 						d.iT,
-						tx_cause
+						tx_cause,
+						g_rssi
 				);
+				#ifdef EFM32HG110F64
+				}
+				#endif
 
 				if (modem.mqtt_pub("dev/gw", modem_said)) {
 
-					//old_temp = cur_temp;
 					INFOLN("Pub OK, pop point");
 					noInterrupts();
 					pop_point(&g_cbuf, &d);
@@ -581,42 +725,22 @@ void push_data()
 					INFOLN("Pub failed");
 				}
 			}
+			INFOLN("no point");
 		}
 
 		WDOG_Feed();
 		modem.mqtt_end();
-#if 1
 	}
 
 	WDOG_Feed();
 
 	power_off_modem();
 	power_off_dev();
-#else
-	} else if (ret == 2) {
-		// modem serial is hung
-
-		WDOG_Feed();
-		power_off_modem();
-		power_off_dev();
-
-		return;
-
-	} else if (ret == 0) {
-
-		WDOG_Feed();
-
-		modem.enter_deepsleep();
-
-		power_off_modem();
-		power_off_dev();
-	}
-#endif
 }
 
 void loop()
 {
-	if (0x5a == need_push) {
+	if (0x5a == need_push && 1 == digitalRead(KEY_PIN)) {
 		INFO("Seconds: ");
 		INFOLN(seconds());
 

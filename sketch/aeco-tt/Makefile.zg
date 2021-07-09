@@ -121,6 +121,8 @@ $(ARDUINO_CORES)/efm32/debug.cpp						\
 $(ARDUINO_CORES)/efm32/efm32adc.cpp						\
 $(ARDUINO_CORES)/main.cpp								\
 $(LIB_DIR)/m5311/m5311.cpp								\
+$(LIB_DIR)/softi2c/softi2c.cpp							\
+$(LIB_DIR)/pcf8563/pcf8563.cpp							\
 $(LIB_DIR)/pt1000/pt1000.cpp							\
 
 
@@ -137,6 +139,8 @@ CINCS		+= 				\
 			-I $(LIB_DIR)/m5311/					\
 			-I $(LIB_DIR)/time/						\
 			-I $(LIB_DIR)/pt1000/					\
+			-I $(LIB_DIR)/softi2c/					\
+			-I $(LIB_DIR)/pcf8563/					\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I .									
 
@@ -144,6 +148,8 @@ CXXINCS		+= 				\
 			-I $(LIB_DIR)/m5311/					\
 			-I $(LIB_DIR)/time/						\
 			-I $(LIB_DIR)/pt1000/					\
+			-I $(LIB_DIR)/softi2c/					\
+			-I $(LIB_DIR)/pcf8563/					\
 			-I $(LIB_DIR)/rtcdrv					\
 			-I .
 
