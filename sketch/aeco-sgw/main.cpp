@@ -35,7 +35,7 @@ extern "C"{
 #define ENABLE_RX_IRQ					1
 
 #define DEBUG							1
-#define DEBUG_HEX_PKT					1
+//#define DEBUG_HEX_PKT					1
 //#define ENABLE_RTC						1
 //#define DEBUG_RTC						1
 
@@ -115,6 +115,7 @@ M5311 modem;
 bool network_ok __attribute__((aligned(4))) = false;
 char iccid[24] __attribute__((aligned(4)));
 int g_rssi = 0;
+char *myid = NULL;
 
 ///////////////////////////////////////////////////////////////
 #include "ccx.h"
@@ -157,7 +158,7 @@ void rx_irq_handler()
 
 	INFOLN(plen);
 
-	if (plen > PKT_LEN || plen < 0) goto rx_irq_out;
+	if (plen > PKT_LEN || plen < 24) goto rx_irq_out;
 
 	if ((true == is_our_pkt(pbuf, plen))
 		&& (false == is_pkt_in_ctrl(&g_cfifo, pbuf, plen, seconds()))) {
@@ -288,6 +289,7 @@ int setup_nb()
 {
 	int start_cnt = 0;
 
+	INFOLN("....");
 	SerialUSART1.setRouteLoc(3);
 	SerialUSART1.begin(115200);
 	INFOLN("xxxx");
@@ -453,7 +455,8 @@ void setup()
 	INFO("Firmware: ");
 	INFOLN(FW_VER);
 	INFO("DevID: ");
-	INFOLN(uint64_to_str(my_devid, get_devid()));
+	myid = uint64_to_str(my_devid, get_devid());
+	INFOLN(myid);
 
 	INFO("epoch = ");
 	INFOLN(seconds());
@@ -500,7 +503,9 @@ void setup()
 	lora.enter_rx();
 #endif
 
-	delay(10000);
+	delay(3000);
+
+	lora.set_sleep();
 
 #ifdef ENABLE_NB
 	setup_nb();
@@ -515,8 +520,6 @@ void push_data()
 
 	WDOG_Feed();
 
-	float vbat = adc.readVbat();
-
 	int ret = get_1st_point(&g_cbuf, &d);
 
 	if (ret == 1) {
@@ -529,11 +532,9 @@ void push_data()
 		modem.mqtt_end();
 		delay(100);
 
-		//uint64_to_str(my_devid, get_devid());
-
 		WDOG_Feed();
 		wakeup_modem();
-		modem.mqtt_begin("mqtt.autoeco.net", 1883, my_devid);
+		modem.mqtt_begin("mqtt.autoeco.net", 1883, myid);
 
 		WDOG_Feed();
 		wakeup_modem();
@@ -574,7 +575,7 @@ void push_data()
 
 				sprintf(modem_said, MQTT_PUSH_MSG,
 						d.ts,
-						my_devid,
+						myid,
 						decode_devid(d.data, devid_buf),
 						decode_vbat(d.data),
 						decode_cmd(d.data),
@@ -599,7 +600,7 @@ void push_data()
 		}
 
 		WDOG_Feed();
-		modem.mqtt_end();
+		//modem.mqtt_end();
 	}
 
 	WDOG_Feed();

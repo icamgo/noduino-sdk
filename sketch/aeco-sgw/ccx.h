@@ -122,13 +122,17 @@ bool is_our_pkt(uint8_t *p, int len)
 }
 
 ////////////////////////////////////////////////////////////////////////////
-char devid_buf[16];
-char my_devid[16];
+char devid_buf[24];
+char my_devid[24];
 char dev_vbat[6];
 char dev_data[48];
 
 char *uint64_to_str(char *dest, uint64_t n)
 {
+	/*
+	 * >>> 0xffffffffffffffff
+	 * 18446744073709551615
+	*/
 	dest += 20;
 	*dest-- = 0;
 	while (n) {
@@ -245,7 +249,6 @@ char *decode_sensor_data(uint8_t *pkt)
 	int16_t data = 0;
 	float dd  = 0;
 	char data_buf[8] = {0};
-	char ppid[12];
 	uint32_t ttss = 0;
 
 	data = (pkt[11]  << 8) | pkt[12];
@@ -324,7 +327,7 @@ char *decode_sensor_data(uint8_t *pkt)
 		for (int i = 0; i <= 3; i++) {
 			*(((uint8_t *)&ddid) + 3 - i) = pkt[20+i];
 		}
-		sprintf(dev_data, "T\":%s`\"PID\":%s", data_buf, uint64_to_str(ppid, ddid));
+		sprintf(dev_data, "T\":%s`\"PID\":%s", data_buf, uint64_to_str(devid_buf, ddid));
 
 	} else if (dev_t == 29) {
 		// Float & Temp Sensor dd = (float)(data / 10.0);
@@ -343,7 +346,7 @@ char *decode_sensor_data(uint8_t *pkt)
 		ftoa(dev_data, dd, 1);
 		sprintf(dev_data, "L\":%s`\"iT\":%d", dev_data, (int8_t)pkt[21]);
 
-	} else {
+	} else if (dev_t > 31) {
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
 		sprintf(dev_data, "X\":%s`\"iX\":%d", data_buf, *((uint32_t *)(pkt+20)));
