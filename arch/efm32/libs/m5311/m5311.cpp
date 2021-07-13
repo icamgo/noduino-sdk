@@ -620,9 +620,10 @@ bool M5311::mqtt_pub_noack(char topic[], char msg[])
 	MODEM_SERIAL->flush();
 	MODEM_SERIAL->clear_rxbuf();
 
+	#if 1
 	char wait_str[] = "+MQTTPUBACK: ";
 
-	String ret_s = expect_rx_str(1500, wait_str, 13);
+	String ret_s = expect_rx_str(2200, wait_str, 13);
 
 	if (ret_s == "") {
 		return false;
@@ -631,6 +632,10 @@ bool M5311::mqtt_pub_noack(char topic[], char msg[])
 	} else {
 		return true;
 	}
+	#else
+	delay(800);
+	return true;
+	#endif
 }
 
 void M5311::mqtt_end()
