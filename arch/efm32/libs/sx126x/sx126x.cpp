@@ -143,6 +143,11 @@ int16_t SX126x::setup_v1(uint32_t freq_hz, int8_t dbm)
 	write_op_cmd(SX126X_CMD_SET_PACKET_PARAMS, pkt_params, 6);
 }
 
+void SX126x::end()
+{
+	SPIDRV_DeInit(spi_hdl);
+}
+
 int16_t SX126x::init()
 {
 	pinMode(_pin_busy, INPUT);
