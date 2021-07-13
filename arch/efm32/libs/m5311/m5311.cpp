@@ -569,7 +569,7 @@ bool M5311::mqtt_begin(char srv[], int port, char client_id[])
 
 bool M5311::mqtt_connect()
 {
-	MODEM_SERIAL->println(F("AT+MQTTOPEN=1,1,1,1,1,\"dev/gw\",\"online\"\r\n"));
+	MODEM_SERIAL->println(F("AT+MQTTOPEN=1,1,1,1,1,\"dev/gws\",\"online\"\r\n"));
 	MODEM_SERIAL->flush();
 	MODEM_SERIAL->clear_rxbuf();
 
@@ -620,9 +620,17 @@ bool M5311::mqtt_pub_noack(char topic[], char msg[])
 	MODEM_SERIAL->flush();
 	MODEM_SERIAL->clear_rxbuf();
 
-	delay(200);
+	char wait_str[] = "+MQTTPUBACK: ";
 
-	return true;
+	String ret_s = expect_rx_str(1500, wait_str, 13);
+
+	if (ret_s == "") {
+		return false;
+	} else if (ret_s == "T") {
+		return false;
+	} else {
+		return true;
+	}
 }
 
 void M5311::mqtt_end()

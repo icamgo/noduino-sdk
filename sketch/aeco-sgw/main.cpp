@@ -32,10 +32,10 @@ extern "C"{
 
 #define ENABLE_NB						1
 #define ENABLE_LORA						1
-#define ENABLE_RX_IRQ					1
+//#define ENABLE_RX_IRQ					1
 
 #define DEBUG							1
-//#define DEBUG_HEX_PKT					1
+#define DEBUG_HEX_PKT					1
 //#define ENABLE_RTC						1
 //#define DEBUG_RTC						1
 
@@ -71,7 +71,11 @@ static float old_temp = 0.0;
 
 #define	KEY_PIN					15		/* PIN20_PF01_D15 */
 
-#define	RF_INT_PIN				3		/* PIN8_PB11_D3 */
+#define RF_CS_PIN				2		/* PIN6_PB08_D2 */
+#define	RF_RST_PIN				5		/* PIN11_PB14_D5, LeUART0_RX */
+#define	RF_BUSY_PIN				9		/* PIN18_PC15_D9 */
+#define	RF_INT_PIN				3		/* PIN8_PB11_D3, DIO1 */
+
 #define	RTC_INT_PIN				16		/* PIN21_PF02_D16 */
 
 float cur_vbat __attribute__((aligned(4))) = 0.0;
@@ -80,6 +84,7 @@ int cnt_vbat_low __attribute__((aligned(4))) = 0;
 int cnt_vbat_ok __attribute__((aligned(4))) = 0;
 
 static bool need_sleep __attribute__((aligned(4))) = false;
+static bool need_push __attribute__((aligned(4))) = false;
 uint32_t cnt_sleep __attribute__((aligned(4))) = 0;
 
 uint16_t tx_count = 0;
@@ -128,15 +133,14 @@ char *myid = NULL;
 uint8_t pbuf[48] __attribute__((aligned(4)));;
 struct ctrl_fifo g_cfifo __attribute__((aligned(4)));
 
-SX126x lora(2,		// Pin: SPI CS,PIN06-PB08-D2
-	    9,				// Pin: RESET, PIN18-PC15-D9
-	    5,				// PIN: Busy,  PIN11-PB14-D5, The RX pin
-	    3				// Pin: DIO1,  PIN08-PB11-D3
+SX126x lora(RF_CS_PIN,			// SPI_CS
+	    RF_RST_PIN,				// RESET
+	    RF_BUSY_PIN,			// BUSY
+	    RF_INT_PIN				// DIO1
     );
 
 inline void setup_lora()
 {
-	lora.reset();
 	lora.init();
 	lora.setup_v0(TXRX_CH, TX_PWR);
 }
@@ -200,7 +204,7 @@ void power_on_dev()
 
 void power_off_dev()
 {
-	digitalWrite(PWR_CTRL_PIN, LOW);
+	//digitalWrite(PWR_CTRL_PIN, LOW);
 }
 
 void power_on_modem()
@@ -503,12 +507,14 @@ void setup()
 	lora.enter_rx();
 #endif
 
+	#ifdef ENABLE_RX_IRQ
 	delay(3000);
-
 	lora.set_sleep();
+	need_push = true;
+	#endif
 
 #ifdef ENABLE_NB
-	setup_nb();
+	//setup_nb();
 #endif
 }
 
@@ -527,8 +533,20 @@ void push_data()
 		return;
 	}
 
+	if (false == network_ok) {
+
+		setup_nb();
+
+	} else {
+		/* reset the usart1 */
+		SerialUSART1.setRouteLoc(3);
+		SerialUSART1.begin(115200);
+		wakeup_modem();
+	}
+
 	if (network_ok) {
 
+		INFOLN("network is ok");
 		modem.mqtt_end();
 		delay(100);
 
@@ -546,6 +564,14 @@ void push_data()
 			while (get_1st_point(&g_cbuf, &d) == 0 && cnt_fail < 15) {
 
 				WDOG_Feed();
+
+				#ifdef ENABLE_RX_IRQ
+				if (false == check_pkt_mic(d.data, d.plen)) {
+					pop_point(&g_cbuf, &d);
+					continue;
+				}
+				#endif
+
 				wakeup_modem();
 
 				if (d.ts < INIT_TS || d.ts > MAX_TS) {
@@ -606,63 +632,94 @@ void push_data()
 	WDOG_Feed();
 }
 
+#if 0
 void deep_sleep()
 {
+	lora.set_standby(SX126X_STANDBY_RC);
+	delay(5);
+	lora.set_sleep();
+
+	// dev power off
+	power_off_dev();
 	power_off_modem();
 
 	// dev power off
 	power_off_dev();
 }
+#endif
 
-struct pkt d;
-
+#ifndef ENABLE_RX_IRQ
 void lora_rx_worker()
 {
-	int ret = get_1st_point(&g_cbuf, &d);
+	int plen = lora.rx(pbuf, 48);
+	int rssi = lora.get_pkt_rssi();
+	uint32_t ptx_ts = 0;
+	int ret = 0;
 
-	if (ret != 0) {
-		// no pkt
-		return;
+	INFOLN(plen);
+
+	if (plen > PKT_LEN || plen < 24) return;
+
+	if ((true == is_our_pkt(pbuf, plen))
+		&& (true == check_pkt_mic(pbuf, plen))
+		&& (false == is_pkt_in_ctrl(&g_cfifo, pbuf, plen, seconds()))) {
+
+		ret = push_point(&g_cbuf, pbuf, rssi, plen, seconds());
+
+		if (1 == ret) {
+			/* cbuf is full */
+			need_push = true;
+		}
+
+		/*
+		 * push the pkt data into tx_ctrl structure
+		 * TODO: should do it in the pkt process func
+		*/
+		check_ctrl_fno(&g_cfifo, pbuf, plen);
 	}
-
-	uint8_t *p = d.data;
-	int p_len = d.plen;
-
-	#if 1
-	if (false == check_pkt_mic(p, p_len)) {
-		INFOLN("Invalid MIC");
-		return;
-	}
-	#endif
 
 #ifdef DEBUG_HEX_PKT
 	int a = 0, b = 0;
 
-	for (; a < p_len; a++, b++) {
+	for (; a < plen; a++, b++) {
 
-		if ((uint8_t) p[a] < 16)
+		if ((uint8_t) pbuf[a] < 16)
 			INFO_S("0");
 
-		INFO_HEX((uint8_t) p[a]);
+		INFO_HEX((uint8_t) pbuf[a]);
 		INFO_S(" ");
 	}
 
 	INFO_S("/");
-	INFO(d.rssi);
+	INFO(rssi);
 	INFO_S("/");
-	INFOLN(p_len);
+	INFOLN(plen);
 #endif
 }
+#endif
 
 void loop()
 {
 	//if (need_sleep == false && 1 == digitalRead(KEY_PIN) && vbat_low == false) {
 	if (need_sleep == false) {
 
+	#ifndef ENABLE_RX_IRQ
 		lora_rx_worker();
+	#endif
+		delay(500);
 
 	#ifdef ENABLE_NB
-		push_data();
+		if (need_push == true) {
+			push_data();
+
+			need_push = false;
+
+			INFOLN(__LINE__);
+			power_on_dev();
+			setup_lora();
+			lora.enter_rx();
+			INFOLN(__LINE__);
+		}
 	#endif
 	}
 

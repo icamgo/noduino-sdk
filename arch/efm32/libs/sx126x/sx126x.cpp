@@ -68,20 +68,14 @@ SX126x::SX126x(int cs, int reset, int busy, int interrupt)
 
 	_preamble_len = 8;
 
-#ifdef USE_SOFTSPI
-	pinMode(_spi_cs, OUTPUT);
-#endif
-	pinMode(_pin_reset, OUTPUT);
-	pinMode(_pin_busy, INPUT);
-	pinMode(_pin_dio1, INPUT);
+}
 
-	digitalWrite(_pin_reset, HIGH);
-
-#ifdef USE_SOFTSPI
-	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
+void SX126x::wait_on_busy(void)
+{
+#ifdef DONOT_USE_BUSY
+	sx_delay(5);
 #else
-	SPIDRV_Init_t spi_init = SPI_M_USART1;
-	SPIDRV_Init(spi_hdl, &spi_init);
+	while (digitalRead(_pin_busy) == 1);
 #endif
 }
 
@@ -151,6 +145,20 @@ int16_t SX126x::setup_v1(uint32_t freq_hz, int8_t dbm)
 
 int16_t SX126x::init()
 {
+	pinMode(_pin_busy, INPUT);
+	pinMode(_pin_dio1, INPUT);
+
+	pinMode(_pin_reset, OUTPUT);
+	digitalWrite(_pin_reset, HIGH);
+
+#ifdef USE_SOFTSPI
+	pinMode(_spi_cs, OUTPUT);
+	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
+#else
+	SPIDRV_Init_t spi_init = SPI_M_USART1;
+	SPIDRV_Init(spi_hdl, &spi_init);
+#endif
+
 	reset();
 
 	pkt_params[0] = (_preamble_len>> 8) & 0xFF;
@@ -163,9 +171,11 @@ int16_t SX126x::init()
 	pkt_params[5] = 0x00;	/* no inverted iq */
 
 	while (0x22 != get_status()) {
+		reset();
+		sx_delay(50);
 		set_standby(SX126X_STANDBY_RC);
 		set_regulator_mode(SX126X_REGULATOR_DC_DC);
-		sx_delay(50);
+		//clear_dev_errors();
 	}
 
 	get_status();
@@ -437,6 +447,7 @@ bool SX126x::enter_rx(void)
 
 	if (tx_active == false) {
 
+		clear_irq_status(SX126X_IRQ_RX_DONE);
 		config_dio_irq(SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR,
 						SX126X_IRQ_RX_DONE | SX126X_IRQ_TIMEOUT | SX126X_IRQ_CRC_ERR,
 						SX126X_IRQ_NONE,
@@ -475,7 +486,7 @@ void SX126x::reset(void)
 	sx_delay(80);
 	digitalWrite(_pin_reset, HIGH);
 	sx_delay(40);
-	while (digitalRead(_pin_busy)) ;
+	wait_on_busy() ;
 }
 
 void SX126x::wakeup(void)
@@ -505,7 +516,7 @@ uint8_t SX126x::get_status(void)
 #if 1
 	ret = read_op_cmd(SX126X_CMD_GET_STATUS, &rv, 0);
 #else
-	while (digitalRead(_pin_busy)) ;
+	wait_on_busy() ;
 
 	#ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, LOW);
@@ -558,11 +569,6 @@ void SX126x::clear_dev_errors(void)
 	uint8_t error[2] = {0, 0};
 
 	write_op_cmd(SX126X_CMD_CLEAR_DEVICE_ERRORS, error, 2);
-}
-
-void SX126x::wait_on_busy(void)
-{
-	while (digitalRead(_pin_busy) == 1) ;
 }
 
 void SX126x::set_cad()
@@ -814,7 +820,6 @@ uint16_t SX126x::get_irq_status(void)
 void SX126x::clear_irq_status(uint16_t irq)
 {
 	uint8_t buf[2];
-
 	buf[0] = (uint8_t) (((uint16_t) irq >> 8) & 0x00FF);
 	buf[1] = (uint8_t) ((uint16_t) irq & 0x00FF);
 	write_op_cmd(SX126X_CMD_CLEAR_IRQ_STATUS, buf, 2);
@@ -921,7 +926,7 @@ int SX126x::read_buf(uint8_t *data, uint8_t d_len)
 		return -1;
 	}
 
-	while (digitalRead(_pin_busy)) ;
+	wait_on_busy() ;
 
 #ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, LOW);
@@ -967,7 +972,7 @@ int SX126x::read_buf(uint8_t *data, uint8_t d_len)
 
 #endif
 
-	while (digitalRead(_pin_busy)) ;
+	wait_on_busy() ;
 
 	return len;
 }
@@ -1028,7 +1033,7 @@ uint8_t SX126x::write_buf(uint8_t *data, uint8_t len)
 	ptx = NULL;
 #endif
 
-	while (digitalRead(_pin_busy)) ;
+	wait_on_busy() ;
 
 	return 0;
 }
@@ -1043,7 +1048,7 @@ uint8_t SX126x::read_reg(uint16_t addr)
 void SX126x::read_reg(uint16_t addr, uint8_t *data, uint8_t size)
 {
 	// TODO timeout
-	while (digitalRead(_pin_busy)) ;
+	wait_on_busy() ;
 
 #ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, LOW);
@@ -1082,7 +1087,7 @@ void SX126x::read_reg(uint16_t addr, uint8_t *data, uint8_t size)
 	ptx = NULL;
 #endif
 
-	while (digitalRead(_pin_busy)) ;
+	wait_on_busy() ;
 }
 
 void SX126x::write_reg(uint16_t addr, uint8_t data)
@@ -1093,7 +1098,7 @@ void SX126x::write_reg(uint16_t addr, uint8_t data)
 void SX126x::write_reg(uint16_t addr, uint8_t *data, uint8_t size)
 {
 	// TODO timeout
-	while (digitalRead(_pin_busy)) ;
+	wait_on_busy() ;
 
 #ifdef USE_SOFTSPI
 	digitalWrite(_spi_cs, LOW);
@@ -1131,13 +1136,15 @@ void SX126x::write_reg(uint16_t addr, uint8_t *data, uint8_t size)
 	ptx = NULL;
 #endif
 
-	while (digitalRead(_pin_busy)) ;
+	wait_on_busy() ;
 }
 
 void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 {
-	while (digitalRead(_pin_busy)) ;
+	INFOLN(__LINE__);
+	wait_on_busy() ;
 
+	INFOLN(__LINE__);
 #ifdef USE_SOFTSPI
 	// start transfer
 	digitalWrite(_spi_cs, LOW);
@@ -1175,8 +1182,10 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 		memcpy(tx+1, data, len);
 	}
 
+	INFOLN(__LINE__);
 	SPIDRV_MTransmitB(spi_hdl, tx, len+1);
 
+	INFOLN(__LINE__);
 #ifdef DEBUG_SX126X_SPI
 	INFO("SPI write: CMD=0x");
 	INFO_HEX(cmd);
@@ -1193,7 +1202,9 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 
 #endif
 
-	while (digitalRead(_pin_busy)) ;
+	INFOLN(__LINE__);
+	wait_on_busy() ;
+	INFOLN(__LINE__);
 }
 
 /*
@@ -1202,7 +1213,7 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
  */
 uint8_t SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 {
-	while (digitalRead(_pin_busy)) ;
+	wait_on_busy() ;
 
 #ifdef USE_SOFTSPI
 	uint8_t rx[2] = {0};
@@ -1261,7 +1272,7 @@ uint8_t SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 
 #endif
 
-	while (digitalRead(_pin_busy)) ;
+	wait_on_busy() ;
 
 	return rx[1];
 }
