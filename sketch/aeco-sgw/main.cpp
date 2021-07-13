@@ -402,6 +402,22 @@ qsetup_start:
 	return network_ok;
 }
 
+int mqtt_init()
+{
+	int ret = 0;
+
+	modem.mqtt_end();
+
+	WDOG_Feed();
+	wakeup_modem();
+	modem.mqtt_begin("mqtt.autoeco.net", 1883, myid);
+
+	delay(100);
+	ret = modem.mqtt_connect();
+
+	return ret;
+}
+
 int8_t fetch_mcu_temp()
 {
 	float temp = 0.0;
@@ -536,6 +552,7 @@ void push_data()
 	if (false == network_ok) {
 
 		setup_nb();
+		mqtt_init();
 
 	} else {
 		/* reset the usart1 */
@@ -547,86 +564,86 @@ void push_data()
 	if (network_ok) {
 
 		INFOLN("network is ok");
-		modem.mqtt_end();
-		delay(100);
-
-		WDOG_Feed();
-		wakeup_modem();
-		modem.mqtt_begin("mqtt.autoeco.net", 1883, myid);
 
 		WDOG_Feed();
 		wakeup_modem();
 
-		if (modem.mqtt_connect()) {
+		while (get_1st_point(&g_cbuf, &d) == 0 && cnt_fail < 8) {
 
 			WDOG_Feed();
 
-			while (get_1st_point(&g_cbuf, &d) == 0 && cnt_fail < 15) {
-
-				WDOG_Feed();
-
-				#ifdef ENABLE_RX_IRQ
-				if (false == check_pkt_mic(d.data, d.plen)) {
-					pop_point(&g_cbuf, &d);
-					continue;
-				}
-				#endif
-
-				wakeup_modem();
-
-				if (d.ts < INIT_TS || d.ts > MAX_TS) {
-					INFOLN("Invalid ts, use current ts");
-					d.ts = seconds();
-					INFOLN(seconds());
-				}
-
-				extern char modem_said[MODEM_LEN];
-				memset(modem_said, 0, MODEM_LEN);
-
-				#if 0
-				if (tx_cause == 0 || gmtime(&(d.ts))->tm_hour == 12) {
-
-					sprintf(modem_said, MY_RPT_MSG,
-							d.ts,
-							my_devid,
-							decode_vbat(vbat),
-							decode_sensor_data(d.data / 10.0),
-							d.iT,
-							tx_cause,
-							iccid
-					);
-				} else {
-				}
-				#endif
-
-				sprintf(modem_said, MQTT_PUSH_MSG,
-						d.ts,
-						myid,
-						decode_devid(d.data, devid_buf),
-						decode_vbat(d.data),
-						decode_cmd(d.data),
-						d.rssi,
-						decode_sensor_data(d.data)
-				);
-
-				if (modem.mqtt_pub_noack("dev/gws", modem_said)) {
-
-					INFOLN("Pub OK, pop point");
-					noInterrupts();
-					pop_point(&g_cbuf, &d);
-					interrupts();
-
-				} else {
-
-					cnt_fail++;
-					INFOLN("Pub failed");
-				}
+			#ifdef ENABLE_RX_IRQ
+			if (false == check_pkt_mic(d.data, d.plen)) {
+				noInterrupt();
+				pop_point(&g_cbuf, &d);
+				interrupts();
+				continue;
 			}
-			INFOLN("no point");
+			#endif
+
+			if (d.ts < INIT_TS || d.ts > MAX_TS) {
+				INFOLN("Invalid ts, use current ts");
+				d.ts = seconds();
+				INFOLN(seconds());
+			}
+
+			extern char modem_said[MODEM_LEN];
+			memset(modem_said, 0, MODEM_LEN);
+
+			#if 0
+			if (tx_cause == 0 || gmtime(&(d.ts))->tm_hour == 12) {
+
+				sprintf(modem_said, MY_RPT_MSG,
+						d.ts,
+						my_devid,
+						decode_vbat(vbat),
+						decode_sensor_data(d.data / 10.0),
+						d.iT,
+						tx_cause,
+						iccid
+				);
+			} else {
+			}
+			#endif
+
+			wakeup_modem();
+
+			sprintf(modem_said, MQTT_PUSH_MSG,
+					d.ts,
+					myid,
+					decode_devid(d.data, devid_buf),
+					decode_vbat(d.data),
+					decode_cmd(d.data),
+					d.rssi,
+					decode_sensor_data(d.data)
+			);
+
+			if (modem.mqtt_pub_noack("dev/gws", modem_said)) {
+
+				INFOLN("Pub OK, pop point");
+				#ifdef ENABLE_RX_IRQ
+				noInterrupt();
+				#endif
+				pop_point(&g_cbuf, &d);
+				#ifdef ENABLE_RX_IRQ
+				interrupts();
+				#endif
+
+			} else {
+
+				cnt_fail++;
+				INFOLN("Pub failed");
+			}
 		}
 
+		if (cnt_fail >= 8) {
+			network_ok = false;
+			//modem.mqtt_end();
+		}
+
+		INFOLN("no point");
+
 		WDOG_Feed();
-		//modem.mqtt_end();
 	}
 
 	WDOG_Feed();
@@ -706,16 +723,21 @@ void loop()
 	#ifndef ENABLE_RX_IRQ
 		lora_rx_worker();
 	#endif
-		delay(500);
+		delay(300);
 
 	#ifdef ENABLE_NB
 		if (need_push == true) {
+
+			/* clear usart1 to start nb */
+			lora.set_sleep();
+			lora.end();
+			//digitalWritel(RF_RST_PIN, LOW);
+
 			push_data();
 
 			need_push = false;
 
 			INFOLN(__LINE__);
-			power_on_dev();
 			setup_lora();
 			lora.enter_rx();
 			INFOLN(__LINE__);
