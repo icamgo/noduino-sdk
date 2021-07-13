@@ -21,7 +21,7 @@
 
 #ifdef EFM32HG110F64
 #define BUF_LEN					64
-#define MODEM_LEN				168
+#define MODEM_LEN				180
 #elif EFM32ZG110F32
 #define BUF_LEN					64
 #define MODEM_LEN				160
