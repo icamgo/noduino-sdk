@@ -143,7 +143,18 @@ int16_t SX126x::setup_v1(uint32_t freq_hz, int8_t dbm)
 	write_op_cmd(SX126X_CMD_SET_PACKET_PARAMS, pkt_params, 6);
 }
 
-void SX126x::end()
+void SX126x::spi_init()
+{
+#ifdef USE_SOFTSPI
+	pinMode(_spi_cs, OUTPUT);
+	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
+#else
+	SPIDRV_Init_t spi_init = SPI_M_USART1;
+	SPIDRV_Init(spi_hdl, &spi_init);
+#endif
+}
+
+void SX126x::spi_end()
 {
 	SPIDRV_DeInit(spi_hdl);
 }
@@ -156,13 +167,7 @@ int16_t SX126x::init()
 	pinMode(_pin_reset, OUTPUT);
 	digitalWrite(_pin_reset, HIGH);
 
-#ifdef USE_SOFTSPI
-	pinMode(_spi_cs, OUTPUT);
-	spi_init(SW_CS, SW_SCK, SW_MOSI, SW_MISO);
-#else
-	SPIDRV_Init_t spi_init = SPI_M_USART1;
-	SPIDRV_Init(spi_hdl, &spi_init);
-#endif
+	spi_init();
 
 	reset();
 

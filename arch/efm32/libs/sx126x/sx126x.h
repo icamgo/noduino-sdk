@@ -358,7 +358,8 @@ class SX126x {
 	SX126x(int spi_cs, int reset, int busy, int interrupt);
 
 	int16_t init();
-	void end();
+	void spi_init();
+	void spi_end();
 	int16_t begin(uint32_t freq_hz, int8_t dbm);
 	int16_t lora_config(uint8_t sf, uint8_t bw,
 			   uint8_t cr, uint16_t preamble_len,
