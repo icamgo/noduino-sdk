@@ -349,7 +349,8 @@ String M5311::expect_rx_str(unsigned long period, char exp_str[], int len_check)
 	if (found_index >= 0) {
 		i = 0;
 
-		while (modem_said[found_index + i + len_check] != 0x0D || i == 0) {
+		while (modem_said[found_index + i + len_check] != '\0' &&
+				(modem_said[found_index + i + len_check] != 0x0D || i == 0)) {
 			str[i] = modem_said[found_index + i + len_check];
 			i++;
 		}
