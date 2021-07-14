@@ -89,9 +89,6 @@ int push_point(struct circ_buf *cbuf, uint8_t *idata, int16_t rssi, int len, uin
 
 int pop_point(struct circ_buf *cbuf, struct pkt *odata)
 {
-	INFOLN(cbuf->tail);
-	INFOLN(cbuf->head);
-
 	if (odata != NULL && cbuf != NULL &&
 		CIRC_CNT(cbuf->head, cbuf->tail, CIRC_BUF_SIZE) > 0) {
 	

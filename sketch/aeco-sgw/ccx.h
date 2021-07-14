@@ -253,13 +253,14 @@ char *decode_sensor_data(uint8_t *pkt)
 
 	data = (pkt[11]  << 8) | pkt[12];
 
-	uint32_t dev_t = get_dev_type(pkt);
+	uint32_t dt = get_dev_type(pkt);
 
-	switch(dev_t) {
+/*
+	switch(dt) {
 
 		case 0:
 		case 2:
-		case 4:
+		case 6:
 		case 20:
 		case 21:
 			// Temperature: 00, 02, 04
@@ -277,7 +278,7 @@ char *decode_sensor_data(uint8_t *pkt)
 			break;
 		case 5:
 			// ET-Pump
-			sprintf(dev_data, "0x%X", data);
+			sprintf(dev_data, "X\":0x%08X", data);
 			break;
 		case 7:
 			// water level (pressure), unit is 'M'
@@ -316,8 +317,57 @@ char *decode_sensor_data(uint8_t *pkt)
 			sprintf(dev_data, "T\":%s`\"H\":%d`\"iT\":%d", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]));
 			break;
 	}
+*/
 
-	if (dev_t == 28) {
+
+	if (0 == dt || 2 == dt || 6 == dt || 20 == dt || 21 == dt) {
+		// Temperature: 00, 02, 04
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+		sprintf(dev_data, "T\":%s", data_buf);
+	} else if (1 == dt || 3 == dt) {
+		// Pressure sensor: 01, 03
+		dd = (float)(data / 100.0);
+		ftoa(data_buf, dd, 2);
+		sprintf(dev_data, "P\":%s`\"iT\":%d", data_buf, (int8_t)(pkt[21]));
+	} else if (5 == dt) {
+		// ET-Pump
+		sprintf(dev_data, "X\":0x%08X", data);
+	} else if (7 == dt) {
+		// water level (pressure), unit is 'M'
+		dd = (float)(data / 100.0);
+		ftoa(data_buf, dd, 2);
+		sprintf(dev_data, "L\":%s`\"iT\":%d", data_buf, (int8_t)(pkt[21]));
+	} else if (8 == dt) {
+		// Humi&Temp Sensor
+		sprintf(dev_data, "H\":%d`\"T\":%d`\"iT\":%d", (int)(data/10.0+0.5), (int8_t)(pkt[20]), (int8_t)(pkt[21]));
+	} else if (9 == dt) {
+		// Moving Sensor, unit is 'mm'
+		sprintf(dev_data, "M\":%d", data);
+
+	} else if (12 == dt) {
+		// Vibration Sensor
+		sprintf(dev_data, "V\":%d", data);
+
+	} else if (13 == dt) {
+		// Float & Temp Sensor
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+		sprintf(dev_data, "T\":%s`\"L\":%d`\"iT\":%d", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]));
+
+	} else if (14 == dt) {
+		// Water Leak Sensor
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+		sprintf(dev_data, "L\":%s", data_buf);
+
+	} else if (16 == dt) {
+		// GOTh with oled, Temp&Humi
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+		sprintf(dev_data, "T\":%s`\"H\":%d`\"iT\":%d", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]));
+
+	} else if (dt == 28) {
 		// Paired-TCC
 		// max did: 0x02.FF.FF.FF.FF = 12884901887
 		dd = (float)(data / 10.0);
@@ -329,7 +379,7 @@ char *decode_sensor_data(uint8_t *pkt)
 		}
 		sprintf(dev_data, "T\":%s`\"PID\":%s", data_buf, uint64_to_str(devid_buf, ddid));
 
-	} else if (dev_t == 29) {
+	} else if (dt == 29) {
 		// Float & Temp Sensor dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
 		//ttss = (pkt[18] << 24 | pkt[19] << 16 | pkt[24] << 8 | pkt[25]);
@@ -339,14 +389,14 @@ char *decode_sensor_data(uint8_t *pkt)
 		*(((uint8_t *)&ttss) + 0) = pkt[25];
 		sprintf(dev_data, "T\":%s`\"L\":%d`\"iT\":%d`\"TS\":%lu", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]), ttss);
 
-	} else if (dev_t == 31) {
+	} else if (dt == 31) {
 
 		// Smoke or DI sensor
 		dd = (float)(data / 10.0);
-		ftoa(dev_data, dd, 1);
-		sprintf(dev_data, "L\":%s`\"iT\":%d", dev_data, (int8_t)pkt[21]);
+		ftoa(data_buf, dd, 1);
+		sprintf(dev_data, "L\":%s`\"iT\":%d", data_buf, (int8_t)pkt[21]);
 
-	} else if (dev_t > 31) {
+	} else {
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
 		sprintf(dev_data, "X\":%s`\"iX\":%d", data_buf, *((uint32_t *)(pkt+20)));
