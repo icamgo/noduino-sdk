@@ -675,7 +675,7 @@ void lora_rx_worker()
 
 	INFOLN(plen);
 
-	if (plen > PKT_LEN || plen < 24) return;
+	if (plen > PKT_LEN || plen < PKT_LEN_MIN) return;
 
 	if ((true == is_our_pkt(pbuf, plen))
 		&& (true == check_pkt_mic(pbuf, plen))
@@ -730,17 +730,16 @@ void loop()
 
 			/* clear usart1 to start nb */
 			lora.set_sleep();
-			lora.end();
+			lora.spi_end();
 			//digitalWritel(RF_RST_PIN, LOW);
 
 			push_data();
 
 			need_push = false;
 
-			INFOLN(__LINE__);
-			setup_lora();
+			//setup_lora();
+			lora.spi_init();
 			lora.enter_rx();
-			INFOLN(__LINE__);
 		}
 	#endif
 	}

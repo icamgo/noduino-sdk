@@ -16,6 +16,7 @@
 #endif
 
 #define	PKT_LEN				48
+#define	PKT_LEN_MIN			28
 
 /* Return count in buffer.  */
 #define CIRC_CNT(head,tail,size) (((head) - (tail)) & ((size)-1))
