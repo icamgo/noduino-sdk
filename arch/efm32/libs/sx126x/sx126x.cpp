@@ -68,6 +68,16 @@ SX126x::SX126x(int cs, int reset, int busy, int interrupt)
 
 	_preamble_len = 8;
 
+#if !defined(USE_BUSY) && !defined(DONOT_USE_BUSY)
+	pinMode(_pin_busy, INPUT);
+	pinMode(_pin_dio1, INPUT);
+
+	pinMode(_pin_reset, OUTPUT);
+	digitalWrite(_pin_reset, HIGH);
+
+	SPIDRV_Init_t spi_init = SPI_M_USART1;
+	SPIDRV_Init(spi_hdl, &spi_init);
+#endif
 }
 
 void SX126x::wait_on_busy(void)
@@ -161,13 +171,17 @@ void SX126x::spi_end()
 
 int16_t SX126x::init()
 {
-	pinMode(_pin_busy, INPUT);
+#if defined(USE_BUSY) || defined(DONOT_USE_BUSY)
+	GPIO_PinModeSet(g_Pin2PortMapArray[_pin_busy].GPIOx_Port,
+					g_Pin2PortMapArray[_pin_busy].Pin_abstraction,
+					gpioModeInputPullFilter, 0);
 	pinMode(_pin_dio1, INPUT);
 
 	pinMode(_pin_reset, OUTPUT);
 	digitalWrite(_pin_reset, HIGH);
 
 	spi_init();
+#endif
 
 	reset();
 
@@ -1212,9 +1226,6 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 
 #endif
 
-	INFOLN(__LINE__);
-	wait_on_busy() ;
-	INFOLN(__LINE__);
 }
 
 /*
@@ -1223,7 +1234,9 @@ void SX126x::write_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
  */
 uint8_t SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 {
+	INFOLN(__LINE__);
 	wait_on_busy() ;
+	INFOLN(__LINE__);
 
 #ifdef USE_SOFTSPI
 	uint8_t rx[2] = {0};
@@ -1262,7 +1275,9 @@ uint8_t SX126x::read_op_cmd(uint8_t cmd, uint8_t *data, uint8_t len)
 
 	tx[0] = cmd;
 
+	INFOLN(__LINE__);
 	SPIDRV_MTransferB(spi_hdl, tx, rx, len+2);
+	INFOLN(__LINE__);
 
 	if (len > 0 && len <= 6) {
 		memcpy(data, rx+2, len);
