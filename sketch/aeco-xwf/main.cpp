@@ -51,7 +51,7 @@ SX126x sx126x(2,					// Pin: SPI CS,PIN06-PB08-D2
 #include "crypto.h"
 #endif
 
-#define FW_VER					"Ver 1.5"
+#define FW_VER					"Ver 1.6"
 
 #ifdef USE_INTERNAL_RTC
 /* Timer used for bringing the system back to EM0. */
