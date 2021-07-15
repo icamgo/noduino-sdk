@@ -294,7 +294,7 @@ int setup_nb()
 	int start_cnt = 0;
 
 	INFOLN("....");
-	SerialUSART1.setRouteLoc(3);
+	SerialUSART1.setRouteLoc(2);
 	SerialUSART1.begin(115200);
 	INFOLN("xxxx");
 
@@ -556,7 +556,7 @@ void push_data()
 
 	} else {
 		/* reset the usart1 */
-		SerialUSART1.setRouteLoc(3);
+		SerialUSART1.setRouteLoc(2);
 		SerialUSART1.begin(115200);
 		wakeup_modem();
 	}
@@ -737,8 +737,16 @@ void loop()
 
 			need_push = false;
 
-			//setup_lora();
+			#ifndef DONOT_USE_BUSY
+			// using the busy pin
+			GPIO_PinModeSet(g_Pin2PortMapArray[RF_BUSY_PIN].GPIOx_Port,
+							g_Pin2PortMapArray[RF_BUSY_PIN].Pin_abstraction,
+							gpioModeInputPullFilter, 0);
+			setup_lora();
+			#else
+			// donot use the busy pin
 			lora.spi_init();
+			#endif
 			lora.enter_rx();
 		}
 	#endif
