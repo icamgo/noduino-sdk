@@ -31,8 +31,10 @@ extern "C"{
 
 #define DEBUG							1
 //#define ENABLE_RTC						1
+//#define ENABLE_KEY_TRIG					1
+//#define ENABLE_STORAGE_MODE				1
 
-#define	FW_VER						"V1.5"
+#define	FW_VER						"V1.6"
 
 #ifdef ENABLE_RTC
 #include "softi2c.h"
@@ -121,8 +123,10 @@ int g_rssi = 0;
 bool rtc_ok = true;
 #endif
 
+#ifdef ENABLE_KEY_TRIG
 static uint32_t trig_ts = 0;
 static uint32_t trig_cnt = 0;
+#endif
 
 void push_data();
 int8_t fetch_mcu_temp();
@@ -255,10 +259,12 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 	fix_seconds(check_period + check_period/9);
 	//INFOLN(seconds());
 
+#ifdef ENABLE_STORAGE_MODE
 	if (0 == digitalRead(KEY_PIN)) {
 		/* storage mode */
 		return;
 	}
+#endif
 
 	sample_count++;
 
@@ -326,6 +332,7 @@ void check_sensor(RTCDRV_TimerID_t id, void *user)
 
 void trig_check_sensor()
 {
+#ifdef ENABLE_KEY_TRIG
 	uint32_t cur_ts = 0;
 
 	WDOG_Feed();
@@ -366,6 +373,10 @@ void trig_check_sensor()
 		/* reset the trig_cnt after 30min */
 		trig_cnt = 0;
 	}
+#else
+	need_push = 0x5a;
+	tx_cause = KEY_TX;
+#endif
 }
 
 int qsetup()
@@ -607,11 +618,13 @@ void setup()
 	pcf8563_clear_timer();
 #endif
 
+#ifdef ENABLE_STORAGE_MODE
 	/* bootup tx */
 	if (0 == digitalRead(KEY_PIN)) {
 		/* storage mode */
 		INFOLN("Storage Mode");
 	}
+#endif
 
 	power_on_dev();
 	pt1000_init();
@@ -740,7 +753,11 @@ void push_data()
 
 void loop()
 {
+#ifdef ENABLE_STORAGE_MODE
 	if (0x5a == need_push && 1 == digitalRead(KEY_PIN)) {
+#else
+	if (0x5a == need_push) {
+#endif
 		INFO("Seconds: ");
 		INFOLN(seconds());
 
