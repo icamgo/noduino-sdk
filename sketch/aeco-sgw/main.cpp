@@ -39,32 +39,29 @@ extern "C"{
 //#define ENABLE_RTC						1
 //#define DEBUG_RTC						1
 
-#define	FW_VER						"V1.1"
+#define	FW_VER						"V1.2"
 
-#ifdef ENABLE_RTC
+#define LOW_BAT_THRESHOLD			3.0
+
 #include "softi2c.h"
+#ifdef ENABLE_RTC
 #include "pcf8563.h"
 #endif
 
 /* Timer used for bringing the system back to EM0. */
 RTCDRV_TimerID_t xTimerForWakeUp;
 
-static uint32_t check_period = 18;		/* 20s = 0.33min */
-static uint32_t sample_period = 90;		/* 20s * 90 = 1800s, 30min */
+static uint32_t check_period = 54;		/* 60s */
 
-#define WDOG_PERIOD				wdogPeriod_32k			/* 32k 1kHz periods should give 32 seconds */
+#define WDOG_PERIOD				wdogPeriod_64k			/* 32k 1kHz periods should give 32 seconds */
 
-#define SAMPLE_PERIOD			90		/* check_period x SAMPLE_PERIOD = 1800s (30min) */
 #define PUSH_PERIOD				1080	/* check_period x PUSH_PERIOD = 360min, 6h */
-//#define	MY_RPT_MSG			"{\"ts\":%d`\"gid\":\"%s\"`\"B\":%s`\"T\":%s`\"iT\":%d`\"tp\":%d`\"L\":%d`\"sid\":\"%s\"}"
+#define	MY_RPT_MSG1			"{\"gid\":\"%s\"`\"B\":%s`\"TX\":%d`\"iT\":%d`\"tp\":%d`\"sid\":\"%s\"}"
 
 #define INIT_TS						1614665566UL
 #define MAX_TS						2000000000UL
 
-static uint32_t sample_count = 0;
-
-static float cur_temp = 0.0;
-static float old_temp = 0.0;
+static uint32_t cnt_1min = 0;
 
 #define	PWR_CTRL_PIN			8		/* PIN17_PC14_D8 */
 #define MODEM_ON_PIN			0		/* PIN01_PA00_D0 */
@@ -86,6 +83,8 @@ int cnt_vbat_ok __attribute__((aligned(4))) = 0;
 static bool need_sleep __attribute__((aligned(4))) = false;
 static bool need_push __attribute__((aligned(4))) = false;
 uint32_t cnt_sleep __attribute__((aligned(4))) = 0;
+
+static bool need_init_lora __attribute__((aligned(4))) = false;
 
 uint16_t tx_count = 0;
 
@@ -204,7 +203,9 @@ void power_on_dev()
 
 void power_off_dev()
 {
-	//digitalWrite(PWR_CTRL_PIN, LOW);
+	digitalWrite(PWR_CTRL_PIN, LOW);
+
+	need_init_lora = true;
 }
 
 void power_on_modem()
@@ -234,57 +235,95 @@ void wakeup_modem()
 	delay(200);
 }
 
-void check_sensor(RTCDRV_TimerID_t id, void *user)
+float fetch_vbat()
 {
-	int ret = 0;
+	float vbat = 0;
 
-	WDOG_Feed();
-
-	RTCDRV_StopTimer(xTimerForWakeUp);
-
-	fix_seconds(check_period + check_period/9);
-
-	//INFOLN(seconds());
-
-	sample_count++;
-
-	if (sample_count % sample_period == 0) {
-		/* 20s x 90 = 1200s, 30min, sample a point */
-
-		#if 0
-		pcf8563_init(SCL_PIN, SDA_PIN);
-		ret = push_point(&g_cbuf, pcf8563_now(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
-		ret = push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp(), cur_water);
-		#endif
-
-		if (ret == 0) {
-			/*
-			 * point is saved ok
-			 * reset sample period to 30min
-			*/
-			sample_period = 90;
-
-		} else if (ret == 1) {
-			/*
-			 * cbuf is full
-			 * change the sample period to 60min
-			*/
-			sample_period = 180;
-		}
+	for (int i = 0; i < 3; i++) {
+		vbat += adc.readVbat();
 	}
 
-	if (sample_count >= PUSH_PERIOD) {
+	return vbat/3.0;
+}
 
-		/* 4min * 15 =  60min */
-		need_sleep = false;
-		tx_cause = TIMER_TX;
-		sample_count = 0;
+void reset_dev_sys()
+{
+	WDOG_Feed();
+
+	power_off_modem();
+
+	power_off_dev();
+	i2c_delay_ms(9000);			/* delay 6000ms */
+	NVIC_SystemReset();
+}
+
+void period_check_status(RTCDRV_TimerID_t id, void *user)
+{
+	/* reset the watchdog */
+	WDOG_Feed();
+
+	cnt_1min++;
+
+	if (false == vbat_low) {
+
+		if (cnt_1min % 60 == 0) {
+
+			/* 60min Timer */
+			need_push = 0x55;
+			tx_cause = TIMER_TX;
+		}
+
+		#if 0
+		if (cnt_1min % 1440 == 0) {
+			/* 24h */
+			reset_dev_sys();
+		}
+		#endif
+	}
+
+	////////////////////////////////////////////////////
+	// check the low vbat
+	cur_vbat = fetch_vbat();
+
+	if (cur_vbat <= LOW_BAT_THRESHOLD) {
+
+		cnt_vbat_low++;
+
+		if (cnt_vbat_low >= 5) {
+			// my battery is low
+
+			vbat_low = true;
+			cnt_vbat_low = 0;
+
+			need_push = 0x55;
+			tx_cause = DELTA_TX;
+		}
+
+		cnt_vbat_ok = 0;
+
+	} else {
+
+		cnt_vbat_ok++;
+
+		if (cnt_vbat_ok >= 10) {
+
+			if (vbat_low) {
+				/* Reset the system */
+				reset_dev_sys();
+			}
+
+			vbat_low = false;
+			cnt_vbat_ok = 0;
+		}
+
+		cnt_vbat_low = 0;
 	}
 }
 
-void trig_check_sensor()
+void key_report_status()
 {
-	need_sleep = false;
+	/* report via lora */
+	need_push = 0x66;
 	tx_cause = KEY_TX;
 	INFOLN("key");
 }
@@ -292,6 +331,11 @@ void trig_check_sensor()
 int setup_nb()
 {
 	int start_cnt = 0;
+
+	power_off_modem();
+	power_off_dev();
+	delay(3000);
+	power_on_dev();
 
 	INFOLN("....");
 	SerialUSART1.setRouteLoc(2);
@@ -450,11 +494,12 @@ void setup()
 	digitalWrite(MODEM_ON_PIN, LOW);
 
 	pinMode(KEY_PIN, INPUT);
-	attachInterrupt(KEY_PIN, trig_check_sensor, FALLING);
+	attachInterrupt(KEY_PIN, key_report_status, FALLING);
 
 	/* Initialize RTC timer. */
 	RTCDRV_Init();
 	RTCDRV_AllocateTimer(&xTimerForWakeUp);
+	RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypePeriodic, check_period * 1000, period_check_status, NULL);
 
 #ifdef DEBUG
 	Serial.setRouteLoc(1);
@@ -462,7 +507,7 @@ void setup()
 #endif
 
 	/* Start watchdog */
-	//WDOG_Init(&wInit);
+	WDOG_Init(&wInit);
 
 	/* reset epoch */
 	update_seconds(1625736586);
@@ -501,10 +546,6 @@ void setup()
 	pcf8563_clear_timer();
 #endif
 
-#if 0
-	push_point(&g_cbuf, seconds(), (cur_temp * 10), fetch_mcu_temp());
-#endif
-
 #ifdef ENABLE_LORA
 #ifdef ENABLE_RX_IRQ
 	// RF Interrupt pin
@@ -537,6 +578,7 @@ void setup()
 void push_data()
 {
 	long cnt_fail = 0;
+	static uint32_t pub_timeout = 1500;
 
 	struct pkt d;
 
@@ -618,7 +660,9 @@ void push_data()
 					decode_sensor_data(d.data)
 			);
 
-			if (modem.mqtt_pub_noack("dev/gws", modem_said)) {
+			ret = modem.mqtt_pub("dev/gws", modem_said, pub_timeout);
+
+			if (ret == 1) {
 
 				INFOLN("Pub OK, pop point");
 				#ifdef ENABLE_RX_IRQ
@@ -628,6 +672,17 @@ void push_data()
 				#ifdef ENABLE_RX_IRQ
 				interrupts();
 				#endif
+
+				pub_timeout = 2200;
+
+			} else if (ret == -1) {
+				/* timeout */
+				pub_timeout = 6000;
+
+				cnt_fail++;
+
+				INFO("pub timeout: ");
+				INFOLN(pub_timeout);
 
 			} else {
 
@@ -649,21 +704,18 @@ void push_data()
 	WDOG_Feed();
 }
 
-#if 0
 void deep_sleep()
 {
 	lora.set_standby(SX126X_STANDBY_RC);
 	delay(5);
 	lora.set_sleep();
 
-	// dev power off
-	power_off_dev();
 	power_off_modem();
 
-	// dev power off
 	power_off_dev();
+
+	EMU_EnterEM2(true);
 }
-#endif
 
 #ifndef ENABLE_RX_IRQ
 void lora_rx_worker()
@@ -718,7 +770,7 @@ void lora_rx_worker()
 void loop()
 {
 	//if (need_sleep == false && 1 == digitalRead(KEY_PIN) && vbat_low == false) {
-	if (need_sleep == false) {
+	if (false == vbat_low) {
 
 	#ifndef ENABLE_RX_IRQ
 		lora_rx_worker();
@@ -745,11 +797,21 @@ void loop()
 			setup_lora();
 			#else
 			// donot use the busy pin
-			lora.spi_init();
+			if (need_init_lora) {
+				setup_lora();
+				need_init_lora = false;
+			} else {
+				lora.spi_init();
+			}
 			#endif
 			lora.enter_rx();
 		}
 	#endif
+	} else {
+		// vbat is low
+		INFOLN("VBat is low, goto sleep....");
+
+		deep_sleep();
 	}
 
 	#if 0
@@ -761,8 +823,6 @@ void loop()
 		WDOG_Feed();
 
 		deep_sleep();
-
-		RTCDRV_StartTimer(xTimerForWakeUp, rtcdrvTimerTypeOneshot, check_period * 1000, check_sensor, NULL);
 
 		EMU_EnterEM2(true);
 
