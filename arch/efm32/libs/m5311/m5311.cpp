@@ -611,7 +611,7 @@ bool M5311::mqtt_pub(char topic[], char msg[])
 	}
 }
 
-bool M5311::mqtt_pub_noack(char topic[], char msg[])
+int M5311::mqtt_pub(char topic[], char msg[], unsigned long delay)
 {
 	MODEM_SERIAL->print(F("AT+MQTTPUB=\""));
 	MODEM_SERIAL->print(topic);
@@ -624,14 +624,15 @@ bool M5311::mqtt_pub_noack(char topic[], char msg[])
 	#if 1
 	char wait_str[] = "+MQTTPUBACK: ";
 
-	String ret_s = expect_rx_str(2200, wait_str, 13);
+	String ret_s = expect_rx_str(delay, wait_str, 13);
 
 	if (ret_s == "") {
-		return false;
+		return 0;
 	} else if (ret_s == "T") {
-		return false;
+		/* Timeout */
+		return -1;
 	} else {
-		return true;
+		return 1;
 	}
 	#else
 	delay(800);
