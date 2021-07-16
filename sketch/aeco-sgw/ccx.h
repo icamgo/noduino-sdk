@@ -361,6 +361,12 @@ char *decode_sensor_data(uint8_t *pkt)
 		ftoa(data_buf, dd, 1);
 		sprintf(dev_data, "L\":%s", data_buf);
 
+	} else if (15 == dt) {
+		// 3m/25m pressure level
+		dd = (float)(data / 100.0);
+		ftoa(data_buf, dd, 2);
+		sprintf(dev_data, "L\":%s", data_buf);
+
 	} else if (16 == dt) {
 		// GOTh with oled, Temp&Humi
 		dd = (float)(data / 10.0);
