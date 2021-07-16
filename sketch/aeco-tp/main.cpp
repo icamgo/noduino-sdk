@@ -30,10 +30,10 @@ extern "C"{
 #include "circ_buf.h"
 
 #define DEBUG							1
-#define ENABLE_RTC						1
+//#define ENABLE_RTC					1
 //#define DEBUG_RTC						1
 
-#define	FW_VER						"V1.1"
+#define	FW_VER						"V1.2"
 
 #ifdef ENABLE_RTC
 #include "softi2c.h"
