@@ -772,6 +772,8 @@ void loop()
 	//if (need_sleep == false && 1 == digitalRead(KEY_PIN) && vbat_low == false) {
 	if (false == vbat_low) {
 
+		WDOG_Feed();
+
 	#ifndef ENABLE_RX_IRQ
 		lora_rx_worker();
 	#endif
@@ -810,6 +812,8 @@ void loop()
 	} else {
 		// vbat is low
 		INFOLN("VBat is low, goto sleep....");
+
+		WDOG_Feed();
 
 		deep_sleep();
 	}
