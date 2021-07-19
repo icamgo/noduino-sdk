@@ -320,11 +320,15 @@ char *decode_sensor_data(uint8_t *pkt)
 */
 
 
-	if (0 == dt || 2 == dt || 6 == dt || 20 == dt || 21 == dt) {
+	if (0 == dt || 6 == dt || 21 == dt) {
 		// Temperature: 00, 02, 04
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
 		sprintf(dev_data, "T\":%s", data_buf);
+	} else if (2 == dt) {
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+		sprintf(dev_data, "T\":%s`\"iT\":%d", data_buf, (int8_t)(pkt[21]));
 	} else if (1 == dt || 3 == dt) {
 		// Pressure sensor: 01, 03
 		dd = (float)(data / 100.0);
@@ -372,6 +376,17 @@ char *decode_sensor_data(uint8_t *pkt)
 		dd = (float)(data / 10.0);
 		ftoa(data_buf, dd, 1);
 		sprintf(dev_data, "T\":%s`\"H\":%d`\"iT\":%d", data_buf, (int8_t)(pkt[20]), (int8_t)(pkt[21]));
+
+	} else if (20 == dt) {
+		// CC 2.0
+		dd = (float)(data / 10.0);
+		ftoa(data_buf, dd, 1);
+
+		*(((uint8_t *)&ttss) + 3) = pkt[20];
+		*(((uint8_t *)&ttss) + 2) = pkt[21];
+		*(((uint8_t *)&ttss) + 1) = pkt[22];
+		*(((uint8_t *)&ttss) + 0) = pkt[23];
+		sprintf(dev_data, "T\":%s`\"TS\":%d", data_buf, ttss);
 
 	} else if (dt == 28) {
 		// Paired-TCC
