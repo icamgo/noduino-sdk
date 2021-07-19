@@ -39,7 +39,7 @@ extern "C"{
 //#define ENABLE_RTC						1
 //#define DEBUG_RTC						1
 
-#define	FW_VER						"V1.2"
+#define	FW_VER						"V1.3"
 
 #define LOW_BAT_THRESHOLD			3.0
 
@@ -56,7 +56,8 @@ static uint32_t check_period = 54;		/* 60s */
 #define WDOG_PERIOD				wdogPeriod_64k			/* 32k 1kHz periods should give 32 seconds */
 
 #define PUSH_PERIOD				1080	/* check_period x PUSH_PERIOD = 360min, 6h */
-#define	MY_RPT_MSG1			"{\"gid\":\"%s\"`\"B\":%s`\"TX\":%d`\"iT\":%d`\"tp\":%d`\"sid\":\"%s\"}"
+#define	MY_RPT_MSG0			"{\"gid\":\"%s\"`\"B\":%s`\"TX\":%d`\"iT\":%d`\"tp\":%d`\"sid\":\"%s\"}"
+#define	MY_RPT_MSG1			"{\"gid\":\"%s\"`\"B\":%s`\"TX\":%d`\"iT\":%d`\"tp\":%d}"
 
 #define INIT_TS						1614665566UL
 #define MAX_TS						2000000000UL
@@ -86,7 +87,12 @@ uint32_t cnt_sleep __attribute__((aligned(4))) = 0;
 
 static bool need_init_lora __attribute__((aligned(4))) = false;
 
-uint16_t tx_count = 0;
+uint32_t rx_cnt = 0;
+uint32_t tx_cnt = 0;
+uint32_t old_rx_cnt = 0;
+uint32_t old_tx_cnt = 0;
+uint32_t tx_cnt_30m = 0;
+uint32_t rx_cnt_30m = 0;
 
 #define	MQTT_PUSH_MSG			"{\"ts\":%d`\"gwid\":\"%s\"`\"gid\":\"%s\"`\"B\":%s`\"tp\":%d`\"sgi\":%d`\"%s}"
 
@@ -109,6 +115,7 @@ uint16_t tx_count = 0;
 #define	KEY_TX				3
 #define	EL_TX				4
 #define	WL_TX				5
+#define NO_TX				99
 
 struct circ_buf g_cbuf __attribute__((aligned(4)));
 
@@ -266,11 +273,17 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 
 	if (false == vbat_low) {
 
-		if (cnt_1min % 60 == 0) {
+		if (cnt_1min % 30 == 0) {
 
-			/* 60min Timer */
-			need_push = 0x55;
+			/* 30min Timer */
+			need_push = true;
 			tx_cause = TIMER_TX;
+
+			tx_cnt_30m = tx_cnt - old_tx_cnt;
+			rx_cnt_30m = rx_cnt - old_rx_cnt;
+
+			old_tx_cnt = tx_cnt;
+			old_rx_cnt = rx_cnt;
 		}
 
 		#if 0
@@ -279,6 +292,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 			reset_dev_sys();
 		}
 		#endif
+
 	}
 
 	////////////////////////////////////////////////////
@@ -295,7 +309,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 			vbat_low = true;
 			cnt_vbat_low = 0;
 
-			need_push = 0x55;
+			need_push = true;
 			tx_cause = DELTA_TX;
 		}
 
@@ -323,7 +337,7 @@ void period_check_status(RTCDRV_TimerID_t id, void *user)
 void key_report_status()
 {
 	/* report via lora */
-	need_push = 0x66;
+	need_push = true;
 	tx_cause = KEY_TX;
 	INFOLN("key");
 }
@@ -632,23 +646,49 @@ void push_data()
 			extern char modem_said[MODEM_LEN];
 			memset(modem_said, 0, MODEM_LEN);
 
-			#if 0
-			if (tx_cause == 0 || gmtime(&(d.ts))->tm_hour == 12) {
-
-				sprintf(modem_said, MY_RPT_MSG,
-						d.ts,
-						my_devid,
-						decode_vbat(vbat),
-						decode_sensor_data(d.data / 10.0),
-						d.iT,
-						tx_cause,
-						iccid
-				);
-			} else {
-			}
-			#endif
-
 			wakeup_modem();
+
+			if (TIMER_TX == tx_cause) {
+				/* Timer rpt msg */
+				if (cnt_1min % 360 != 0) {
+
+					sprintf(modem_said, MY_RPT_MSG1,
+							myid,
+							cur_vbat,
+							tx_cnt_30m,
+							fetch_mcu_temp(),
+							tx_cause
+					);
+				} else {
+					/* 6 hours */
+					sprintf(modem_said, MY_RPT_MSG0,
+							myid,
+							cur_vbat,
+							tx_cnt_30m,
+							fetch_mcu_temp(),
+							tx_cause,
+							iccid
+					);
+				}
+
+				WDOG_Feed();
+
+				ret = modem.mqtt_pub("dev/gws", modem_said, pub_timeout);
+
+				WDOG_Feed();
+
+				if (ret = 1) {
+
+					pub_timeout = 2200;
+					tx_cnt++;
+					tx_cause = NO_TX;
+
+				} else  {
+
+					pub_timeout = 6000;
+					cnt_fail++;
+				}
+			}
 
 			sprintf(modem_said, MQTT_PUSH_MSG,
 					d.ts,
@@ -674,6 +714,8 @@ void push_data()
 				#endif
 
 				pub_timeout = 2200;
+
+				tx_cnt++;
 
 			} else if (ret == -1) {
 				/* timeout */
@@ -745,6 +787,8 @@ void lora_rx_worker()
 		 * TODO: should do it in the pkt process func
 		*/
 		check_ctrl_fno(&g_cfifo, pbuf, plen);
+
+		rx_cnt++;
 	}
 
 #ifdef DEBUG_HEX_PKT
