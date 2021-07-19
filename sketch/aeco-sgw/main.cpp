@@ -650,11 +650,14 @@ void push_data()
 
 			if (TIMER_TX == tx_cause) {
 				/* Timer rpt msg */
+
+				ftoa(dev_vbat, cur_vbat, 3);
+
 				if (cnt_1min % 360 != 0) {
 
 					sprintf(modem_said, MY_RPT_MSG1,
 							myid,
-							cur_vbat,
+							dev_vbat,
 							tx_cnt_30m,
 							fetch_mcu_temp(),
 							tx_cause
@@ -663,7 +666,7 @@ void push_data()
 					/* 6 hours */
 					sprintf(modem_said, MY_RPT_MSG0,
 							myid,
-							cur_vbat,
+							dev_vbat,
 							tx_cnt_30m,
 							fetch_mcu_temp(),
 							tx_cause,
