@@ -34,7 +34,7 @@ extern "C"{
 //#define ENABLE_KEY_TRIG					1
 //#define ENABLE_STORAGE_MODE				1
 
-#define	FW_VER						"V2.1"
+#define	FW_VER						"V2.2"
 
 #ifdef ENABLE_RTC
 #include "softi2c.h"
@@ -746,7 +746,7 @@ void push_data()
 
 	float vbat = adc.readVbat();
 
-	int ret = get_1st_point(&g_cbuf, &d);
+	int ret = get_head_point(&g_cbuf, &d);
 
 	if (ret == 1) {
 		INFOLN("No point in buf");
@@ -772,7 +772,7 @@ void push_data()
 
 			WDOG_Feed();
 
-			while (get_1st_point(&g_cbuf, &d) == 0 && cnt_fail < 15) {
+			while (get_head_point(&g_cbuf, &d) == 0 && cnt_fail < 15) {
 
 				WDOG_Feed();
 				wakeup_modem();
@@ -819,7 +819,7 @@ void push_data()
 
 					INFOLN("Pub OK, pop point");
 					noInterrupts();
-					pop_point(&g_cbuf, &d);
+					pop_head_point(&g_cbuf, &d);
 					interrupts();
 
 				} else {
