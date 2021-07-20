@@ -570,12 +570,33 @@ bool M5311::mqtt_begin(char srv[], int port, char client_id[])
 
 bool M5311::mqtt_connect()
 {
-	MODEM_SERIAL->println(F("AT+MQTTOPEN=1,1,1,1,1,\"dev/gws\",\"online\"\r\n"));
+	MODEM_SERIAL->println(F("AT+MQTTOPEN=1,1,1,1,1,\"dev/gw\",\"online\"\r\n"));
 	MODEM_SERIAL->flush();
 	MODEM_SERIAL->clear_rxbuf();
 
 	char wait_str[] = "+MQTTOPEN: OK";
 	//char wait_str[] = "OK";
+
+	String ret_s = expect_rx_str(6000, wait_str, 13);
+
+	if ( ret_s == "") {
+		return false;
+	} else if (ret_s == "T") {
+		return false;
+	} else {
+		return true;
+	}
+}
+
+bool M5311::mqtt_connect(char topic[])
+{
+	MODEM_SERIAL->println(F("AT+MQTTOPEN=1,1,1,1,1,\""));
+	MODEM_SERIAL->print(topic);
+	MODEM_SERIAL->println(F("\",\"online\"\r\n"));
+	MODEM_SERIAL->flush();
+	MODEM_SERIAL->clear_rxbuf();
+
+	char wait_str[] = "+MQTTOPEN: OK";
 
 	String ret_s = expect_rx_str(6000, wait_str, 13);
 
