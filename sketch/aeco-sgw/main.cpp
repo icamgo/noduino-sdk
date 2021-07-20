@@ -33,6 +33,7 @@ extern "C"{
 #define ENABLE_NB						1
 #define ENABLE_LORA						1
 //#define ENABLE_RX_IRQ					1
+//#define DONOT_RX_RELAYED_PKT			1
 
 #define DEBUG							1
 #define DEBUG_HEX_PKT					1
@@ -169,7 +170,14 @@ void rx_irq_handler()
 
 	INFOLN(plen);
 
-	if (plen > PKT_LEN || plen < 24) goto rx_irq_out;
+	if (plen > PKT_LEN || plen < PKT_LEN_MIN) goto rx_irq_out;
+
+	#ifdef DONOT_RX_RELAYED_PKT
+	if (pbuf[plen-9] & 0x10) {
+		/* pkt is relayed by cc2.0 */
+		goto rx_irq_out;
+	}
+	#endif
 
 	if ((true == is_our_pkt(pbuf, plen))
 		&& (false == is_pkt_in_ctrl(&g_cfifo, pbuf, plen, seconds()))) {
@@ -776,6 +784,13 @@ void lora_rx_worker()
 	INFOLN(plen);
 
 	if (plen > PKT_LEN || plen < PKT_LEN_MIN) return;
+
+	#ifdef DONOT_RX_RELAYED_PKT
+	if (pbuf[plen-9] & 0x10) {
+		/* pkt is relayed by cc2.0 */
+		return;
+	}
+	#endif
 
 	if ((true == is_our_pkt(pbuf, plen))
 		&& (true == check_pkt_mic(pbuf, plen))
