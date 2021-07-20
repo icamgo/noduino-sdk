@@ -590,7 +590,7 @@ bool M5311::mqtt_connect()
 
 bool M5311::mqtt_connect(char topic[])
 {
-	MODEM_SERIAL->println(F("AT+MQTTOPEN=1,1,1,1,1,\""));
+	MODEM_SERIAL->print(F("AT+MQTTOPEN=1,1,1,1,1,\""));
 	MODEM_SERIAL->print(topic);
 	MODEM_SERIAL->println(F("\",\"online\"\r\n"));
 	MODEM_SERIAL->flush();
