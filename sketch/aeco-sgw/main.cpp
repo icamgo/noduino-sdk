@@ -39,7 +39,7 @@ extern "C"{
 //#define ENABLE_RTC						1
 //#define DEBUG_RTC						1
 
-#define	FW_VER						"V1.3"
+#define	FW_VER						"V1.4"
 
 #define LOW_BAT_THRESHOLD			3.0
 
@@ -56,8 +56,9 @@ static uint32_t check_period = 54;		/* 60s */
 #define WDOG_PERIOD				wdogPeriod_64k			/* 32k 1kHz periods should give 32 seconds */
 
 #define PUSH_PERIOD				1080	/* check_period x PUSH_PERIOD = 360min, 6h */
-#define	MY_RPT_MSG0			"{\"gid\":\"%s\"`\"B\":%s`\"TX\":%d`\"iT\":%d`\"tp\":%d`\"sid\":\"%s\"}"
-#define	MY_RPT_MSG1			"{\"gid\":\"%s\"`\"B\":%s`\"TX\":%d`\"iT\":%d`\"tp\":%d}"
+#define	MY_RPT_MSG0			"{\"gid\":\"%s\"`\"B\":%s`\"TX\":%d`\"RX\":%d`\"iT\":%d`\"tp\":%d`\"sid\":\"%s\"}"
+#define	MY_RPT_MSG1			"{\"gid\":\"%s\"`\"B\":%s`\"TX\":%d`\"RX\":%d`\"iT\":%d`\"tp\":%d}"
+#define TOPIC_GWS			"dev/gws"
 
 #define INIT_TS						1614665566UL
 #define MAX_TS						2000000000UL
@@ -471,7 +472,7 @@ int mqtt_init()
 	modem.mqtt_begin("mqtt.autoeco.net", 1883, myid);
 
 	delay(100);
-	ret = modem.mqtt_connect();
+	ret = modem.mqtt_connect(TOPIC_GWS);
 
 	return ret;
 }
@@ -659,6 +660,7 @@ void push_data()
 							myid,
 							dev_vbat,
 							tx_cnt_30m,
+							rx_cnt_30m,
 							fetch_mcu_temp(),
 							tx_cause
 					);
@@ -668,6 +670,7 @@ void push_data()
 							myid,
 							dev_vbat,
 							tx_cnt_30m,
+							rx_cnt_30m,
 							fetch_mcu_temp(),
 							tx_cause,
 							iccid
@@ -676,7 +679,7 @@ void push_data()
 
 				WDOG_Feed();
 
-				ret = modem.mqtt_pub("dev/gws", modem_said, pub_timeout);
+				ret = modem.mqtt_pub(TOPIC_GWS, modem_said, pub_timeout);
 
 				WDOG_Feed();
 
@@ -703,7 +706,7 @@ void push_data()
 					decode_sensor_data(d.data)
 			);
 
-			ret = modem.mqtt_pub("dev/gws", modem_said, pub_timeout);
+			ret = modem.mqtt_pub(TOPIC_GWS, modem_said, pub_timeout);
 
 			if (ret == 1) {
 
