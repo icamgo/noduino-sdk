@@ -72,8 +72,15 @@ static uint32_t cnt_1min = 0;
 #define	KEY_PIN					15		/* PIN20_PF01_D15 */
 
 #define RF_CS_PIN				2		/* PIN6_PB08_D2 */
+
+#ifdef DONOT_USE_BUSY
 #define	RF_RST_PIN				5		/* PIN11_PB14_D5, LeUART0_RX */
 #define	RF_BUSY_PIN				9		/* PIN18_PC15_D9 */
+#else
+#define	RF_RST_PIN				9		/* PIN18_PC15_D9 */
+#define	RF_BUSY_PIN				5		/* PIN11_PB14_D5, LeUART0_RX */
+#endif
+
 #define	RF_INT_PIN				3		/* PIN8_PB11_D3, DIO1 */
 
 #define	RTC_INT_PIN				16		/* PIN21_PF02_D16 */
