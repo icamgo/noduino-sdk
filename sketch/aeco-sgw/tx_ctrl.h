@@ -2,7 +2,7 @@
 #define __TX_CTRL_H__
 
 #ifdef EFM32HG110F64
-#define	CTRL_FIFO_SIZE		32
+#define	CTRL_FIFO_SIZE		64
 #elif EFM32GG230F512
 #define	CTRL_FIFO_SIZE		1024
 #endif

@@ -40,7 +40,7 @@ extern "C"{
 //#define ENABLE_RTC						1
 //#define DEBUG_RTC						1
 
-#define	FW_VER						"V1.4"
+#define	FW_VER						"V1.5"
 
 #define LOW_BAT_THRESHOLD			3.0
 
@@ -95,6 +95,7 @@ uint32_t old_rx_cnt = 0;
 uint32_t old_tx_cnt = 0;
 uint32_t tx_cnt_30m = 0;
 uint32_t rx_cnt_30m = 0;
+uint32_t tx_cnt_max = 120;
 
 #define	MQTT_PUSH_MSG			"{\"ts\":%d`\"gwid\":\"%s\"`\"gid\":\"%s\"`\"B\":%s`\"tp\":%d`\"sgi\":%d`\"%s}"
 
@@ -182,13 +183,20 @@ void rx_irq_handler()
 	if ((true == is_our_pkt(pbuf, plen))
 		&& (false == is_pkt_in_ctrl(&g_cfifo, pbuf, plen, seconds()))) {
 
-		push_point(&g_cbuf, pbuf, rssi, plen, seconds());
+		int ret = push_point(&g_cbuf, pbuf, rssi, plen, seconds());
+
+		if (1 == ret) {
+			/* cbuf is full */
+			need_push = true;
+		}
 
 		/*
 		 * push the pkt data into tx_ctrl structure
 		 * TODO: should do it in the pkt process func
 		*/
 		check_ctrl_fno(&g_cfifo, pbuf, plen);
+
+		rx_cnt++;
 	}
 
 rx_irq_out:
@@ -845,7 +853,7 @@ void loop()
 		delay(300);
 
 	#ifdef ENABLE_NB
-		if (need_push == true) {
+		if (need_push == true && (tx_cnt - old_tx_cnt) <= tx_cnt_max) {
 
 			/* clear usart1 to start nb */
 			lora.set_sleep();

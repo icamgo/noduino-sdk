@@ -70,7 +70,7 @@ int push_point(struct circ_buf *cbuf, uint8_t *idata, int16_t rssi, int len, uin
 		return 0;
 
 	} else {
-		#if 0
+		#if 1
 		/*
 		 * cbuf is full
 		 * replace a random point
